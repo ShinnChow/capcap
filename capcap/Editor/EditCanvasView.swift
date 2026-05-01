@@ -3,6 +3,7 @@ import AppKit
 enum EditTool {
     case none
     case pen
+    case marker
     case mosaic
     case rectangle
     case ellipse
@@ -20,6 +21,11 @@ class EditCanvasView: NSView {
         didSet {
             if oldValue == .text, activeTool != .text {
                 activeTextField?.commit()
+            }
+            // Selection handles only make sense in adjust mode (no tool).
+            // Switching to a drawing tool dismisses them.
+            if activeTool != .none {
+                selectedIndex = nil
             }
             // Tool change can affect what counts as "interactive area" — refresh
             // cursor immediately under the current mouse position.
@@ -45,6 +51,11 @@ class EditCanvasView: NSView {
         didSet { activeTextField?.textColor = currentColor }
     }
     var currentLineWidth: CGFloat = 3.0
+    /// Base width for the marker brush. Drawn at `× MarkerAnnotation.brushScale`.
+    var currentMarkerLineWidth: CGFloat = 4.0
+    /// Marker uses a separate color slot so switching tools keeps the
+    /// highlighter's yellow without overriding the pen's red, and vice-versa.
+    var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
     var currentMosaicBlockSize: CGFloat = 12.0
     var currentFontSize: CGFloat = 24.0 {
         didSet {
@@ -59,6 +70,7 @@ class EditCanvasView: NSView {
 
     // In-progress drawing state
     private var currentPenPath: NSBezierPath?
+    private var currentMarkerPath: NSBezierPath?
     private var currentMosaicPoints: [NSPoint] = []
     private var mosaicBaseImage: NSImage?
     private var shapeStart: NSPoint?
@@ -84,6 +96,15 @@ class EditCanvasView: NSView {
     /// one.
     private var pendingTextCreate: PendingTextCreate?
     private let dragThreshold: CGFloat = 4
+    /// Index of the annotation showing selection chrome (rotate / curve
+    /// handles). nil when no annotation is selected. Cleared whenever a
+    /// drawing tool is activated or an undo / commit invalidates the index.
+    private var selectedIndex: Int? {
+        didSet {
+            if oldValue != selectedIndex { needsDisplay = true }
+        }
+    }
+    private var handleDragState: HandleDragState?
 
     private struct DragState {
         let index: Int
@@ -96,6 +117,26 @@ class EditCanvasView: NSView {
         let point: NSPoint
         let wasEditing: Bool
     }
+
+    /// Active drag on a selection handle (rotate / curve). The original
+    /// annotation is captured so escape-style cancellations (e.g. tool
+    /// switch mid-drag) can restore it cleanly.
+    private struct HandleDragState {
+        enum Kind { case rotate, curve }
+        let kind: Kind
+        let index: Int
+        let original: Annotation
+        let startMouse: NSPoint
+        /// For rotate: the angle from annotation center to startMouse,
+        /// captured at mouseDown so the rotation delta is anchored.
+        let startAngle: CGFloat
+        /// For rotate: the original rotation captured at mouseDown.
+        let startRotation: CGFloat
+    }
+
+    private static let rotateHandleSize: CGFloat = 18
+    private static let rotateHandleOffset: CGFloat = 22
+    private static let curveHandleSize: CGFloat = 14
 
     private var trackingArea: NSTrackingArea?
 
@@ -110,12 +151,17 @@ class EditCanvasView: NSView {
         if activeTool != .none || hasPreviewImage {
             return super.hitTest(point)
         }
-        // In adjust mode (no tool, no preview) we still want to capture
-        // clicks that land on an existing draggable annotation so the user
-        // can grab and move them. Empty clicks fall through to the layers
-        // beneath, preserving the live overlay's pass-through behavior.
+        // In adjust mode we want to capture clicks that land on either an
+        // existing draggable annotation OR on one of the selection handles
+        // (rotate / curve). The curve handle in particular can sit far
+        // from the annotation body once the arrow is bent — without this,
+        // the second click on it falls through to the SelectionView and
+        // we never see a mouseDown.
         let local = convert(point, from: superview)
         if hitTestAnnotation(at: local) != nil {
+            return super.hitTest(point)
+        }
+        if hitTestSelectionHandle(at: local) != nil {
             return super.hitTest(point)
         }
         return nil
@@ -134,6 +180,10 @@ class EditCanvasView: NSView {
     /// sees it. Posting async lets the click finish dispatching first; the
     /// field is then created against a quiescent run loop and stays put.
     private func reEditTextAnnotation(at index: Int, annotation: TextAnnotation) {
+        // The source annotation is briefly removed from the array while the
+        // editor is open, so any stale selection on it would point at the
+        // wrong row. Drop it before starting the edit.
+        selectedIndex = nil
         DispatchQueue.main.async { [weak self] in
             self?.beginTextEditing(
                 bottomLeft: annotation.origin,
@@ -154,6 +204,11 @@ class EditCanvasView: NSView {
         if removed is NumberAnnotation {
             numberCounter = max(1, numberCounter - 1)
         }
+        // Drop the selection if it pointed at the removed annotation (or
+        // beyond the new array end after the removal).
+        if let idx = selectedIndex, idx >= annotations.count {
+            selectedIndex = nil
+        }
         needsDisplay = true
         refreshCursorAtCurrentLocation()
     }
@@ -162,6 +217,25 @@ class EditCanvasView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+
+        // Selection handles (rotate / curve) take priority over body drags
+        // so the user can grab a handle that visually overlaps the
+        // annotation it controls.
+        if let kind = hitTestSelectionHandle(at: point), let idx = selectedIndex {
+            activeTextField?.commit()
+            let original = annotations[idx]
+            let center = NSPoint(x: original.boundingRect.midX, y: original.boundingRect.midY)
+            let startAngle = atan2(point.y - center.y, point.x - center.x)
+            handleDragState = HandleDragState(
+                kind: kind,
+                index: idx,
+                original: original,
+                startMouse: point,
+                startAngle: startAngle,
+                startRotation: original.rotation
+            )
+            return
+        }
 
         // Universal: clicking on any draggable existing annotation starts a
         // drag, regardless of which tool is selected (or none). Drawing tools
@@ -175,8 +249,19 @@ class EditCanvasView: NSView {
                 original: annotations[idx],
                 didDrag: false
             )
+            // In adjust mode, attach the selection to whatever the user just
+            // grabbed so the rotate / curve handles track the body during the
+            // drag rather than staying behind on the previously selected mark.
+            if activeTool == .none {
+                selectedIndex = idx
+            }
             EditCanvasView.moveCursor.set()
             return
+        }
+
+        // Click on empty canvas in adjust mode: clear any current selection.
+        if activeTool == .none {
+            selectedIndex = nil
         }
 
         guard activeTool != .none else { return }
@@ -191,6 +276,13 @@ class EditCanvasView: NSView {
             path.lineJoinStyle = .round
             path.move(to: point)
             currentPenPath = path
+
+        case .marker:
+            let path = NSBezierPath()
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            path.move(to: point)
+            currentMarkerPath = path
 
         case .mosaic:
             mosaicBaseImage = resolveBaseImageForEditing()
@@ -212,6 +304,11 @@ class EditCanvasView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+
+        if let state = handleDragState {
+            applyHandleDrag(state: state, currentMouse: point)
+            return
+        }
 
         if var state = dragState {
             if !state.didDrag {
@@ -255,6 +352,10 @@ class EditCanvasView: NSView {
             currentPenPath?.line(to: point)
             needsDisplay = true
 
+        case .marker:
+            currentMarkerPath?.line(to: point)
+            needsDisplay = true
+
         case .mosaic:
             currentMosaicPoints.append(point)
             needsDisplay = true
@@ -266,15 +367,30 @@ class EditCanvasView: NSView {
     }
 
     override func mouseUp(with event: NSEvent) {
+        // 0. Handle drag (rotate / curve) — commit current state and exit.
+        if handleDragState != nil {
+            handleDragState = nil
+            needsDisplay = true
+            refreshCursorAtCurrentLocation()
+            return
+        }
+
         // 1. Drag interaction on existing annotation
         if let state = dragState {
             dragState = nil
             if !state.didDrag {
                 // Click without drag. Text annotations re-enter edit mode for
-                // convenience; other types just deselect (no-op).
+                // convenience; other types become the selected annotation so
+                // their adjust handles (rotate / curve) appear.
                 if let textAnnotation = state.original as? TextAnnotation {
                     reEditTextAnnotation(at: state.index, annotation: textAnnotation)
+                } else if activeTool == .none {
+                    selectedIndex = state.index
                 }
+            } else if activeTool == .none {
+                // Body was dragged in adjust mode — keep this annotation
+                // selected so handles stay attached after the move.
+                selectedIndex = state.index
             }
             refreshCursorAtCurrentLocation()
             return
@@ -321,6 +437,16 @@ class EditCanvasView: NSView {
                     lineWidth: currentLineWidth
                 ))
                 currentPenPath = nil
+            }
+
+        case .marker:
+            if let path = currentMarkerPath {
+                annotations.append(MarkerAnnotation(
+                    path: path,
+                    color: currentMarkerColor,
+                    lineWidth: currentMarkerLineWidth
+                ))
+                currentMarkerPath = nil
             }
 
         case .mosaic:
@@ -414,9 +540,14 @@ class EditCanvasView: NSView {
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
-        // Draw all committed annotations
+        // Draw all committed annotations (rotation applied via helper)
         for annotation in annotations {
-            annotation.draw(in: context, bounds: bounds)
+            annotation.drawApplyingTransforms(in: context, bounds: bounds)
+        }
+
+        // Selection chrome — drawn on top so it's always reachable.
+        if let idx = selectedIndex, idx < annotations.count {
+            drawSelectionHandles(for: annotations[idx], in: context)
         }
 
         // Draw in-progress pen stroke
@@ -424,6 +555,22 @@ class EditCanvasView: NSView {
             currentColor.setStroke()
             path.lineWidth = currentLineWidth
             path.stroke()
+        }
+
+        // Draw in-progress marker stroke (semi-transparent, brush × 6).
+        if let path = currentMarkerPath {
+            NSGraphicsContext.saveGraphicsState()
+            let stroke = currentMarkerColor.withAlphaComponent(1.0)
+            stroke.setStroke()
+            path.lineWidth = currentMarkerLineWidth * MarkerAnnotation.brushScale
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            context.setAlpha(MarkerAnnotation.markerAlpha)
+            context.beginTransparencyLayer(auxiliaryInfo: nil)
+            path.stroke()
+            context.endTransparencyLayer()
+            context.setAlpha(1.0)
+            NSGraphicsContext.restoreGraphicsState()
         }
 
         // Draw in-progress shape preview
@@ -580,13 +727,16 @@ class EditCanvasView: NSView {
 
     private func cancelInFlightInteraction() {
         currentPenPath = nil
+        currentMarkerPath = nil
         currentMosaicPoints = []
         mosaicBaseImage = nil
         shapeStart = nil
         shapeCurrent = nil
         dragState = nil
+        handleDragState = nil
         pendingNumberCreate = nil
         pendingTextCreate = nil
+        selectedIndex = nil
         activeTextField?.cancel()
     }
 
@@ -737,6 +887,180 @@ class EditCanvasView: NSView {
             width: abs(b.x - a.x),
             height: abs(b.y - a.y)
         )
+    }
+
+    // MARK: - Selection handles
+
+    /// Center of the rotation handle in canvas coordinates. Sits above the
+    /// annotation's (rotated) top-center so it tracks the annotation as it
+    /// rotates and stays visible at any angle.
+    private func rotationHandleCenter(for annotation: Annotation) -> NSPoint {
+        let rect = annotation.boundingRect
+        let center = NSPoint(x: rect.midX, y: rect.midY)
+        let dist = rect.height / 2 + EditCanvasView.rotateHandleOffset
+        // Convention: rotation = 0 → handle directly above center.
+        // Rotating by `+rotation` around center moves handle along arc.
+        let rot = annotation.rotation
+        let dx = -dist * sin(rot)
+        let dy = dist * cos(rot)
+        return NSPoint(x: center.x + dx, y: center.y + dy)
+    }
+
+    /// Curve handle position for arrows. Falls back to the visual midpoint
+    /// when no `controlPoint` is set so a fresh straight arrow still has a
+    /// grabbable bend point.
+    private func curveHandleCenter(for annotation: Annotation) -> NSPoint? {
+        guard let arrow = annotation as? ArrowAnnotation else { return nil }
+        return arrow.curveHandlePoint
+    }
+
+    private func drawSelectionHandles(for annotation: Annotation, in context: CGContext) {
+        // Rotated annotations: connect the rotate handle to the rotated
+        // top-center of the bounding box, mirroring macshot's design.
+        if annotation.supportsRotation {
+            let handleCenter = rotationHandleCenter(for: annotation)
+            let rect = annotation.boundingRect
+            let center = NSPoint(x: rect.midX, y: rect.midY)
+            let topDist = rect.height / 2 + 2
+            let topCenter = NSPoint(
+                x: center.x - topDist * sin(annotation.rotation),
+                y: center.y + topDist * cos(annotation.rotation)
+            )
+
+            // Connecting dashed tether from box edge to handle.
+            context.saveGState()
+            context.setStrokeColor(NSColor.white.withAlphaComponent(0.6).cgColor)
+            context.setLineWidth(1)
+            context.setLineDash(phase: 0, lengths: [3, 3])
+            context.move(to: topCenter)
+            context.addLine(to: handleCenter)
+            context.strokePath()
+            context.restoreGState()
+
+            drawHandleDot(
+                at: handleCenter,
+                size: EditCanvasView.rotateHandleSize,
+                fill: NSColor(white: 0.12, alpha: 0.94),
+                stroke: accentGreen,
+                in: context
+            )
+            drawRotateGlyph(at: handleCenter, in: context)
+        }
+
+        if let cp = curveHandleCenter(for: annotation) {
+            drawHandleDot(
+                at: cp,
+                size: EditCanvasView.curveHandleSize,
+                fill: NSColor.white.withAlphaComponent(0.95),
+                stroke: accentGreen,
+                in: context
+            )
+        }
+    }
+
+    private func drawHandleDot(
+        at center: NSPoint,
+        size: CGFloat,
+        fill: NSColor,
+        stroke: NSColor,
+        in context: CGContext
+    ) {
+        let rect = NSRect(
+            x: center.x - size / 2,
+            y: center.y - size / 2,
+            width: size,
+            height: size
+        )
+        context.setFillColor(fill.cgColor)
+        context.fillEllipse(in: rect)
+        context.setStrokeColor(stroke.cgColor)
+        context.setLineWidth(1.5)
+        context.strokeEllipse(in: rect.insetBy(dx: 0.75, dy: 0.75))
+    }
+
+    private func drawRotateGlyph(at center: NSPoint, in context: CGContext) {
+        let cfg = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
+        guard let img = NSImage(
+            systemSymbolName: "arrow.triangle.2.circlepath",
+            accessibilityDescription: nil
+        )?.withSymbolConfiguration(cfg) else { return }
+
+        let tinted = NSImage(size: img.size, flipped: false) { rect in
+            img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            NSColor.white.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+
+        let drawRect = NSRect(
+            x: center.x - tinted.size.width / 2,
+            y: center.y - tinted.size.height / 2,
+            width: tinted.size.width,
+            height: tinted.size.height
+        )
+        NSGraphicsContext.saveGraphicsState()
+        tinted.draw(in: drawRect)
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func hitTestSelectionHandle(at point: NSPoint) -> HandleDragState.Kind? {
+        guard
+            let idx = selectedIndex,
+            idx < annotations.count
+        else { return nil }
+        let annotation = annotations[idx]
+
+        if annotation.supportsRotation {
+            let handleCenter = rotationHandleCenter(for: annotation)
+            let r = EditCanvasView.rotateHandleSize / 2 + 2
+            if hypot(point.x - handleCenter.x, point.y - handleCenter.y) <= r {
+                return .rotate
+            }
+        }
+
+        if let cp = curveHandleCenter(for: annotation) {
+            let r = EditCanvasView.curveHandleSize / 2 + 4
+            if hypot(point.x - cp.x, point.y - cp.y) <= r {
+                return .curve
+            }
+        }
+
+        return nil
+    }
+
+    private func applyHandleDrag(state: HandleDragState, currentMouse: NSPoint) {
+        guard state.index < annotations.count else { return }
+
+        switch state.kind {
+        case .rotate:
+            let original = state.original
+            let center = NSPoint(
+                x: original.boundingRect.midX,
+                y: original.boundingRect.midY
+            )
+            let currentAngle = atan2(currentMouse.y - center.y, currentMouse.x - center.x)
+            var newRotation = state.startRotation + (currentAngle - state.startAngle)
+            // Shift snaps to 15° increments for predictable angles.
+            if NSEvent.modifierFlags.contains(.shift) {
+                let step = CGFloat.pi / 12
+                newRotation = (newRotation / step).rounded() * step
+            }
+            annotations[state.index] = original.withRotation(newRotation)
+
+        case .curve:
+            guard let arrow = state.original as? ArrowAnnotation else { return }
+            // Snap back to a straight arrow when the handle is dragged near
+            // the geometric midpoint, so the user can undo a curve without
+            // having to land precisely on the original mid pixel.
+            let mid = arrow.defaultCurveMid
+            if hypot(currentMouse.x - mid.x, currentMouse.y - mid.y) < 4 {
+                annotations[state.index] = arrow.withControlPoint(nil)
+            } else {
+                annotations[state.index] = arrow.withControlPoint(currentMouse)
+            }
+        }
+
+        needsDisplay = true
     }
 
     // MARK: - Cursor

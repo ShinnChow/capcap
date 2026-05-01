@@ -33,6 +33,10 @@ class EditWindowController {
     private var currentLineWidth: CGFloat = 3.0
     private var currentMosaicBlockSize: CGFloat = 12.0
     private var currentFontSize: CGFloat = 24.0
+    /// Marker keeps its own color/size slot so toggling between pen and
+    /// marker preserves each tool's last-used choice.
+    private var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
+    private var currentMarkerLineWidth: CGFloat = 4.0
 
     var isTextEditing: Bool {
         canvasView?.isTextEditing == true
@@ -106,6 +110,9 @@ class EditWindowController {
         tv.onPin = { [weak self] in self?.pin() }
         tv.onClose = { [weak self] in self?.close() }
         tv.onConfirm = { [weak self] in self?.confirm() }
+        tv.onMoveSelectionStart = { [weak self] in self?.handleMoveSelectionStart() }
+        tv.onMoveSelectionDrag = { [weak self] delta in self?.handleMoveSelectionDrag(delta: delta) }
+        tv.onMoveSelectionEnd = { [weak self] in self?.handleMoveSelectionEnd() }
         styleFloatingHUD(tv)
         self.toolbarView = tv
         hostSelectionView.addSubview(tv)
@@ -158,6 +165,12 @@ class EditWindowController {
         toolbarView?.updateSelection(tool: tool)
         updateEditorInteractionState()
 
+        // Marker has its own color/size slot so it doesn't fight the pen
+        // when the user toggles between them. Push current values down so
+        // the canvas reflects the toolbar selection.
+        canvasView?.currentMarkerColor = currentMarkerColor
+        canvasView?.currentMarkerLineWidth = currentMarkerLineWidth
+
         showSubToolbar(for: tool)
 
         // Restore focus to the overlay window after toolbar interaction so
@@ -179,6 +192,20 @@ class EditWindowController {
                     self?.canvasView?.currentLineWidth = size
                 }
             )
+        case .marker:
+            showColorSizeSubToolbar(
+                sizes: [3, 5, 8],
+                currentColor: currentMarkerColor,
+                currentSize: currentMarkerLineWidth,
+                onColor: { [weak self] color in
+                    self?.currentMarkerColor = color
+                    self?.canvasView?.currentMarkerColor = color
+                },
+                onSize: { [weak self] size in
+                    self?.currentMarkerLineWidth = size
+                    self?.canvasView?.currentMarkerLineWidth = size
+                }
+            )
         case .text:
             showColorSizeSubToolbar(
                 sizes: [16, 24, 32],
@@ -197,7 +224,9 @@ class EditWindowController {
 
     private func showColorSizeSubToolbar(
         sizes: [CGFloat],
+        currentColor: NSColor? = nil,
         currentSize: CGFloat,
+        onColor: ((NSColor) -> Void)? = nil,
         onSize: @escaping (CGFloat) -> Void
     ) {
         guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
@@ -210,15 +239,20 @@ class EditWindowController {
             offset: offset
         )
 
+        let resolvedColor = currentColor ?? self.currentColor
         let view = ColorSizeSubToolbar(
             frame: subRect,
             sizes: sizes,
-            currentColor: currentColor,
+            currentColor: resolvedColor,
             currentSize: currentSize
         )
         view.onColorChanged = { [weak self] color in
-            self?.currentColor = color
-            self?.canvasView?.currentColor = color
+            if let onColor {
+                onColor(color)
+            } else {
+                self?.currentColor = color
+                self?.canvasView?.currentColor = color
+            }
         }
         view.onSizeChanged = onSize
         styleFloatingHUD(view)
@@ -261,6 +295,30 @@ class EditWindowController {
             toolbarFrame: toolbarFrame,
             in: hostSelectionView.bounds
         )
+    }
+
+    // MARK: - Move-selection drag handle
+
+    /// Original selection rect captured at the moment the user pressed the
+    /// move-selection drag handle. Per-frame deltas are applied against
+    /// this so the rect doesn't drift if a frame is missed.
+    private var moveSelectionStartRect: NSRect = .zero
+
+    private func handleMoveSelectionStart() {
+        canvasView?.commitActiveTextEditing()
+        moveSelectionStartRect = hostSelectionView?.currentSelectionRect ?? .zero
+    }
+
+    private func handleMoveSelectionDrag(delta: CGSize) {
+        hostSelectionView?.moveByExternalDrag(
+            deltaFromOriginal: delta,
+            originalRect: moveSelectionStartRect
+        )
+    }
+
+    private func handleMoveSelectionEnd() {
+        hostSelectionView?.finalizeExternalDrag()
+        moveSelectionStartRect = .zero
     }
 
     // MARK: - Beautify
@@ -694,14 +752,20 @@ class EditWindowController {
 
     private func updateEditorInteractionState() {
         let hasPreview = canvasView?.hasPreviewImage == true
-        hostSelectionView?.annotationToolActive = (activeTool != .none) || isBeautifyActive
+        // Once the editor is up, the canvas owns clicks inside the selection
+        // rect for the entire session — drawing tools, adjust-mode handles,
+        // and dragging existing annotations all go through it. The legacy
+        // "click inside the selection moves the whole rect" gesture has
+        // moved to a dedicated toolbar handle so adjust-mode clicks on
+        // empty canvas don't get hijacked.
+        hostSelectionView?.annotationToolActive = !isScrollCapturing
         hostSelectionView?.selectionInteractionEnabled = !(isScrollCapturing || hasPreview || isBeautifyActive)
         canvasScrollView?.isInteractionEnabled = (activeTool != .none) || hasPreview || isBeautifyActive
         hostSelectionView?.needsDisplay = true
     }
 
     private func toolbarRect(in bounds: NSRect) -> NSRect {
-        let width: CGFloat = 560
+        let width: CGFloat = 640
         let height: CGFloat = 44
         let margin: CGFloat = 8
 
@@ -753,15 +817,27 @@ class EditWindowController {
 
 // MARK: - Main Toolbar View
 
-private let accentGreen = NSColor(red: 0, green: 212.0/255.0, blue: 106.0/255.0, alpha: 1.0)
+let accentGreen = NSColor(red: 0, green: 212.0/255.0, blue: 106.0/255.0, alpha: 1.0)
 
 private final class EditorScrollView: NSScrollView {
     weak var editorCanvasView: EditCanvasView?
+    /// When `true`, every viewport click is captured (drawing tools, long
+    /// screenshot preview, beautify chrome). When `false` the scroll view
+    /// only forwards clicks that the canvas itself claimed, so empty
+    /// viewport clicks fall through to the SelectionView underneath where
+    /// its resize handles live.
     var isInteractionEnabled = false
 
     override func hitTest(_ point: NSPoint) -> NSView? {
-        guard isInteractionEnabled else { return nil }
-        return super.hitTest(point)
+        let result = super.hitTest(point)
+        if isInteractionEnabled {
+            return result
+        }
+        guard let canvas = editorCanvasView, let hit = result else { return nil }
+        if hit === canvas || hit.isDescendant(of: canvas) {
+            return hit
+        }
+        return nil
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
@@ -783,6 +859,13 @@ class ToolbarView: NSView {
     var onPin: (() -> Void)?
     var onClose: (() -> Void)?
     var onConfirm: (() -> Void)?
+    /// Press-and-drag callbacks for the "move selection" handle. The first
+    /// fires on mouseDown so the controller can capture the starting rect;
+    /// the second fires on every drag with the cumulative window-space
+    /// delta from the press; the third fires on mouseUp.
+    var onMoveSelectionStart: (() -> Void)?
+    var onMoveSelectionDrag: ((CGSize) -> Void)?
+    var onMoveSelectionEnd: (() -> Void)?
 
     private var toolButtons: [(EditTool, ToolButton)] = []
     private var scrollCaptureBtn: ToolButton?
@@ -813,8 +896,8 @@ class ToolbarView: NSView {
     private func setupButtons() {
         let buttonSize: CGFloat = 32
         let spacing: CGFloat = 6
-        // 14 buttons: rect, ellipse, arrow, pen, mosaic, numbered, text, undo, scrollCapture, beautify | save, pin, cancel, confirm
-        let totalButtons = 14
+        // 16 buttons: rect, ellipse, arrow, pen, marker, mosaic, numbered, text, undo, moveSelection, scrollCapture, beautify | save, pin, cancel, confirm
+        let totalButtons = 16
         let separatorWidth: CGFloat = 8
         let totalWidth = CGFloat(totalButtons) * buttonSize + CGFloat(totalButtons - 1) * spacing + separatorWidth
         var x = (bounds.width - totalWidth) / 2
@@ -826,6 +909,7 @@ class ToolbarView: NSView {
             (.ellipse, "circle"),
             (.arrow, "arrow.up.right"),
             (.pen, "pencil.tip"),
+            (.marker, "highlighter"),
             (.mosaic, "square.grid.3x3"),
             (.numbered, "1.circle"),
             (.text, "textformat"),
@@ -856,6 +940,18 @@ class ToolbarView: NSView {
         undoBtn.target = self
         undoBtn.action = #selector(undoTapped)
         addSubview(undoBtn)
+        x += buttonSize + spacing
+
+        // Move-selection drag handle. Press-and-drag this button to move
+        // the entire selection rect — replaces the old "click inside the
+        // rect to drag it" gesture so adjust-mode clicks reach annotations.
+        let moveBtn = MoveSelectionDragHandle(
+            frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize)
+        )
+        moveBtn.onDragStart = { [weak self] in self?.onMoveSelectionStart?() }
+        moveBtn.onDrag = { [weak self] delta in self?.onMoveSelectionDrag?(delta) }
+        moveBtn.onDragEnd = { [weak self] in self?.onMoveSelectionEnd?() }
+        addSubview(moveBtn)
         x += buttonSize + spacing
 
         // Scroll capture button
@@ -1016,6 +1112,94 @@ class ToolButton: NSButton {
             contentTintColor = normalColor
         }
         super.draw(dirtyRect)
+    }
+}
+
+// MARK: - Move-selection Drag Handle
+
+/// Toolbar button that lets the user drag the entire selection rect by
+/// pressing-and-holding it. Visually mirrors `ToolButton` so it sits in the
+/// row consistently, but it acts as a drag handle rather than a tap target
+/// — `mouseDown` starts a drag, `mouseDragged` reports cumulative deltas in
+/// window coordinates, and `mouseUp` finalizes.
+final class MoveSelectionDragHandle: NSView {
+    var onDragStart: (() -> Void)?
+    var onDrag: ((CGSize) -> Void)?
+    var onDragEnd: (() -> Void)?
+
+    private var pressStartLocation: NSPoint?
+    private var isPressed: Bool = false {
+        didSet { needsDisplay = true }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: NSCursor.openHand)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        pressStartLocation = event.locationInWindow
+        isPressed = true
+        NSCursor.closedHand.set()
+        onDragStart?()
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard let start = pressStartLocation else { return }
+        let delta = CGSize(
+            width: event.locationInWindow.x - start.x,
+            height: event.locationInWindow.y - start.y
+        )
+        onDrag?(delta)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        pressStartLocation = nil
+        isPressed = false
+        NSCursor.openHand.set()
+        onDragEnd?()
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if isPressed {
+            let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 6, yRadius: 6)
+            NSColor.white.withAlphaComponent(0.15).setFill()
+            bg.fill()
+        }
+
+        let symbolName = "arrow.up.and.down.and.arrow.left.and.right"
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
+        guard let img = NSImage(
+            systemSymbolName: symbolName,
+            accessibilityDescription: "Move selection"
+        )?.withSymbolConfiguration(config) else { return }
+
+        let tint = NSImage(size: img.size, flipped: false) { rect in
+            img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            NSColor.white.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+
+        let drawRect = NSRect(
+            x: bounds.midX - tint.size.width / 2,
+            y: bounds.midY - tint.size.height / 2,
+            width: tint.size.width,
+            height: tint.size.height
+        )
+        tint.draw(in: drawRect)
     }
 }
 

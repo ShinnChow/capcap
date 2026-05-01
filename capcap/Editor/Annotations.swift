@@ -14,6 +14,59 @@ protocol Annotation {
     /// Returns a copy of this annotation translated by `delta`. Used while
     /// the user drags an existing annotation.
     func translated(by delta: NSPoint) -> Annotation
+
+    /// Axis-aligned bounding box used for selection handles and rotation
+    /// pivots. Computed in canvas coordinates.
+    var boundingRect: NSRect { get }
+
+    /// Current rotation angle in radians, applied around `boundingRect` mid.
+    var rotation: CGFloat { get }
+
+    /// Whether rotating this annotation has a visible effect. Pen / marker /
+    /// mosaic strokes opt out — their geometry already encodes their shape.
+    var supportsRotation: Bool { get }
+
+    /// Returns a copy with the given rotation. Default impl is a no-op for
+    /// types that don't support rotation.
+    func withRotation(_ rotation: CGFloat) -> Annotation
+}
+
+extension Annotation {
+    var rotation: CGFloat { 0 }
+    var supportsRotation: Bool { false }
+    func withRotation(_ rotation: CGFloat) -> Annotation { self }
+
+    /// Wraps `draw` with the rotation transform if the annotation has any.
+    /// All draw methods are written in unrotated coordinates; this helper is
+    /// the single place rotation is applied.
+    func drawApplyingTransforms(in context: CGContext, bounds: NSRect) {
+        guard rotation != 0, supportsRotation else {
+            draw(in: context, bounds: bounds)
+            return
+        }
+        let center = NSPoint(x: boundingRect.midX, y: boundingRect.midY)
+        context.saveGState()
+        context.translateBy(x: center.x, y: center.y)
+        context.rotate(by: rotation)
+        context.translateBy(x: -center.x, y: -center.y)
+        draw(in: context, bounds: bounds)
+        context.restoreGState()
+    }
+
+    /// Map a canvas-space point back into the annotation's unrotated frame
+    /// so existing hit tests can ignore rotation entirely.
+    func unrotate(_ point: NSPoint) -> NSPoint {
+        guard rotation != 0, supportsRotation else { return point }
+        let c = NSPoint(x: boundingRect.midX, y: boundingRect.midY)
+        let dx = point.x - c.x
+        let dy = point.y - c.y
+        let cosR = cos(-rotation)
+        let sinR = sin(-rotation)
+        return NSPoint(
+            x: c.x + dx * cosR - dy * sinR,
+            y: c.y + dx * sinR + dy * cosR
+        )
+    }
 }
 
 private let strokeHitTolerance: CGFloat = 8
@@ -30,6 +83,8 @@ struct PenAnnotation: Annotation {
     let path: NSBezierPath
     let color: NSColor
     let lineWidth: CGFloat
+
+    var boundingRect: NSRect { path.bounds }
 
     func draw(in context: CGContext, bounds: NSRect) {
         NSGraphicsContext.saveGraphicsState()
@@ -54,11 +109,67 @@ struct PenAnnotation: Annotation {
     }
 }
 
+// MARK: - Marker (Highlighter) Annotation
+
+/// Highlighter — a pen stroke painted with a semi-transparent fat brush so it
+/// reads as if drawn over text with a real marker. Unlike the pen, the brush
+/// width scales as `lineWidth × 6` and self-overlapping segments are drawn
+/// inside a transparency layer so the alpha doesn't compound at junctions.
+struct MarkerAnnotation: Annotation {
+    let path: NSBezierPath
+    /// User-picked color; alpha is applied at draw time.
+    let color: NSColor
+    /// Base width — multiplied by `MarkerAnnotation.brushScale` when drawn.
+    let lineWidth: CGFloat
+
+    static let brushScale: CGFloat = 6
+    static let markerAlpha: CGFloat = 0.35
+
+    var boundingRect: NSRect {
+        let inset = -lineWidth * MarkerAnnotation.brushScale / 2
+        return path.bounds.insetBy(dx: inset, dy: inset)
+    }
+
+    func draw(in context: CGContext, bounds: NSRect) {
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+
+        let stroke = color.withAlphaComponent(1.0)
+        stroke.setStroke()
+        path.lineWidth = lineWidth * MarkerAnnotation.brushScale
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+
+        // Paint into a transparency layer at full alpha then flatten the
+        // entire layer at marker alpha so overlapping passes don't darken.
+        context.setAlpha(MarkerAnnotation.markerAlpha)
+        context.beginTransparencyLayer(auxiliaryInfo: nil)
+        path.stroke()
+        context.endTransparencyLayer()
+        context.setAlpha(1.0)
+    }
+
+    func containsPoint(_ point: NSPoint) -> Bool {
+        let effectiveWidth = lineWidth * MarkerAnnotation.brushScale
+        return strokedPathContains(path.cgPath, point: point, lineWidth: effectiveWidth)
+    }
+
+    func translated(by delta: NSPoint) -> Annotation {
+        let copy = path.copy() as! NSBezierPath
+        var transform = AffineTransform.identity
+        transform.translate(x: delta.x, y: delta.y)
+        copy.transform(using: transform)
+        return MarkerAnnotation(path: copy, color: color, lineWidth: lineWidth)
+    }
+}
+
 // MARK: - Mosaic Annotation
 
 struct MosaicAnnotation: Annotation {
     let rect: NSRect
     let pixelatedImage: NSImage
+
+    var boundingRect: NSRect { rect }
 
     func draw(in context: CGContext, bounds: NSRect) {
         pixelatedImage.draw(in: rect)
@@ -75,6 +186,10 @@ struct RectAnnotation: Annotation {
     let rect: NSRect
     let color: NSColor
     let lineWidth: CGFloat
+    var rotation: CGFloat = 0
+
+    var boundingRect: NSRect { rect }
+    var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
         context.setStrokeColor(color.cgColor)
@@ -83,16 +198,26 @@ struct RectAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
+        let p = unrotate(point)
         let path = CGPath(rect: rect, transform: nil)
-        return strokedPathContains(path, point: point, lineWidth: lineWidth)
+        return strokedPathContains(path, point: p, lineWidth: lineWidth)
     }
 
     func translated(by delta: NSPoint) -> Annotation {
-        RectAnnotation(
+        var copy = self
+        copy = RectAnnotation(
             rect: rect.offsetBy(dx: delta.x, dy: delta.y),
             color: color,
-            lineWidth: lineWidth
+            lineWidth: lineWidth,
+            rotation: rotation
         )
+        return copy
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        var copy = self
+        copy.rotation = rotation
+        return copy
     }
 }
 
@@ -102,6 +227,10 @@ struct EllipseAnnotation: Annotation {
     let rect: NSRect
     let color: NSColor
     let lineWidth: CGFloat
+    var rotation: CGFloat = 0
+
+    var boundingRect: NSRect { rect }
+    var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
         context.setStrokeColor(color.cgColor)
@@ -110,16 +239,24 @@ struct EllipseAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
+        let p = unrotate(point)
         let path = CGPath(ellipseIn: rect, transform: nil)
-        return strokedPathContains(path, point: point, lineWidth: lineWidth)
+        return strokedPathContains(path, point: p, lineWidth: lineWidth)
     }
 
     func translated(by delta: NSPoint) -> Annotation {
         EllipseAnnotation(
             rect: rect.offsetBy(dx: delta.x, dy: delta.y),
             color: color,
-            lineWidth: lineWidth
+            lineWidth: lineWidth,
+            rotation: rotation
         )
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        var copy = self
+        copy.rotation = rotation
+        return copy
     }
 }
 
@@ -130,6 +267,37 @@ struct ArrowAnnotation: Annotation {
     let endPoint: NSPoint
     let color: NSColor
     let lineWidth: CGFloat
+    /// Optional curve handle. When set, the shaft is drawn as a quadratic
+    /// bezier through `controlPoint` and the arrowhead orientation follows
+    /// the tangent at the end of the curve. nil = straight arrow.
+    var controlPoint: NSPoint? = nil
+
+    var boundingRect: NSRect {
+        var minX = min(startPoint.x, endPoint.x)
+        var minY = min(startPoint.y, endPoint.y)
+        var maxX = max(startPoint.x, endPoint.x)
+        var maxY = max(startPoint.y, endPoint.y)
+        if let cp = controlPoint {
+            minX = min(minX, cp.x); maxX = max(maxX, cp.x)
+            minY = min(minY, cp.y); maxY = max(maxY, cp.y)
+        }
+        return NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
+    }
+
+    /// Default visual midpoint when no controlPoint is set — the geometric
+    /// mid of start/end. Used to anchor the curve handle in adjust mode.
+    var defaultCurveMid: NSPoint {
+        NSPoint(
+            x: (startPoint.x + endPoint.x) / 2,
+            y: (startPoint.y + endPoint.y) / 2
+        )
+    }
+
+    /// Position where the curve handle is rendered: the controlPoint when
+    /// set, otherwise the geometric midpoint.
+    var curveHandlePoint: NSPoint {
+        controlPoint ?? defaultCurveMid
+    }
 
     func draw(in context: CGContext, bounds: NSRect) {
         context.setStrokeColor(color.cgColor)
@@ -137,22 +305,30 @@ struct ArrowAnnotation: Annotation {
         context.setLineWidth(lineWidth)
         context.setLineCap(.round)
 
-        // Draw line
-        context.move(to: startPoint)
-        context.addLine(to: endPoint)
-        context.strokePath()
+        let endTangent: (dx: CGFloat, dy: CGFloat)
 
-        // Draw arrowhead
-        let dx = endPoint.x - startPoint.x
-        let dy = endPoint.y - startPoint.y
-        let length = sqrt(dx * dx + dy * dy)
+        if let cp = controlPoint {
+            // Quadratic bezier through controlPoint
+            context.move(to: startPoint)
+            context.addQuadCurve(to: endPoint, control: cp)
+            context.strokePath()
+            endTangent = (endPoint.x - cp.x, endPoint.y - cp.y)
+        } else {
+            context.move(to: startPoint)
+            context.addLine(to: endPoint)
+            context.strokePath()
+            endTangent = (endPoint.x - startPoint.x, endPoint.y - startPoint.y)
+        }
+
+        // Arrowhead — direction follows the local tangent at the endpoint
+        let length = sqrt(endTangent.dx * endTangent.dx + endTangent.dy * endTangent.dy)
         guard length > 0 else { return }
 
         let headLength: CGFloat = max(12, lineWidth * 4)
         let headWidth: CGFloat = max(8, lineWidth * 3)
 
-        let unitX = dx / length
-        let unitY = dy / length
+        let unitX = endTangent.dx / length
+        let unitY = endTangent.dy / length
 
         let baseX = endPoint.x - unitX * headLength
         let baseY = endPoint.y - unitY * headLength
@@ -171,22 +347,31 @@ struct ArrowAnnotation: Annotation {
 
     func containsPoint(_ point: NSPoint) -> Bool {
         let line = CGMutablePath()
-        line.move(to: startPoint)
-        line.addLine(to: endPoint)
+        if let cp = controlPoint {
+            line.move(to: startPoint)
+            line.addQuadCurve(to: endPoint, control: cp)
+        } else {
+            line.move(to: startPoint)
+            line.addLine(to: endPoint)
+        }
         if strokedPathContains(line, point: point, lineWidth: lineWidth) {
             return true
         }
 
-        // Also count clicks inside the filled arrowhead triangle.
-        let dx = endPoint.x - startPoint.x
-        let dy = endPoint.y - startPoint.y
-        let length = sqrt(dx * dx + dy * dy)
+        // Filled arrowhead — direction follows tangent at endPoint.
+        let endTangent: (dx: CGFloat, dy: CGFloat)
+        if let cp = controlPoint {
+            endTangent = (endPoint.x - cp.x, endPoint.y - cp.y)
+        } else {
+            endTangent = (endPoint.x - startPoint.x, endPoint.y - startPoint.y)
+        }
+        let length = sqrt(endTangent.dx * endTangent.dx + endTangent.dy * endTangent.dy)
         guard length > 0 else { return false }
 
         let headLength: CGFloat = max(12, lineWidth * 4)
         let headWidth: CGFloat = max(8, lineWidth * 3)
-        let unitX = dx / length
-        let unitY = dy / length
+        let unitX = endTangent.dx / length
+        let unitY = endTangent.dy / length
         let baseX = endPoint.x - unitX * headLength
         let baseY = endPoint.y - unitY * headLength
 
@@ -199,12 +384,23 @@ struct ArrowAnnotation: Annotation {
     }
 
     func translated(by delta: NSPoint) -> Annotation {
-        ArrowAnnotation(
+        let translatedCP: NSPoint? = controlPoint.map {
+            NSPoint(x: $0.x + delta.x, y: $0.y + delta.y)
+        }
+        return ArrowAnnotation(
             startPoint: NSPoint(x: startPoint.x + delta.x, y: startPoint.y + delta.y),
             endPoint: NSPoint(x: endPoint.x + delta.x, y: endPoint.y + delta.y),
             color: color,
-            lineWidth: lineWidth
+            lineWidth: lineWidth,
+            controlPoint: translatedCP
         )
+    }
+
+    /// Adjust-mode helper: replace (or clear) the curve control point.
+    func withControlPoint(_ cp: NSPoint?) -> ArrowAnnotation {
+        var copy = self
+        copy.controlPoint = cp
+        return copy
     }
 }
 
@@ -216,6 +412,7 @@ struct TextAnnotation: Annotation {
     let origin: NSPoint
     let color: NSColor
     let fontSize: CGFloat
+    var rotation: CGFloat = 0
 
     static let trailingCaretPadding: CGFloat = 12
     static let minimumEditorWidth: CGFloat = 32
@@ -252,6 +449,9 @@ struct TextAnnotation: Annotation {
         textBounds.insetBy(dx: -10, dy: -max(10, fontSize * 0.75))
     }
 
+    var boundingRect: NSRect { textBounds }
+    var supportsRotation: Bool { true }
+
     func draw(in context: CGContext, bounds: NSRect) {
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: color,
@@ -263,7 +463,8 @@ struct TextAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
-        hitBounds.contains(point)
+        let p = unrotate(point)
+        return hitBounds.contains(p)
     }
 
     func translated(by delta: NSPoint) -> Annotation {
@@ -271,8 +472,15 @@ struct TextAnnotation: Annotation {
             text: text,
             origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
             color: color,
-            fontSize: fontSize
+            fontSize: fontSize,
+            rotation: rotation
         )
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        var copy = self
+        copy.rotation = rotation
+        return copy
     }
 }
 
@@ -282,8 +490,20 @@ struct NumberAnnotation: Annotation {
     let center: NSPoint
     let number: Int
     let color: NSColor
+    var rotation: CGFloat = 0
 
     static let radius: CGFloat = 14
+
+    var boundingRect: NSRect {
+        NSRect(
+            x: center.x - NumberAnnotation.radius,
+            y: center.y - NumberAnnotation.radius,
+            width: NumberAnnotation.radius * 2,
+            height: NumberAnnotation.radius * 2
+        )
+    }
+
+    var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
         let radius = NumberAnnotation.radius
@@ -315,8 +535,9 @@ struct NumberAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
-        let dx = point.x - center.x
-        let dy = point.y - center.y
+        let p = unrotate(point)
+        let dx = p.x - center.x
+        let dy = p.y - center.y
         let r = NumberAnnotation.radius
         return dx * dx + dy * dy <= r * r
     }
@@ -325,7 +546,14 @@ struct NumberAnnotation: Annotation {
         NumberAnnotation(
             center: NSPoint(x: center.x + delta.x, y: center.y + delta.y),
             number: number,
-            color: color
+            color: color,
+            rotation: rotation
         )
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        var copy = self
+        copy.rotation = rotation
+        return copy
     }
 }

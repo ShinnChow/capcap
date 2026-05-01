@@ -87,6 +87,29 @@ class SelectionView: NSView {
         needsDisplay = true
     }
 
+    /// Translate the selection rect by `delta` from the supplied
+    /// `originalRect` and notify the delegate. Used by the editor toolbar's
+    /// drag-handle button — it captures the rect at mouseDown and forwards
+    /// per-frame deltas while the user drags. Mirrors the clamping done by
+    /// the in-rect `.move` gesture so the selection stays on screen.
+    func moveByExternalDrag(deltaFromOriginal delta: CGSize, originalRect: NSRect) {
+        var newRect = originalRect.offsetBy(dx: delta.width, dy: delta.height)
+        newRect.origin.x = max(0, min(bounds.width - newRect.width, newRect.origin.x))
+        newRect.origin.y = max(0, min(bounds.height - newRect.height, newRect.origin.y))
+        selectionRect = newRect
+        state = .selected
+        delegate?.selectionDidChange(rect: newRect, inView: self)
+        needsDisplay = true
+    }
+
+    /// Mirror of `mouseUp`'s `.move` finalize: notify the delegate that the
+    /// selection rect's final position is committed.
+    func finalizeExternalDrag() {
+        if let rect = selectionRect {
+            delegate?.selectionDidComplete(rect: rect, inView: self)
+        }
+    }
+
     // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
