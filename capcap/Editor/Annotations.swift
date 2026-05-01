@@ -83,8 +83,12 @@ struct PenAnnotation: Annotation {
     let path: NSBezierPath
     let color: NSColor
     let lineWidth: CGFloat
+    var rotation: CGFloat = 0
 
-    var boundingRect: NSRect { path.bounds }
+    var boundingRect: NSRect {
+        path.bounds.insetBy(dx: -lineWidth / 2, dy: -lineWidth / 2)
+    }
+    var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
         NSGraphicsContext.saveGraphicsState()
@@ -97,7 +101,8 @@ struct PenAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
-        strokedPathContains(path.cgPath, point: point, lineWidth: lineWidth)
+        let p = unrotate(point)
+        return strokedPathContains(path.cgPath, point: p, lineWidth: lineWidth)
     }
 
     func translated(by delta: NSPoint) -> Annotation {
@@ -105,7 +110,13 @@ struct PenAnnotation: Annotation {
         var transform = AffineTransform.identity
         transform.translate(x: delta.x, y: delta.y)
         copy.transform(using: transform)
-        return PenAnnotation(path: copy, color: color, lineWidth: lineWidth)
+        return PenAnnotation(path: copy, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        var copy = self
+        copy.rotation = rotation
+        return copy
     }
 }
 
@@ -121,6 +132,7 @@ struct MarkerAnnotation: Annotation {
     let color: NSColor
     /// Base width — multiplied by `MarkerAnnotation.brushScale` when drawn.
     let lineWidth: CGFloat
+    var rotation: CGFloat = 0
 
     static let brushScale: CGFloat = 6
     static let markerAlpha: CGFloat = 0.35
@@ -129,6 +141,7 @@ struct MarkerAnnotation: Annotation {
         let inset = -lineWidth * MarkerAnnotation.brushScale / 2
         return path.bounds.insetBy(dx: inset, dy: inset)
     }
+    var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
         NSGraphicsContext.saveGraphicsState()
@@ -150,8 +163,9 @@ struct MarkerAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
+        let p = unrotate(point)
         let effectiveWidth = lineWidth * MarkerAnnotation.brushScale
-        return strokedPathContains(path.cgPath, point: point, lineWidth: effectiveWidth)
+        return strokedPathContains(path.cgPath, point: p, lineWidth: effectiveWidth)
     }
 
     func translated(by delta: NSPoint) -> Annotation {
@@ -159,7 +173,13 @@ struct MarkerAnnotation: Annotation {
         var transform = AffineTransform.identity
         transform.translate(x: delta.x, y: delta.y)
         copy.transform(using: transform)
-        return MarkerAnnotation(path: copy, color: color, lineWidth: lineWidth)
+        return MarkerAnnotation(path: copy, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        var copy = self
+        copy.rotation = rotation
+        return copy
     }
 }
 
@@ -488,13 +508,25 @@ struct TextAnnotation: Annotation {
 
 struct NumberAnnotation: Annotation {
     let center: NSPoint
+    /// Optional arrow tip pointing away from the badge. `nil` (or a tip
+    /// inside the badge) draws the badge alone. Otherwise an arrow is drawn
+    /// from the badge's edge out to `tip`. Set during creation by drag, and
+    /// adjustable later via the tip handle in adjust mode.
+    var tip: NSPoint?
     let number: Int
     let color: NSColor
-    var rotation: CGFloat = 0
 
     static let radius: CGFloat = 14
+    /// Below this distance from `center` we treat the tip as "no arrow" so
+    /// the head won't sit on top of the badge glyph.
+    static let arrowMinDistance: CGFloat = NumberAnnotation.radius + 6
 
-    var boundingRect: NSRect {
+    var hasArrow: Bool {
+        guard let tip else { return false }
+        return hypot(tip.x - center.x, tip.y - center.y) >= NumberAnnotation.arrowMinDistance
+    }
+
+    var circleRect: NSRect {
         NSRect(
             x: center.x - NumberAnnotation.radius,
             y: center.y - NumberAnnotation.radius,
@@ -503,22 +535,53 @@ struct NumberAnnotation: Annotation {
         )
     }
 
-    var supportsRotation: Bool { true }
+    var boundingRect: NSRect {
+        guard hasArrow, let tip else { return circleRect }
+        let tipBox = NSRect(x: tip.x, y: tip.y, width: 0, height: 0)
+        return circleRect.union(tipBox)
+    }
 
     func draw(in context: CGContext, bounds: NSRect) {
         let radius = NumberAnnotation.radius
-        let circleRect = NSRect(
-            x: center.x - radius,
-            y: center.y - radius,
-            width: radius * 2,
-            height: radius * 2
-        )
 
-        // Draw filled circle
+        // Arrow shaft + head from circle edge to tip (drawn first so the
+        // badge sits on top and hides any shaft pixels that would overlap).
+        if hasArrow, let tip {
+            let dx = tip.x - center.x
+            let dy = tip.y - center.y
+            let dist = hypot(dx, dy)
+            let unitX = dx / dist
+            let unitY = dy / dist
+            let shaftStart = NSPoint(
+                x: center.x + unitX * radius,
+                y: center.y + unitY * radius
+            )
+            let shaftWidth: CGFloat = 3
+            context.setStrokeColor(color.cgColor)
+            context.setFillColor(color.cgColor)
+            context.setLineWidth(shaftWidth)
+            context.setLineCap(.round)
+            context.move(to: shaftStart)
+            context.addLine(to: tip)
+            context.strokePath()
+
+            // Arrowhead — direction follows the shaft tangent.
+            let headLength: CGFloat = max(10, shaftWidth * 4)
+            let headWidth: CGFloat = max(7, shaftWidth * 3)
+            let baseX = tip.x - unitX * headLength
+            let baseY = tip.y - unitY * headLength
+            context.move(to: tip)
+            context.addLine(to: CGPoint(x: baseX - unitY * headWidth / 2, y: baseY + unitX * headWidth / 2))
+            context.addLine(to: CGPoint(x: baseX + unitY * headWidth / 2, y: baseY - unitX * headWidth / 2))
+            context.closePath()
+            context.fillPath()
+        }
+
+        // Filled badge circle
         context.setFillColor(color.cgColor)
         context.fillEllipse(in: circleRect)
 
-        // Draw number text
+        // Badge number — always drawn upright (no rotation).
         let text = "\(number)"
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: NSColor.white,
@@ -535,25 +598,36 @@ struct NumberAnnotation: Annotation {
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
-        let p = unrotate(point)
-        let dx = p.x - center.x
-        let dy = p.y - center.y
+        // Badge hit
+        let dx = point.x - center.x
+        let dy = point.y - center.y
         let r = NumberAnnotation.radius
-        return dx * dx + dy * dy <= r * r
+        if dx * dx + dy * dy <= r * r {
+            return true
+        }
+        // Arrow shaft hit (only when an arrow is actually drawn).
+        if hasArrow, let tip {
+            let line = CGMutablePath()
+            line.move(to: center)
+            line.addLine(to: tip)
+            return strokedPathContains(line, point: point, lineWidth: 4)
+        }
+        return false
     }
 
     func translated(by delta: NSPoint) -> Annotation {
         NumberAnnotation(
             center: NSPoint(x: center.x + delta.x, y: center.y + delta.y),
+            tip: tip.map { NSPoint(x: $0.x + delta.x, y: $0.y + delta.y) },
             number: number,
-            color: color,
-            rotation: rotation
+            color: color
         )
     }
 
-    func withRotation(_ rotation: CGFloat) -> Annotation {
+    /// Adjust-mode helper: replace (or clear) the arrow tip.
+    func withTip(_ tip: NSPoint?) -> NumberAnnotation {
         var copy = self
-        copy.rotation = rotation
+        copy.tip = tip
         return copy
     }
 }

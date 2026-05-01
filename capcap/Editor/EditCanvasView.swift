@@ -22,11 +22,6 @@ class EditCanvasView: NSView {
             if oldValue == .text, activeTool != .text {
                 activeTextField?.commit()
             }
-            // Selection handles only make sense in adjust mode (no tool).
-            // Switching to a drawing tool dismisses them.
-            if activeTool != .none {
-                selectedIndex = nil
-            }
             // Tool change can affect what counts as "interactive area" — refresh
             // cursor immediately under the current mouse position.
             refreshCursorAtCurrentLocation()
@@ -88,9 +83,11 @@ class EditCanvasView: NSView {
     /// existing draggable annotation always starts a drag, so the user can
     /// reposition marks without first deselecting their tool.
     private var dragState: DragState?
-    /// Pending number creation — committed on mouseUp only if the cursor
-    /// stayed put. A drag on empty canvas is a canceled click.
-    private var pendingNumberCreate: NSPoint?
+    /// Pending number creation. `start` is the click point (badge center);
+    /// `current` follows the drag, becoming the arrow tip on commit. When
+    /// the cursor never moves, tip stays at start so the badge commits
+    /// without an arrow.
+    private var pendingNumberCreate: PendingNumberCreate?
     /// Pending text creation — same idea as number, plus a `wasEditing` flag
     /// so a click that just committed an in-progress field doesn't pop a new
     /// one.
@@ -118,11 +115,16 @@ class EditCanvasView: NSView {
         let wasEditing: Bool
     }
 
-    /// Active drag on a selection handle (rotate / curve). The original
-    /// annotation is captured so escape-style cancellations (e.g. tool
-    /// switch mid-drag) can restore it cleanly.
+    private struct PendingNumberCreate {
+        let start: NSPoint
+        var current: NSPoint
+    }
+
+    /// Active drag on a selection handle (rotate / curve / number tip). The
+    /// original annotation is captured so escape-style cancellations
+    /// (e.g. tool switch mid-drag) can restore it cleanly.
     private struct HandleDragState {
-        enum Kind { case rotate, curve }
+        enum Kind { case rotate, curve, tip }
         let kind: Kind
         let index: Int
         let original: Annotation
@@ -134,9 +136,12 @@ class EditCanvasView: NSView {
         let startRotation: CGFloat
     }
 
-    private static let rotateHandleSize: CGFloat = 18
+    private static let rotateHandleSize: CGFloat = 22
     private static let rotateHandleOffset: CGFloat = 22
     private static let curveHandleSize: CGFloat = 14
+    private static let tipHandleSize: CGFloat = 14
+    private static let actionButtonSize: CGFloat = 22
+    private static let selectionBoxPad: CGFloat = 6
 
     private var trackingArea: NSTrackingArea?
 
@@ -152,16 +157,18 @@ class EditCanvasView: NSView {
             return super.hitTest(point)
         }
         // In adjust mode we want to capture clicks that land on either an
-        // existing draggable annotation OR on one of the selection handles
-        // (rotate / curve). The curve handle in particular can sit far
-        // from the annotation body once the arrow is bent — without this,
-        // the second click on it falls through to the SelectionView and
-        // we never see a mouseDown.
+        // existing draggable annotation, a drag handle (rotate / curve /
+        // tip), or an action button (delete / edit). Handles and buttons
+        // can sit outside the annotation body — without this, the click
+        // falls through to the SelectionView and we never see a mouseDown.
         let local = convert(point, from: superview)
         if hitTestAnnotation(at: local) != nil {
             return super.hitTest(point)
         }
         if hitTestSelectionHandle(at: local) != nil {
+            return super.hitTest(point)
+        }
+        if hitTestSelectionAction(at: local) != nil {
             return super.hitTest(point)
         }
         return nil
@@ -218,8 +225,25 @@ class EditCanvasView: NSView {
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
 
-        // Selection handles (rotate / curve) take priority over body drags
-        // so the user can grab a handle that visually overlaps the
+        // Action buttons (delete / edit) — clicked, not dragged.
+        if let action = hitTestSelectionAction(at: point), let idx = selectedIndex {
+            activeTextField?.commit()
+            switch action {
+            case .delete:
+                annotations.remove(at: idx)
+                selectedIndex = nil
+                needsDisplay = true
+                refreshCursorAtCurrentLocation()
+            case .edit:
+                if let textAnnotation = annotations[idx] as? TextAnnotation {
+                    reEditTextAnnotation(at: idx, annotation: textAnnotation)
+                }
+            }
+            return
+        }
+
+        // Selection handles (rotate / curve / tip) take priority over body
+        // drags so the user can grab a handle that visually overlaps the
         // annotation it controls.
         if let kind = hitTestSelectionHandle(at: point), let idx = selectedIndex {
             activeTextField?.commit()
@@ -234,6 +258,7 @@ class EditCanvasView: NSView {
                 startAngle: startAngle,
                 startRotation: original.rotation
             )
+            NSCursor.closedHand.set()
             return
         }
 
@@ -249,20 +274,16 @@ class EditCanvasView: NSView {
                 original: annotations[idx],
                 didDrag: false
             )
-            // In adjust mode, attach the selection to whatever the user just
-            // grabbed so the rotate / curve handles track the body during the
-            // drag rather than staying behind on the previously selected mark.
-            if activeTool == .none {
-                selectedIndex = idx
-            }
-            EditCanvasView.moveCursor.set()
+            // Attach the selection to whatever the user just grabbed —
+            // works in any tool so the user can immediately adjust the mark.
+            selectedIndex = idx
+            NSCursor.closedHand.set()
             return
         }
 
-        // Click on empty canvas in adjust mode: clear any current selection.
-        if activeTool == .none {
-            selectedIndex = nil
-        }
+        // Click on empty canvas: clear any current selection so adjust-mode
+        // chrome dismisses; the active tool then takes over (if any).
+        selectedIndex = nil
 
         guard activeTool != .none else { return }
 
@@ -293,7 +314,7 @@ class EditCanvasView: NSView {
             shapeCurrent = point
 
         case .numbered:
-            pendingNumberCreate = point
+            pendingNumberCreate = PendingNumberCreate(start: point, current: point)
 
         case .text:
             let wasEditing = activeTextField != nil
@@ -328,13 +349,15 @@ class EditCanvasView: NSView {
             return
         }
 
-        // Drag away from a pending create cancels it (and adds nothing).
-        if let p = pendingNumberCreate {
-            if hypot(point.x - p.x, point.y - p.y) >= dragThreshold {
-                pendingNumberCreate = nil
-            }
+        // Number tool: drag pulls an arrow tip out of the badge — preview
+        // it live and commit on mouseUp.
+        if var pending = pendingNumberCreate {
+            pending.current = point
+            pendingNumberCreate = pending
+            needsDisplay = true
             return
         }
+        // Text: drag away from the pending click cancels (no editor opens).
         if let pending = pendingTextCreate {
             if hypot(point.x - pending.point.x, point.y - pending.point.y) >= dragThreshold {
                 pendingTextCreate = nil
@@ -375,32 +398,31 @@ class EditCanvasView: NSView {
             return
         }
 
-        // 1. Drag interaction on existing annotation
+        // 1. Drag interaction on existing annotation. In any tool, a click
+        // (with or without drag) keeps the annotation selected so the
+        // adjust-mode chrome appears. Drag also moves it.
         if let state = dragState {
             dragState = nil
-            if !state.didDrag {
-                // Click without drag. Text annotations re-enter edit mode for
-                // convenience; other types become the selected annotation so
-                // their adjust handles (rotate / curve) appear.
-                if let textAnnotation = state.original as? TextAnnotation {
-                    reEditTextAnnotation(at: state.index, annotation: textAnnotation)
-                } else if activeTool == .none {
-                    selectedIndex = state.index
-                }
-            } else if activeTool == .none {
-                // Body was dragged in adjust mode — keep this annotation
-                // selected so handles stay attached after the move.
-                selectedIndex = state.index
-            }
+            selectedIndex = state.index
             refreshCursorAtCurrentLocation()
             return
         }
 
-        // 2. Pending number create
-        if let p = pendingNumberCreate {
+        // 2. Pending number create — commits whether or not the user dragged.
+        // No drag (or short drag) → no arrow. Drag past the minimum arrow
+        // distance → tip is the drag end and an arrow points at it.
+        if let pending = pendingNumberCreate {
             pendingNumberCreate = nil
+            let dragDist = hypot(
+                pending.current.x - pending.start.x,
+                pending.current.y - pending.start.y
+            )
+            let tip: NSPoint? = dragDist >= NumberAnnotation.arrowMinDistance
+                ? pending.current
+                : nil
             annotations.append(NumberAnnotation(
-                center: p,
+                center: pending.start,
+                tip: tip,
                 number: numberCounter,
                 color: currentColor
             ))
@@ -612,6 +634,20 @@ class EditCanvasView: NSView {
             default:
                 break
             }
+        }
+
+        // Draw number-tool preview while dragging — committed lazily on
+        // mouseUp, but the user expects to see the badge + arrow track the
+        // cursor live like the arrow tool does.
+        if let pending = pendingNumberCreate {
+            let tip: NSPoint? = (pending.current == pending.start) ? nil : pending.current
+            let preview = NumberAnnotation(
+                center: pending.start,
+                tip: tip,
+                number: numberCounter,
+                color: currentColor
+            )
+            preview.draw(in: context, bounds: bounds)
         }
 
         // Draw mosaic preview (points being brushed)
@@ -891,19 +927,58 @@ class EditCanvasView: NSView {
 
     // MARK: - Selection handles
 
+    /// Padded bounding rect (unrotated) used as the dashed selection box and
+    /// as the anchor for the rotate / delete / edit handles.
+    private func selectionBox(for annotation: Annotation) -> NSRect {
+        annotation.boundingRect.insetBy(
+            dx: -EditCanvasView.selectionBoxPad,
+            dy: -EditCanvasView.selectionBoxPad
+        )
+    }
+
+    /// Apply the annotation's rotation (around its bounding-rect mid) to a
+    /// point expressed in the unrotated frame, returning the canvas-space
+    /// position. Used to place screen-space chrome (rotation handle, delete
+    /// button) at corners that follow the rotated annotation.
+    private func rotated(_ point: NSPoint, for annotation: Annotation) -> NSPoint {
+        let rect = annotation.boundingRect
+        let cx = rect.midX
+        let cy = rect.midY
+        let rot = annotation.supportsRotation ? annotation.rotation : 0
+        let dx = point.x - cx
+        let dy = point.y - cy
+        let cosR = cos(rot)
+        let sinR = sin(rot)
+        return NSPoint(
+            x: cx + dx * cosR - dy * sinR,
+            y: cy + dx * sinR + dy * cosR
+        )
+    }
+
     /// Center of the rotation handle in canvas coordinates. Sits above the
     /// annotation's (rotated) top-center so it tracks the annotation as it
     /// rotates and stays visible at any angle.
     private func rotationHandleCenter(for annotation: Annotation) -> NSPoint {
-        let rect = annotation.boundingRect
-        let center = NSPoint(x: rect.midX, y: rect.midY)
-        let dist = rect.height / 2 + EditCanvasView.rotateHandleOffset
-        // Convention: rotation = 0 → handle directly above center.
-        // Rotating by `+rotation` around center moves handle along arc.
-        let rot = annotation.rotation
-        let dx = -dist * sin(rot)
-        let dy = dist * cos(rot)
-        return NSPoint(x: center.x + dx, y: center.y + dy)
+        let box = selectionBox(for: annotation)
+        let unrotatedTop = NSPoint(
+            x: box.midX,
+            y: box.maxY + EditCanvasView.rotateHandleOffset
+        )
+        return rotated(unrotatedTop, for: annotation)
+    }
+
+    /// Where the rotation tether meets the box edge, in canvas space.
+    private func rotationTetherAnchor(for annotation: Annotation) -> NSPoint {
+        let box = selectionBox(for: annotation)
+        let unrotated = NSPoint(x: box.midX, y: box.maxY + 2)
+        return rotated(unrotated, for: annotation)
+    }
+
+    /// Top-right corner of the dashed box in canvas space. Anchors the
+    /// stack of action buttons (delete, edit).
+    private func topRightCorner(for annotation: Annotation) -> NSPoint {
+        let box = selectionBox(for: annotation)
+        return rotated(NSPoint(x: box.maxX, y: box.maxY), for: annotation)
     }
 
     /// Curve handle position for arrows. Falls back to the visual midpoint
@@ -914,25 +989,73 @@ class EditCanvasView: NSView {
         return arrow.curveHandlePoint
     }
 
+    /// Tip handle position for numbered badges. Anchors at `tip` when set;
+    /// otherwise places a "stub" handle just outside the badge so the user
+    /// can pull a fresh arrow out without re-creating the annotation.
+    private func tipHandleCenter(for annotation: Annotation) -> NSPoint? {
+        guard let number = annotation as? NumberAnnotation else { return nil }
+        if let tip = number.tip {
+            return tip
+        }
+        return NSPoint(
+            x: number.center.x + NumberAnnotation.arrowMinDistance + 4,
+            y: number.center.y
+        )
+    }
+
+    /// Delete button rect — always present in adjust mode.
+    private func deleteButtonRect(for annotation: Annotation) -> NSRect {
+        let s = EditCanvasView.actionButtonSize
+        let topRight = topRightCorner(for: annotation)
+        return NSRect(
+            x: topRight.x + 4,
+            y: topRight.y - s,
+            width: s,
+            height: s
+        )
+    }
+
+    /// Edit (pencil) button rect — only meaningful for text annotations.
+    private func editButtonRect(for annotation: Annotation) -> NSRect? {
+        guard annotation is TextAnnotation else { return nil }
+        let s = EditCanvasView.actionButtonSize
+        let topRight = topRightCorner(for: annotation)
+        return NSRect(
+            x: topRight.x + 4,
+            y: topRight.y - s * 2 - 4,
+            width: s,
+            height: s
+        )
+    }
+
     private func drawSelectionHandles(for annotation: Annotation, in context: CGContext) {
-        // Rotated annotations: connect the rotate handle to the rotated
-        // top-center of the bounding box, mirroring macshot's design.
+        // 1. Dashed selection box — rotated with the annotation so it stays
+        // wrapped around the visible content at any angle.
+        let box = selectionBox(for: annotation)
+        let needsRotation = annotation.supportsRotation && annotation.rotation != 0
+        context.saveGState()
+        if needsRotation {
+            let rect = annotation.boundingRect
+            context.translateBy(x: rect.midX, y: rect.midY)
+            context.rotate(by: annotation.rotation)
+            context.translateBy(x: -rect.midX, y: -rect.midY)
+        }
+        context.setStrokeColor(NSColor.white.withAlphaComponent(0.85).cgColor)
+        context.setLineWidth(1)
+        context.setLineDash(phase: 0, lengths: [4, 3])
+        context.stroke(box)
+        context.restoreGState()
+
+        // 2. Rotation handle — follows the rotated top-center via a dashed
+        // tether so the user has a clear pivot point at any angle.
         if annotation.supportsRotation {
             let handleCenter = rotationHandleCenter(for: annotation)
-            let rect = annotation.boundingRect
-            let center = NSPoint(x: rect.midX, y: rect.midY)
-            let topDist = rect.height / 2 + 2
-            let topCenter = NSPoint(
-                x: center.x - topDist * sin(annotation.rotation),
-                y: center.y + topDist * cos(annotation.rotation)
-            )
-
-            // Connecting dashed tether from box edge to handle.
+            let tether = rotationTetherAnchor(for: annotation)
             context.saveGState()
             context.setStrokeColor(NSColor.white.withAlphaComponent(0.6).cgColor)
             context.setLineWidth(1)
             context.setLineDash(phase: 0, lengths: [3, 3])
-            context.move(to: topCenter)
+            context.move(to: tether)
             context.addLine(to: handleCenter)
             context.strokePath()
             context.restoreGState()
@@ -944,15 +1067,51 @@ class EditCanvasView: NSView {
                 stroke: accentGreen,
                 in: context
             )
-            drawRotateGlyph(at: handleCenter, in: context)
+            drawSymbolGlyph(
+                "arrow.triangle.2.circlepath",
+                at: handleCenter,
+                pointSize: 10,
+                in: context
+            )
         }
 
+        // 3. Curve handle (arrow only).
         if let cp = curveHandleCenter(for: annotation) {
             drawHandleDot(
                 at: cp,
                 size: EditCanvasView.curveHandleSize,
                 fill: NSColor.white.withAlphaComponent(0.95),
                 stroke: accentGreen,
+                in: context
+            )
+        }
+
+        // 4. Tip handle (number only) — pulled out of the badge as an arrow.
+        if let tip = tipHandleCenter(for: annotation) {
+            drawHandleDot(
+                at: tip,
+                size: EditCanvasView.tipHandleSize,
+                fill: NSColor.white.withAlphaComponent(0.95),
+                stroke: accentGreen,
+                in: context
+            )
+        }
+
+        // 5. Delete button (always).
+        let deleteRect = deleteButtonRect(for: annotation)
+        drawActionButton(
+            in: deleteRect,
+            symbolName: "xmark",
+            symbolPointSize: 9,
+            in: context
+        )
+
+        // 6. Edit (pencil) button — text only.
+        if let editRect = editButtonRect(for: annotation) {
+            drawActionButton(
+                in: editRect,
+                symbolName: "pencil",
+                symbolPointSize: 10,
                 in: context
             )
         }
@@ -978,10 +1137,17 @@ class EditCanvasView: NSView {
         context.strokeEllipse(in: rect.insetBy(dx: 0.75, dy: 0.75))
     }
 
-    private func drawRotateGlyph(at center: NSPoint, in context: CGContext) {
-        let cfg = NSImage.SymbolConfiguration(pointSize: 9, weight: .bold)
+    /// Draw an SF Symbol tinted white, centered at `center`. Used for the
+    /// rotate / delete / edit glyphs on the action buttons.
+    private func drawSymbolGlyph(
+        _ symbolName: String,
+        at center: NSPoint,
+        pointSize: CGFloat,
+        in context: CGContext
+    ) {
+        let cfg = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
         guard let img = NSImage(
-            systemSymbolName: "arrow.triangle.2.circlepath",
+            systemSymbolName: symbolName,
             accessibilityDescription: nil
         )?.withSymbolConfiguration(cfg) else { return }
 
@@ -1003,6 +1169,48 @@ class EditCanvasView: NSView {
         NSGraphicsContext.restoreGraphicsState()
     }
 
+    /// Round dark button with an accent ring and a centered SF symbol —
+    /// used for delete / edit actions in adjust mode.
+    private func drawActionButton(
+        in rect: NSRect,
+        symbolName: String,
+        symbolPointSize: CGFloat,
+        in context: CGContext
+    ) {
+        drawHandleDot(
+            at: NSPoint(x: rect.midX, y: rect.midY),
+            size: rect.width,
+            fill: NSColor(white: 0.12, alpha: 0.94),
+            stroke: accentGreen,
+            in: context
+        )
+        drawSymbolGlyph(
+            symbolName,
+            at: NSPoint(x: rect.midX, y: rect.midY),
+            pointSize: symbolPointSize,
+            in: context
+        )
+    }
+
+    enum SelectionAction { case delete, edit }
+
+    /// Top-right action buttons (delete, edit) — clicked, not dragged.
+    private func hitTestSelectionAction(at point: NSPoint) -> SelectionAction? {
+        guard
+            let idx = selectedIndex,
+            idx < annotations.count
+        else { return nil }
+        let annotation = annotations[idx]
+
+        if deleteButtonRect(for: annotation).contains(point) {
+            return .delete
+        }
+        if let editRect = editButtonRect(for: annotation), editRect.contains(point) {
+            return .edit
+        }
+        return nil
+    }
+
     private func hitTestSelectionHandle(at point: NSPoint) -> HandleDragState.Kind? {
         guard
             let idx = selectedIndex,
@@ -1022,6 +1230,13 @@ class EditCanvasView: NSView {
             let r = EditCanvasView.curveHandleSize / 2 + 4
             if hypot(point.x - cp.x, point.y - cp.y) <= r {
                 return .curve
+            }
+        }
+
+        if let tip = tipHandleCenter(for: annotation) {
+            let r = EditCanvasView.tipHandleSize / 2 + 4
+            if hypot(point.x - tip.x, point.y - tip.y) <= r {
+                return .tip
             }
         }
 
@@ -1058,61 +1273,24 @@ class EditCanvasView: NSView {
             } else {
                 annotations[state.index] = arrow.withControlPoint(currentMouse)
             }
+
+        case .tip:
+            guard let number = state.original as? NumberAnnotation else { return }
+            // Snap to "no arrow" when the tip is dragged back inside the
+            // badge so the user can ditch the arrow without precisely
+            // landing on the badge center.
+            let dist = hypot(currentMouse.x - number.center.x, currentMouse.y - number.center.y)
+            if dist < NumberAnnotation.arrowMinDistance {
+                annotations[state.index] = number.withTip(nil)
+            } else {
+                annotations[state.index] = number.withTip(currentMouse)
+            }
         }
 
         needsDisplay = true
     }
 
     // MARK: - Cursor
-
-    /// Custom 4-way arrow cursor shown while hovering over a draggable mark.
-    /// AppKit doesn't expose a public "move" cursor, so we render the SF
-    /// Symbol with a 1px black halo so it's readable on any background.
-    static let moveCursor: NSCursor = makeMoveCursor()
-
-    private static func makeMoveCursor() -> NSCursor {
-        let symbolName = "arrow.up.and.down.and.arrow.left.and.right"
-        let config = NSImage.SymbolConfiguration(pointSize: 16, weight: .bold)
-        guard let baseImage = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
-            .withSymbolConfiguration(config)
-        else {
-            return NSCursor.crosshair
-        }
-
-        let blackTinted = baseImage.tintedTemplate(with: .black)
-        let whiteTinted = baseImage.tintedTemplate(with: .white)
-
-        let inset: CGFloat = 2
-        let canvasSize = NSSize(
-            width: baseImage.size.width + inset * 2,
-            height: baseImage.size.height + inset * 2
-        )
-
-        let outlinedImage = NSImage(size: canvasSize, flipped: false) { _ in
-            let center = NSPoint(x: inset, y: inset)
-            for dx in [-1.0, 0.0, 1.0] {
-                for dy in [-1.0, 0.0, 1.0] {
-                    if dx == 0, dy == 0 { continue }
-                    blackTinted.draw(
-                        at: NSPoint(x: center.x + dx, y: center.y + dy),
-                        from: .zero,
-                        operation: .sourceOver,
-                        fraction: 1
-                    )
-                }
-            }
-            whiteTinted.draw(
-                at: center,
-                from: .zero,
-                operation: .sourceOver,
-                fraction: 1
-            )
-            return true
-        }
-
-        let hotSpot = NSPoint(x: canvasSize.width / 2, y: canvasSize.height / 2)
-        return NSCursor(image: outlinedImage, hotSpot: hotSpot)
-    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -1147,11 +1325,24 @@ class EditCanvasView: NSView {
     private func updateCursor(at point: NSPoint) {
         // Don't fight the text field's I-beam while editing.
         if activeTextField != nil { return }
-        if hitTestAnnotation(at: point) != nil {
-            EditCanvasView.moveCursor.set()
-        } else {
-            NSCursor.arrow.set()
+        // Action buttons on the selection chrome: pointing finger.
+        if hitTestSelectionAction(at: point) != nil {
+            NSCursor.pointingHand.set()
+            return
         }
+        // Drag handles (rotate / curve / number tip): open hand — they're
+        // grabbable.
+        if hitTestSelectionHandle(at: point) != nil {
+            NSCursor.openHand.set()
+            return
+        }
+        // Hovering over any draggable mark: open hand so the user knows it
+        // can be picked up regardless of the active tool.
+        if hitTestAnnotation(at: point) != nil {
+            NSCursor.openHand.set()
+            return
+        }
+        NSCursor.arrow.set()
     }
 
     /// Convert the global mouse location into view coords and refresh the
@@ -1164,23 +1355,6 @@ class EditCanvasView: NSView {
         let local = convert(mouseInWindow, from: nil)
         guard bounds.contains(local) else { return }
         updateCursor(at: local)
-    }
-}
-
-// MARK: - NSImage tinting helper
-
-private extension NSImage {
-    /// Render a tinted copy of a template image. Used to build the move
-    /// cursor's black halo + white fill.
-    func tintedTemplate(with color: NSColor) -> NSImage {
-        let result = NSImage(size: size, flipped: false) { rect in
-            self.draw(in: rect)
-            color.set()
-            rect.fill(using: .sourceAtop)
-            return true
-        }
-        result.isTemplate = false
-        return result
     }
 }
 
