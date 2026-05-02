@@ -138,14 +138,17 @@ final class HotkeyManager {
     // MARK: - NSMenuItem integration
 
     /// Apply the saved hotkey to a menu item via the native keyEquivalent system.
-    /// When no custom hotkey is set, displays "\u{2318}\u{2318}" (double-tap ⌘) as
-    /// the key equivalent so it lines up with other native shortcuts in the menu.
+    /// When no custom hotkey is set, renders "⌘⌘" (double-tap ⌘) by using ⌘
+    /// as both the modifier mask and the key character — AppKit displays them
+    /// as two glyphs side-by-side in the shortcut column. The binding can't
+    /// fire from a real keystroke since ⌘ can't be pressed as a key while held
+    /// as a modifier, so it functions purely as a visual hint.
     static func applyToMenuItem(_ item: NSMenuItem) {
         item.attributedTitle = nil
 
         guard let (kc, mods) = HotkeyManager.shared.currentHotkey() else {
-            item.keyEquivalent = "\u{2318}\u{2318}"
-            item.keyEquivalentModifierMask = []
+            item.keyEquivalent = "\u{2318}"
+            item.keyEquivalentModifierMask = .command
             return
         }
 
