@@ -171,6 +171,15 @@ class EditCanvasView: NSView {
         if hitTestSelectionAction(at: local) != nil {
             return super.hitTest(point)
         }
+        // Empty-canvas click in adjust mode normally falls through to
+        // SelectionView so the user can re-crop. But when there's a
+        // selection or in-progress text edit to dismiss, capture the
+        // click so mouseDown can clear that chrome / commit the field.
+        if selectedIndex != nil || activeTextField != nil {
+            if bounds.contains(local) {
+                return super.hitTest(point)
+            }
+        }
         return nil
     }
 
@@ -281,8 +290,10 @@ class EditCanvasView: NSView {
             return
         }
 
-        // Click on empty canvas: clear any current selection so adjust-mode
-        // chrome dismisses; the active tool then takes over (if any).
+        // Click on empty canvas: commit any in-progress text edit and
+        // clear the current selection so adjust-mode chrome dismisses;
+        // the active tool then takes over (if any).
+        activeTextField?.commit()
         selectedIndex = nil
 
         guard activeTool != .none else { return }
