@@ -63,9 +63,11 @@ class EditCanvasView: NSView {
     // Annotations stack (supports undo)
     private var annotations: [Annotation] = []
 
-    // In-progress drawing state
-    private var currentPenPath: NSBezierPath?
-    private var currentMarkerPath: NSBezierPath?
+    // In-progress drawing state — pen and marker collect raw mouse points
+    // and rebuild a smoothed bezier on every change so the live preview
+    // matches the committed annotation.
+    private var currentPenPoints: [NSPoint]?
+    private var currentMarkerPoints: [NSPoint]?
     private var currentMosaicPoints: [NSPoint] = []
     private var mosaicBaseImage: NSImage?
     private var shapeStart: NSPoint?
@@ -124,7 +126,7 @@ class EditCanvasView: NSView {
     /// original annotation is captured so escape-style cancellations
     /// (e.g. tool switch mid-drag) can restore it cleanly.
     private struct HandleDragState {
-        enum Kind { case rotate, curve, tip }
+        enum Kind { case rotate, curve, tip, arrowStart, arrowEnd }
         let kind: Kind
         let index: Int
         let original: Annotation
@@ -140,6 +142,7 @@ class EditCanvasView: NSView {
     private static let rotateHandleOffset: CGFloat = 22
     private static let curveHandleSize: CGFloat = 14
     private static let tipHandleSize: CGFloat = 14
+    private static let endpointHandleSize: CGFloat = 12
     private static let actionButtonSize: CGFloat = 22
     private static let selectionBoxPad: CGFloat = 6
 
@@ -359,18 +362,10 @@ class EditCanvasView: NSView {
             return
 
         case .pen:
-            let path = NSBezierPath()
-            path.lineCapStyle = .round
-            path.lineJoinStyle = .round
-            path.move(to: point)
-            currentPenPath = path
+            currentPenPoints = [point]
 
         case .marker:
-            let path = NSBezierPath()
-            path.lineCapStyle = .round
-            path.lineJoinStyle = .round
-            path.move(to: point)
-            currentMarkerPath = path
+            currentMarkerPoints = [point]
 
         case .mosaic:
             mosaicBaseImage = resolveBaseImageForEditing()
@@ -443,11 +438,11 @@ class EditCanvasView: NSView {
             return
 
         case .pen:
-            currentPenPath?.line(to: point)
+            appendStrokePoint(point, to: &currentPenPoints)
             needsDisplay = true
 
         case .marker:
-            currentMarkerPath?.line(to: point)
+            appendStrokePoint(point, to: &currentMarkerPoints)
             needsDisplay = true
 
         case .mosaic:
@@ -530,25 +525,25 @@ class EditCanvasView: NSView {
             return
 
         case .pen:
-            if let path = currentPenPath {
+            if let points = currentPenPoints, !points.isEmpty {
                 recordUndo()
                 annotations.append(PenAnnotation(
-                    path: path,
+                    path: NSBezierPath.smoothed(through: points),
                     color: currentColor,
                     lineWidth: currentLineWidth
                 ))
-                currentPenPath = nil
+                currentPenPoints = nil
             }
 
         case .marker:
-            if let path = currentMarkerPath {
+            if let points = currentMarkerPoints, !points.isEmpty {
                 recordUndo()
                 annotations.append(MarkerAnnotation(
-                    path: path,
+                    path: NSBezierPath.smoothed(through: points),
                     color: currentMarkerColor,
                     lineWidth: currentMarkerLineWidth
                 ))
-                currentMarkerPath = nil
+                currentMarkerPoints = nil
             }
 
         case .mosaic:
@@ -656,15 +651,18 @@ class EditCanvasView: NSView {
             drawSelectionHandles(for: annotations[idx], in: context)
         }
 
-        // Draw in-progress pen stroke
-        if let path = currentPenPath {
+        // Draw in-progress pen stroke (smoothed live so the preview matches
+        // what gets committed on mouseUp).
+        if let points = currentPenPoints, !points.isEmpty {
+            let path = NSBezierPath.smoothed(through: points)
             currentColor.setStroke()
             path.lineWidth = currentLineWidth
             path.stroke()
         }
 
         // Draw in-progress marker stroke (semi-transparent, brush × 6).
-        if let path = currentMarkerPath {
+        if let points = currentMarkerPoints, !points.isEmpty {
+            let path = NSBezierPath.smoothed(through: points)
             NSGraphicsContext.saveGraphicsState()
             let stroke = currentMarkerColor.withAlphaComponent(1.0)
             stroke.setStroke()
@@ -846,8 +844,8 @@ class EditCanvasView: NSView {
     }
 
     private func cancelInFlightInteraction() {
-        currentPenPath = nil
-        currentMarkerPath = nil
+        currentPenPoints = nil
+        currentMarkerPoints = nil
         currentMosaicPoints = []
         mosaicBaseImage = nil
         shapeStart = nil
@@ -858,6 +856,17 @@ class EditCanvasView: NSView {
         pendingTextCreate = nil
         selectedIndex = nil
         activeTextField?.cancel()
+    }
+
+    /// Append a point to a stroke buffer, dropping samples that are too
+    /// close to the previous one. Sub-pixel-spaced samples just bloat the
+    /// path and amplify noise without adding visible detail.
+    private func appendStrokePoint(_ point: NSPoint, to buffer: inout [NSPoint]?) {
+        guard buffer != nil else { return }
+        if let last = buffer?.last, hypot(point.x - last.x, point.y - last.y) < 1.0 {
+            return
+        }
+        buffer?.append(point)
     }
 
     /// Topmost annotation under `point` that the user can grab. Mosaic is
@@ -1111,6 +1120,18 @@ class EditCanvasView: NSView {
         )
     }
 
+    /// Start (tail) endpoint handle for a straight/curved arrow — sits at
+    /// the arrow's `startPoint` so the user can re-anchor the tail.
+    private func arrowStartHandleCenter(for annotation: Annotation) -> NSPoint? {
+        (annotation as? ArrowAnnotation)?.startPoint
+    }
+
+    /// Tip (arrowhead) endpoint handle — sits at the arrow's `endPoint` so
+    /// the user can redirect / re-extend the arrow without rebuilding it.
+    private func arrowEndHandleCenter(for annotation: Annotation) -> NSPoint? {
+        (annotation as? ArrowAnnotation)?.endPoint
+    }
+
     /// Delete button rect — always present in adjust mode.
     private func deleteButtonRect(for annotation: Annotation) -> NSRect {
         let s = EditCanvasView.actionButtonSize
@@ -1199,6 +1220,26 @@ class EditCanvasView: NSView {
             drawHandleDot(
                 at: tip,
                 size: EditCanvasView.tipHandleSize,
+                fill: NSColor.white.withAlphaComponent(0.95),
+                stroke: accentGreen,
+                in: context
+            )
+        }
+
+        // 4b. Arrow endpoint handles — re-anchor the tail / redirect the tip.
+        if let start = arrowStartHandleCenter(for: annotation) {
+            drawHandleDot(
+                at: start,
+                size: EditCanvasView.endpointHandleSize,
+                fill: NSColor.white.withAlphaComponent(0.95),
+                stroke: accentGreen,
+                in: context
+            )
+        }
+        if let end = arrowEndHandleCenter(for: annotation) {
+            drawHandleDot(
+                at: end,
+                size: EditCanvasView.endpointHandleSize,
                 fill: NSColor.white.withAlphaComponent(0.95),
                 stroke: accentGreen,
                 in: context
@@ -1344,6 +1385,21 @@ class EditCanvasView: NSView {
             }
         }
 
+        // Arrow endpoint handles — checked before the curve handle so the
+        // user can grab the tip even if it visually overlaps another handle.
+        if let end = arrowEndHandleCenter(for: annotation) {
+            let r = EditCanvasView.endpointHandleSize / 2 + 4
+            if hypot(point.x - end.x, point.y - end.y) <= r {
+                return .arrowEnd
+            }
+        }
+        if let start = arrowStartHandleCenter(for: annotation) {
+            let r = EditCanvasView.endpointHandleSize / 2 + 4
+            if hypot(point.x - start.x, point.y - start.y) <= r {
+                return .arrowStart
+            }
+        }
+
         if let cp = curveHandleCenter(for: annotation) {
             let r = EditCanvasView.curveHandleSize / 2 + 4
             if hypot(point.x - cp.x, point.y - cp.y) <= r {
@@ -1404,6 +1460,14 @@ class EditCanvasView: NSView {
             } else {
                 annotations[state.index] = number.withTip(currentMouse)
             }
+
+        case .arrowStart:
+            guard let arrow = state.original as? ArrowAnnotation else { return }
+            annotations[state.index] = arrow.withStartPoint(currentMouse)
+
+        case .arrowEnd:
+            guard let arrow = state.original as? ArrowAnnotation else { return }
+            annotations[state.index] = arrow.withEndPoint(currentMouse)
         }
 
         needsDisplay = true

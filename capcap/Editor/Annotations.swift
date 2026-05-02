@@ -77,6 +77,59 @@ private func strokedPathContains(_ path: CGPath, point: NSPoint, lineWidth: CGFl
     return stroked.contains(point)
 }
 
+// MARK: - Path smoothing
+
+extension NSBezierPath {
+    /// Append a quadratic bezier as an equivalent cubic. NSBezierPath has no
+    /// native quadratic primitive, but Q(P0,C,P2) maps cleanly to
+    /// C(P0, P0+2/3·(C-P0), P2+2/3·(C-P2), P2).
+    fileprivate func addQuadCurveAsCubic(to endPoint: NSPoint, controlPoint c: NSPoint) {
+        let start = currentPoint
+        let cp1 = NSPoint(
+            x: start.x + (c.x - start.x) * 2.0 / 3.0,
+            y: start.y + (c.y - start.y) * 2.0 / 3.0
+        )
+        let cp2 = NSPoint(
+            x: endPoint.x + (c.x - endPoint.x) * 2.0 / 3.0,
+            y: endPoint.y + (c.y - endPoint.y) * 2.0 / 3.0
+        )
+        curve(to: endPoint, controlPoint1: cp1, controlPoint2: cp2)
+    }
+
+    /// Build a smooth path through `points` using midpoint quadratic
+    /// smoothing — each raw point becomes a quadratic control, anchors are
+    /// the midpoints between consecutive raw points, and the curve flows
+    /// through them without hard corners. Tangents stay continuous at the
+    /// joints because each midpoint lies on the line between its neighbouring
+    /// raw points, so the quadratic and the adjacent line share a tangent.
+    static func smoothed(through points: [NSPoint]) -> NSBezierPath {
+        let path = NSBezierPath()
+        path.lineCapStyle = .round
+        path.lineJoinStyle = .round
+        guard let first = points.first else { return path }
+        path.move(to: first)
+        if points.count == 1 { return path }
+        if points.count == 2 {
+            path.line(to: points[1])
+            return path
+        }
+        let firstMid = NSPoint(
+            x: (points[0].x + points[1].x) / 2,
+            y: (points[0].y + points[1].y) / 2
+        )
+        path.line(to: firstMid)
+        for i in 1..<points.count - 1 {
+            let mid = NSPoint(
+                x: (points[i].x + points[i + 1].x) / 2,
+                y: (points[i].y + points[i + 1].y) / 2
+            )
+            path.addQuadCurveAsCubic(to: mid, controlPoint: points[i])
+        }
+        path.line(to: points[points.count - 1])
+        return path
+    }
+}
+
 // MARK: - Pen Annotation
 
 struct PenAnnotation: Annotation {
@@ -421,6 +474,30 @@ struct ArrowAnnotation: Annotation {
         var copy = self
         copy.controlPoint = cp
         return copy
+    }
+
+    /// Adjust-mode helper: replace the start (tail) endpoint while keeping
+    /// the tip and any curve control point fixed in canvas space.
+    func withStartPoint(_ p: NSPoint) -> ArrowAnnotation {
+        ArrowAnnotation(
+            startPoint: p,
+            endPoint: endPoint,
+            color: color,
+            lineWidth: lineWidth,
+            controlPoint: controlPoint
+        )
+    }
+
+    /// Adjust-mode helper: replace the tip (arrowhead) endpoint while
+    /// keeping the start and any curve control point fixed in canvas space.
+    func withEndPoint(_ p: NSPoint) -> ArrowAnnotation {
+        ArrowAnnotation(
+            startPoint: startPoint,
+            endPoint: p,
+            color: color,
+            lineWidth: lineWidth,
+            controlPoint: controlPoint
+        )
     }
 }
 
