@@ -215,6 +215,12 @@ class EditWindowController {
                     self?.canvasView?.currentFontSize = size
                 }
             )
+        case .numbered:
+            showColorSizeSubToolbar(
+                sizes: [],
+                currentSize: 0,
+                width: 200
+            )
         case .mosaic:
             showMosaicSubToolbar()
         default:
@@ -226,13 +232,14 @@ class EditWindowController {
         sizes: [CGFloat],
         currentColor: NSColor? = nil,
         currentSize: CGFloat,
+        width: CGFloat = 300,
         onColor: ((NSColor) -> Void)? = nil,
-        onSize: @escaping (CGFloat) -> Void
+        onSize: ((CGFloat) -> Void)? = nil
     ) {
         guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
         let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
         let subRect = subToolbarRect(
-            width: 300,
+            width: width,
             height: 36,
             toolbarFrame: toolbarFrame,
             in: hostSelectionView.bounds,
@@ -1414,14 +1421,15 @@ private class ColorSizeSubToolbar: NSView {
             x += dotSize + 10
         }
 
-        x += 8
-
-        // Separator
-        let sep = NSView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
-        addSubview(sep)
-        x += 9
+        // Separator only when there's a size section to separate from.
+        if !sizes.isEmpty {
+            x += 8
+            let sep = NSView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
+            sep.wantsLayer = true
+            sep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            addSubview(sep)
+            x += 9
+        }
 
         // Color swatches
         let swatchSize: CGFloat = 18

@@ -998,14 +998,16 @@ class EditCanvasView: NSView {
     /// Tip handle position for numbered badges. Anchors at `tip` when set;
     /// otherwise places a "stub" handle just outside the badge so the user
     /// can pull a fresh arrow out without re-creating the annotation.
+    /// Stub sits above the badge — the right side is reserved for the
+    /// close button stack.
     private func tipHandleCenter(for annotation: Annotation) -> NSPoint? {
         guard let number = annotation as? NumberAnnotation else { return nil }
         if let tip = number.tip {
             return tip
         }
         return NSPoint(
-            x: number.center.x + NumberAnnotation.arrowMinDistance + 4,
-            y: number.center.y
+            x: number.center.x,
+            y: number.center.y + NumberAnnotation.arrowMinDistance + 4
         )
     }
 
