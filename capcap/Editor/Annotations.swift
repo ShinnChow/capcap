@@ -29,12 +29,23 @@ protocol Annotation {
     /// Returns a copy with the given rotation. Default impl is a no-op for
     /// types that don't support rotation.
     func withRotation(_ rotation: CGFloat) -> Annotation
+
+    /// Adjust-mode mutators — return a copy with the given property replaced.
+    /// Annotation types that don't carry the property fall back to the
+    /// default no-op implementation, so callers can apply changes uniformly
+    /// without type-switching.
+    func withColor(_ color: NSColor) -> Annotation
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation
+    func withFontSize(_ fontSize: CGFloat) -> Annotation
 }
 
 extension Annotation {
     var rotation: CGFloat { 0 }
     var supportsRotation: Bool { false }
     func withRotation(_ rotation: CGFloat) -> Annotation { self }
+    func withColor(_ color: NSColor) -> Annotation { self }
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation { self }
+    func withFontSize(_ fontSize: CGFloat) -> Annotation { self }
 
     /// Wraps `draw` with the rotation transform if the annotation has any.
     /// All draw methods are written in unrotated coordinates; this helper is
@@ -171,6 +182,14 @@ struct PenAnnotation: Annotation {
         copy.rotation = rotation
         return copy
     }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        PenAnnotation(path: path, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
+
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
+        PenAnnotation(path: path, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
 }
 
 // MARK: - Marker (Highlighter) Annotation
@@ -234,6 +253,14 @@ struct MarkerAnnotation: Annotation {
         copy.rotation = rotation
         return copy
     }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        MarkerAnnotation(path: path, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
+
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
+        MarkerAnnotation(path: path, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
 }
 
 // MARK: - Mosaic Annotation
@@ -292,6 +319,14 @@ struct RectAnnotation: Annotation {
         copy.rotation = rotation
         return copy
     }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
+
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
 }
 
 // MARK: - Ellipse Annotation
@@ -330,6 +365,14 @@ struct EllipseAnnotation: Annotation {
         var copy = self
         copy.rotation = rotation
         return copy
+    }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+    }
+
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
     }
 }
 
@@ -499,6 +542,26 @@ struct ArrowAnnotation: Annotation {
             controlPoint: controlPoint
         )
     }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        ArrowAnnotation(
+            startPoint: startPoint,
+            endPoint: endPoint,
+            color: color,
+            lineWidth: lineWidth,
+            controlPoint: controlPoint
+        )
+    }
+
+    func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
+        ArrowAnnotation(
+            startPoint: startPoint,
+            endPoint: endPoint,
+            color: color,
+            lineWidth: lineWidth,
+            controlPoint: controlPoint
+        )
+    }
 }
 
 // MARK: - Text Annotation
@@ -595,6 +658,28 @@ struct TextAnnotation: Annotation {
         var copy = self
         copy.rotation = rotation
         return copy
+    }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        TextAnnotation(text: text, origin: origin, color: color, fontSize: fontSize, rotation: rotation)
+    }
+
+    /// Resize the text in place. The visual top-left stays anchored — fonts
+    /// grow downward in canvas coords (which use a flipped origin), so the
+    /// origin shifts by the line-height delta to keep the cap line steady.
+    func withFontSize(_ fontSize: CGFloat) -> Annotation {
+        let oldFont = TextAnnotation.font(forSize: self.fontSize)
+        let newFont = TextAnnotation.font(forSize: fontSize)
+        let oldHeight = TextAnnotation.lineHeight(for: oldFont)
+        let newHeight = TextAnnotation.lineHeight(for: newFont)
+        let newOrigin = NSPoint(x: origin.x, y: origin.y + (oldHeight - newHeight))
+        return TextAnnotation(
+            text: text,
+            origin: newOrigin,
+            color: color,
+            fontSize: fontSize,
+            rotation: rotation
+        )
     }
 }
 
@@ -780,5 +865,9 @@ struct NumberAnnotation: Annotation {
         var copy = self
         copy.controlPoint = cp
         return copy
+    }
+
+    func withColor(_ color: NSColor) -> Annotation {
+        NumberAnnotation(center: center, tip: tip, controlPoint: controlPoint, number: number, color: color)
     }
 }

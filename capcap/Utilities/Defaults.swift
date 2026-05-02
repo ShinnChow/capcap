@@ -180,6 +180,22 @@ struct Defaults {
         }
     }
 
+    static let textFontSizeMin: Double = 10
+    static let textFontSizeMax: Double = 100
+
+    static var lastTextFontSize: Double {
+        get {
+            if defaults.object(forKey: "lastTextFontSize") == nil {
+                return 20
+            }
+            let val = defaults.double(forKey: "lastTextFontSize")
+            return min(max(val, textFontSizeMin), textFontSizeMax)
+        }
+        set {
+            defaults.set(min(max(newValue, textFontSizeMin), textFontSizeMax), forKey: "lastTextFontSize")
+        }
+    }
+
     static var lastBeautifyPresetID: String? {
         get { defaults.string(forKey: "lastBeautifyPresetID") }
         set { defaults.set(newValue, forKey: "lastBeautifyPresetID") }

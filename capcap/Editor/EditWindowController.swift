@@ -33,7 +33,7 @@ class EditWindowController {
     private var currentColor: NSColor = .red
     private var currentLineWidth: CGFloat = 3.0
     private var currentMosaicBlockSize: CGFloat = 12.0
-    private var currentFontSize: CGFloat = 24.0
+    private var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
     /// Marker keeps its own color/size slot so toggling between pen and
     /// marker preserves each tool's last-used choice.
     private var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
@@ -81,6 +81,9 @@ class EditWindowController {
         canvas.captureScreen = screen
         canvas.preSnapshot = preSnapshot
         canvas.autoresizingMask = []
+        canvas.onAnnotationSelected = { [weak self] annotation in
+            self?.handleAnnotationSelectionChanged(annotation)
+        }
 
         let container = BeautifyContainerView(canvasView: canvas)
         container.autoresizingMask = []
@@ -186,6 +189,68 @@ class EditWindowController {
         bringEditorToFront()
     }
 
+    /// Selection in the canvas changed. When an annotation gets selected we
+    /// switch to its matching tool and rebuild the sub-toolbar with the
+    /// annotation's own values, so the user can adjust color / size /
+    /// font-size of the selected mark without entering edit mode.
+    private func handleAnnotationSelectionChanged(_ annotation: Annotation?) {
+        guard let annotation else { return }
+        guard let tool = tool(for: annotation), tool != .none else { return }
+
+        seedCurrentValues(from: annotation)
+
+        if activeTool != tool {
+            // selectTool rebuilds the sub-toolbar; the seeded values flow in.
+            selectTool(tool)
+        } else {
+            // Same tool — rebuild the sub-toolbar to refresh displayed values.
+            showSubToolbar(for: tool)
+        }
+    }
+
+    private func tool(for annotation: Annotation) -> EditTool? {
+        switch annotation {
+        case is TextAnnotation: return .text
+        case is RectAnnotation: return .rectangle
+        case is EllipseAnnotation: return .ellipse
+        case is ArrowAnnotation: return .arrow
+        case is PenAnnotation: return .pen
+        case is MarkerAnnotation: return .marker
+        case is NumberAnnotation: return .numbered
+        default: return nil
+        }
+    }
+
+    /// Pull color / size / font-size off the annotation into the matching
+    /// "current" slot so the next sub-toolbar rebuild reflects them and
+    /// any new annotation created afterward inherits the same look.
+    private func seedCurrentValues(from annotation: Annotation) {
+        switch annotation {
+        case let t as TextAnnotation:
+            currentColor = t.color
+            currentFontSize = t.fontSize
+        case let p as PenAnnotation:
+            currentColor = p.color
+            currentLineWidth = p.lineWidth
+        case let m as MarkerAnnotation:
+            currentMarkerColor = m.color
+            currentMarkerLineWidth = m.lineWidth
+        case let r as RectAnnotation:
+            currentColor = r.color
+            currentLineWidth = r.lineWidth
+        case let e as EllipseAnnotation:
+            currentColor = e.color
+            currentLineWidth = e.lineWidth
+        case let a as ArrowAnnotation:
+            currentColor = a.color
+            currentLineWidth = a.lineWidth
+        case let n as NumberAnnotation:
+            currentColor = n.color
+        default:
+            break
+        }
+    }
+
     private func showSubToolbar(for tool: EditTool) {
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
@@ -215,14 +280,7 @@ class EditWindowController {
                 }
             )
         case .text:
-            showColorSizeSubToolbar(
-                sizes: [16, 24, 32],
-                currentSize: currentFontSize,
-                onSize: { [weak self] size in
-                    self?.currentFontSize = size
-                    self?.canvasView?.currentFontSize = size
-                }
-            )
+            showTextSubToolbar()
         case .numbered:
             showColorSizeSubToolbar(
                 sizes: [],
@@ -268,8 +326,15 @@ class EditWindowController {
                 self?.currentColor = color
                 self?.canvasView?.currentColor = color
             }
+            // Push the same color onto whatever annotation is currently
+            // selected. With no selection this is a no-op, so the call is
+            // safe to make from every tool's color path.
+            self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withColor(color) }
         }
-        view.onSizeChanged = onSize
+        view.onSizeChanged = { [weak self] size in
+            onSize?(size)
+            self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withLineWidth(size) }
+        }
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
         subToolbarView = view
@@ -291,6 +356,44 @@ class EditWindowController {
         view.onSizeChanged = { [weak self] size in
             self?.currentMosaicBlockSize = size
             self?.canvasView?.currentMosaicBlockSize = size
+        }
+        styleFloatingHUD(view)
+        hostSelectionView.addSubview(view)
+        subToolbarView = view
+    }
+
+    private func showTextSubToolbar() {
+        guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
+        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let subRect = subToolbarRect(
+            width: TextSubToolbar.preferredWidth,
+            height: 36,
+            toolbarFrame: toolbarFrame,
+            in: hostSelectionView.bounds,
+            offset: offset
+        )
+
+        let view = TextSubToolbar(
+            frame: subRect,
+            currentColor: currentColor,
+            currentFontSize: currentFontSize
+        )
+        view.onColorChanged = { [weak self] color in
+            self?.currentColor = color
+            self?.canvasView?.currentColor = color
+            self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withColor(color) }
+        }
+        view.onFontSizeBegan = { [weak self] in
+            self?.canvasView?.beginSelectionAdjustment()
+        }
+        view.onFontSizeChanged = { [weak self] size in
+            self?.currentFontSize = size
+            self?.canvasView?.currentFontSize = size
+            Defaults.lastTextFontSize = Double(size)
+            self?.canvasView?.mutateSelectedAnnotationLive { $0.withFontSize(size) }
+        }
+        view.onFontSizeEnded = { [weak self] in
+            self?.canvasView?.commitSelectionAdjustment()
         }
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
@@ -1672,6 +1775,160 @@ private class ColorSizeSubToolbar: NSView {
         for (i, view) in colorButtons.enumerated() {
             (view as? ColorSwatchView)?.isSelected = colorsMatch(colors[i], currentColor)
         }
+    }
+
+    private func colorsMatch(_ a: NSColor, _ b: NSColor) -> Bool {
+        guard let ac = a.usingColorSpace(.deviceRGB), let bc = b.usingColorSpace(.deviceRGB) else { return false }
+        return abs(ac.redComponent - bc.redComponent) < 0.01 &&
+               abs(ac.greenComponent - bc.greenComponent) < 0.01 &&
+               abs(ac.blueComponent - bc.blueComponent) < 0.01
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
+        NSColor(white: 0.12, alpha: 0.9).setFill()
+        path.fill()
+    }
+}
+
+// MARK: - Text Sub-toolbar
+
+/// Text-tool sub-toolbar — color swatches plus a 10–100 font-size slider.
+/// Replaces the discrete size dots used by other tools because text scales
+/// over a wide range and a slider is the natural fit.
+private class TextSubToolbar: NSView {
+    var currentColor: NSColor = .red
+    var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
+    var onColorChanged: ((NSColor) -> Void)?
+    /// Fired when the user grabs the slider thumb (mouseDown phase).
+    var onFontSizeBegan: (() -> Void)?
+    /// Fired on every slider tick during a drag.
+    var onFontSizeChanged: ((CGFloat) -> Void)?
+    /// Fired when the user releases the slider (mouseUp phase).
+    var onFontSizeEnded: (() -> Void)?
+
+    private var colorButtons: [NSView] = []
+    private var slider: NSSlider!
+    private var sizeLabel: NSTextField!
+
+    private let colors: [NSColor] = [
+        NSColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0),   // Red
+        NSColor(red: 0.0, green: 0.48, blue: 1.0, alpha: 1.0),    // Blue
+        NSColor(red: 0.0, green: 0.83, blue: 0.42, alpha: 1.0),   // Green
+        NSColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 1.0),     // Yellow
+        NSColor(red: 0.843, green: 0.467, blue: 0.341, alpha: 1.0), // #D77757
+        .white,
+        NSColor(white: 0.5, alpha: 1.0),                           // Gray
+        .black,
+    ]
+
+    static let preferredWidth: CGFloat = 396
+
+    init(frame: NSRect, currentColor: NSColor, currentFontSize: CGFloat) {
+        self.currentColor = currentColor
+        self.currentFontSize = currentFontSize
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func setup() {
+        var x: CGFloat = 12
+        let midY = bounds.midY
+
+        // Numeric value label, kept narrow so a 3-digit value (e.g. "100") fits.
+        let labelWidth: CGFloat = 28
+        let label = NSTextField(labelWithString: "")
+        label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = .white
+        label.alignment = .right
+        label.frame = NSRect(x: x, y: midY - 8, width: labelWidth, height: 16)
+        addSubview(label)
+        sizeLabel = label
+        x += labelWidth + 6
+
+        // Font-size slider.
+        let sliderWidth: CGFloat = 130
+        let sliderHeight: CGFloat = 20
+        let s = NSSlider(
+            value: Double(currentFontSize),
+            minValue: Defaults.textFontSizeMin,
+            maxValue: Defaults.textFontSizeMax,
+            target: self,
+            action: #selector(sliderChanged(_:))
+        )
+        s.isContinuous = true
+        s.frame = NSRect(x: x, y: midY - sliderHeight / 2, width: sliderWidth, height: sliderHeight)
+        addSubview(s)
+        slider = s
+        x += sliderWidth + 8
+
+        // Vertical separator between size controls and color swatches.
+        let sep = NSView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
+        sep.wantsLayer = true
+        sep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        addSubview(sep)
+        x += 1 + 9
+
+        // Color swatches.
+        let swatchSize: CGFloat = 18
+        for (i, color) in colors.enumerated() {
+            let swatch = ColorSwatchView(
+                frame: NSRect(x: x, y: midY - swatchSize / 2, width: swatchSize, height: swatchSize),
+                color: color,
+                isSelected: colorsMatch(color, currentColor)
+            )
+            swatch.itemIndex = i
+            let click = NSClickGestureRecognizer(target: self, action: #selector(colorTapped(_:)))
+            swatch.addGestureRecognizer(click)
+            addSubview(swatch)
+            colorButtons.append(swatch)
+            x += swatchSize + 5
+        }
+
+        updateSizeLabel()
+    }
+
+    @objc private func sliderChanged(_ sender: NSSlider) {
+        let raw = CGFloat(sender.doubleValue)
+        let clamped = max(CGFloat(Defaults.textFontSizeMin), min(CGFloat(Defaults.textFontSizeMax), raw))
+
+        // NSSlider sends its action on mouseDown / mouseDragged / mouseUp.
+        // We use the current event phase to bookend a single drag with
+        // onFontSizeBegan / onFontSizeEnded so the canvas can batch the
+        // entire drag into a single undo entry.
+        let phase = NSApp.currentEvent?.type
+        if phase == .leftMouseDown {
+            onFontSizeBegan?()
+        }
+
+        currentFontSize = clamped
+        updateSizeLabel()
+        onFontSizeChanged?(clamped)
+
+        if phase == .leftMouseUp {
+            onFontSizeEnded?()
+        }
+    }
+
+    @objc private func colorTapped(_ gesture: NSGestureRecognizer) {
+        guard let view = gesture.view as? ColorSwatchView else { return }
+        let index = view.itemIndex
+        guard index < colors.count else { return }
+        currentColor = colors[index]
+        onColorChanged?(currentColor)
+        for (i, v) in colorButtons.enumerated() {
+            (v as? ColorSwatchView)?.isSelected = colorsMatch(colors[i], currentColor)
+        }
+    }
+
+    private func updateSizeLabel() {
+        sizeLabel.stringValue = "\(Int(currentFontSize.rounded()))"
     }
 
     private func colorsMatch(_ a: NSColor, _ b: NSColor) -> Bool {

@@ -52,7 +52,7 @@ class EditCanvasView: NSView {
     /// highlighter's yellow without overriding the pen's red, and vice-versa.
     var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
     var currentMosaicBlockSize: CGFloat = 12.0
-    var currentFontSize: CGFloat = 24.0 {
+    var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize) {
         didSet {
             guard let field = activeTextField else { return }
             field.font = NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
@@ -100,8 +100,33 @@ class EditCanvasView: NSView {
     /// drawing tool is activated or an undo / commit invalidates the index.
     private var selectedIndex: Int? {
         didSet {
-            if oldValue != selectedIndex { needsDisplay = true }
+            if oldValue != selectedIndex {
+                needsDisplay = true
+                notifySelectionChanged()
+            }
         }
+    }
+
+    /// Fired when the selected annotation identity changes — non-nil when a
+    /// selection is gained, nil when the selection clears. Used by the
+    /// controller to switch the active tool / sub-toolbar to match the
+    /// selected annotation and seed it with that annotation's properties.
+    var onAnnotationSelected: ((Annotation?) -> Void)?
+
+    private func notifySelectionChanged() {
+        guard let cb = onAnnotationSelected else { return }
+        if let idx = selectedIndex, idx < annotations.count {
+            cb(annotations[idx])
+        } else {
+            cb(nil)
+        }
+    }
+
+    /// The currently selected annotation, if any. Read by the controller
+    /// when seeding sub-toolbar values.
+    var selectedAnnotation: Annotation? {
+        guard let idx = selectedIndex, idx < annotations.count else { return nil }
+        return annotations[idx]
     }
     private var handleDragState: HandleDragState?
 
@@ -283,6 +308,94 @@ class EditCanvasView: NSView {
         apply(next)
         needsDisplay = true
         refreshCursorAtCurrentLocation()
+    }
+
+    // MARK: - Selection adjustment (sub-toolbar driven)
+
+    /// True between `beginSelectionAdjustment()` and `commitSelectionAdjustment()`
+    /// once a live mutate has actually changed the annotation. Used to
+    /// suppress no-op undo entries when the user clicks the slider but
+    /// doesn't drag.
+    private var selectionAdjustmentDirty: Bool = false
+
+    /// Capture the pre-mutation snapshot for an in-progress sub-toolbar
+    /// adjustment (e.g. slider drag). No-op when nothing is selected, so
+    /// idle slider clicks don't pollute the undo stack.
+    func beginSelectionAdjustment() {
+        guard selectedIndex != nil else { return }
+        captureUndoForPending()
+        selectionAdjustmentDirty = false
+    }
+
+    func commitSelectionAdjustment() {
+        if selectionAdjustmentDirty {
+            commitPendingUndo()
+        } else {
+            discardPendingUndo()
+        }
+        selectionAdjustmentDirty = false
+    }
+
+    /// Atomic mutation to the selected annotation — captures undo, applies
+    /// the transform, redraws. Used by color taps and discrete size dots
+    /// where there's no drag to batch.
+    func mutateSelectedAnnotationAtomic(_ transform: (Annotation) -> Annotation) {
+        guard let idx = selectedIndex, idx < annotations.count else { return }
+        let updated = transform(annotations[idx])
+        guard !annotationsEqualEnough(updated, annotations[idx]) else { return }
+        recordUndo()
+        annotations[idx] = updated
+        needsDisplay = true
+    }
+
+    /// Live mutation during a slider drag — caller is responsible for
+    /// `beginSelectionAdjustment` / `commitSelectionAdjustment` bookending.
+    func mutateSelectedAnnotationLive(_ transform: (Annotation) -> Annotation) {
+        guard let idx = selectedIndex, idx < annotations.count else { return }
+        let updated = transform(annotations[idx])
+        guard !annotationsEqualEnough(updated, annotations[idx]) else { return }
+        annotations[idx] = updated
+        selectionAdjustmentDirty = true
+        needsDisplay = true
+    }
+
+    /// Cheap identity check — guards atomic mutations from registering a
+    /// no-op undo entry when the user clicks the swatch that's already
+    /// selected. Annotations are value types but compare via property
+    /// snapshots since the protocol itself isn't Equatable.
+    private func annotationsEqualEnough(_ a: Annotation, _ b: Annotation) -> Bool {
+        if let a = a as? TextAnnotation, let b = b as? TextAnnotation {
+            return a.text == b.text && a.origin == b.origin
+                && a.fontSize == b.fontSize && a.rotation == b.rotation
+                && a.color == b.color
+        }
+        if let a = a as? PenAnnotation, let b = b as? PenAnnotation {
+            return a.path === b.path && a.lineWidth == b.lineWidth
+                && a.rotation == b.rotation && a.color == b.color
+        }
+        if let a = a as? MarkerAnnotation, let b = b as? MarkerAnnotation {
+            return a.path === b.path && a.lineWidth == b.lineWidth
+                && a.rotation == b.rotation && a.color == b.color
+        }
+        if let a = a as? RectAnnotation, let b = b as? RectAnnotation {
+            return a.rect == b.rect && a.lineWidth == b.lineWidth
+                && a.rotation == b.rotation && a.color == b.color
+        }
+        if let a = a as? EllipseAnnotation, let b = b as? EllipseAnnotation {
+            return a.rect == b.rect && a.lineWidth == b.lineWidth
+                && a.rotation == b.rotation && a.color == b.color
+        }
+        if let a = a as? ArrowAnnotation, let b = b as? ArrowAnnotation {
+            return a.startPoint == b.startPoint && a.endPoint == b.endPoint
+                && a.controlPoint == b.controlPoint && a.lineWidth == b.lineWidth
+                && a.color == b.color
+        }
+        if let a = a as? NumberAnnotation, let b = b as? NumberAnnotation {
+            return a.center == b.center && a.tip == b.tip
+                && a.controlPoint == b.controlPoint && a.number == b.number
+                && a.color == b.color
+        }
+        return false
     }
 
     // MARK: - Mouse Events
