@@ -9,6 +9,7 @@ extension Notification.Name {
     static let languageDidChange = Notification.Name("capcap.languageDidChange")
     static let historyCacheLimitDidChange = Notification.Name("capcap.historyCacheLimitDidChange")
     static let historyDidUpdate = Notification.Name("capcap.historyDidUpdate")
+    static let hotkeyDidChange = Notification.Name("capcap.hotkeyDidChange")
 }
 
 enum L10n {
@@ -44,6 +45,19 @@ enum L10n {
             ? "保留最近的截图数量，便于快速再次复制"
             : "Keep the most recent screenshots for quick re-copy"
     }
+
+    // Screenshot shortcut
+    static var shortcutHeader: String { lang == .zh ? "截图快捷键" : "Screenshot Shortcut" }
+    static var shortcutHint: String {
+        lang == .zh
+            ? "默认双击 ⌘ 触发；自定义后双击 ⌘ 失效，可点恢复回到默认"
+            : "Default: double-tap \u{2318}. Setting a custom shortcut disables double-tap."
+    }
+    static var shortcutDefaultDisplay: String { lang == .zh ? "双击 \u{2318}" : "Double-tap \u{2318}" }
+    static var shortcutSet: String { lang == .zh ? "录制" : "Set" }
+    static var shortcutCancel: String { lang == .zh ? "取消" : "Cancel" }
+    static var shortcutWaiting: String { lang == .zh ? "等待按键…" : "Press keys…" }
+    static var shortcutRestore: String { lang == .zh ? "恢复默认" : "Restore Default" }
 
     // Menu bar
     static var takeScreenshot: String { lang == .zh ? "截图" : "Take Screenshot" }
@@ -112,6 +126,28 @@ struct Defaults {
         set {
             defaults.set(newValue, forKey: "doubleTapInterval")
         }
+    }
+
+    // Custom screenshot hotkey. keyCode == 0 means "no custom hotkey" (fall back to double-tap ⌘).
+    // Modifiers are stored using Carbon flags (cmdKey | shiftKey | optionKey | controlKey).
+
+    static var screenshotHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "screenshotHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "screenshotHotkeyKeyCode") }
+    }
+
+    static var screenshotHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "screenshotHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "screenshotHotkeyModifiers") }
+    }
+
+    static var hasCustomScreenshotHotkey: Bool {
+        screenshotHotkeyKeyCode != 0
+    }
+
+    static func clearScreenshotHotkey() {
+        defaults.removeObject(forKey: "screenshotHotkeyKeyCode")
+        defaults.removeObject(forKey: "screenshotHotkeyModifiers")
     }
 
     static var penColor: Int {

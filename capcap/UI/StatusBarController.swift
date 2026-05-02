@@ -29,6 +29,9 @@ class StatusBarController: NSObject {
         NotificationCenter.default.addObserver(forName: .historyDidUpdate, object: nil, queue: .main) { [weak self] _ in
             self?.refreshHistoryItemState()
         }
+        NotificationCenter.default.addObserver(forName: .hotkeyDidChange, object: nil, queue: .main) { [weak self] _ in
+            self?.setupMenu()
+        }
     }
 
     private func setupMenu() {
@@ -37,6 +40,7 @@ class StatusBarController: NSObject {
         let screenshotItem = NSMenuItem(title: L10n.takeScreenshot, action: #selector(takeScreenshot), keyEquivalent: "")
         screenshotItem.target = self
         screenshotItem.image = Self.menuIcon(systemName: "crop")
+        HotkeyManager.applyToMenuItem(screenshotItem)
         menu.addItem(screenshotItem)
 
         menu.addItem(NSMenuItem.separator())

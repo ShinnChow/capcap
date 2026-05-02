@@ -37,6 +37,32 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyMonitor = KeyMonitor { [weak self] in
             self?.startCapture()
         }
+
+        NotificationCenter.default.addObserver(
+            forName: .hotkeyDidChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.applyHotkeyState()
+        }
+        applyHotkeyState()
+    }
+
+    private func applyHotkeyState() {
+        if HotkeyManager.shared.isRecording {
+            HotkeyManager.shared.unregister()
+            keyMonitor?.isEnabled = false
+            return
+        }
+        if Defaults.hasCustomScreenshotHotkey {
+            HotkeyManager.shared.register { [weak self] in
+                self?.startCapture()
+            }
+            keyMonitor?.isEnabled = false
+        } else {
+            HotkeyManager.shared.unregister()
+            keyMonitor?.isEnabled = true
+        }
     }
 
     func startCapture() {

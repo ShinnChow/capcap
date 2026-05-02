@@ -1,6 +1,16 @@
 import AppKit
 
 class KeyMonitor {
+    var isEnabled: Bool = true {
+        didSet {
+            if !isEnabled {
+                lastCommandPressTime = 0
+                commandIsDown = false
+                otherKeyPressed = false
+            }
+        }
+    }
+
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private var lastCommandPressTime: TimeInterval = 0
@@ -45,6 +55,7 @@ class KeyMonitor {
     }
 
     private func handleFlagsChanged(_ event: NSEvent) {
+        guard isEnabled else { return }
         let commandPressed = event.modifierFlags.contains(.command)
 
         // Only care about Command with no other modifiers

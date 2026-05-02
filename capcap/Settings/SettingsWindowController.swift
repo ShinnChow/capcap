@@ -79,6 +79,7 @@ class SettingsWindowController: NSWindowController {
 
 extension SettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
+        settingsView.cancelShortcutRecording()
         guard isStartup else { return }
         let accessibilityGranted = AXIsProcessTrusted()
         let screenRecordingGranted = settingsView.checkScreenRecordingPermission()

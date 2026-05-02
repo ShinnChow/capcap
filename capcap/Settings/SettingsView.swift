@@ -1,4 +1,5 @@
 import AppKit
+import Carbon
 
 class SettingsView: NSView {
 
@@ -15,6 +16,14 @@ class SettingsView: NSView {
     private var langPicker: NSPopUpButton!
     private var historyCacheSlider: NSSlider!
     private var historyCacheValueLabel: NSTextField!
+
+    // Shortcut card
+    private var shortcutTitleLabel: NSTextField!
+    private var shortcutHintLabel: NSTextField!
+    private var shortcutField: NSTextField!
+    private var shortcutSetButton: NSButton!
+    private var shortcutRestoreButton: NSButton!
+    private var shortcutRecordingMonitor: Any?
 
     // Permission badges
     private var accessibilityBadge: StatusBadge!
@@ -64,6 +73,7 @@ class SettingsView: NSView {
 
     deinit {
         refreshTimer?.invalidate()
+        cancelShortcutRecording()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -116,6 +126,32 @@ class SettingsView: NSView {
             stack.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
         ])
 
+        // Language card (top)
+        let langCard = CardView()
+        let langRow = NSStackView()
+        langRow.orientation = .horizontal
+        langRow.alignment = .centerY
+        langRow.spacing = 10
+        langRow.translatesAutoresizingMaskIntoConstraints = false
+        langCard.addSubview(langRow)
+        pin(langRow, to: langCard, insets: NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14))
+
+        langTitleLabel = primaryLabel(L10n.languageHeader)
+        langRow.addArrangedSubview(langTitleLabel)
+        langRow.addArrangedSubview(flexSpacer())
+
+        langPicker = NSPopUpButton(frame: .zero, pullsDown: false)
+        langPicker.addItems(withTitles: ["中文", "English"])
+        langPicker.selectItem(at: Defaults.language == .zh ? 0 : 1)
+        langPicker.target = self
+        langPicker.action = #selector(languageChanged(_:))
+        langPicker.controlSize = .small
+        langPicker.font = NSFont.systemFont(ofSize: 12)
+        langRow.addArrangedSubview(langPicker)
+
+        stack.addArrangedSubview(langCard)
+        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+
         // General card (three toggle rows)
         let generalCard = CardView()
         let generalInner = verticalInnerStack()
@@ -158,31 +194,82 @@ class SettingsView: NSView {
         stack.addArrangedSubview(generalCard)
         generalCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
 
-        // Language card
-        let langCard = CardView()
-        let langRow = NSStackView()
-        langRow.orientation = .horizontal
-        langRow.alignment = .centerY
-        langRow.spacing = 10
-        langRow.translatesAutoresizingMaskIntoConstraints = false
-        langCard.addSubview(langRow)
-        pin(langRow, to: langCard, insets: NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14))
+        // Shortcut card
+        let shortcutCard = CardView()
+        let shortcutInner = NSStackView()
+        shortcutInner.orientation = .vertical
+        shortcutInner.alignment = .leading
+        shortcutInner.spacing = 8
+        shortcutInner.translatesAutoresizingMaskIntoConstraints = false
+        shortcutCard.addSubview(shortcutInner)
+        pin(shortcutInner, to: shortcutCard, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
 
-        langTitleLabel = primaryLabel(L10n.languageHeader)
-        langRow.addArrangedSubview(langTitleLabel)
-        langRow.addArrangedSubview(flexSpacer())
+        let shortcutRow = NSStackView()
+        shortcutRow.orientation = .horizontal
+        shortcutRow.alignment = .centerY
+        shortcutRow.spacing = 8
+        shortcutRow.translatesAutoresizingMaskIntoConstraints = false
 
-        langPicker = NSPopUpButton(frame: .zero, pullsDown: false)
-        langPicker.addItems(withTitles: ["中文", "English"])
-        langPicker.selectItem(at: Defaults.language == .zh ? 0 : 1)
-        langPicker.target = self
-        langPicker.action = #selector(languageChanged(_:))
-        langPicker.controlSize = .small
-        langPicker.font = NSFont.systemFont(ofSize: 12)
-        langRow.addArrangedSubview(langPicker)
+        shortcutTitleLabel = primaryLabel(L10n.shortcutHeader)
+        shortcutRow.addArrangedSubview(shortcutTitleLabel)
+        shortcutRow.addArrangedSubview(flexSpacer())
 
-        stack.addArrangedSubview(langCard)
-        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+        shortcutField = NSTextField()
+        shortcutField.isEditable = false
+        shortcutField.isSelectable = false
+        shortcutField.isBordered = false
+        shortcutField.drawsBackground = false
+        shortcutField.alignment = .center
+        shortcutField.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        shortcutField.textColor = NSColor.white.withAlphaComponent(0.92)
+        shortcutField.translatesAutoresizingMaskIntoConstraints = false
+
+        let fieldBackground = NSView()
+        fieldBackground.wantsLayer = true
+        fieldBackground.layer?.cornerRadius = 5
+        fieldBackground.layer?.cornerCurve = .continuous
+        fieldBackground.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.08).cgColor
+        fieldBackground.layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
+        fieldBackground.layer?.borderWidth = 1
+        fieldBackground.translatesAutoresizingMaskIntoConstraints = false
+        fieldBackground.addSubview(shortcutField)
+        NSLayoutConstraint.activate([
+            shortcutField.topAnchor.constraint(equalTo: fieldBackground.topAnchor, constant: 4),
+            shortcutField.bottomAnchor.constraint(equalTo: fieldBackground.bottomAnchor, constant: -4),
+            shortcutField.leadingAnchor.constraint(equalTo: fieldBackground.leadingAnchor, constant: 10),
+            shortcutField.trailingAnchor.constraint(equalTo: fieldBackground.trailingAnchor, constant: -10),
+            fieldBackground.widthAnchor.constraint(greaterThanOrEqualToConstant: 110),
+        ])
+        shortcutRow.addArrangedSubview(fieldBackground)
+
+        shortcutSetButton = NSButton(title: L10n.shortcutSet, target: self, action: #selector(shortcutSetClicked))
+        shortcutSetButton.bezelStyle = .rounded
+        shortcutSetButton.controlSize = .small
+        shortcutSetButton.font = NSFont.systemFont(ofSize: 12)
+        shortcutSetButton.translatesAutoresizingMaskIntoConstraints = false
+        shortcutRow.addArrangedSubview(shortcutSetButton)
+
+        shortcutRestoreButton = NSButton(image: NSImage(systemSymbolName: "arrow.counterclockwise.circle.fill", accessibilityDescription: L10n.shortcutRestore) ?? NSImage(), target: self, action: #selector(shortcutRestoreClicked))
+        shortcutRestoreButton.bezelStyle = .inline
+        shortcutRestoreButton.isBordered = false
+        shortcutRestoreButton.imagePosition = .imageOnly
+        shortcutRestoreButton.contentTintColor = NSColor.white.withAlphaComponent(0.62)
+        shortcutRestoreButton.toolTip = L10n.shortcutRestore
+        shortcutRestoreButton.translatesAutoresizingMaskIntoConstraints = false
+        shortcutRestoreButton.widthAnchor.constraint(equalToConstant: 22).isActive = true
+        shortcutRow.addArrangedSubview(shortcutRestoreButton)
+
+        shortcutInner.addArrangedSubview(shortcutRow)
+        shortcutRow.widthAnchor.constraint(equalTo: shortcutInner.widthAnchor).isActive = true
+
+        shortcutHintLabel = secondaryLabel(L10n.shortcutHint, wrapping: true)
+        shortcutInner.addArrangedSubview(shortcutHintLabel)
+        shortcutHintLabel.widthAnchor.constraint(equalTo: shortcutInner.widthAnchor).isActive = true
+
+        stack.addArrangedSubview(shortcutCard)
+        shortcutCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+
+        refreshShortcutDisplay()
 
         // History cache card
         let historyCard = CardView()
@@ -596,6 +683,89 @@ class SettingsView: NSView {
         onLaunch?()
     }
 
+    // MARK: - Shortcut recording
+
+    @objc private func shortcutSetClicked() {
+        if shortcutRecordingMonitor != nil {
+            cancelShortcutRecording()
+            return
+        }
+        HotkeyManager.shared.beginRecording()
+        shortcutSetButton.title = L10n.shortcutCancel
+        shortcutField.stringValue = L10n.shortcutWaiting
+        shortcutRestoreButton.isHidden = true
+
+        shortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            // Reject bare keys (no modifier and not a function key) — the user must
+            // hold at least one modifier so the shortcut won't collide with typing.
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            Defaults.screenshotHotkeyKeyCode = Int(keyCode)
+            Defaults.screenshotHotkeyModifiers = Int(carbonMods)
+            self.finishShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func shortcutRestoreClicked() {
+        if shortcutRecordingMonitor != nil {
+            cancelShortcutRecording()
+        }
+        Defaults.clearScreenshotHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshShortcutDisplay()
+    }
+
+    private func finishShortcutRecording() {
+        if let m = shortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            shortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshShortcutDisplay()
+    }
+
+    func cancelShortcutRecording() {
+        guard shortcutRecordingMonitor != nil else { return }
+        if let m = shortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            shortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshShortcutDisplay()
+    }
+
+    private func refreshShortcutDisplay() {
+        shortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentDisplayString() {
+            shortcutField?.stringValue = display
+            shortcutRestoreButton?.isHidden = false
+        } else {
+            shortcutField?.stringValue = L10n.shortcutDefaultDisplay
+            shortcutRestoreButton?.isHidden = true
+        }
+    }
+
     @objc private func updateLocalization() {
         menuBarTitleLabel?.stringValue = L10n.showMenuBarIcon
         launchAtLoginTitleLabel?.stringValue = L10n.launchAtLogin
@@ -609,6 +779,10 @@ class SettingsView: NSView {
         screenRecordingDescLabel?.stringValue = L10n.screenRecordingDescription
         historyCacheTitleLabel?.stringValue = L10n.historyCacheLabel
         historyCacheHintLabel?.stringValue = L10n.historyCacheHint
+        shortcutTitleLabel?.stringValue = L10n.shortcutHeader
+        shortcutHintLabel?.stringValue = L10n.shortcutHint
+        shortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        refreshShortcutDisplay()
         launchButton?.title = L10n.launchApp
         accessibilityBadge?.refreshTitle()
         screenRecordingBadge?.refreshTitle()

@@ -17,6 +17,7 @@ let package = Package(
                 .linkedFramework("CoreImage"),
                 .linkedFramework("ImageIO"),
                 .linkedFramework("UniformTypeIdentifiers"),
+                .linkedFramework("Carbon"),
             ]
         )
     ]
