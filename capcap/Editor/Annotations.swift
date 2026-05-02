@@ -455,14 +455,31 @@ struct TextAnnotation: Annotation {
         )
     }
 
-    /// Editing-frame bounds of the rendered text, used for hit-testing.
+    /// Tight ink-bounds rect for the rendered glyphs, in canvas coordinates.
     ///
-    /// This intentionally mirrors `EditableTextField.sizeToFitText()` instead
-    /// of using only the bare glyph size, so a committed text mark can be
-    /// double-clicked anywhere in the same region the user just edited.
+    /// Used for the dashed selection frame and as the rotation pivot, so the
+    /// chrome hugs what's actually painted instead of the editor frame's
+    /// trailing-caret padding + line leading (which made the box look skewed
+    /// toward bottom-left of the text).
     var textBounds: NSRect {
-        let size = TextAnnotation.editorSize(for: text, font: TextAnnotation.font(forSize: fontSize))
-        return NSRect(origin: origin, size: size)
+        let font = TextAnnotation.font(forSize: fontSize)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let textToMeasure = text.isEmpty ? "M" : text
+        let attr = NSAttributedString(string: textToMeasure, attributes: attrs)
+        let ink = attr.boundingRect(
+            with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesDeviceMetrics]
+        )
+        // `.usesDeviceMetrics` returns the ink rect with origin relative to
+        // the typographic baseline. Convert to coordinates relative to the
+        // draw origin (which is the typographic frame's bottom): the baseline
+        // sits |descender| above that bottom.
+        return NSRect(
+            x: origin.x + ink.origin.x,
+            y: origin.y + ink.origin.y - font.descender,
+            width: ink.width,
+            height: ink.height
+        )
     }
 
     var hitBounds: NSRect {
@@ -525,6 +542,13 @@ struct NumberAnnotation: Annotation {
     /// Below this distance from `center` we treat the tip as "no arrow" so
     /// the head won't sit on top of the badge glyph.
     static let arrowMinDistance: CGFloat = NumberAnnotation.radius + 6
+
+    /// Black on light badges, white on dark — perceived-luminance threshold.
+    static func contrastingTextColor(for color: NSColor) -> NSColor {
+        let rgb = color.usingColorSpace(.sRGB) ?? color
+        let luminance = 0.299 * rgb.redComponent + 0.587 * rgb.greenComponent + 0.114 * rgb.blueComponent
+        return luminance > 0.6 ? .black : .white
+    }
 
     var hasArrow: Bool {
         guard let tip else { return false }
@@ -612,10 +636,12 @@ struct NumberAnnotation: Annotation {
         context.setFillColor(color.cgColor)
         context.fillEllipse(in: circleRect)
 
-        // Badge number — always drawn upright (no rotation).
+        // Badge number — always drawn upright (no rotation). Pick a digit
+        // color that contrasts with the badge fill so a white badge doesn't
+        // render an invisible white "1".
         let text = "\(number)"
         let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor.white,
+            .foregroundColor: NumberAnnotation.contrastingTextColor(for: color),
             .font: NSFont.systemFont(ofSize: 14, weight: .bold)
         ]
         let size = text.size(withAttributes: attrs)
