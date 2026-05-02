@@ -36,11 +36,13 @@ class StatusBarController: NSObject {
 
         let screenshotItem = NSMenuItem(title: L10n.takeScreenshot, action: #selector(takeScreenshot), keyEquivalent: "")
         screenshotItem.target = self
+        screenshotItem.image = Self.menuIcon(systemName: "crop")
         menu.addItem(screenshotItem)
 
         menu.addItem(NSMenuItem.separator())
 
         let history = NSMenuItem(title: L10n.historyMenu, action: nil, keyEquivalent: "")
+        history.image = Self.menuIcon(systemName: "clock.arrow.circlepath")
         let historySubmenu = NSMenu(title: L10n.historyMenu)
         historySubmenu.delegate = self
         history.submenu = historySubmenu
@@ -52,16 +54,26 @@ class StatusBarController: NSObject {
 
         let settingsItem = NSMenuItem(title: L10n.settings, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
+        settingsItem.image = Self.menuIcon(systemName: "gearshape")
         menu.addItem(settingsItem)
 
         menu.addItem(NSMenuItem.separator())
 
         let quitItem = NSMenuItem(title: L10n.quitApp, action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        quitItem.image = Self.menuIcon(systemName: "power")
         menu.addItem(quitItem)
 
         statusItem.menu = menu
 
         refreshHistoryItemState()
+    }
+
+    fileprivate static func menuIcon(systemName: String) -> NSImage? {
+        let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .regular)
+        let image = NSImage(systemSymbolName: systemName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        return image
     }
 
     private func refreshHistoryItemState() {
@@ -133,6 +145,7 @@ extension StatusBarController: NSMenuDelegate {
         menu.addItem(NSMenuItem.separator())
         let clearItem = NSMenuItem(title: L10n.historyClear, action: #selector(clearHistoryClicked), keyEquivalent: "")
         clearItem.target = self
+        clearItem.image = Self.menuIcon(systemName: "trash")
         menu.addItem(clearItem)
     }
 }
