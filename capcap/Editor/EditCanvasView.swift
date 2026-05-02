@@ -1461,6 +1461,39 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
         return false
     }
 
+    /// The app has no main menu, so standard editing key equivalents
+    /// (⌘A/⌘C/⌘V/⌘X/⌘Z/⇧⌘Z) never reach the field editor. Route them
+    /// here while we hold focus.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard window?.firstResponder === currentEditor() else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let mods = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let cmd: NSEvent.ModifierFlags = .command
+        let cmdShift: NSEvent.ModifierFlags = [.command, .shift]
+        guard let chars = event.charactersIgnoringModifiers?.lowercased() else {
+            return super.performKeyEquivalent(with: event)
+        }
+        if mods == cmd {
+            switch chars {
+            case "a": currentEditor()?.selectAll(nil); return true
+            case "c": currentEditor()?.copy(nil); return true
+            case "v": currentEditor()?.paste(nil); return true
+            case "x": currentEditor()?.cut(nil); return true
+            case "z":
+                if let undoMgr = currentEditor()?.undoManager, undoMgr.canUndo {
+                    undoMgr.undo(); return true
+                }
+            default: break
+            }
+        } else if mods == cmdShift, chars == "z" {
+            if let undoMgr = currentEditor()?.undoManager, undoMgr.canRedo {
+                undoMgr.redo(); return true
+            }
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
     /// Recompute width/height from the current string + font, keeping the
     /// top edge anchored so text grows downward only when font size changes.
     func sizeToFitText() {
