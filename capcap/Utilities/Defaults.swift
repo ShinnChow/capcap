@@ -59,6 +59,29 @@ enum L10n {
     // Toast
     static var copiedToClipboard: String { lang == .zh ? "已添加到剪贴板" : "Copied to clipboard" }
     static var mergedLongScreenshot: String { lang == .zh ? "已合并长截图" : "Long screenshot merged" }
+    static func colorCopied(_ hex: String) -> String {
+        lang == .zh ? "已复制颜色 \(hex)" : "Copied color \(hex)"
+    }
+
+    // Toolbar tooltips
+    static var tipRectangle: String { lang == .zh ? "矩形" : "Rectangle" }
+    static var tipEllipse: String { lang == .zh ? "椭圆" : "Ellipse" }
+    static var tipArrow: String { lang == .zh ? "箭头" : "Arrow" }
+    static var tipPen: String { lang == .zh ? "画笔" : "Pen" }
+    static var tipMarker: String { lang == .zh ? "高亮笔" : "Marker" }
+    static var tipMosaic: String { lang == .zh ? "马赛克" : "Mosaic" }
+    static var tipNumbered: String { lang == .zh ? "序号" : "Numbered" }
+    static var tipText: String { lang == .zh ? "文字" : "Text" }
+    static var tipColorPicker: String { lang == .zh ? "取色器" : "Color Picker" }
+    static var tipUndo: String { lang == .zh ? "撤销" : "Undo" }
+    static var tipRedo: String { lang == .zh ? "恢复撤销" : "Redo" }
+    static var tipMoveSelection: String { lang == .zh ? "移动选区" : "Move Selection" }
+    static var tipScrollCapture: String { lang == .zh ? "长截图" : "Scroll Capture" }
+    static var tipBeautify: String { lang == .zh ? "美化" : "Beautify" }
+    static var tipSave: String { lang == .zh ? "保存" : "Save" }
+    static var tipPin: String { lang == .zh ? "钉在屏幕" : "Pin to Screen" }
+    static var tipCancel: String { lang == .zh ? "取消" : "Cancel" }
+    static var tipConfirm: String { lang == .zh ? "确认" : "Confirm" }
 
     // Beautify
     static var beautify: String { lang == .zh ? "美化" : "Beautify" }

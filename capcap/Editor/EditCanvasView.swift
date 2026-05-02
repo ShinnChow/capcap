@@ -211,20 +211,73 @@ class EditCanvasView: NSView {
         }
     }
 
-    // MARK: - Undo
+    // MARK: - Undo / Redo
 
-    func undo() {
-        guard !annotations.isEmpty else { return }
-        let removed = annotations.removeLast()
-        // If it was a number annotation, decrement counter
-        if removed is NumberAnnotation {
-            numberCounter = max(1, numberCounter - 1)
-        }
-        // Drop the selection if it pointed at the removed annotation (or
-        // beyond the new array end after the removal).
+    /// History snapshot. Annotations are value-typed (struct) so a plain
+    /// array copy is a deep copy of the editor's logical state. The number
+    /// counter is included so undo/redo also restores the next-badge value.
+    private struct EditorSnapshot {
+        let annotations: [Annotation]
+        let numberCounter: Int
+    }
+
+    private var undoStack: [EditorSnapshot] = []
+    private var redoStack: [EditorSnapshot] = []
+    /// Stash for drag-style operations and text edits — captured before the
+    /// mutation begins, then either committed (drag actually moved / text
+    /// edit produced a change) or discarded (just a click / cancel).
+    private var pendingSnapshot: EditorSnapshot?
+
+    private func currentSnapshot() -> EditorSnapshot {
+        EditorSnapshot(annotations: annotations, numberCounter: numberCounter)
+    }
+
+    private func apply(_ snapshot: EditorSnapshot) {
+        annotations = snapshot.annotations
+        numberCounter = snapshot.numberCounter
         if let idx = selectedIndex, idx >= annotations.count {
             selectedIndex = nil
         }
+    }
+
+    /// Push current state onto the undo stack and clear the redo stack.
+    /// Call BEFORE any direct, instantaneous mutation (creation / deletion
+    /// / text edit commit).
+    private func recordUndo() {
+        undoStack.append(currentSnapshot())
+        redoStack.removeAll()
+    }
+
+    /// Stash current state for a drag-style operation. Pair with
+    /// `commitPendingUndo()` (drag actually moved) or `discardPendingUndo()`
+    /// (just a click / cancel).
+    private func captureUndoForPending() {
+        pendingSnapshot = currentSnapshot()
+    }
+
+    private func commitPendingUndo() {
+        guard let snap = pendingSnapshot else { return }
+        pendingSnapshot = nil
+        undoStack.append(snap)
+        redoStack.removeAll()
+    }
+
+    private func discardPendingUndo() {
+        pendingSnapshot = nil
+    }
+
+    func undo() {
+        guard let prev = undoStack.popLast() else { return }
+        redoStack.append(currentSnapshot())
+        apply(prev)
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+    }
+
+    func redo() {
+        guard let next = redoStack.popLast() else { return }
+        undoStack.append(currentSnapshot())
+        apply(next)
         needsDisplay = true
         refreshCursorAtCurrentLocation()
     }
@@ -239,6 +292,7 @@ class EditCanvasView: NSView {
             activeTextField?.commit()
             switch action {
             case .delete:
+                recordUndo()
                 annotations.remove(at: idx)
                 selectedIndex = nil
                 needsDisplay = true
@@ -267,6 +321,7 @@ class EditCanvasView: NSView {
                 startAngle: startAngle,
                 startRotation: original.rotation
             )
+            captureUndoForPending()
             NSCursor.closedHand.set()
             return
         }
@@ -283,6 +338,7 @@ class EditCanvasView: NSView {
                 original: annotations[idx],
                 didDrag: false
             )
+            captureUndoForPending()
             // Attach the selection to whatever the user just grabbed —
             // works in any tool so the user can immediately adjust the mark.
             selectedIndex = idx
@@ -338,6 +394,9 @@ class EditCanvasView: NSView {
         let point = convert(event.locationInWindow, from: nil)
 
         if let state = handleDragState {
+            // First mutation of the handle drag — commit the pre-drag snapshot
+            // so undo can roll back to before the rotate/curve/tip.
+            commitPendingUndo()
             applyHandleDrag(state: state, currentMouse: point)
             return
         }
@@ -348,6 +407,7 @@ class EditCanvasView: NSView {
                 guard distance >= dragThreshold else { return }
                 state.didDrag = true
                 dragState = state
+                commitPendingUndo()
             }
             let delta = NSPoint(
                 x: point.x - state.startMouse.x,
@@ -404,6 +464,10 @@ class EditCanvasView: NSView {
         // 0. Handle drag (rotate / curve) — commit current state and exit.
         if handleDragState != nil {
             handleDragState = nil
+            // If the user only clicked a handle without dragging, the
+            // pending snapshot was never committed by mouseDragged — drop it
+            // so the undo stack doesn't grow no-op entries.
+            discardPendingUndo()
             needsDisplay = true
             refreshCursorAtCurrentLocation()
             return
@@ -415,6 +479,8 @@ class EditCanvasView: NSView {
         if let state = dragState {
             dragState = nil
             selectedIndex = state.index
+            // Click without drag → no mutation happened; drop the stash.
+            discardPendingUndo()
             refreshCursorAtCurrentLocation()
             return
         }
@@ -431,6 +497,7 @@ class EditCanvasView: NSView {
             let tip: NSPoint? = dragDist >= NumberAnnotation.arrowMinDistance
                 ? pending.current
                 : nil
+            recordUndo()
             annotations.append(NumberAnnotation(
                 center: pending.start,
                 tip: tip,
@@ -464,6 +531,7 @@ class EditCanvasView: NSView {
 
         case .pen:
             if let path = currentPenPath {
+                recordUndo()
                 annotations.append(PenAnnotation(
                     path: path,
                     color: currentColor,
@@ -474,6 +542,7 @@ class EditCanvasView: NSView {
 
         case .marker:
             if let path = currentMarkerPath {
+                recordUndo()
                 annotations.append(MarkerAnnotation(
                     path: path,
                     color: currentMarkerColor,
@@ -492,6 +561,7 @@ class EditCanvasView: NSView {
                     baseImage: baseImage,
                     blockSize: currentMosaicBlockSize
                 ) {
+                    recordUndo()
                     annotations.append(MosaicAnnotation(
                         rect: region.rect,
                         pixelatedImage: region.pixelatedImage
@@ -504,6 +574,7 @@ class EditCanvasView: NSView {
             if let start = shapeStart, let end = shapeCurrent {
                 let rect = rectFromTwoPoints(start, end)
                 if rect.width > 2, rect.height > 2 {
+                    recordUndo()
                     annotations.append(RectAnnotation(
                         rect: rect,
                         color: currentColor,
@@ -518,6 +589,7 @@ class EditCanvasView: NSView {
             if let start = shapeStart, let end = shapeCurrent {
                 let rect = rectFromTwoPoints(start, end)
                 if rect.width > 2, rect.height > 2 {
+                    recordUndo()
                     annotations.append(EllipseAnnotation(
                         rect: rect,
                         color: currentColor,
@@ -532,6 +604,7 @@ class EditCanvasView: NSView {
             if let start = shapeStart, let end = shapeCurrent {
                 let dist = hypot(end.x - start.x, end.y - start.y)
                 if dist > 5 {
+                    recordUndo()
                     annotations.append(ArrowAnnotation(
                         startPoint: start,
                         endPoint: end,
@@ -827,6 +900,10 @@ class EditCanvasView: NSView {
         let font = NSFont.systemFont(ofSize: fontSize, weight: .bold)
         let lineHeight = TextAnnotation.lineHeight(for: font)
 
+        // Capture the pre-edit state BEFORE we remove a re-edited annotation
+        // from the array, so undo can restore the original cleanly.
+        captureUndoForPending()
+
         // Hide the source annotation while editing so it isn't drawn under
         // the field. Stash it for cancel-restore.
         if let idx = replacingIndex,
@@ -888,6 +965,7 @@ class EditCanvasView: NSView {
         }
 
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let wasReEdit = editingOriginalIndex != nil
         if !trimmed.isEmpty {
             let font = field.font ?? NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
             let newAnnotation = TextAnnotation(
@@ -905,6 +983,15 @@ class EditCanvasView: NSView {
         }
         editingOriginalAnnotation = nil
         editingOriginalIndex = nil
+        // Net change happens whenever a new annotation was added OR a
+        // re-edit was attempted (re-edit always replaces or removes the
+        // original). A no-op fresh-create with empty text leaves state
+        // untouched — drop the stash so the undo stack stays clean.
+        if !trimmed.isEmpty || wasReEdit {
+            commitPendingUndo()
+        } else {
+            discardPendingUndo()
+        }
         needsDisplay = true
         refreshCursorAtCurrentLocation()
     }
@@ -923,6 +1010,8 @@ class EditCanvasView: NSView {
         }
         editingOriginalAnnotation = nil
         editingOriginalIndex = nil
+        // Cancel restores the pre-edit state; no net change → no undo entry.
+        discardPendingUndo()
         needsDisplay = true
         refreshCursorAtCurrentLocation()
     }

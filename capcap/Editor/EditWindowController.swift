@@ -104,6 +104,8 @@ class EditWindowController {
         let tv = ToolbarView(frame: toolbarRect)
         tv.onToolSelected = { [weak self] tool in self?.selectTool(tool) }
         tv.onUndo = { [weak self] in self?.canvasView?.undo() }
+        tv.onRedo = { [weak self] in self?.canvasView?.redo() }
+        tv.onColorPicker = { [weak self] in self?.runColorPicker() }
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
         tv.onSave = { [weak self] in self?.save() }
@@ -624,6 +626,28 @@ class EditWindowController {
         onComplete(nil)
     }
 
+    /// Trigger the system color sampler (loupe). The picked color's hex is
+    /// copied to the clipboard and a toast confirms it. Does NOT change the
+    /// current pen / marker color — pure pick-and-copy.
+    private func runColorPicker() {
+        canvasView?.commitActiveTextEditing()
+        let sampler = NSColorSampler()
+        sampler.show { [weak self] picked in
+            guard let picked else { return }
+            let rgb = picked.usingColorSpace(.sRGB) ?? picked
+            let r = Int(round(max(0, min(1, rgb.redComponent)) * 255))
+            let g = Int(round(max(0, min(1, rgb.greenComponent)) * 255))
+            let b = Int(round(max(0, min(1, rgb.blueComponent)) * 255))
+            let hex = String(format: "#%02X%02X%02X", r, g, b)
+
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.setString(hex, forType: .string)
+
+            ToastWindow.show(message: L10n.colorCopied(hex), on: self?.screen)
+        }
+    }
+
     func confirmFromKeyboard() {
         confirm()
     }
@@ -772,7 +796,7 @@ class EditWindowController {
     }
 
     private func toolbarRect(in bounds: NSRect) -> NSRect {
-        let width: CGFloat = 640
+        let width: CGFloat = ToolbarView.preferredWidth
         let height: CGFloat = 44
         let margin: CGFloat = 8
 
@@ -858,8 +882,25 @@ private final class EditorScrollView: NSScrollView {
 }
 
 class ToolbarView: NSView {
+    /// Single source of truth for the button row geometry. `toolbarRect` and
+    /// `setupButtons` both read these so the dark capsule always wraps the
+    /// full button row regardless of how many buttons we add.
+    static let buttonSize: CGFloat = 32
+    static let buttonSpacing: CGFloat = 6
+    static let separatorWidth: CGFloat = 8
+    static let totalButtons: Int = 18
+    static let horizontalPadding: CGFloat = 15
+
+    static var preferredWidth: CGFloat {
+        let buttonsWidth = CGFloat(totalButtons) * buttonSize
+            + CGFloat(totalButtons - 1) * buttonSpacing
+        return buttonsWidth + separatorWidth + horizontalPadding * 2
+    }
+
     var onToolSelected: ((EditTool) -> Void)?
     var onUndo: (() -> Void)?
+    var onRedo: (() -> Void)?
+    var onColorPicker: (() -> Void)?
     var onScrollCapture: (() -> Void)?
     var onBeautify: (() -> Void)?
     var onSave: (() -> Void)?
@@ -901,34 +942,36 @@ class ToolbarView: NSView {
     }
 
     private func setupButtons() {
-        let buttonSize: CGFloat = 32
-        let spacing: CGFloat = 6
-        // 16 buttons: rect, ellipse, arrow, pen, marker, mosaic, numbered, text, undo, moveSelection, scrollCapture, beautify | save, pin, cancel, confirm
-        let totalButtons = 16
-        let separatorWidth: CGFloat = 8
-        let totalWidth = CGFloat(totalButtons) * buttonSize + CGFloat(totalButtons - 1) * spacing + separatorWidth
+        // 18 buttons: rect, ellipse, arrow, pen, marker, mosaic, numbered, text, colorPicker, undo, redo, moveSelection, scrollCapture, beautify | save, pin, cancel, confirm
+        let buttonSize = Self.buttonSize
+        let spacing = Self.buttonSpacing
+        let separatorWidth = Self.separatorWidth
+        let totalWidth = CGFloat(Self.totalButtons) * buttonSize
+            + CGFloat(Self.totalButtons - 1) * spacing
+            + separatorWidth
         var x = (bounds.width - totalWidth) / 2
         let y = (bounds.height - buttonSize) / 2
 
         // Tool buttons (toggleable annotation tools)
-        let tools: [(EditTool, String)] = [
-            (.rectangle, "rectangle"),
-            (.ellipse, "circle"),
-            (.arrow, "arrow.up.right"),
-            (.pen, "pencil.tip"),
-            (.marker, "highlighter"),
-            (.mosaic, "square.grid.3x3"),
-            (.numbered, "1.circle"),
-            (.text, "textformat"),
+        let tools: [(EditTool, String, String)] = [
+            (.rectangle, "rectangle", L10n.tipRectangle),
+            (.ellipse, "circle", L10n.tipEllipse),
+            (.arrow, "arrow.up.right", L10n.tipArrow),
+            (.pen, "pencil.tip", L10n.tipPen),
+            (.marker, "highlighter", L10n.tipMarker),
+            (.mosaic, "square.grid.3x3", L10n.tipMosaic),
+            (.numbered, "1.circle", L10n.tipNumbered),
+            (.text, "textformat", L10n.tipText),
         ]
 
-        for (tool, symbol) in tools {
+        for (tool, symbol, tip) in tools {
             let btn = ToolButton(
                 frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize),
                 symbolName: symbol,
                 normalColor: .white,
                 selectedColor: accentGreen
             )
+            btn.hoverTip = tip
             btn.target = self
             btn.action = #selector(toolTapped(_:))
             btn.tag = toolButtons.count
@@ -937,6 +980,19 @@ class ToolbarView: NSView {
             x += buttonSize + spacing
         }
 
+        // Color picker button (momentary — does not toggle a tool state)
+        let colorPickerBtn = ToolButton(
+            frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize),
+            symbolName: "eyedropper",
+            normalColor: .white,
+            selectedColor: .white
+        )
+        colorPickerBtn.hoverTip = L10n.tipColorPicker
+        colorPickerBtn.target = self
+        colorPickerBtn.action = #selector(colorPickerTapped)
+        addSubview(colorPickerBtn)
+        x += buttonSize + spacing
+
         // Undo button
         let undoBtn = ToolButton(
             frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize),
@@ -944,9 +1000,23 @@ class ToolbarView: NSView {
             normalColor: .white,
             selectedColor: .white
         )
+        undoBtn.hoverTip = L10n.tipUndo
         undoBtn.target = self
         undoBtn.action = #selector(undoTapped)
         addSubview(undoBtn)
+        x += buttonSize + spacing
+
+        // Redo button
+        let redoBtn = ToolButton(
+            frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize),
+            symbolName: "arrow.uturn.forward",
+            normalColor: .white,
+            selectedColor: .white
+        )
+        redoBtn.hoverTip = L10n.tipRedo
+        redoBtn.target = self
+        redoBtn.action = #selector(redoTapped)
+        addSubview(redoBtn)
         x += buttonSize + spacing
 
         // Move-selection drag handle. Press-and-drag this button to move
@@ -955,6 +1025,7 @@ class ToolbarView: NSView {
         let moveBtn = MoveSelectionDragHandle(
             frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize)
         )
+        moveBtn.hoverTip = L10n.tipMoveSelection
         moveBtn.onDragStart = { [weak self] in self?.onMoveSelectionStart?() }
         moveBtn.onDrag = { [weak self] delta in self?.onMoveSelectionDrag?(delta) }
         moveBtn.onDragEnd = { [weak self] in self?.onMoveSelectionEnd?() }
@@ -968,6 +1039,7 @@ class ToolbarView: NSView {
             normalColor: .white,
             selectedColor: accentGreen
         )
+        scrollBtn.hoverTip = L10n.tipScrollCapture
         scrollBtn.target = self
         scrollBtn.action = #selector(scrollCaptureTapped)
         addSubview(scrollBtn)
@@ -981,6 +1053,7 @@ class ToolbarView: NSView {
             normalColor: .white,
             selectedColor: accentGreen
         )
+        beautifyBtn.hoverTip = L10n.tipBeautify
         beautifyBtn.target = self
         beautifyBtn.action = #selector(beautifyTapped)
         addSubview(beautifyBtn)
@@ -994,6 +1067,7 @@ class ToolbarView: NSView {
             normalColor: .white,
             selectedColor: .white
         )
+        saveBtn.hoverTip = L10n.tipSave
         saveBtn.target = self
         saveBtn.action = #selector(saveTapped)
         addSubview(saveBtn)
@@ -1006,6 +1080,7 @@ class ToolbarView: NSView {
             normalColor: .white,
             selectedColor: .white
         )
+        pinBtn.hoverTip = L10n.tipPin
         pinBtn.target = self
         pinBtn.action = #selector(pinTapped)
         addSubview(pinBtn)
@@ -1018,6 +1093,7 @@ class ToolbarView: NSView {
             normalColor: NSColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0),
             selectedColor: NSColor(red: 1.0, green: 0.35, blue: 0.35, alpha: 1.0)
         )
+        closeBtn.hoverTip = L10n.tipCancel
         closeBtn.target = self
         closeBtn.action = #selector(closeTapped)
         addSubview(closeBtn)
@@ -1030,6 +1106,7 @@ class ToolbarView: NSView {
             normalColor: accentGreen,
             selectedColor: accentGreen
         )
+        confirmBtn.hoverTip = L10n.tipConfirm
         confirmBtn.target = self
         confirmBtn.action = #selector(confirmTapped)
         addSubview(confirmBtn)
@@ -1055,6 +1132,8 @@ class ToolbarView: NSView {
     }
 
     @objc private func undoTapped() { onUndo?() }
+    @objc private func redoTapped() { onRedo?() }
+    @objc private func colorPickerTapped() { onColorPicker?() }
     @objc private func scrollCaptureTapped() { onScrollCapture?() }
     @objc private func beautifyTapped() { onBeautify?() }
     @objc private func saveTapped() { onSave?() }
@@ -1082,8 +1161,12 @@ class ToolButton: NSButton {
         didSet { needsDisplay = true }
     }
 
+    /// Text shown by the dark hover tooltip. nil = no tip.
+    var hoverTip: String?
+
     private let normalColor: NSColor
     private let selectedColor: NSColor
+    private var hoverTrackingArea: NSTrackingArea?
 
     init(frame: NSRect, symbolName: String, normalColor: NSColor, selectedColor: NSColor) {
         self.normalColor = normalColor
@@ -1109,6 +1192,44 @@ class ToolButton: NSButton {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = hoverTrackingArea {
+            removeTrackingArea(area)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        guard let tip = hoverTip, let window else { return }
+        let frameInWindow = convert(bounds, to: nil)
+        let frameOnScreen = window.convertToScreen(frameInWindow)
+        ToolTipWindow.show(text: tip, anchor: frameOnScreen)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        ToolTipWindow.hide()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        ToolTipWindow.hide()
+        super.mouseDown(with: event)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { ToolTipWindow.hide() }
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         if isSelected {
             contentTintColor = selectedColor
@@ -1133,11 +1254,13 @@ final class MoveSelectionDragHandle: NSView {
     var onDragStart: (() -> Void)?
     var onDrag: ((CGSize) -> Void)?
     var onDragEnd: (() -> Void)?
+    var hoverTip: String?
 
     private var pressStartLocation: NSPoint?
     private var isPressed: Bool = false {
         didSet { needsDisplay = true }
     }
+    private var hoverTrackingArea: NSTrackingArea?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -1156,7 +1279,41 @@ final class MoveSelectionDragHandle: NSView {
         addCursorRect(bounds, cursor: NSCursor.openHand)
     }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = hoverTrackingArea {
+            removeTrackingArea(area)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        guard let tip = hoverTip, let window else { return }
+        let frameInWindow = convert(bounds, to: nil)
+        let frameOnScreen = window.convertToScreen(frameInWindow)
+        ToolTipWindow.show(text: tip, anchor: frameOnScreen)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        ToolTipWindow.hide()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { ToolTipWindow.hide() }
+    }
+
     override func mouseDown(with event: NSEvent) {
+        ToolTipWindow.hide()
         pressStartLocation = event.locationInWindow
         isPressed = true
         NSCursor.closedHand.set()
