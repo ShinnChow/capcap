@@ -982,8 +982,7 @@ class EditCanvasView: NSView {
         buffer?.append(point)
     }
 
-    /// Topmost annotation under `point` that the user can grab. Mosaic is
-    /// excluded — it's treated as "pasted on" once placed.
+    /// Topmost annotation under `point` that the user can grab.
     private func hitTestAnnotation(at point: NSPoint) -> Int? {
         for i in annotations.indices.reversed() {
             if annotations[i].containsPoint(point) {
