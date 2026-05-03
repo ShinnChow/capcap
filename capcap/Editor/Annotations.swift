@@ -275,9 +275,16 @@ struct MosaicAnnotation: Annotation {
         pixelatedImage.draw(in: rect)
     }
 
-    // Mosaic is treated as "pasted on" — once placed it can't be dragged.
-    func containsPoint(_ point: NSPoint) -> Bool { false }
-    func translated(by delta: NSPoint) -> Annotation { self }
+    func containsPoint(_ point: NSPoint) -> Bool {
+        rect.contains(point)
+    }
+
+    func translated(by delta: NSPoint) -> Annotation {
+        MosaicAnnotation(
+            rect: rect.offsetBy(dx: delta.x, dy: delta.y),
+            pixelatedImage: pixelatedImage
+        )
+    }
 }
 
 // MARK: - Rectangle Annotation
