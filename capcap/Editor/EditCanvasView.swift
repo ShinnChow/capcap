@@ -17,6 +17,9 @@ class EditCanvasView: NSView {
     var captureRect: CGRect?
     var captureScreen: NSScreen?
     var preSnapshot: CGImage?
+    /// When set (image-edit mode), this image is the source-of-truth base
+    /// instead of preSnapshot/live capture.
+    var overrideBaseImage: NSImage?
     var activeTool: EditTool = .none {
         didSet {
             if oldValue == .text, activeTool != .text {
@@ -750,7 +753,7 @@ class EditCanvasView: NSView {
             didClip = false
         }
 
-        if let image = previewImage ?? externalBaseImage {
+        if let image = previewImage ?? externalBaseImage ?? overrideBaseImage {
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
@@ -944,6 +947,10 @@ class EditCanvasView: NSView {
     func resolveBaseImageForEditing() -> NSImage? {
         if let previewImage {
             return previewImage
+        }
+
+        if let overrideBaseImage {
+            return overrideBaseImage
         }
 
         if let snapshot = preSnapshot, let rect = captureRect, let screen = captureScreen {
