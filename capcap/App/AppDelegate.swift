@@ -28,14 +28,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func initializeApp() {
+        ImageEditLauncher.clearTempDir()
+
         statusBarController = StatusBarController(
-            onTakeScreenshot: { [weak self] in self?.startCapture() },
+            onTakeScreenshot: { [weak self] in self?.handleTrigger() },
             onOpenSettings: { [weak self] in self?.openSettings() }
         )
         statusBarController.setMenuBarVisible(Defaults.showMenuBar)
 
         keyMonitor = KeyMonitor { [weak self] in
-            self?.startCapture()
+            self?.handleTrigger()
         }
 
         NotificationCenter.default.addObserver(
@@ -56,7 +58,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         if Defaults.hasCustomScreenshotHotkey {
             HotkeyManager.shared.register { [weak self] in
-                self?.startCapture()
+                self?.handleTrigger()
             }
             keyMonitor?.isEnabled = false
         } else {
@@ -65,17 +67,42 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
+    func handleTrigger() {
+        guard overlayController == nil else { return }
+
+        // Image-edit shortcut: if Finder has exactly one image selected, edit
+        // that file directly. Any failure (no permission, load error, no
+        // selection) falls through to the normal screenshot flow.
+        if let url = FinderSelection.currentImageFileURL(),
+           let controller = ImageEditLauncher.launch(
+               sourceURL: url,
+               onComplete: { [weak self] finalImage in
+                   self?.handleEditCompletion(finalImage)
+               }
+           )
+        {
+            overlayController = controller
+            return
+        }
+
+        startCapture()
+    }
+
     func startCapture() {
         guard overlayController == nil else { return }
         overlayController = OverlayWindowController { [weak self] finalImage in
-            if let finalImage = finalImage {
-                ClipboardManager.copyToClipboard(image: finalImage)
-                HistoryManager.shared.add(image: finalImage)
-                ToastWindow.show()
-            }
-            self?.overlayController = nil
+            self?.handleEditCompletion(finalImage)
         }
         overlayController?.activate()
+    }
+
+    private func handleEditCompletion(_ finalImage: NSImage?) {
+        if let finalImage = finalImage {
+            ClipboardManager.copyToClipboard(image: finalImage)
+            HistoryManager.shared.add(image: finalImage)
+            ToastWindow.show()
+        }
+        overlayController = nil
     }
 
     private func openSettings() {

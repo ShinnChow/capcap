@@ -22,6 +22,11 @@ class EditWindowController {
     // Pre-captured screen snapshot (preserves transient menus/popups)
     private let preSnapshot: CGImage?
 
+    /// Image-edit mode: when set, this image replaces the screen-capture
+    /// pipeline as the editor's base image (no live capture, no preSnapshot
+    /// crop). Also disables scroll capture, which is a screen-only concept.
+    private let overrideBaseImage: NSImage?
+
     // Scroll capture state
     private var scrollCapturer: ScrollCapturer?
     private var isScrollCapturing = false
@@ -50,6 +55,7 @@ class EditWindowController {
         selectionViewRect: NSRect,
         hostSelectionView: SelectionView,
         preSnapshot: CGImage? = nil,
+        overrideBaseImage: NSImage? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.captureRect = captureRect
@@ -58,6 +64,7 @@ class EditWindowController {
         self.selectionViewRect = selectionViewRect
         self.hostSelectionView = hostSelectionView
         self.preSnapshot = preSnapshot
+        self.overrideBaseImage = overrideBaseImage
         self.onComplete = onComplete
     }
 
@@ -80,6 +87,7 @@ class EditWindowController {
         canvas.captureRect = captureRect
         canvas.captureScreen = screen
         canvas.preSnapshot = preSnapshot
+        canvas.overrideBaseImage = overrideBaseImage
         canvas.autoresizingMask = []
         canvas.onAnnotationSelected = { [weak self] annotation in
             self?.handleAnnotationSelectionChanged(annotation)
@@ -132,6 +140,10 @@ class EditWindowController {
         styleFloatingHUD(tv)
         self.toolbarView = tv
         hostSelectionView.addSubview(tv)
+
+        if overrideBaseImage != nil {
+            tv.setScrollCaptureEnabled(false)
+        }
     }
 
     func updateLayout(selectionRect: NSRect, selectionViewRect: NSRect, captureRect: CGRect) {
@@ -642,6 +654,9 @@ class EditWindowController {
     // MARK: - Scroll Capture
 
     private func toggleScrollCapture() {
+        // Scroll capture only makes sense for live screen content; in
+        // image-edit mode there's nothing to scroll.
+        if overrideBaseImage != nil { return }
         if isScrollCapturing {
             stopScrollCapture()
         } else {
@@ -839,6 +854,8 @@ class EditWindowController {
         let fallbackBaseImage: NSImage?
         if canvasView?.hasPreviewImage == true {
             fallbackBaseImage = nil
+        } else if let overrideBaseImage {
+            fallbackBaseImage = overrideBaseImage
         } else if let snapshot = preSnapshot {
             fallbackBaseImage = ScreenCapturer.crop(from: snapshot, captureRect: captureRect, screen: screen)
         } else {
@@ -1284,6 +1301,11 @@ class ToolbarView: NSView {
 
     func setScrollCaptureActive(_ active: Bool) {
         scrollCaptureBtn?.isSelected = active
+    }
+
+    func setScrollCaptureEnabled(_ enabled: Bool) {
+        scrollCaptureBtn?.isEnabled = enabled
+        scrollCaptureBtn?.alphaValue = enabled ? 1.0 : 0.35
     }
 
     func setBeautifyActive(_ active: Bool) {

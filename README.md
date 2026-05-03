@@ -2,12 +2,13 @@
 
 [中文说明](README.zh-CN.md)
 
-capcap is a lightweight, native macOS screenshot tool that lives in your menu bar. Trigger it with a double-tap of `⌘ Command` or a custom shortcut, select a region or click a window, then annotate, beautify, copy, save, or pin the result.
+capcap is a lightweight, native macOS screenshot tool that lives in your menu bar. Trigger it with a double-tap of `⌘ Command` or a custom shortcut, select a region or click a window, then annotate, beautify, copy, save, or pin the result. The same shortcut also opens any image file currently selected in Finder straight into the editor — no screenshot needed.
 
 Built with pure AppKit + ScreenCaptureKit and Swift Package Manager. No SwiftUI, storyboards, XIBs, or third-party dependencies.
 
 ## Features
 
+- **Edit any image directly** — select a single image file in Finder (Desktop or any window) and trigger the screenshot shortcut to open that image in the annotation editor instead of taking a screenshot. The original file is never modified; the edited result goes to the clipboard and history like a normal capture.
 - **Fast region and window capture** — drag any area, or hover and click a detected window to snap to its bounds.
 - **Multi-display support** — creates overlays on every connected screen and captures at full Retina resolution.
 - **Full annotation editor** — rectangle, ellipse, arrow, pen, highlighter, mosaic, numbered callouts, and text.
@@ -27,6 +28,7 @@ Built with pure AppKit + ScreenCaptureKit and Swift Package Manager. No SwiftUI,
 - macOS 14.0+
 - Accessibility permission, used for the default double-tap `⌘` trigger
 - Screen Recording permission, used by ScreenCaptureKit and screenshot capture
+- Automation permission for Finder, requested on first use of the "edit selected image" shortcut
 
 On first launch, capcap opens a setup window that shows both permission states. The app can launch once both required permissions are granted.
 
@@ -70,6 +72,8 @@ The app bundle is output to `build/capcap.app`; DMGs are output to `dist/`.
 2. Hover a window and click to capture it, or drag to select any region.
 3. Use the floating toolbar to annotate, pick a color, start scroll capture, beautify, save, pin, cancel, or confirm.
 4. Click the green checkmark or press `Enter` to copy the final image to the clipboard. Press `Esc` or click `x` to cancel.
+
+To edit an existing image instead of taking a screenshot, click a single image file in Finder (so it's the current Finder selection), then trigger the same shortcut. capcap copies the file into a temporary working location and opens it in the editor with the toolbar already up. If anything other than exactly one image is selected, the shortcut behaves as a normal screenshot trigger.
 
 ## Editor Tools
 

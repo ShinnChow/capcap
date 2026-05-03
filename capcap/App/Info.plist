@@ -30,5 +30,7 @@
 	<string>NSApplication</string>
 	<key>NSScreenCaptureUsageDescription</key>
 	<string>capcap needs screen recording access to capture screenshots.</string>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>capcap reads the current Finder selection so a double-tap can edit the selected image directly.</string>
 </dict>
 </plist>

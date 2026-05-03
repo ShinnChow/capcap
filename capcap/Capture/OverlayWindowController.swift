@@ -18,7 +18,18 @@ class OverlayWindowController {
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
     private let onComplete: (NSImage?) -> Void
 
+    /// Image-edit mode: when set, `activate()` skips the user's drag-to-select
+    /// step and immediately opens the editor on the supplied image, sized to
+    /// fit the screen with margins.
+    private let presetImage: NSImage?
+
     init(onComplete: @escaping (NSImage?) -> Void) {
+        self.presetImage = nil
+        self.onComplete = onComplete
+    }
+
+    init(presetImage: NSImage, onComplete: @escaping (NSImage?) -> Void) {
+        self.presetImage = presetImage
         self.onComplete = onComplete
     }
 
@@ -115,7 +126,47 @@ class OverlayWindowController {
             }
         }
 
-        NSCursor.crosshair.push()
+        if presetImage == nil {
+            NSCursor.crosshair.push()
+        } else {
+            // Skip cursor push so tearDown's pop doesn't strip an unrelated cursor.
+            cursorPopped = true
+            // The chip is a "drag to select" hint — irrelevant in image-edit mode.
+            chipWindow?.dismiss()
+            chipWindow = nil
+            enterPresetSelection()
+        }
+    }
+
+    /// Image-edit mode: pick the screen under the cursor, place a centered
+    /// selection sized to the supplied image, lock interaction, and hand off
+    /// to the editor.
+    private func enterPresetSelection() {
+        guard let presetImage else { return }
+        let cursorPoint = NSEvent.mouseLocation
+        let targetScreen = NSScreen.screens.first(where: { $0.frame.contains(cursorPoint) })
+            ?? NSScreen.screens.first
+        guard let screen = targetScreen else { return }
+        guard let window = windows.first(where: { $0.screen == screen }),
+              let selectionView = window.contentView as? SelectionView else { return }
+
+        let imageSize = presetImage.size
+        let viewBounds = selectionView.bounds
+        let centeredOrigin = NSPoint(
+            x: (viewBounds.width - imageSize.width) / 2,
+            y: (viewBounds.height - imageSize.height) / 2
+        )
+        let viewRect = NSRect(origin: centeredOrigin, size: imageSize)
+
+        selectionView.updateSelectionRect(viewRect)
+        // Lock immediately so user can't drag/resize a fixed-image canvas.
+        selectionView.selectionLocked = true
+        selectionView.selectionInteractionEnabled = false
+
+        // Drive the same path as a real selection completion. The captureRect
+        // is irrelevant because the editor uses overrideBaseImage, but we
+        // pass a sensible value derived from the selection rect.
+        selectionDidComplete(rect: viewRect, inView: selectionView)
     }
 
     func cancel() {
@@ -199,9 +250,12 @@ extension OverlayWindowController: SelectionViewDelegate {
                 existingWindow.orderOut(nil)
             }
 
-            // Pop the crosshair cursor pushed during activate()
-            NSCursor.pop()
-            cursorPopped = true
+            // Pop the crosshair cursor pushed during activate(). In image-edit
+            // (preset) mode we never pushed one, so the flag handles that.
+            if !cursorPopped {
+                NSCursor.pop()
+                cursorPopped = true
+            }
 
             // First time selection complete — show editor
             let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
@@ -213,7 +267,8 @@ extension OverlayWindowController: SelectionViewDelegate {
                 selectionRect: screenRect,
                 selectionViewRect: rect,
                 hostSelectionView: selectionView,
-                preSnapshot: preSnapshot
+                preSnapshot: preSnapshot,
+                overrideBaseImage: presetImage
             ) { [weak self] finalImage in
                 self?.tearDown()
                 self?.onComplete(finalImage)
