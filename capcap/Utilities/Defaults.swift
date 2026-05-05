@@ -111,6 +111,12 @@ enum L10n {
 
     // Language
     static var languageHeader: String { lang == .zh ? "语言" : "Language" }
+
+    // Settings sidebar tabs
+    static var settingsTabGeneral: String { lang == .zh ? "通用" : "General" }
+    static var settingsTabShortcuts: String { lang == .zh ? "快捷键" : "Shortcuts" }
+    static var settingsTabPermissions: String { lang == .zh ? "权限" : "Permissions" }
+    static var settingsQuit: String { lang == .zh ? "退出应用" : "Quit App" }
 }
 
 struct Defaults {

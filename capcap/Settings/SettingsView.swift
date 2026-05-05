@@ -1,6 +1,38 @@
 import AppKit
 import Carbon
 
+// MARK: - Tab model
+
+enum SettingsTab: CaseIterable {
+    case general
+    case shortcuts
+    case permissions
+
+    var title: String {
+        switch self {
+        case .general: return L10n.settingsTabGeneral
+        case .shortcuts: return L10n.settingsTabShortcuts
+        case .permissions: return L10n.settingsTabPermissions
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .general: return "gearshape.fill"
+        case .shortcuts: return "keyboard"
+        case .permissions: return "lock.shield.fill"
+        }
+    }
+
+    var iconTint: NSColor {
+        switch self {
+        case .general: return NSColor(calibratedRed: 0.62, green: 0.66, blue: 0.72, alpha: 1.0)
+        case .shortcuts: return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
+        case .permissions: return NSColor(calibratedRed: 0.36, green: 0.78, blue: 0.50, alpha: 1.0)
+        }
+    }
+}
+
 class SettingsView: NSView {
 
     var isStartup: Bool = false
@@ -29,10 +61,9 @@ class SettingsView: NSView {
     private var accessibilityBadge: StatusBadge!
     private var screenRecordingBadge: StatusBadge!
 
-    // Launch button
+    // Launch button (footer of detail pane, only in startup mode)
     private var launchButton: NSButton?
     private var launchButtonContainer: NSView?
-    private var launchSpacer: NSView?
 
     // Labels (kept for language switching)
     private var menuBarTitleLabel: NSTextField!
@@ -42,11 +73,19 @@ class SettingsView: NSView {
     private var langTitleLabel: NSTextField!
     private var historyCacheTitleLabel: NSTextField!
     private var historyCacheHintLabel: NSTextField!
-    private var permHeaderLabel: NSTextField!
+    private var permHeaderSubtitleLabel: NSTextField?
     private var accessibilityNameLabel: NSTextField!
     private var accessibilityDescLabel: NSTextField!
     private var screenRecordingNameLabel: NSTextField!
     private var screenRecordingDescLabel: NSTextField!
+
+    // Sidebar / detail chrome
+    private var selectedTab: SettingsTab = .general
+    private var tabButtons: [TabButton] = []
+    private var detailTitleLabel: NSTextField!
+    private var detailScrollView: NSScrollView!
+    private var paneContainer: NSView!
+    private var paneViews: [SettingsTab: NSView] = [:]
 
     private var refreshTimer: Timer?
     private var gradientLayer: CAGradientLayer?
@@ -100,33 +139,173 @@ class SettingsView: NSView {
     // MARK: - Layout
 
     private func setupUI() {
-        let scrollView = NSScrollView()
-        scrollView.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.drawsBackground = false
-        scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
-        scrollView.autohidesScrollers = true
-        scrollView.verticalScrollElasticity = .allowed
-        addSubview(scrollView)
+        let sidebar = buildSidebar()
+        addSubview(sidebar)
 
-        let stack = FlippedStackView()
-        stack.orientation = .vertical
-        stack.alignment = .leading
-        stack.spacing = 12
-        stack.edgeInsets = NSEdgeInsets(top: 44, left: 20, bottom: 20, right: 20)
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        scrollView.documentView = stack
+        let detail = buildDetailPanel()
+        addSubview(detail)
 
         NSLayoutConstraint.activate([
-            scrollView.topAnchor.constraint(equalTo: topAnchor),
-            scrollView.leadingAnchor.constraint(equalTo: leadingAnchor),
-            scrollView.trailingAnchor.constraint(equalTo: trailingAnchor),
-            scrollView.bottomAnchor.constraint(equalTo: bottomAnchor),
-            stack.widthAnchor.constraint(equalTo: scrollView.contentView.widthAnchor),
-            stack.topAnchor.constraint(equalTo: scrollView.contentView.topAnchor),
+            sidebar.topAnchor.constraint(equalTo: topAnchor, constant: 38),
+            sidebar.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
+            sidebar.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            sidebar.widthAnchor.constraint(equalToConstant: 224),
+
+            detail.topAnchor.constraint(equalTo: topAnchor, constant: 38),
+            detail.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
+            detail.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor, constant: 12),
+            detail.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
         ])
 
-        // Language card (top)
+        // Build all panes
+        paneViews[.general] = buildGeneralPane()
+        paneViews[.shortcuts] = buildShortcutsPane()
+        paneViews[.permissions] = buildPermissionsPane()
+
+        // Default selection
+        let initial: SettingsTab = isStartup ? .permissions : .general
+        selectTab(initial)
+
+        updateLaunchButtonVisibility()
+        refreshPermissionStatus()
+        refreshShortcutDisplay()
+    }
+
+    // MARK: - Sidebar
+
+    private func buildSidebar() -> NSView {
+        let panel = SidebarPanel()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 6
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(stack)
+
+        for tab in SettingsTab.allCases {
+            let btn = TabButton(tab: tab)
+            btn.target = self
+            btn.action = #selector(tabClicked(_:))
+            btn.translatesAutoresizingMaskIntoConstraints = false
+            tabButtons.append(btn)
+            stack.addArrangedSubview(btn)
+            btn.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: panel.topAnchor, constant: 14),
+            stack.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 14),
+            stack.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -14),
+        ])
+
+        return panel
+    }
+
+    @objc private func tabClicked(_ sender: TabButton) {
+        selectTab(sender.tab)
+    }
+
+    private func selectTab(_ tab: SettingsTab) {
+        selectedTab = tab
+        for btn in tabButtons {
+            btn.isSelected = (btn.tab == tab)
+        }
+        detailTitleLabel?.stringValue = tab.title
+
+        // Swap pane content
+        guard let pane = paneViews[tab] else { return }
+        for sub in paneContainer.subviews { sub.removeFromSuperview() }
+        pane.translatesAutoresizingMaskIntoConstraints = false
+        paneContainer.addSubview(pane)
+        NSLayoutConstraint.activate([
+            pane.topAnchor.constraint(equalTo: paneContainer.topAnchor),
+            pane.leadingAnchor.constraint(equalTo: paneContainer.leadingAnchor),
+            pane.trailingAnchor.constraint(equalTo: paneContainer.trailingAnchor),
+            pane.bottomAnchor.constraint(equalTo: paneContainer.bottomAnchor),
+        ])
+    }
+
+    // MARK: - Detail panel
+
+    private func buildDetailPanel() -> NSView {
+        let panel = DetailPanel()
+        panel.translatesAutoresizingMaskIntoConstraints = false
+
+        // Title
+        let title = NSTextField(labelWithString: SettingsTab.general.title)
+        title.font = NSFont.systemFont(ofSize: 20, weight: .bold)
+        title.textColor = NSColor.white.withAlphaComponent(0.96)
+        title.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(title)
+        detailTitleLabel = title
+
+        // Scroll view holding the active pane
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.drawsBackground = false
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.autohidesScrollers = true
+        scroll.verticalScrollElasticity = .allowed
+        panel.addSubview(scroll)
+        detailScrollView = scroll
+
+        let container = FlippedView()
+        container.translatesAutoresizingMaskIntoConstraints = false
+        scroll.documentView = container
+        paneContainer = container
+
+        // Footer: launch button (only visible in startup mode)
+        let footer = NSView()
+        footer.translatesAutoresizingMaskIntoConstraints = false
+        panel.addSubview(footer)
+        launchButtonContainer = footer
+
+        let btn = NSButton(title: L10n.launchApp, target: self, action: #selector(launchClicked))
+        btn.bezelStyle = .rounded
+        btn.controlSize = .large
+        btn.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        btn.keyEquivalent = "\r"
+        btn.translatesAutoresizingMaskIntoConstraints = false
+        footer.addSubview(btn)
+        launchButton = btn
+
+        NSLayoutConstraint.activate([
+            title.topAnchor.constraint(equalTo: panel.topAnchor, constant: 18),
+            title.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 22),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: panel.trailingAnchor, constant: -22),
+
+            scroll.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 10),
+            scroll.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
+            scroll.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
+            scroll.bottomAnchor.constraint(equalTo: footer.topAnchor),
+
+            container.topAnchor.constraint(equalTo: scroll.contentView.topAnchor),
+            container.leadingAnchor.constraint(equalTo: scroll.contentView.leadingAnchor),
+            container.trailingAnchor.constraint(equalTo: scroll.contentView.trailingAnchor),
+            container.widthAnchor.constraint(equalTo: scroll.contentView.widthAnchor),
+
+            footer.leadingAnchor.constraint(equalTo: panel.leadingAnchor),
+            footer.trailingAnchor.constraint(equalTo: panel.trailingAnchor),
+            footer.bottomAnchor.constraint(equalTo: panel.bottomAnchor),
+
+            btn.centerXAnchor.constraint(equalTo: footer.centerXAnchor),
+            btn.topAnchor.constraint(equalTo: footer.topAnchor, constant: 10),
+            btn.bottomAnchor.constraint(equalTo: footer.bottomAnchor, constant: -16),
+            btn.widthAnchor.constraint(greaterThanOrEqualToConstant: 200),
+        ])
+
+        return panel
+    }
+
+    // MARK: - Pane builders
+
+    private func buildGeneralPane() -> NSView {
+        let stack = paneStack()
+
+        // Language card
         let langCard = CardView()
         let langRow = NSStackView()
         langRow.orientation = .horizontal
@@ -150,13 +329,13 @@ class SettingsView: NSView {
         langRow.addArrangedSubview(langPicker)
 
         stack.addArrangedSubview(langCard)
-        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // General card (three toggle rows)
-        let generalCard = CardView()
-        let generalInner = verticalInnerStack()
-        generalCard.addSubview(generalInner)
-        pin(generalInner, to: generalCard, insets: NSEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
+        // Toggles card
+        let togglesCard = CardView()
+        let togglesInner = verticalInnerStack()
+        togglesCard.addSubview(togglesInner)
+        pin(togglesInner, to: togglesCard, insets: NSEdgeInsets(top: 6, left: 14, bottom: 6, right: 14))
 
         let menuBar = makeToggleRow(
             title: L10n.showMenuBarIcon,
@@ -166,8 +345,9 @@ class SettingsView: NSView {
         )
         menuBarTitleLabel = menuBar.title
         menuBarSwitch = menuBar.toggle
-        generalInner.addArrangedSubview(menuBar.row)
-        generalInner.addArrangedSubview(rowDivider())
+        togglesInner.addArrangedSubview(menuBar.row)
+        menuBar.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
+        togglesInner.addArrangedSubview(rowDivider())
 
         let login = makeToggleRow(
             title: L10n.launchAtLogin,
@@ -177,8 +357,9 @@ class SettingsView: NSView {
         )
         launchAtLoginTitleLabel = login.title
         launchAtLoginSwitch = login.toggle
-        generalInner.addArrangedSubview(login.row)
-        generalInner.addArrangedSubview(rowDivider())
+        togglesInner.addArrangedSubview(login.row)
+        login.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
+        togglesInner.addArrangedSubview(rowDivider())
 
         let demo = makeToggleRow(
             title: L10n.demoMode,
@@ -189,10 +370,17 @@ class SettingsView: NSView {
         demoModeTitleLabel = demo.title
         demoModeSubtitleLabel = demo.subtitle
         demoModeSwitch = demo.toggle
-        generalInner.addArrangedSubview(demo.row)
+        togglesInner.addArrangedSubview(demo.row)
+        demo.row.widthAnchor.constraint(equalTo: togglesInner.widthAnchor).isActive = true
 
-        stack.addArrangedSubview(generalCard)
-        generalCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+        stack.addArrangedSubview(togglesCard)
+        togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        return wrapPane(stack)
+    }
+
+    private func buildShortcutsPane() -> NSView {
+        let stack = paneStack()
 
         // Shortcut card
         let shortcutCard = CardView()
@@ -267,9 +455,7 @@ class SettingsView: NSView {
         shortcutHintLabel.widthAnchor.constraint(equalTo: shortcutInner.widthAnchor).isActive = true
 
         stack.addArrangedSubview(shortcutCard)
-        shortcutCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
-
-        refreshShortcutDisplay()
+        shortcutCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // History cache card
         let historyCard = CardView()
@@ -319,27 +505,14 @@ class SettingsView: NSView {
         historyCacheHintLabel.widthAnchor.constraint(equalTo: historyInner.widthAnchor).isActive = true
 
         stack.addArrangedSubview(historyCard)
-        historyCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+        historyCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Permissions section header
-        permHeaderLabel = NSTextField(labelWithString: L10n.permissionsHeader)
-        permHeaderLabel.font = NSFont.systemFont(ofSize: 14, weight: .bold)
-        permHeaderLabel.textColor = NSColor.white.withAlphaComponent(0.94)
-        permHeaderLabel.translatesAutoresizingMaskIntoConstraints = false
-        let headerContainer = NSView()
-        headerContainer.translatesAutoresizingMaskIntoConstraints = false
-        headerContainer.addSubview(permHeaderLabel)
-        NSLayoutConstraint.activate([
-            permHeaderLabel.topAnchor.constraint(equalTo: headerContainer.topAnchor, constant: 6),
-            permHeaderLabel.bottomAnchor.constraint(equalTo: headerContainer.bottomAnchor),
-            permHeaderLabel.leadingAnchor.constraint(equalTo: headerContainer.leadingAnchor, constant: 2),
-            permHeaderLabel.trailingAnchor.constraint(lessThanOrEqualTo: headerContainer.trailingAnchor),
-        ])
-        stack.addArrangedSubview(headerContainer)
-        headerContainer.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
-        stack.setCustomSpacing(4, after: headerContainer)
+        return wrapPane(stack)
+    }
 
-        // Permissions card
+    private func buildPermissionsPane() -> NSView {
+        let stack = paneStack()
+
         let permCard = CardView()
         let permInner = verticalInnerStack()
         permCard.addSubview(permInner)
@@ -369,39 +542,31 @@ class SettingsView: NSView {
         sc.row.widthAnchor.constraint(equalTo: permInner.widthAnchor).isActive = true
 
         stack.addArrangedSubview(permCard)
-        permCard.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
+        permCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Spacer (only shown in startup mode to breathe before launch button)
-        let spacer = NSView()
-        spacer.translatesAutoresizingMaskIntoConstraints = false
-        spacer.heightAnchor.constraint(greaterThanOrEqualToConstant: 4).isActive = true
-        stack.addArrangedSubview(spacer)
-        launchSpacer = spacer
+        return wrapPane(stack)
+    }
 
-        // Launch button
-        let btn = NSButton(title: L10n.launchApp, target: self, action: #selector(launchClicked))
-        btn.bezelStyle = .rounded
-        btn.controlSize = .large
-        btn.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        btn.keyEquivalent = "\r"
-        btn.translatesAutoresizingMaskIntoConstraints = false
-        launchButton = btn
+    private func paneStack() -> NSStackView {
+        let s = NSStackView()
+        s.orientation = .vertical
+        s.alignment = .leading
+        s.spacing = 12
+        s.translatesAutoresizingMaskIntoConstraints = false
+        return s
+    }
 
-        let btnContainer = NSView()
-        btnContainer.translatesAutoresizingMaskIntoConstraints = false
-        btnContainer.addSubview(btn)
+    private func wrapPane(_ stack: NSStackView) -> NSView {
+        let host = NSView()
+        host.translatesAutoresizingMaskIntoConstraints = false
+        host.addSubview(stack)
         NSLayoutConstraint.activate([
-            btn.centerXAnchor.constraint(equalTo: btnContainer.centerXAnchor),
-            btn.topAnchor.constraint(equalTo: btnContainer.topAnchor, constant: 4),
-            btn.bottomAnchor.constraint(equalTo: btnContainer.bottomAnchor, constant: -4),
-            btn.widthAnchor.constraint(greaterThanOrEqualToConstant: 160),
+            stack.topAnchor.constraint(equalTo: host.topAnchor, constant: 4),
+            stack.leadingAnchor.constraint(equalTo: host.leadingAnchor, constant: 22),
+            stack.trailingAnchor.constraint(equalTo: host.trailingAnchor, constant: -22),
+            stack.bottomAnchor.constraint(equalTo: host.bottomAnchor, constant: -22),
         ])
-        stack.addArrangedSubview(btnContainer)
-        btnContainer.widthAnchor.constraint(equalTo: stack.widthAnchor, constant: -40).isActive = true
-        launchButtonContainer = btnContainer
-
-        updateLaunchButtonVisibility()
-        refreshPermissionStatus()
+        return host
     }
 
     // MARK: - Builders
@@ -444,7 +609,7 @@ class SettingsView: NSView {
         l.font = NSFont.systemFont(ofSize: 11)
         l.textColor = NSColor.white.withAlphaComponent(0.58)
         if wrapping {
-            l.preferredMaxLayoutWidth = 320
+            l.preferredMaxLayoutWidth = 360
         }
         return l
     }
@@ -580,13 +745,15 @@ class SettingsView: NSView {
 
     private func updateLaunchButtonVisibility() {
         let visible = isStartup
-        launchSpacer?.isHidden = !visible
         launchButtonContainer?.isHidden = !visible
     }
 
     func setStartupMode(_ startup: Bool) {
         isStartup = startup
         updateLaunchButtonVisibility()
+        if startup {
+            selectTab(.permissions)
+        }
     }
 
     // MARK: - Permission polling
@@ -772,7 +939,6 @@ class SettingsView: NSView {
         demoModeTitleLabel?.stringValue = L10n.demoMode
         demoModeSubtitleLabel?.stringValue = L10n.demoModeHint
         langTitleLabel?.stringValue = L10n.languageHeader
-        permHeaderLabel?.stringValue = L10n.permissionsHeader
         accessibilityNameLabel?.stringValue = L10n.accessibilityPermission
         accessibilityDescLabel?.stringValue = L10n.accessibilityDescription
         screenRecordingNameLabel?.stringValue = L10n.screenRecordingPermission
@@ -786,14 +952,212 @@ class SettingsView: NSView {
         launchButton?.title = L10n.launchApp
         accessibilityBadge?.refreshTitle()
         screenRecordingBadge?.refreshTitle()
+        for btn in tabButtons { btn.refreshTitle() }
+        detailTitleLabel?.stringValue = selectedTab.title
         window?.title = L10n.settingsTitle
     }
 }
 
-// MARK: - Flipped stack view (for top-aligned scrolling)
+// MARK: - Flipped view (top-aligned scroll content)
 
-private final class FlippedStackView: NSStackView {
+private final class FlippedView: NSView {
     override var isFlipped: Bool { true }
+}
+
+// MARK: - Sidebar / detail panels
+
+private final class SidebarPanel: NSView {
+    private var gradientLayer: CAGradientLayer?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        commonInit()
+    }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        commonInit()
+    }
+
+    private func commonInit() {
+        wantsLayer = true
+        layer?.cornerRadius = 22
+        layer?.cornerCurve = .continuous
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
+        layer?.borderWidth = 1
+
+        let g = CAGradientLayer()
+        g.colors = [
+            NSColor(calibratedRed: 0.11, green: 0.17, blue: 0.25, alpha: 1.0).cgColor,
+            NSColor(calibratedRed: 0.08, green: 0.12, blue: 0.18, alpha: 1.0).cgColor,
+        ]
+        g.startPoint = CGPoint(x: 0, y: 1)
+        g.endPoint = CGPoint(x: 1, y: 0)
+        g.cornerRadius = 22
+        layer?.insertSublayer(g, at: 0)
+        gradientLayer = g
+    }
+
+    override func layout() {
+        super.layout()
+        gradientLayer?.frame = bounds
+    }
+}
+
+private final class DetailPanel: NSView {
+    private var gradientLayer: CAGradientLayer?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        commonInit()
+    }
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        commonInit()
+    }
+
+    private func commonInit() {
+        wantsLayer = true
+        layer?.cornerRadius = 24
+        layer?.cornerCurve = .continuous
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        layer?.borderWidth = 1
+
+        let g = CAGradientLayer()
+        g.colors = [
+            NSColor(calibratedRed: 0.13, green: 0.14, blue: 0.17, alpha: 1.0).cgColor,
+            NSColor(calibratedRed: 0.10, green: 0.11, blue: 0.13, alpha: 1.0).cgColor,
+        ]
+        g.startPoint = CGPoint(x: 0, y: 1)
+        g.endPoint = CGPoint(x: 1, y: 0)
+        g.cornerRadius = 24
+        layer?.insertSublayer(g, at: 0)
+        gradientLayer = g
+    }
+
+    override func layout() {
+        super.layout()
+        gradientLayer?.frame = bounds
+    }
+}
+
+// MARK: - Sidebar tab button
+
+private final class TabButton: NSControl {
+    let tab: SettingsTab
+    private let iconChip = NSView()
+    private let iconView = NSImageView()
+    private let label = NSTextField(labelWithString: "")
+    private var trackingArea: NSTrackingArea?
+
+    var isSelected: Bool = false {
+        didSet { applyAppearance() }
+    }
+
+    init(tab: SettingsTab) {
+        self.tab = tab
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.cornerCurve = .continuous
+
+        iconChip.translatesAutoresizingMaskIntoConstraints = false
+        iconChip.wantsLayer = true
+        iconChip.layer?.cornerRadius = 8
+        iconChip.layer?.cornerCurve = .continuous
+        iconChip.layer?.borderWidth = 1
+        addSubview(iconChip)
+
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.image = NSImage(systemSymbolName: tab.iconName, accessibilityDescription: nil)
+        iconView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 13, weight: .semibold)
+        iconView.imageScaling = .scaleProportionallyDown
+        iconChip.addSubview(iconView)
+
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.font = NSFont.systemFont(ofSize: 14, weight: .semibold)
+        label.stringValue = tab.title
+        addSubview(label)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(equalToConstant: 46),
+
+            iconChip.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 12),
+            iconChip.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconChip.widthAnchor.constraint(equalToConstant: 28),
+            iconChip.heightAnchor.constraint(equalToConstant: 28),
+
+            iconView.centerXAnchor.constraint(equalTo: iconChip.centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: iconChip.centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 16),
+            iconView.heightAnchor.constraint(equalToConstant: 16),
+
+            label.leadingAnchor.constraint(equalTo: iconChip.trailingAnchor, constant: 12),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            label.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor, constant: -12),
+        ])
+
+        applyAppearance()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func refreshTitle() {
+        label.stringValue = tab.title
+    }
+
+    private func applyAppearance() {
+        if isSelected {
+            layer?.backgroundColor = NSColor(calibratedRed: 0.22, green: 0.40, blue: 0.85, alpha: 1.0).cgColor
+            layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
+            layer?.borderWidth = 1
+            label.textColor = .white
+            iconChip.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.22).cgColor
+            iconChip.layer?.borderColor = NSColor.white.withAlphaComponent(0.30).cgColor
+            iconView.contentTintColor = .white
+        } else {
+            layer?.backgroundColor = NSColor.clear.cgColor
+            layer?.borderWidth = 0
+            label.textColor = NSColor.white.withAlphaComponent(0.82)
+            iconChip.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
+            iconChip.layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
+            iconView.contentTintColor = tab.iconTint
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let existing = trackingArea {
+            removeTrackingArea(existing)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        trackingArea = area
+        addTrackingArea(area)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        if !isSelected {
+            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
+        }
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        if !isSelected {
+            layer?.backgroundColor = NSColor.clear.cgColor
+        }
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        sendAction(action, to: target)
+    }
+
+    override var acceptsFirstResponder: Bool { true }
 }
 
 // MARK: - Card view
