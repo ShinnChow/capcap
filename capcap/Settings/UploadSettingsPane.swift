@@ -450,7 +450,6 @@ private final class ProviderCard: NSView {
     @objc private func switchToggled() {
         let on = enableSwitch.state == .on
         ProviderConfigStore.setEnabled(on, kind: kind)
-        setExpanded(on, animated: true)
         if on {
             runValidation()
         } else {
@@ -459,6 +458,38 @@ private final class ProviderCard: NSView {
             status = .untested
             logView.append(.info, L10n.uploadLogProviderDisabled)
         }
+    }
+
+    @objc private func toggleExpanded() {
+        setExpanded(!isExpanded, animated: true)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        toggleExpanded()
+    }
+
+    // Forward clicks on inert chrome (labels, spacers, status pill) to the card
+    // itself so any spot on the card toggles expansion. Real controls — the
+    // enable switch, enabled buttons, editable text fields, the log scroll area
+    // — keep their own click handling.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let result = super.hitTest(point)
+        if let result, isPassThrough(result) { return self }
+        return result
+    }
+
+    private func isPassThrough(_ view: NSView) -> Bool {
+        if view === self { return false }
+        var v: NSView? = view
+        while let cur = v, cur !== self {
+            if cur is NSSwitch { return false }
+            if let btn = cur as? NSButton, btn.isEnabled { return false }
+            if let tf = cur as? NSTextField, tf.isEditable { return false }
+            if cur is NSTextView { return false }
+            if cur is NSScrollView { return false }
+            v = cur.superview
+        }
+        return true
     }
 
     @objc private func saveTapped() {
