@@ -184,7 +184,7 @@ private final class ProviderCard: NSView {
     var onSetDefault: ((UploadProviderKind) -> Void)?
 
     private let fields: [ProviderField]
-    private var inputs: [String: NSTextField] = [:]
+    private var inputs: [String: any ProviderFieldInput] = [:]
     private let statusPill = StatusPill()
     private let logView = LogView()
     private let bodyContainer = ClippingView()
@@ -315,7 +315,9 @@ private final class ProviderCard: NSView {
             label.widthAnchor.constraint(equalToConstant: 144).isActive = true
             row.addArrangedSubview(label)
 
-            let input: NSTextField = f.secure ? PasteableSecureTextField() : PasteableTextField()
+            let input: any ProviderFieldInput = f.secure
+                ? RevealableSecureField()
+                : PasteableTextField()
             input.placeholderString = f.placeholder
             input.font = NSFont.systemFont(ofSize: 12)
             input.translatesAutoresizingMaskIntoConstraints = false
@@ -673,6 +675,126 @@ private final class LogView: NSView {
 /// bleed past the card's rounded corners during animation.
 private final class ClippingView: NSView {
     override var wantsDefaultClipping: Bool { true }
+}
+
+// MARK: - Provider field input
+
+/// Common surface for the row's input view so secret rows (with reveal toggle)
+/// and plain rows can both live in the same `inputs` map.
+private protocol ProviderFieldInput: NSView {
+    var stringValue: String { get set }
+    var placeholderString: String? { get set }
+    var font: NSFont? { get set }
+}
+
+extension NSTextField: ProviderFieldInput {}
+
+/// Secure input that shows a small eye button on the right; clicking it swaps
+/// to a plain field so the user can read back the value they typed.
+private final class RevealableSecureField: NSView, ProviderFieldInput, NSTextFieldDelegate {
+    private let secureField = PasteableSecureTextField()
+    private let plainField = PasteableTextField()
+    private let toggleButton = NSButton()
+    private var isRevealed = false
+
+    var stringValue: String {
+        get { (isRevealed ? plainField : secureField).stringValue }
+        set {
+            secureField.stringValue = newValue
+            plainField.stringValue = newValue
+        }
+    }
+
+    var placeholderString: String? {
+        get { secureField.placeholderString }
+        set {
+            secureField.placeholderString = newValue
+            plainField.placeholderString = newValue
+        }
+    }
+
+    var font: NSFont? {
+        get { secureField.font }
+        set {
+            secureField.font = newValue
+            plainField.font = newValue
+        }
+    }
+
+    init() {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+
+        for f in [secureField, plainField] {
+            f.translatesAutoresizingMaskIntoConstraints = false
+            f.delegate = self
+            addSubview(f)
+        }
+        plainField.isHidden = true
+
+        toggleButton.image = NSImage(systemSymbolName: "eye", accessibilityDescription: "Show secret")
+        toggleButton.imagePosition = .imageOnly
+        toggleButton.isBordered = false
+        toggleButton.bezelStyle = .accessoryBarAction
+        toggleButton.contentTintColor = NSColor.white.withAlphaComponent(0.55)
+        toggleButton.target = self
+        toggleButton.action = #selector(toggleReveal)
+        toggleButton.refusesFirstResponder = true
+        toggleButton.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(toggleButton)
+
+        NSLayoutConstraint.activate([
+            secureField.leadingAnchor.constraint(equalTo: leadingAnchor),
+            secureField.topAnchor.constraint(equalTo: topAnchor),
+            secureField.bottomAnchor.constraint(equalTo: bottomAnchor),
+            secureField.trailingAnchor.constraint(equalTo: toggleButton.leadingAnchor, constant: -6),
+
+            plainField.leadingAnchor.constraint(equalTo: secureField.leadingAnchor),
+            plainField.trailingAnchor.constraint(equalTo: secureField.trailingAnchor),
+            plainField.topAnchor.constraint(equalTo: secureField.topAnchor),
+            plainField.bottomAnchor.constraint(equalTo: secureField.bottomAnchor),
+
+            toggleButton.trailingAnchor.constraint(equalTo: trailingAnchor),
+            toggleButton.centerYAnchor.constraint(equalTo: centerYAnchor),
+            toggleButton.widthAnchor.constraint(equalToConstant: 22),
+            toggleButton.heightAnchor.constraint(equalToConstant: 18),
+        ])
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    @objc private func toggleReveal() {
+        isRevealed.toggle()
+        secureField.isHidden = isRevealed
+        plainField.isHidden = !isRevealed
+        let symbol = isRevealed ? "eye.slash" : "eye"
+        toggleButton.image = NSImage(
+            systemSymbolName: symbol,
+            accessibilityDescription: isRevealed ? "Hide secret" : "Show secret"
+        )
+
+        // If the user was editing the field, transfer focus + caret to the
+        // newly visible one so they can keep typing without re-clicking.
+        guard let win = window else { return }
+        let wasFirstResponder = (win.firstResponder as? NSText)?.delegate as? NSTextField === (isRevealed ? secureField : plainField)
+        if wasFirstResponder {
+            let target = isRevealed ? plainField : secureField
+            win.makeFirstResponder(target)
+            if let editor = target.currentEditor() {
+                editor.selectedRange = NSRange(location: target.stringValue.count, length: 0)
+            }
+        }
+    }
+
+    // Keep the two fields in sync so toggling at any moment shows the latest value.
+    func controlTextDidChange(_ obj: Notification) {
+        guard let src = obj.object as? NSTextField else { return }
+        if src === secureField {
+            plainField.stringValue = secureField.stringValue
+        } else if src === plainField {
+            secureField.stringValue = plainField.stringValue
+        }
+    }
 }
 
 // MARK: - Pasteable text fields
