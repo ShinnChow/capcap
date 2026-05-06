@@ -45,7 +45,9 @@ enum AliyunOSSUploader: UploaderProtocol {
         let date = AliyunPath.gmtDate()
         let contentType = "image/png"
         let resource = "/\(bucket)/\(key)"
-        let stringToSign = "PUT\n\n\(contentType)\n\(date)\n\(resource)"
+        let objectACL = "public-read"
+        let canonicalizedOSSHeaders = "x-oss-object-acl:\(objectACL)\n"
+        let stringToSign = "PUT\n\n\(contentType)\n\(date)\n\(canonicalizedOSSHeaders)\(resource)"
         let signature = UploadCrypto.base64(
             UploadCrypto.hmacSHA1(key: Data(secret.utf8), message: Data(stringToSign.utf8))
         )
@@ -57,6 +59,7 @@ enum AliyunOSSUploader: UploaderProtocol {
         req.setValue(contentType, forHTTPHeaderField: "Content-Type")
         req.setValue("\(data.count)", forHTTPHeaderField: "Content-Length")
         req.setValue(host, forHTTPHeaderField: "Host")
+        req.setValue(objectACL, forHTTPHeaderField: "x-oss-object-acl")
 
         let client = UploadHTTPClient()
         client.upload(request: req, body: data, progress: progress) { result in
