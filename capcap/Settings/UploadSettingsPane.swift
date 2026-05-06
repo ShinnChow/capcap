@@ -315,7 +315,7 @@ private final class ProviderCard: NSView {
             label.widthAnchor.constraint(equalToConstant: 144).isActive = true
             row.addArrangedSubview(label)
 
-            let input: NSTextField = f.secure ? NSSecureTextField() : NSTextField()
+            let input: NSTextField = f.secure ? PasteableSecureTextField() : PasteableTextField()
             input.placeholderString = f.placeholder
             input.font = NSFont.systemFont(ofSize: 12)
             input.translatesAutoresizingMaskIntoConstraints = false
@@ -673,4 +673,39 @@ private final class LogView: NSView {
 /// bleed past the card's rounded corners during animation.
 private final class ClippingView: NSView {
     override var wantsDefaultClipping: Bool { true }
+}
+
+// MARK: - Pasteable text fields
+
+// capcap is an LSUIElement app with no main menu, so the standard Edit-menu
+// key equivalents that normally route Cmd+X/C/V/A to the field editor never
+// fire. These subclasses handle the shortcuts directly via the responder chain.
+
+private func dispatchEditingShortcut(_ event: NSEvent) -> Bool {
+    guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command else {
+        return false
+    }
+    let action: Selector
+    switch event.charactersIgnoringModifiers {
+    case "x": action = #selector(NSText.cut(_:))
+    case "c": action = #selector(NSText.copy(_:))
+    case "v": action = #selector(NSText.paste(_:))
+    case "a": action = #selector(NSText.selectAll(_:))
+    default: return false
+    }
+    return NSApp.sendAction(action, to: nil, from: nil)
+}
+
+private final class PasteableTextField: NSTextField {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if dispatchEditingShortcut(event) { return true }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
+private final class PasteableSecureTextField: NSSecureTextField {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if dispatchEditingShortcut(event) { return true }
+        return super.performKeyEquivalent(with: event)
+    }
 }
