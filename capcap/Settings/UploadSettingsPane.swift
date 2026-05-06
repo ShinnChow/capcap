@@ -17,6 +17,12 @@ final class UploadSettingsPane: NSView {
             name: .uploadProvidersDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(onLanguageChanged),
+            name: .languageDidChange,
+            object: nil
+        )
     }
 
     required init?(coder: NSCoder) {
@@ -71,6 +77,12 @@ final class UploadSettingsPane: NSView {
         refreshDefaultIndicators()
     }
 
+    @objc private func onLanguageChanged() {
+        for (kind, card) in providerCards {
+            card.refreshLocalization(fields: Self.fields(for: kind))
+        }
+    }
+
     private func refreshDefaultIndicators() {
         let current = Defaults.defaultUploadProviderKind
         for kind in UploadProviderKind.allCases {
@@ -82,7 +94,7 @@ final class UploadSettingsPane: NSView {
         }
     }
 
-    private static func fields(for kind: UploadProviderKind) -> [ProviderField] {
+    fileprivate static func fields(for kind: UploadProviderKind) -> [ProviderField] {
         switch kind {
         case .tencent:
             return [
@@ -185,6 +197,10 @@ private final class ProviderCard: NSView {
 
     private let fields: [ProviderField]
     private var inputs: [String: any ProviderFieldInput] = [:]
+    private var fieldLabels: [String: NSTextField] = [:]
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let saveButton = NSButton(title: "", target: nil, action: nil)
+    private let clearButton = NSButton(title: "", target: nil, action: nil)
     private let statusPill = StatusPill()
     private let logView = LogView()
     private let bodyContainer = ClippingView()
@@ -259,10 +275,10 @@ private final class ProviderCard: NSView {
     }
 
     private func buildHeader() -> NSView {
-        let title = NSTextField(labelWithString: kind.displayName)
-        title.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        title.textColor = NSColor.white.withAlphaComponent(0.94)
-        title.translatesAutoresizingMaskIntoConstraints = false
+        titleLabel.stringValue = kind.displayName
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = NSColor.white.withAlphaComponent(0.94)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         defaultBadge.stringValue = L10n.uploadCurrentDefault
         defaultBadge.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
@@ -280,7 +296,7 @@ private final class ProviderCard: NSView {
         enableSwitch.action = #selector(switchToggled)
         enableSwitch.translatesAutoresizingMaskIntoConstraints = false
 
-        let header = NSStackView(views: [title, defaultBadge, spacer(), enableSwitch])
+        let header = NSStackView(views: [titleLabel, defaultBadge, spacer(), enableSwitch])
         header.orientation = .horizontal
         header.alignment = .centerY
         header.spacing = 8
@@ -314,6 +330,7 @@ private final class ProviderCard: NSView {
             label.translatesAutoresizingMaskIntoConstraints = false
             label.widthAnchor.constraint(equalToConstant: 144).isActive = true
             row.addArrangedSubview(label)
+            fieldLabels[f.key] = label
 
             let input: any ProviderFieldInput = f.secure
                 ? RevealableSecureField()
@@ -330,20 +347,24 @@ private final class ProviderCard: NSView {
         }
 
         // Footer: status pill (bottom-left) + buttons (bottom-right).
-        let saveBtn = NSButton(title: L10n.uploadSaveButton, target: self, action: #selector(saveTapped))
-        saveBtn.bezelStyle = .rounded
-        saveBtn.controlSize = .small
+        saveButton.title = L10n.uploadSaveButton
+        saveButton.target = self
+        saveButton.action = #selector(saveTapped)
+        saveButton.bezelStyle = .rounded
+        saveButton.controlSize = .small
 
-        let clearBtn = NSButton(title: L10n.uploadClearButton, target: self, action: #selector(clearTapped))
-        clearBtn.bezelStyle = .rounded
-        clearBtn.controlSize = .small
+        clearButton.title = L10n.uploadClearButton
+        clearButton.target = self
+        clearButton.action = #selector(clearTapped)
+        clearButton.bezelStyle = .rounded
+        clearButton.controlSize = .small
 
         setDefaultButton.bezelStyle = .rounded
         setDefaultButton.controlSize = .small
         setDefaultButton.target = self
         setDefaultButton.action = #selector(setDefaultTapped)
 
-        let footer = NSStackView(views: [statusPill, spacer(), clearBtn, saveBtn, setDefaultButton])
+        let footer = NSStackView(views: [statusPill, spacer(), clearButton, saveButton, setDefaultButton])
         footer.orientation = .horizontal
         footer.alignment = .centerY
         footer.spacing = 8
@@ -463,6 +484,21 @@ private final class ProviderCard: NSView {
 
     func clearLogs() {
         logView.clear()
+    }
+
+    /// Re-renders all language-bound text without rebuilding the view tree, so
+    /// switching app language while the Upload tab is mounted updates labels
+    /// in place. Field placeholders are intentionally fixed strings.
+    func refreshLocalization(fields: [ProviderField]) {
+        titleLabel.stringValue = kind.displayName
+        defaultBadge.stringValue = L10n.uploadCurrentDefault
+        setDefaultButton.title = L10n.uploadSetDefaultButton
+        saveButton.title = L10n.uploadSaveButton
+        clearButton.title = L10n.uploadClearButton
+        for f in fields {
+            fieldLabels[f.key]?.stringValue = f.label
+        }
+        statusPill.apply(status)
     }
 
     /// Persists the current values, then runs validate() + a tiny test PUT.
