@@ -45,6 +45,13 @@ enum L10n {
             ? "保留最近的截图数量，便于快速再次复制"
             : "Keep the most recent screenshots for quick re-copy"
     }
+    static var countdownLabel: String { lang == .zh ? "倒计时秒数" : "Countdown Seconds" }
+    static var countdownHint: String {
+        lang == .zh
+            ? "按住 \u{2325} Option 后双击 \u{2318} 或按截图快捷键，先弹出倒计时再截图（按 Esc 取消）"
+            : "Hold \u{2325} Option then double-tap \u{2318} or press the screenshot shortcut to start a countdown before capture (Esc cancels)"
+    }
+    static var countdownSecondsSuffix: String { lang == .zh ? "秒" : "s" }
 
     // Screenshot shortcut
     static var shortcutHeader: String { lang == .zh ? "截图快捷键" : "Screenshot Shortcut" }
@@ -278,6 +285,23 @@ struct Defaults {
 
     static let historyCacheMin: Int = 5
     static let historyCacheMax: Int = 20
+
+    static let countdownSecondsMin: Int = 3
+    static let countdownSecondsMax: Int = 10
+
+    static var countdownSeconds: Int {
+        get {
+            if defaults.object(forKey: "countdownSeconds") == nil {
+                return countdownSecondsMin
+            }
+            let val = defaults.integer(forKey: "countdownSeconds")
+            return min(max(val, countdownSecondsMin), countdownSecondsMax)
+        }
+        set {
+            let clamped = min(max(newValue, countdownSecondsMin), countdownSecondsMax)
+            defaults.set(clamped, forKey: "countdownSeconds")
+        }
+    }
 
     static var historyCacheLimit: Int {
         get {

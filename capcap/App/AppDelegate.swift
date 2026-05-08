@@ -4,6 +4,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
     private var keyMonitor: KeyMonitor!
     private var overlayController: OverlayWindowController?
+    private var countdownActive = false
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
@@ -36,9 +37,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         statusBarController.setMenuBarVisible(Defaults.showMenuBar)
 
-        keyMonitor = KeyMonitor { [weak self] in
-            self?.handleTrigger()
-        }
+        keyMonitor = KeyMonitor(
+            onTrigger: { [weak self] in self?.handleTrigger() },
+            onCountdownTrigger: { [weak self] in self?.handleCountdownTrigger() }
+        )
 
         NotificationCenter.default.addObserver(
             forName: .hotkeyDidChange,
@@ -53,17 +55,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private func applyHotkeyState() {
         if HotkeyManager.shared.isRecording {
             HotkeyManager.shared.unregister()
+            HotkeyManager.shared.unregisterCountdown()
             keyMonitor?.isEnabled = false
             return
         }
+        keyMonitor?.isEnabled = true
         if Defaults.hasCustomScreenshotHotkey {
             HotkeyManager.shared.register { [weak self] in
                 self?.handleTrigger()
             }
-            keyMonitor?.isEnabled = false
+            HotkeyManager.shared.registerCountdown { [weak self] in
+                self?.handleCountdownTrigger()
+            }
+            // Custom hotkey owns plain ⌘ + key; double-tap ⌘ steps aside to
+            // avoid two ways to fire the same regular capture.
+            keyMonitor?.isRegularDoubleTapEnabled = false
         } else {
             HotkeyManager.shared.unregister()
-            keyMonitor?.isEnabled = true
+            HotkeyManager.shared.unregisterCountdown()
+            keyMonitor?.isRegularDoubleTapEnabled = true
         }
     }
 
@@ -86,6 +96,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         startCapture()
+    }
+
+    /// Countdown-triggered capture. Skips the Finder image-edit shortcut on
+    /// purpose — the user explicitly asked for a delayed screen capture.
+    func handleCountdownTrigger() {
+        guard overlayController == nil, !countdownActive else { return }
+        countdownActive = true
+        CountdownWindow.start(
+            seconds: Defaults.countdownSeconds,
+            onFinish: { [weak self] in
+                self?.countdownActive = false
+                self?.startCapture()
+            },
+            onCancel: { [weak self] in
+                self?.countdownActive = false
+            }
+        )
     }
 
     func startCapture() {

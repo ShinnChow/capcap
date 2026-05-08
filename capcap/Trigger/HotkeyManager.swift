@@ -8,13 +8,20 @@ final class HotkeyManager {
     private(set) var isRecording: Bool = false
 
     private var hotKeyRef: EventHotKeyRef?
+    private var countdownHotKeyRef: EventHotKeyRef?
     private var callback: (() -> Void)?
+    private var countdownCallback: (() -> Void)?
     private var eventHandlerRef: EventHandlerRef?
+
+    private static let regularHotKeySignature: OSType = OSType(0x4341_5043) // 'CAPC'
+    private static let regularHotKeyID: UInt32 = 1
+    private static let countdownHotKeyID: UInt32 = 2
 
     private init() {}
 
     deinit {
         unregister()
+        unregisterCountdown()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -33,7 +40,7 @@ final class HotkeyManager {
 
         installEventHandlerIfNeeded()
         var ref: EventHotKeyRef?
-        let id = EventHotKeyID(signature: OSType(0x4341_5043), id: 1) // 'CAPC'
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.regularHotKeyID)
         let status = RegisterEventHotKey(
             keyCode, modifiers, id,
             GetApplicationEventTarget(), 0, &ref
@@ -48,6 +55,42 @@ final class HotkeyManager {
             UnregisterEventHotKey(ref)
             hotKeyRef = nil
         }
+    }
+
+    /// Register the ⌥-augmented variant of the saved hotkey for countdown capture.
+    /// Skips when no custom hotkey is set or when the saved hotkey already
+    /// contains ⌥ (the +⌥ variant would collide with the regular hotkey).
+    func registerCountdown(callback: @escaping () -> Void) {
+        self.countdownCallback = callback
+        unregisterCountdown()
+
+        guard let (keyCode, modifiers) = currentCountdownHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.countdownHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            countdownHotKeyRef = ref
+        }
+    }
+
+    func unregisterCountdown() {
+        if let ref = countdownHotKeyRef {
+            UnregisterEventHotKey(ref)
+            countdownHotKeyRef = nil
+        }
+    }
+
+    /// Returns the (keyCode, modifiers) for the countdown variant — user hotkey + ⌥.
+    /// Returns nil if no custom hotkey is set or the saved hotkey already contains ⌥.
+    func currentCountdownHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard let (kc, mods) = currentHotkey() else { return nil }
+        if mods & UInt32(optionKey) != 0 { return nil }
+        return (kc, mods | UInt32(optionKey))
     }
 
     // MARK: - Recording lifecycle
@@ -96,10 +139,25 @@ final class HotkeyManager {
 
         InstallEventHandler(
             GetEventDispatcherTarget(),
-            { (_, _, userData) -> OSStatus in
+            { (_, eventRef, userData) -> OSStatus in
                 guard let userData = userData else { return OSStatus(eventNotHandledErr) }
                 let mgr = Unmanaged<HotkeyManager>.fromOpaque(userData).takeUnretainedValue()
-                if let cb = mgr.callback {
+
+                var hkID = EventHotKeyID()
+                let status = GetEventParameter(
+                    eventRef,
+                    EventParamName(kEventParamDirectObject),
+                    EventParamType(typeEventHotKeyID),
+                    nil,
+                    MemoryLayout<EventHotKeyID>.size,
+                    nil,
+                    &hkID
+                )
+                guard status == noErr else { return OSStatus(eventNotHandledErr) }
+
+                if hkID.id == HotkeyManager.countdownHotKeyID, let cb = mgr.countdownCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.regularHotKeyID, let cb = mgr.callback {
                     DispatchQueue.main.async { cb() }
                 }
                 return noErr

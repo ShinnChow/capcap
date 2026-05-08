@@ -52,6 +52,10 @@ class SettingsView: NSView {
     private var langPicker: NSPopUpButton!
     private var historyCacheSlider: NSSlider!
     private var historyCacheValueLabel: NSTextField!
+    private var countdownSlider: NSSlider!
+    private var countdownValueLabel: NSTextField!
+    private var countdownTitleLabel: NSTextField!
+    private var countdownHintLabel: NSTextField!
 
     // Shortcut card
     private var shortcutTitleLabel: NSTextField!
@@ -519,6 +523,56 @@ class SettingsView: NSView {
         stack.addArrangedSubview(historyCard)
         historyCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        // Countdown card
+        let countdownCard = CardView()
+        let countdownInner = NSStackView()
+        countdownInner.orientation = .vertical
+        countdownInner.alignment = .leading
+        countdownInner.spacing = 10
+        countdownInner.translatesAutoresizingMaskIntoConstraints = false
+        countdownCard.addSubview(countdownInner)
+        pin(countdownInner, to: countdownCard, insets: NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14))
+
+        let countdownHeader = NSStackView()
+        countdownHeader.orientation = .horizontal
+        countdownHeader.alignment = .firstBaseline
+        countdownHeader.spacing = 8
+        countdownHeader.translatesAutoresizingMaskIntoConstraints = false
+
+        countdownTitleLabel = primaryLabel(L10n.countdownLabel)
+        countdownHeader.addArrangedSubview(countdownTitleLabel)
+        countdownHeader.addArrangedSubview(flexSpacer())
+
+        countdownValueLabel = NSTextField(labelWithString: "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)")
+        countdownValueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        countdownValueLabel.textColor = NSColor.white.withAlphaComponent(0.88)
+        countdownHeader.addArrangedSubview(countdownValueLabel)
+
+        countdownInner.addArrangedSubview(countdownHeader)
+        countdownHeader.widthAnchor.constraint(equalTo: countdownInner.widthAnchor).isActive = true
+
+        let cdSlider = NSSlider(
+            value: Double(Defaults.countdownSeconds),
+            minValue: Double(Defaults.countdownSecondsMin),
+            maxValue: Double(Defaults.countdownSecondsMax),
+            target: self,
+            action: #selector(countdownSliderChanged(_:))
+        )
+        cdSlider.allowsTickMarkValuesOnly = true
+        cdSlider.numberOfTickMarks = Defaults.countdownSecondsMax - Defaults.countdownSecondsMin + 1
+        cdSlider.controlSize = .small
+        cdSlider.translatesAutoresizingMaskIntoConstraints = false
+        countdownSlider = cdSlider
+        countdownInner.addArrangedSubview(cdSlider)
+        cdSlider.widthAnchor.constraint(equalTo: countdownInner.widthAnchor).isActive = true
+
+        countdownHintLabel = secondaryLabel(L10n.countdownHint, wrapping: true)
+        countdownInner.addArrangedSubview(countdownHintLabel)
+        countdownHintLabel.widthAnchor.constraint(equalTo: countdownInner.widthAnchor).isActive = true
+
+        stack.addArrangedSubview(countdownCard)
+        countdownCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
         return wrapPane(stack)
     }
 
@@ -857,6 +911,12 @@ class SettingsView: NSView {
         historyCacheValueLabel?.stringValue = "\(Defaults.historyCacheLimit)"
     }
 
+    @objc private func countdownSliderChanged(_ sender: NSSlider) {
+        let value = Int(sender.doubleValue.rounded())
+        Defaults.countdownSeconds = value
+        countdownValueLabel?.stringValue = "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)"
+    }
+
     @objc private func launchAtLoginToggled(_ sender: NSSwitch) {
         let enable = sender.state == .on
         let ok = LaunchAtLogin.setEnabled(enable)
@@ -1017,6 +1077,9 @@ class SettingsView: NSView {
         screenRecordingDescLabel?.stringValue = L10n.screenRecordingDescription
         historyCacheTitleLabel?.stringValue = L10n.historyCacheLabel
         historyCacheHintLabel?.stringValue = L10n.historyCacheHint
+        countdownTitleLabel?.stringValue = L10n.countdownLabel
+        countdownHintLabel?.stringValue = L10n.countdownHint
+        countdownValueLabel?.stringValue = "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)"
         shortcutTitleLabel?.stringValue = L10n.shortcutHeader
         shortcutHintLabel?.stringValue = L10n.shortcutHint
         shortcutRestoreButton?.toolTip = L10n.shortcutRestore

@@ -1,25 +1,32 @@
 import AppKit
 
 class KeyMonitor {
+    /// Master switch. When false, neither trigger fires (used during shortcut recording).
     var isEnabled: Bool = true {
         didSet {
-            if !isEnabled {
-                lastCommandPressTime = 0
-                commandIsDown = false
-                otherKeyPressed = false
-            }
+            if !isEnabled { resetSequence() }
         }
+    }
+
+    /// Plain double-tap ⌘ → regular screenshot. Disabled when a custom hotkey is registered.
+    var isRegularDoubleTapEnabled: Bool = true {
+        didSet { if !isRegularDoubleTapEnabled { resetSequence() } }
     }
 
     private var globalMonitor: Any?
     private var localMonitor: Any?
+    private var keyDownMonitor: Any?
     private var lastCommandPressTime: TimeInterval = 0
+    private var lastCommandPressOption: Bool = false
     private var commandIsDown = false
     private var otherKeyPressed = false
     private let onTrigger: () -> Void
+    private let onCountdownTrigger: () -> Void
 
-    init(onTrigger: @escaping () -> Void) {
+    init(onTrigger: @escaping () -> Void,
+         onCountdownTrigger: @escaping () -> Void) {
         self.onTrigger = onTrigger
+        self.onCountdownTrigger = onCountdownTrigger
         startMonitoring()
     }
 
@@ -28,62 +35,68 @@ class KeyMonitor {
     }
 
     private func startMonitoring() {
-        // Monitor flag changes (modifier keys) globally
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlagsChanged(event)
         }
-
-        // Also monitor locally when app is active
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlagsChanged(event)
             return event
         }
-
-        // Monitor regular key presses to invalidate double-tap sequence
-        NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] _ in
+        keyDownMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.keyDown]) { [weak self] _ in
             self?.otherKeyPressed = true
         }
     }
 
     private func stopMonitoring() {
-        if let monitor = globalMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
-        if let monitor = localMonitor {
-            NSEvent.removeMonitor(monitor)
-        }
+        if let m = globalMonitor { NSEvent.removeMonitor(m) }
+        if let m = localMonitor { NSEvent.removeMonitor(m) }
+        if let m = keyDownMonitor { NSEvent.removeMonitor(m) }
+    }
+
+    private func resetSequence() {
+        lastCommandPressTime = 0
+        commandIsDown = false
+        otherKeyPressed = false
     }
 
     private func handleFlagsChanged(_ event: NSEvent) {
         guard isEnabled else { return }
-        let commandPressed = event.modifierFlags.contains(.command)
+        let cmd = event.modifierFlags.contains(.command)
+        let opt = event.modifierFlags.contains(.option)
+        // Shift / Control invalidate any in-flight double-tap sequence so the
+        // user can't accidentally fire either trigger from a stray combo.
+        let hasDisruptive = event.modifierFlags.contains(.shift)
+            || event.modifierFlags.contains(.control)
 
-        // Only care about Command with no other modifiers
-        let otherModifiers: NSEvent.ModifierFlags = [.shift, .option, .control]
-        let hasOtherModifiers = !event.modifierFlags.intersection(otherModifiers).isEmpty
-
-        if hasOtherModifiers {
+        if hasDisruptive {
             otherKeyPressed = true
-            commandIsDown = commandPressed
+            commandIsDown = cmd
             return
         }
 
-        if commandPressed && !commandIsDown {
-            // Command key just went down
+        if cmd && !commandIsDown {
             let now = ProcessInfo.processInfo.systemUptime
+            let withinWindow = (now - lastCommandPressTime) < Defaults.doubleTapInterval
+            // Both presses must share the same Option state — a sequence that
+            // mixes ⌘ then ⌥⌘ is treated as a fresh first press, not a double-tap.
+            let isDoubleTap = !otherKeyPressed
+                && withinWindow
+                && lastCommandPressOption == opt
 
-            if !otherKeyPressed && (now - lastCommandPressTime) < Defaults.doubleTapInterval {
-                // Double-tap detected!
-                DispatchQueue.main.async { [weak self] in
-                    self?.onTrigger()
+            if isDoubleTap {
+                if opt {
+                    DispatchQueue.main.async { [weak self] in self?.onCountdownTrigger() }
+                } else if isRegularDoubleTapEnabled {
+                    DispatchQueue.main.async { [weak self] in self?.onTrigger() }
                 }
                 lastCommandPressTime = 0
             } else {
                 lastCommandPressTime = now
+                lastCommandPressOption = opt
             }
             otherKeyPressed = false
         }
 
-        commandIsDown = commandPressed
+        commandIsDown = cmd
     }
 }
