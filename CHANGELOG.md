@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-12
+
+### Added
+- `feat(capture): add countdown screenshot triggered by Option modifier` (3d36405)
+- `feat(capture): edit Finder-selected image via the screenshot shortcut` (274ee1e)
+- `feat(upload): add Tencent COS / Qiniu / Aliyun OSS image-host uploaders` (8debfab)
+- `feat(upload): test config on save with status pill and per-card log` (3db53f4)
+- `feat(upload): set x-oss-object-acl public-read on Aliyun OSS PUT` (0dda4d9)
+- `feat(history): preview uploaded images and copy cloud URL on click` (3ec8854)
+- `feat(history): preserve thumbnail aspect ratio and record picked colors` (49d0aa5)
+- `feat(settings): redesign settings page with sidebar tab layout` (b3503a0)
+- `feat(settings): redesign settings with card layout and NSSwitch` (6b0c8d6)
+- `feat(settings): decouple provider card expand from enable switch` (ffe9482)
+- `feat(settings): add eye toggle to reveal secret input fields` (504a8c4)
+- `feat(settings): add demo mode to let recorders capture overlay` (257b37a)
+- `feat(hotkey): add customizable screenshot shortcut with restore-to-default` (cec2655)
+- `feat(menu): add SF Symbol icons to status bar menu items` (51c1579)
+- `feat(editor): add adjust mode and cross-tool annotation drag` (28db13a)
+- `feat(editor): make adjust mode tool-agnostic and add per-mark action chrome` (cb1fb71)
+- `feat(editor): add marker, arrow curving, rotation handles, drag-handle button` (4e6749f)
+- `feat(editor): add arrow endpoint handles and smooth pen strokes` (c1074fb)
+- `feat(editor): add curve handle to numbered badge arrow` (5c3d409)
+- `feat(editor): add hover tooltips, redo, and color picker to toolbar` (ee60c62)
+- `feat(editor): allow moving and deleting mosaic annotations` (feb1cec)
+- `feat(editor): adjust text size and color from sub-toolbar without entering edit mode` (6bca838)
+- `feat(editor): keep selection adjustable while beautify is on` (26b73ef)
+- `feat(editor): defer text editor open to mouseUp on empty canvas` (25578f0)
+- `feat(editor): defer number creation to mouseUp and allow drag-to-reposition` (78fb983)
+- `feat(editor): add #D77757 swatch and enable standard editing shortcuts in text field` (080b14f)
+
+### Fixed
+- `fix(capture): use display-local rect for sourceRect on extended screens` (cf29578)
+- `fix(capture): redraw selection handles after drag or adjust` (7176480)
+- `fix(menu): show both ⌘ glyphs for double-tap default hotkey` (24eabb1)
+- `fix(settings): refresh upload pane labels on language change` (15c69e8)
+- `fix(settings): enable copy/paste in upload provider input fields` (61de00a)
+- `fix(editor): allow re-editing committed text annotations` (45ed35f)
+- `fix(editor): stabilize text annotation edit and drag flow` (3a43a4a)
+- `fix(editor): dismiss annotation chrome on empty-canvas click in adjust mode` (a66c06c)
+- `fix(editor): tighten text selection box and contrast numbered badge digit` (46f1d12)
+- `fix(editor): apply rotation when compositing annotations into exported image` (1ee3852)
+- `fix(editor): move numbered tip stub above badge and add color picker for numbered tool` (601269a)
+- `Fix text annotation editing` (dc1a289)
+
+### Changed
+- `build: ship universal arm64+x86_64 binary for Intel Mac support` (81991fe)
+
+### Documentation
+- `docs: rewrite README to cover full feature set` (4415659)
+
 ## [1.0.4] - 2026-04-19
 
 ### Added
