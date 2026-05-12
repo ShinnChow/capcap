@@ -2,9 +2,43 @@
 
 [English](README.md)
 
-capcap 是一款轻量、原生的 macOS 菜单栏截图工具。双击 `⌘ Command` 或使用自定义快捷键触发后，可以拖拽选区或点击窗口截图，然后在浮动工具栏中标注、美化、复制、保存或钉在屏幕上。同一个快捷键也能直接对 Finder 中已选中的图片文件进入编辑模式——不需要先截图。
+**macOS 上最顺手的截图工具。** 双击 `⌘` 即开即用——窗口一点就贴边、选区像素级精准、长截图边滚边拼，再用浮动编辑器一气呵成完成标注与美化。常驻菜单栏，不占 Dock，无云端、无订阅、零第三方依赖。
 
-项目基于纯 AppKit + ScreenCaptureKit + Swift Package Manager 构建。不使用 SwiftUI、Storyboard、XIB，也没有第三方依赖。
+<p align="center">
+  <img src="images/editor.png" alt="capcap 标注编辑器——箭头、序号、马赛克、高亮和文字层叠在截图上，所有操作集中在一个浮动工具栏中" width="760" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/realskyrin/capcap/releases/latest"><b>下载最新版本</b></a> &nbsp;·&nbsp;
+  <a href="#使用-homebrew-安装">使用 Homebrew 安装</a> &nbsp;·&nbsp;
+  macOS 14+ &nbsp;·&nbsp; Universal（Apple Silicon + Intel）
+</p>
+
+## 为什么选 capcap
+
+- **一个快捷键，零学习成本。** 在任意 app 中双击 `⌘` 即刻唤起 capcap；也可以在设置中录制任何全局快捷键。
+- **窗口一点即贴边，选区像素级精准。** 悬停窗口一点截取，或拖拽任意区域，多显示器全量支持，按 Retina 原生分辨率输出。
+- **真正可二次编辑的标注。** 箭头、序号、文字、马赛克、高亮笔、画笔——放下之后还能拖、能转、能撤销，所见即所改。
+- **长截图边滚边拼。** 在选区内滚动，实时预览拼接结果，合并后继续在同一个编辑器里改。
+- **一键美化与钉图。** 渐变背景、桌面壁纸背景、圆角、阴影、内边距随手调；或把成图钉在所有窗口之上做对照。
+- **Finder 图片也能直接编辑。** 在 Finder 中选中一张图片，按下同一个快捷键即可载入编辑器，原文件不会被改动。
+- **菜单栏历史一键复用。** 最近截图和取色都在菜单栏，再次复制只需一次点击；完全本地、数量可配置。
+- **纯 AppKit 构建。** 没有 SwiftUI、Electron，也没有遥测。小、快、像 macOS 该有的样子。
+
+## 功能预览
+
+<table>
+<tr>
+  <td width="50%" align="center">
+    <img src="images/window-snap.png" alt="智能窗口识别——绿色虚线自动贴合应用窗口边缘" /><br/>
+    <sub><b>窗口一点即贴边</b><br/>无需精确拖拽，capcap 自动识别窗口边界。</sub>
+  </td>
+  <td width="50%" align="center">
+    <img src="images/history.png" alt="菜单栏历史子菜单显示截图缩略图和取色色值" /><br/>
+    <sub><b>历史就在菜单栏</b><br/>最近截图与取色一键再次复制。</sub>
+  </td>
+</tr>
+</table>
 
 ## 功能特性
 

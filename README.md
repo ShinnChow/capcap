@@ -2,9 +2,43 @@
 
 [中文说明](README.zh-CN.md)
 
-capcap is a lightweight, native macOS screenshot tool that lives in your menu bar. Trigger it with a double-tap of `⌘ Command` or a custom shortcut, select a region or click a window, then annotate, beautify, copy, save, or pin the result. The same shortcut also opens any image file currently selected in Finder straight into the editor — no screenshot needed.
+**The fastest way to grab, mark up, and share screenshots on macOS.** Double-tap `⌘` from anywhere — snap to a window, drag a region, scroll-stitch a long page, then annotate and beautify in one tight floating window. Lives in your menu bar. No Dock icon, no cloud, no subscription, no third-party dependencies.
 
-Built with pure AppKit + ScreenCaptureKit and Swift Package Manager. No SwiftUI, storyboards, XIBs, or third-party dependencies.
+<p align="center">
+  <img src="images/editor.png" alt="capcap annotation editor — arrows, numbered callouts, mosaic, highlighter and text layered on a screenshot in a single floating toolbar" width="760" />
+</p>
+
+<p align="center">
+  <a href="https://github.com/realskyrin/capcap/releases/latest"><b>Download Latest Release</b></a> &nbsp;·&nbsp;
+  <a href="#install-with-homebrew">Install with Homebrew</a> &nbsp;·&nbsp;
+  macOS 14+ &nbsp;·&nbsp; Universal (Apple Silicon + Intel)
+</p>
+
+## Why capcap
+
+- **One shortcut, zero friction.** Double-tap `⌘` anywhere and capcap is on screen in milliseconds — or record any global hotkey you like.
+- **Snap-to-window or pixel-perfect region.** Hover any window for a one-click capture, or drag a region with full Retina output across every connected display.
+- **A real annotation editor.** Arrows, numbered callouts, text, mosaic, highlighter, pen — all editable, draggable, rotatable and undoable *after* you place them.
+- **Scroll-stitch long content.** Capture a scrolling area, watch the stitched preview live, and keep editing the merged result.
+- **Beautify and pin.** Wrap shots in gradient or wallpaper backgrounds with rounded corners and shadow, or pin the final image floating above any window.
+- **Edit Finder images too.** Select a single image file in Finder and trigger the same shortcut to load it straight into the editor — the original is never touched.
+- **Menu bar history.** Recent screenshots and picked colors are one click away from re-copying — local-only, configurable size.
+- **Built with pure AppKit.** No SwiftUI, no Electron, no telemetry. Small, fast, and respectful of macOS.
+
+## Showcase
+
+<table>
+<tr>
+  <td width="50%" align="center">
+    <img src="images/window-snap.png" alt="Smart window detection — green dashed bounds snap to an app window" /><br/>
+    <sub><b>Snap to any window in one click</b><br/>No precise dragging — capcap detects window bounds for you.</sub>
+  </td>
+  <td width="50%" align="center">
+    <img src="images/history.png" alt="Menu bar history with screenshot thumbnails and picked color hex codes" /><br/>
+    <sub><b>History at the menu bar</b><br/>Re-copy any recent screenshot or picked hex color in a click.</sub>
+  </td>
+</tr>
+</table>
 
 ## Features
 
