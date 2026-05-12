@@ -18,9 +18,17 @@ STAGE="$ROOT/build/dmg-root"
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$ROOT/capcap/App/Info.plist")
 DMG="$DIST/${APP_NAME}-${VERSION}.dmg"
 
-echo "==> building .app"
-bash "$ROOT/scripts/bundle.sh"
+echo "==> building .app (release, universal arm64 + x86_64)"
+CONFIG=release UNIVERSAL=1 bash "$ROOT/scripts/bundle.sh"
 [[ -d "$APP" ]] || { echo "error: $APP missing after build" >&2; exit 1; }
+
+# Sanity-check: DMGs are shipped to users, so the binary must be universal.
+ARCHS="$(lipo -archs "$APP/Contents/MacOS/capcap" 2>/dev/null || true)"
+if [[ "$ARCHS" != *"arm64"* ]] || [[ "$ARCHS" != *"x86_64"* ]]; then
+    echo "error: bundled binary is not universal (archs: $ARCHS)" >&2
+    exit 1
+fi
+echo "==> binary archs: $ARCHS"
 
 echo "==> staging dmg contents"
 rm -rf "$STAGE"

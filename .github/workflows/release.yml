@@ -82,6 +82,15 @@ jobs:
           cp "$BUILD_DIR/$APP_NAME" "$MACOS/$APP_NAME"
           cp "capcap/App/Info.plist" "$CONTENTS/Info.plist"
 
+          # Fail fast if the shipped binary isn't a universal (arm64 + x86_64)
+          # slice — Intel Mac users can't run an arm64-only build.
+          ARCHS="$(lipo -archs "$MACOS/$APP_NAME")"
+          echo "Binary archs: $ARCHS"
+          case "$ARCHS" in
+            *arm64*x86_64*|*x86_64*arm64*) : ;;
+            *) echo "error: shipped binary is not universal (archs: $ARCHS)" >&2; exit 1 ;;
+          esac
+
           # Copy compiled asset catalog if present
           if [ -d "$BUILD_DIR/${APP_NAME}_capcap.bundle" ]; then
             cp -R "$BUILD_DIR/${APP_NAME}_capcap.bundle" "$RESOURCES/"
