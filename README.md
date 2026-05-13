@@ -2,7 +2,7 @@
 
 [中文说明](README.zh-CN.md)
 
-**The fastest way to grab, mark up, and share screenshots on macOS.** Double-tap `⌘` from anywhere — snap to a window, drag a region, scroll-stitch a long page, then annotate and beautify in one tight floating window. Lives in your menu bar. No Dock icon, no cloud, no subscription, no third-party dependencies.
+**The fastest way to grab, mark up, and share screenshots on macOS.** Double-tap `⌘` from anywhere — snap to a window, drag a region, scroll-stitch a long page, then annotate and beautify in one tight floating window. Lives in your menu bar. No Dock icon, no telemetry, no subscription, no third-party dependencies. Bring your own object storage if you want a one-click cloud URL.
 
 <p align="center">
   <img src="images/editor.png" alt="capcap annotation editor — arrows, numbered callouts, mosaic, highlighter and text layered on a screenshot in a single floating toolbar" width="760" />
@@ -23,6 +23,7 @@
 - **Beautify and pin.** Wrap shots in gradient or wallpaper backgrounds with rounded corners and shadow, or pin the final image floating above any window.
 - **Edit Finder images too.** Select a single image file in Finder and trigger the same shortcut to load it straight into the editor — the original is never touched.
 - **Menu bar history.** Recent screenshots and picked colors are one click away from re-copying — local-only, configurable size.
+- **One-click upload to your own image host.** Optional: configure Tencent COS, Qiniu Kodo, or Aliyun OSS once and the editor's upload button copies a public URL straight to your clipboard. Credentials stay on your Mac.
 - **Built with pure AppKit.** No SwiftUI, no Electron, no telemetry. Small, fast, and respectful of macOS.
 
 ## Showcase
@@ -36,6 +37,12 @@
   <td width="50%" align="center">
     <img src="images/history.png" alt="Menu bar history with screenshot thumbnails and picked color hex codes" /><br/>
     <sub><b>History at the menu bar</b><br/>Re-copy any recent screenshot or picked hex color in a click.</sub>
+  </td>
+</tr>
+<tr>
+  <td colspan="2" align="center">
+    <img src="images/image-hosting.png" alt="Settings panel showing Tencent COS, Qiniu Kodo, and Aliyun OSS image-host providers, with Aliyun OSS marked as default" width="520" /><br/>
+    <sub><b>Bring-your-own image host</b><br/>Configure Tencent COS, Qiniu Kodo, or Aliyun OSS once — upload the current screenshot and copy its public URL with a single click.</sub>
   </td>
 </tr>
 </table>
@@ -53,6 +60,7 @@
 - **Pin to screen** — float the current screenshot above other windows as a draggable reference image.
 - **Save or copy** — save as PNG, confirm to copy PNG/TIFF data to the clipboard, or cancel without output.
 - **Recent history** — menu bar history with thumbnails and picked colors for quick re-copy, with a configurable cache size.
+- **Image-host upload** — optional one-click upload to Tencent COS, Qiniu Kodo, or Aliyun OSS; the public URL is copied to the clipboard and stored alongside the thumbnail in History. Credentials live only in your local UserDefaults; pick one provider as the default and the editor's upload button lights up.
 - **Custom trigger** — use the default double-tap `⌘`, or record a custom global shortcut in Settings.
 - **Settings and localization** — Chinese/English UI, menu bar icon toggle, launch at login, demo mode, permission status, shortcut recording, and history cache size.
 - **Menu bar app** — runs as an agent app without a Dock icon.
@@ -127,6 +135,7 @@ To edit an existing image instead of taking a screenshot, click a single image f
 | Beautify | Add gradient or wallpaper backgrounds, rounded corners, shadow, and padding |
 | Save | Save the current result as a PNG |
 | Pin | Keep the current result floating above other windows |
+| Upload | Upload the current result to the configured image host and copy the public URL |
 | Confirm | Copy the final result to the clipboard |
 
 When an annotation is selected, capcap shows adjustment handles where supported: rotation for shapes, strokes, and text; curve handles for arrows and numbered callouts; endpoint handles for arrows; and edit/delete actions for text and selected annotations.
@@ -141,6 +150,7 @@ Open Settings from the menu bar to configure:
 - Demo Mode, which allows external screen recorders to capture capcap's overlay and editor
 - Screenshot shortcut: keep double-tap `⌘`, record a custom shortcut, or restore the default
 - History cache size, from 5 to 20 recent screenshots/colors
+- Image-host upload: enable Tencent COS, Qiniu Kodo, or Aliyun OSS, fill in their credentials, and pick which one is the default for the editor's upload button
 - Accessibility and Screen Recording permission shortcuts
 
 ## History
@@ -171,6 +181,7 @@ Only do this for builds downloaded from this repository or ones you built yourse
 - `capcap/Trigger/` — double-tap `⌘` monitor and custom Carbon hotkey registration
 - `capcap/UI/` — menu bar controller, toast, cursor chip, and tooltips
 - `capcap/Settings/` — startup/settings window and preferences UI
+- `capcap/Upload/` — image-host providers (Tencent COS, Qiniu Kodo, Aliyun OSS), HMAC signing, progress-tracking HTTP wrapper, and the floating upload chip
 - `capcap/Utilities/` — defaults, localization, and launch-at-login support
 - `scripts/` — compile check, bundle, rebuild/open, icon, DMG, and Homebrew cask helpers
 
