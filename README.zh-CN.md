@@ -40,6 +40,16 @@
   </td>
 </tr>
 <tr>
+  <td width="50%" align="center">
+    <img src="images/scroll-stitch.png" alt="长截图拼接：在选区内滚动并实时拼接出一张超长截图" /><br/>
+    <sub><b>长截图边滚边拼</b><br/>在选区内滚动，画面实时合并，拼完还能继续编辑。</sub>
+  </td>
+  <td width="50%" align="center">
+    <img src="images/beautify.png" alt="美化模式：渐变背景、圆角和阴影包裹的截图" /><br/>
+    <sub><b>一键美化</b><br/>渐变或壁纸背景、圆角、阴影、内边距全部随手可调。</sub>
+  </td>
+</tr>
+<tr>
   <td colspan="2" align="center">
     <img src="images/image-hosting.png" alt="设置面板中的图床配置：腾讯云 COS、七牛云 Kodo、阿里云 OSS 三个图床卡片，阿里云 OSS 已被设为默认" width="520" /><br/>
     <sub><b>自带密钥的图床上传</b><br/>预先配置好腾讯云 COS / 七牛云 Kodo / 阿里云 OSS，点一下上传按钮即把当前截图的公网链接写入剪贴板。</sub>

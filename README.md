@@ -40,6 +40,16 @@
   </td>
 </tr>
 <tr>
+  <td width="50%" align="center">
+    <img src="images/scroll-stitch.png" alt="Scroll capture stitching a long page into a single tall screenshot with live preview" /><br/>
+    <sub><b>Scroll-stitch long pages</b><br/>Scroll inside the selection, watch frames merge live, and keep editing the result.</sub>
+  </td>
+  <td width="50%" align="center">
+    <img src="images/beautify.png" alt="Beautify mode wrapping a screenshot in a gradient background with rounded corners and shadow" /><br/>
+    <sub><b>Beautify in one click</b><br/>Gradient or wallpaper backgrounds, rounded corners, shadow and padding — all adjustable.</sub>
+  </td>
+</tr>
+<tr>
   <td colspan="2" align="center">
     <img src="images/image-hosting.png" alt="Settings panel showing Tencent COS, Qiniu Kodo, and Aliyun OSS image-host providers, with Aliyun OSS marked as default" width="520" /><br/>
     <sub><b>Bring-your-own image host</b><br/>Configure Tencent COS, Qiniu Kodo, or Aliyun OSS once — upload the current screenshot and copy its public URL with a single click.</sub>
