@@ -1,4 +1,5 @@
 import AppKit
+import QuartzCore
 
 class EditWindowController {
     private var canvasView: EditCanvasView?
@@ -680,8 +681,15 @@ class EditWindowController {
         subToolbarView = nil
         toolbarView?.setScrollCaptureActive(true)
         hostSelectionView?.scrollCaptureActive = true
-        hostSelectionView?.needsDisplay = true
         updateEditorInteractionState()
+        // The first SCK capture runs synchronously on the main thread inside
+        // ScrollCapturer.init, blocking the run loop on a semaphore. Without
+        // forcing the view to redraw + commit here, the window backing store
+        // still shows the pre-scroll-capture chrome (green dashed border and
+        // corner handles), which would appear baked into the first frame and
+        // get carried into the stitched output.
+        hostSelectionView?.display()
+        CATransaction.flush()
 
         let capturer = ScrollCapturer(rect: captureRect, screen: screen)
         capturer.onPreviewUpdated = { [weak self] image in

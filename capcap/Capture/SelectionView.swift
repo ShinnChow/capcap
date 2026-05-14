@@ -415,19 +415,31 @@ class SelectionView: NSView {
             return
         }
 
-        // Dark overlay with cutout (even-odd fill preserves snapshot underneath)
+        // Dark overlay with cutout (even-odd fill preserves snapshot underneath).
+        // During scroll capture, enlarge the cutout by 0.5pt so anti-aliasing
+        // at the cutout edge falls outside the captured rect instead of
+        // darkening its first pixel — otherwise every frame's bottom edge
+        // leaves a gray line at each stitch seam.
         let path = CGMutablePath()
         path.addRect(bounds)
-        path.addRect(rect)
+        let cutoutRect = scrollCaptureActive ? rect.insetBy(dx: -0.5, dy: -0.5) : rect
+        path.addRect(cutoutRect)
         context.setFillColor(NSColor.black.withAlphaComponent(0.35).cgColor)
         context.addPath(path)
         context.fillPath(using: .evenOdd)
 
         // Draw border — solid red during scroll capture, green dashed otherwise
         if scrollCaptureActive {
+            // ScreenCaptureKit sees the overlay panel, so any stroke pixels
+            // inside `rect` bleed into every captured frame and produce thin
+            // red lines at the left/right edges and at each stitch seam.
+            // Inset enough that the stroke (and its anti-aliased fringe) sits
+            // entirely outside the captured rect.
+            let strokeWidth: CGFloat = borderWidth + 1
+            let outerInset = -(strokeWidth / 2 + 1)
             context.setStrokeColor(NSColor.systemRed.cgColor)
-            context.setLineWidth(borderWidth + 1)
-            context.stroke(rect.insetBy(dx: -1, dy: -1))
+            context.setLineWidth(strokeWidth)
+            context.stroke(rect.insetBy(dx: outerInset, dy: outerInset))
         } else {
             context.setStrokeColor(accentColor.cgColor)
             context.setLineWidth(borderWidth)
