@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-05-14
+
+### Fixed
+- `fix(scroll-capture): stop overlay chrome from bleeding into stitched frames` (50857c5)
+
+### Documentation
+- `docs(readme): update app banner image` (c784d25)
+- `docs(readme): add app banner image to top of README` (6f246d9)
+- `docs(readme): add scroll-stitch and beautify screenshots to showcase` (89e7173)
+- `docs(readme): document image-host upload feature with screenshot` (fb08dfc)
+- `docs(readme): add hero screenshot and showcase section` (c1d3409)
+
 ## [1.1.0] - 2026-05-12
 
 ### Added
