@@ -4,12 +4,16 @@ enum UploadProviderKind: String, Codable, CaseIterable {
     case tencent
     case qiniu
     case aliyun
+    case s3
+    case r2
 
     var displayName: String {
         switch self {
         case .tencent: return L10n.lang == .zh ? "腾讯云 COS" : "Tencent COS"
         case .qiniu:   return L10n.lang == .zh ? "七牛云 Kodo" : "Qiniu Kodo"
         case .aliyun:  return L10n.lang == .zh ? "阿里云 OSS" : "Aliyun OSS"
+        case .s3:      return "Amazon S3"
+        case .r2:      return "Cloudflare R2"
         }
     }
 }
@@ -51,7 +55,8 @@ enum UploadError: LocalizedError {
     }
 }
 
-/// Implementations live in TencentCOSUploader / QiniuUploader / AliyunOSSUploader.
+/// Implementations live in TencentCOSUploader / QiniuUploader / AliyunOSSUploader
+/// / S3Uploader / R2Uploader.
 protocol UploaderProtocol {
     static var kind: UploadProviderKind { get }
     /// Returns nil when the config is usable, otherwise a localized error message.
@@ -72,6 +77,8 @@ enum Uploaders {
         case .tencent: return TencentCOSUploader.self
         case .qiniu:   return QiniuUploader.self
         case .aliyun:  return AliyunOSSUploader.self
+        case .s3:      return S3Uploader.self
+        case .r2:      return R2Uploader.self
         }
     }
 }

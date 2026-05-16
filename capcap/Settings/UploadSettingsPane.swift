@@ -135,6 +135,34 @@ final class UploadSettingsPane: NSView {
                 .init(key: "customUrl",       label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
                       placeholder: "https://cdn.example.com", secure: false),
             ]
+        case .s3:
+            return [
+                .init(key: "accessKeyId",     label: "Access Key ID",     placeholder: "AKIAxxxxxxxx", secure: false),
+                .init(key: "secretAccessKey", label: "Secret Access Key", placeholder: "********",      secure: true),
+                .init(key: "bucket",          label: L10n.lang == .zh ? "存储桶" : "Bucket",
+                      placeholder: "my-bucket", secure: false),
+                .init(key: "region",          label: L10n.lang == .zh ? "区域" : "Region",
+                      placeholder: "us-east-1", secure: false),
+                .init(key: "endpoint",        label: L10n.lang == .zh ? "Endpoint(可选)" : "Endpoint (optional)",
+                      placeholder: "minio.example.com", secure: false),
+                .init(key: "path",            label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                      placeholder: "screenshots", secure: false),
+                .init(key: "customUrl",       label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
+                      placeholder: "https://cdn.example.com", secure: false),
+            ]
+        case .r2:
+            return [
+                .init(key: "accessKeyId",     label: "Access Key ID",     placeholder: "********", secure: false),
+                .init(key: "secretAccessKey", label: "Secret Access Key", placeholder: "********", secure: true),
+                .init(key: "accountId",       label: L10n.lang == .zh ? "账户 ID" : "Account ID",
+                      placeholder: "Cloudflare Account ID", secure: false),
+                .init(key: "bucket",          label: L10n.lang == .zh ? "存储桶" : "Bucket",
+                      placeholder: "my-bucket", secure: false),
+                .init(key: "path",            label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                      placeholder: "screenshots", secure: false),
+                .init(key: "customUrl",       label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
+                      placeholder: "https://img.example.com", secure: false),
+            ]
         }
     }
 }
@@ -155,6 +183,8 @@ private func requiredKeys(for kind: UploadProviderKind) -> [String] {
     case .tencent: return ["secretId", "secretKey", "bucket", "region"]
     case .qiniu:   return ["accessKey", "secretKey", "bucket", "domain"]
     case .aliyun:  return ["accessKeyId", "accessKeySecret", "bucket", "area"]
+    case .s3:      return ["accessKeyId", "secretAccessKey", "bucket", "region"]
+    case .r2:      return ["accessKeyId", "secretAccessKey", "accountId", "bucket"]
     }
 }
 

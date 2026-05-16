@@ -19,6 +19,18 @@ enum UploadCrypto {
         return digest.map { String(format: "%02x", $0) }.joined()
     }
 
+    /// HMAC-SHA256 — used by AWS Signature V4 (S3 / Cloudflare R2).
+    static func hmacSHA256(key: Data, message: Data) -> Data {
+        let k = SymmetricKey(data: key)
+        let mac = HMAC<SHA256>.authenticationCode(for: message, using: k)
+        return Data(mac)
+    }
+
+    /// Lowercase hex SHA-256 digest — used for AWS SigV4 payload + canonical hashes.
+    static func sha256Hex(_ data: Data) -> String {
+        SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
+
     static func hex(_ data: Data) -> String {
         data.map { String(format: "%02x", $0) }.joined()
     }
