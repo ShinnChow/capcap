@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] - 2026-05-16
+
+### Added
+- `feat(scroll-capture): auto-scroll capture with fit-to-screen crop mode` (c4962c8)
+
+### Fixed
+- `fix(ci): copy app icon into release bundle` (65642cc)
+- `fix(scroll-capture): block manual scroll during auto-scroll, add finish hint` (803e420)
+- `fix(scroll-capture): make crop loupe follow cursor horizontally` (def7399)
+
+### Documentation
+- `docs(readme): acknowledge Linux.do community` (ece4259)
+
 ## [1.1.1] - 2026-05-14
 
 ### Fixed
