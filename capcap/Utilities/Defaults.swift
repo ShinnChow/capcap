@@ -91,6 +91,9 @@ enum L10n {
     static var scrollCaptureHint: String {
         lang == .zh ? "按回车结束长截图" : "Press Enter to finish long screenshot"
     }
+    static var cancelFinderSelectionHint: String {
+        lang == .zh ? "按 X 取消选中" : "Press X to deselect"
+    }
     static func colorCopied(_ hex: String) -> String {
         lang == .zh ? "已复制颜色 \(hex)" : "Copied color \(hex)"
     }

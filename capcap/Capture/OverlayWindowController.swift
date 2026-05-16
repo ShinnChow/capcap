@@ -115,6 +115,14 @@ class OverlayWindowController {
                 self?.editController?.confirmFromKeyboard()
                 return nil
             }
+            // Image-edit mode only: X clears the Finder selection that opened
+            // this editor by mistake and closes it, so the next trigger runs
+            // the normal screenshot flow.
+            if self?.presetImage != nil, event.keyCode == 7 {
+                FinderSelection.clearSelection()
+                self?.cancel()
+                return nil
+            }
             return event
         }
         escGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -167,6 +175,15 @@ class OverlayWindowController {
         // is irrelevant because the editor uses overrideBaseImage, but we
         // pass a sensible value derived from the selection rect.
         selectionDidComplete(rect: viewRect, inView: selectionView)
+
+        // Pin a hint to the top-center of the loaded image: if this editor
+        // opened because of a stale Finder selection, X bails out of it.
+        let anchorRect = convertToScreenRect(viewRect, view: selectionView)
+        ToastWindow.show(
+            message: L10n.cancelFinderSelectionHint,
+            topAnchor: NSPoint(x: anchorRect.midX, y: anchorRect.maxY),
+            duration: 3.0
+        )
     }
 
     func cancel() {
@@ -179,6 +196,8 @@ class OverlayWindowController {
     private var cursorPopped = false
 
     private func tearDown() {
+        ToastWindow.dismiss()
+
         if !cursorPopped {
             NSCursor.pop()
             cursorPopped = true

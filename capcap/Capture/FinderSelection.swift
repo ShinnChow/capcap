@@ -13,6 +13,20 @@ enum FinderSelection {
         return url
     }
 
+    /// Clears Finder's current selection. Used after the image-edit shortcut
+    /// fires by mistake, so the next screenshot trigger runs the normal flow
+    /// instead of re-opening the same image. Silently no-ops on any failure.
+    static func clearSelection() {
+        let source = """
+        tell application "Finder"
+            set selection to {}
+        end tell
+        """
+        guard let script = NSAppleScript(source: source) else { return }
+        var error: NSDictionary?
+        script.executeAndReturnError(&error)
+    }
+
     private static func currentSelectionURLs() -> [URL] {
         let source = """
         tell application "Finder"
