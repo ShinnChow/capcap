@@ -8,6 +8,7 @@ enum SettingsTab: CaseIterable {
     case shortcuts
     case upload
     case permissions
+    case about
 
     var title: String {
         switch self {
@@ -15,6 +16,7 @@ enum SettingsTab: CaseIterable {
         case .shortcuts: return L10n.settingsTabShortcuts
         case .upload: return L10n.settingsTabUpload
         case .permissions: return L10n.settingsTabPermissions
+        case .about: return L10n.settingsTabAbout
         }
     }
 
@@ -24,6 +26,7 @@ enum SettingsTab: CaseIterable {
         case .shortcuts: return "keyboard"
         case .upload: return "icloud.and.arrow.up.fill"
         case .permissions: return "lock.shield.fill"
+        case .about: return "info.circle.fill"
         }
     }
 
@@ -33,6 +36,7 @@ enum SettingsTab: CaseIterable {
         case .shortcuts: return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
         case .upload: return NSColor(calibratedRed: 0.99, green: 0.72, blue: 0.32, alpha: 1.0)
         case .permissions: return NSColor(calibratedRed: 0.36, green: 0.78, blue: 0.50, alpha: 1.0)
+        case .about: return NSColor(calibratedRed: 0.70, green: 0.56, blue: 0.96, alpha: 1.0)
         }
     }
 }
@@ -85,6 +89,9 @@ class SettingsView: NSView {
     private var accessibilityDescLabel: NSTextField!
     private var screenRecordingNameLabel: NSTextField!
     private var screenRecordingDescLabel: NSTextField!
+    private var aboutTaglineLabel: NSTextField?
+    private var aboutLicenseTitleLabel: NSTextField?
+    private var aboutSourceTitleLabel: NSTextField?
 
     // Sidebar / detail chrome
     private var selectedTab: SettingsTab = .general
@@ -170,6 +177,7 @@ class SettingsView: NSView {
         paneViews[.shortcuts] = buildShortcutsPane()
         paneViews[.upload] = buildUploadPane()
         paneViews[.permissions] = buildPermissionsPane()
+        paneViews[.about] = buildAboutPane()
 
         // Default selection
         let initial: SettingsTab = isStartup ? .permissions : .general
@@ -235,6 +243,12 @@ class SettingsView: NSView {
         ])
 
         return panel
+    }
+
+    private func appVersionString() -> String {
+        let info = Bundle.main.infoDictionary
+        let short = info?["CFBundleShortVersionString"] as? String ?? "—"
+        return "v\(short)"
     }
 
     @objc private func tabClicked(_ sender: TabButton) {
@@ -626,6 +640,149 @@ class SettingsView: NSView {
         permCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         return wrapPane(stack)
+    }
+
+    private func buildAboutPane() -> NSView {
+        let stack = paneStack()
+
+        // Header card — app icon, name and version.
+        let headerCard = CardView()
+        let headerRow = NSStackView()
+        headerRow.orientation = .horizontal
+        headerRow.alignment = .centerY
+        headerRow.spacing = 14
+        headerRow.translatesAutoresizingMaskIntoConstraints = false
+        headerCard.addSubview(headerRow)
+        pin(headerRow, to: headerCard, insets: NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16))
+
+        let iconView = NSImageView()
+        iconView.image = NSApp.applicationIconImage
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        iconView.widthAnchor.constraint(equalToConstant: 56).isActive = true
+        iconView.heightAnchor.constraint(equalToConstant: 56).isActive = true
+        headerRow.addArrangedSubview(iconView)
+
+        let nameLabel = NSTextField(labelWithString: "capcap")
+        nameLabel.font = NSFont.systemFont(ofSize: 18, weight: .bold)
+        nameLabel.textColor = NSColor.white.withAlphaComponent(0.96)
+
+        let versionLabel = NSTextField(labelWithString: appVersionString())
+        versionLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        versionLabel.textColor = NSColor.white.withAlphaComponent(0.55)
+
+        let taglineLabel = secondaryLabel(L10n.aboutTagline, wrapping: true)
+        aboutTaglineLabel = taglineLabel
+
+        let textStack = NSStackView(views: [nameLabel, versionLabel, taglineLabel])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 3
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+        headerRow.addArrangedSubview(textStack)
+        headerRow.addArrangedSubview(flexSpacer())
+
+        stack.addArrangedSubview(headerCard)
+        headerCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Info card — license + source link rows.
+        let infoCard = CardView()
+        let infoInner = verticalInnerStack()
+        infoCard.addSubview(infoInner)
+        pin(infoInner, to: infoCard, insets: NSEdgeInsets(top: 4, left: 0, bottom: 4, right: 0))
+
+        let license = makeInfoRow(title: L10n.aboutLicense, value: "MIT")
+        aboutLicenseTitleLabel = license.title
+        infoInner.addArrangedSubview(license.row)
+        license.row.widthAnchor.constraint(equalTo: infoInner.widthAnchor).isActive = true
+        infoInner.addArrangedSubview(rowDivider())
+
+        let repo = makeLinkRow(
+            title: L10n.aboutSourceCode,
+            value: "github.com/realskyrin/capcap",
+            action: #selector(openSourceRepo)
+        )
+        aboutSourceTitleLabel = repo.title
+        infoInner.addArrangedSubview(repo.row)
+        repo.row.widthAnchor.constraint(equalTo: infoInner.widthAnchor).isActive = true
+
+        stack.addArrangedSubview(infoCard)
+        infoCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        return wrapPane(stack)
+    }
+
+    /// Static left-title / right-value row, mirroring the permission row chrome.
+    private func makeInfoRow(title: String, value: String) -> (row: NSView, title: NSTextField) {
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = primaryLabel(title)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let valueLabel = NSTextField(labelWithString: value)
+        valueLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        valueLabel.textColor = NSColor.white.withAlphaComponent(0.55)
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(titleLabel)
+        row.addSubview(valueLabel)
+        NSLayoutConstraint.activate([
+            row.heightAnchor.constraint(equalToConstant: 46),
+            titleLabel.leadingAnchor.constraint(equalTo: row.leadingAnchor, constant: 14),
+            titleLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.trailingAnchor.constraint(equalTo: row.trailingAnchor, constant: -14),
+            valueLabel.centerYAnchor.constraint(equalTo: row.centerYAnchor),
+            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 10),
+        ])
+        return (row, titleLabel)
+    }
+
+    /// Tappable row that opens an external URL, with a chevron affordance.
+    private func makeLinkRow(title: String, value: String, action: Selector) -> (row: NSView, title: NSTextField) {
+        let button = HoverButton()
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.target = self
+        button.action = action
+        button.title = ""
+        button.isBordered = false
+        button.cornerRadius = 10
+
+        let titleLabel = primaryLabel(title)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let valueLabel = NSTextField(labelWithString: value)
+        valueLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        valueLabel.textColor = NSColor(calibratedRed: 0.42, green: 0.66, blue: 0.98, alpha: 1.0)
+        valueLabel.translatesAutoresizingMaskIntoConstraints = false
+        valueLabel.setContentHuggingPriority(.required, for: .horizontal)
+
+        let chevron = NSTextField(labelWithString: "\u{203A}")
+        chevron.font = NSFont.systemFont(ofSize: 18, weight: .regular)
+        chevron.textColor = NSColor.white.withAlphaComponent(0.32)
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        chevron.setContentHuggingPriority(.required, for: .horizontal)
+
+        button.addSubview(titleLabel)
+        button.addSubview(valueLabel)
+        button.addSubview(chevron)
+        NSLayoutConstraint.activate([
+            button.heightAnchor.constraint(equalToConstant: 46),
+            titleLabel.leadingAnchor.constraint(equalTo: button.leadingAnchor, constant: 14),
+            titleLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            chevron.trailingAnchor.constraint(equalTo: button.trailingAnchor, constant: -14),
+            chevron.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            valueLabel.trailingAnchor.constraint(equalTo: chevron.leadingAnchor, constant: -8),
+            valueLabel.centerYAnchor.constraint(equalTo: button.centerYAnchor),
+            valueLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 10),
+        ])
+        return (button, titleLabel)
+    }
+
+    @objc private func openSourceRepo() {
+        if let url = URL(string: "https://github.com/realskyrin/capcap") {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     private func paneStack() -> NSStackView {
@@ -1083,6 +1240,9 @@ class SettingsView: NSView {
         shortcutTitleLabel?.stringValue = L10n.shortcutHeader
         shortcutHintLabel?.stringValue = L10n.shortcutHint
         shortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        aboutTaglineLabel?.stringValue = L10n.aboutTagline
+        aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
+        aboutSourceTitleLabel?.stringValue = L10n.aboutSourceCode
         refreshShortcutDisplay()
         refreshBottomAction()
         accessibilityBadge?.refreshTitle()
