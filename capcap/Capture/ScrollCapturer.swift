@@ -40,6 +40,9 @@ final class ScrollCapturer {
 
     private let captureRect: CGRect
     private let screen: NSScreen
+    /// capcap's own scroll-capture chrome (e.g. the hint toast) — excluded
+    /// from every captured frame so it never appears in the stitched image.
+    private let excludedWindowNumbers: [CGWindowID]
     private let captureQueue = DispatchQueue(label: "capcap.scroll-capture", qos: .userInitiated)
     private let maxFrames = 100
 
@@ -53,12 +56,13 @@ final class ScrollCapturer {
     private var previewScale: CGFloat = 1
     private var previewPointWidth: CGFloat = 0
 
-    init(rect: CGRect, screen: NSScreen) {
+    init(rect: CGRect, screen: NSScreen, excludingWindowNumbers: [CGWindowID] = []) {
         self.captureRect = rect
         self.screen = screen
+        self.excludedWindowNumbers = excludingWindowNumbers
 
         if
-            let image = ScreenCapturer.capture(rect: rect, screen: screen),
+            let image = ScreenCapturer.capture(rect: rect, screen: screen, excludingWindowNumbers: excludingWindowNumbers),
             let bitmap = bitmapData(from: image)
         {
             let firstFrame = CapturedFrame(image: image, bitmap: bitmap)
@@ -105,7 +109,11 @@ final class ScrollCapturer {
     private func captureFrame(expectedShiftPoints: CGFloat) -> FrameOutcome {
         guard frames.count < maxFrames else { return .atFrameLimit }
         guard
-            let image = ScreenCapturer.capture(rect: captureRect, screen: screen),
+            let image = ScreenCapturer.capture(
+                rect: captureRect,
+                screen: screen,
+                excludingWindowNumbers: excludedWindowNumbers
+            ),
             let bitmap = bitmapData(from: image)
         else {
             return .noNewContent

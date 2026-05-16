@@ -88,6 +88,9 @@ enum L10n {
     static var cropLongScreenshotHint: String {
         lang == .zh ? "拖动上下边裁剪长图，回车或点对勾确认" : "Drag the top/bottom edges to crop — press Enter or tap ✓"
     }
+    static var scrollCaptureHint: String {
+        lang == .zh ? "按回车结束长截图" : "Press Enter to finish long screenshot"
+    }
     static func colorCopied(_ hex: String) -> String {
         lang == .zh ? "已复制颜色 \(hex)" : "Copied color \(hex)"
     }
