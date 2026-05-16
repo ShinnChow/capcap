@@ -23,6 +23,10 @@ final class ScrollCropView: NSView {
 
     private var activeEdge: Edge?
 
+    // Mouse X (this view's coords) during an edge drag. The loupe pans
+    // horizontally to follow it so the user magnifies wherever the cursor is.
+    private var pointerX: CGFloat = 0
+
     private let accent = NSColor(red: 0, green: 212.0 / 255.0, blue: 106.0 / 255.0, alpha: 1.0)
     private let outerMargin: CGFloat = 80
     private let minimumCropHeight: CGFloat = 12
@@ -214,7 +218,11 @@ final class ScrollCropView: NSView {
         let bandW = min(loupeSize.width * pixelScale, CGFloat(cg.width))
         let centerPx = fraction * CGFloat(cg.height)
         let bandY = clamp(centerPx - bandH / 2, 0, max(0, CGFloat(cg.height) - bandH))
-        let bandX = (CGFloat(cg.width) - bandW) / 2
+
+        // Follow the cursor horizontally instead of locking to the center.
+        let fractionX = clamp((pointerX - imageFrame.minX) / max(imageFrame.width, 1), 0, 1)
+        let centerPxX = fractionX * CGFloat(cg.width)
+        let bandX = clamp(centerPxX - bandW / 2, 0, max(0, CGFloat(cg.width) - bandW))
         let band = CGRect(x: bandX, y: bandY, width: bandW, height: bandH)
 
         let loupeRect = loupeFrame(forLineY: lineY)
@@ -276,12 +284,16 @@ final class ScrollCropView: NSView {
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
         activeEdge = edge(at: point)
-        if activeEdge != nil { needsDisplay = true }
+        if activeEdge != nil {
+            pointerX = point.x
+            needsDisplay = true
+        }
     }
 
     override func mouseDragged(with event: NSEvent) {
         guard let activeEdge else { return }
         let point = convert(event.locationInWindow, from: nil)
+        pointerX = point.x
         switch activeEdge {
         case .top:
             cropTop = clamp(point.y, imageFrame.minY, cropBottom - minimumCropHeight)
