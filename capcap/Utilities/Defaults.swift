@@ -138,7 +138,15 @@ enum L10n {
     static var settingsTabShortcuts: String { lang == .zh ? "快捷键" : "Shortcuts" }
     static var settingsTabPermissions: String { lang == .zh ? "权限" : "Permissions" }
     static var settingsTabUpload: String { lang == .zh ? "图床" : "Upload" }
+    static var settingsTabAbout: String { lang == .zh ? "关于" : "About" }
     static var settingsQuit: String { lang == .zh ? "退出应用" : "Quit App" }
+
+    // About pane
+    static var aboutTagline: String {
+        lang == .zh ? "菜单栏截图工具" : "Menu bar screenshot tool"
+    }
+    static var aboutLicense: String { lang == .zh ? "开源协议" : "License" }
+    static var aboutSourceCode: String { lang == .zh ? "源代码" : "Source code" }
 
     // Quit confirmation dialog
     static var quitConfirmTitle: String { lang == .zh ? "退出 capcap?" : "Quit capcap?" }
