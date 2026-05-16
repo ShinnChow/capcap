@@ -33,6 +33,10 @@ class EditWindowController {
     private var isScrollCapturing = false
     private var scrollCaptureControlWindow: ScrollCaptureControlWindow?
     private var scrollPreviewWindow: ScrollPreviewWindow?
+    /// Persistent "press Enter to finish" hint shown inside the selection
+    /// during auto-scroll. Excluded from the capture so it never appears in
+    /// the stitched long screenshot.
+    private var scrollCaptureHintWindow: ScrollCaptureHintWindow?
     private var autoScroller: AutoScroller?
     /// Catches the Enter key while capcap is deactivated for auto-scroll, so
     /// Enter stops scrolling and moves on to crop mode.
@@ -708,7 +712,18 @@ class EditWindowController {
         hostSelectionView?.display()
         CATransaction.flush()
 
-        let capturer = ScrollCapturer(rect: captureRect, screen: screen)
+        // Show the persistent hint inside the selection *before* the capturer
+        // takes its first (synchronous) frame, then exclude its window from the
+        // capture so it never bleeds into the stitched long screenshot.
+        let hintWindow = ScrollCaptureHintWindow()
+        hintWindow.present(in: selectionRect)
+        scrollCaptureHintWindow = hintWindow
+
+        let capturer = ScrollCapturer(
+            rect: captureRect,
+            screen: screen,
+            excludingWindowNumbers: [CGWindowID(max(0, hintWindow.windowNumber))]
+        )
         capturer.onPreviewUpdated = { [weak self] image in
             self?.updateScrollPreview(image)
         }
@@ -716,6 +731,10 @@ class EditWindowController {
         installScrollCaptureKeyMonitor()
         showScrollCaptureControl()
         toolbarView?.isHidden = true
+        // The overlay stays click-through so capcap's synthetic auto-scroll
+        // events reach the page underneath. The user's own trackpad / wheel
+        // and click input over the selection is dropped by AutoScroller's
+        // event tap, which tells synthetic events apart from manual ones.
         hostSelectionView?.window?.ignoresMouseEvents = true
         NSApp.deactivate()
         startAutoScroll(capturer: capturer)
@@ -730,7 +749,11 @@ class EditWindowController {
         let stepPoints = max(80, min(480, selectionRect.height * 0.45))
         let center = CGPoint(x: captureRect.midX, y: captureRect.midY)
 
-        let scroller = AutoScroller(centerPoint: center, stepPixels: Int(stepPoints))
+        let scroller = AutoScroller(
+            centerPoint: center,
+            blockingRect: captureRect,
+            stepPixels: Int(stepPoints)
+        )
         autoScroller = scroller
         scroller.start(
             captureStep: {
@@ -756,6 +779,8 @@ class EditWindowController {
         scrollCaptureControlWindow = nil
         scrollPreviewWindow?.dismiss()
         scrollPreviewWindow = nil
+        scrollCaptureHintWindow?.dismiss()
+        scrollCaptureHintWindow = nil
         hostSelectionView?.window?.ignoresMouseEvents = false
         hostSelectionView?.scrollCaptureActive = false
         hostSelectionView?.needsDisplay = true
@@ -973,6 +998,8 @@ class EditWindowController {
         scrollCaptureControlWindow = nil
         scrollPreviewWindow?.dismiss()
         scrollPreviewWindow = nil
+        scrollCaptureHintWindow?.dismiss()
+        scrollCaptureHintWindow = nil
         hostSelectionView?.window?.ignoresMouseEvents = false
         canvasScrollView?.removeFromSuperview()
         canvasScrollView = nil
@@ -1681,6 +1708,71 @@ final class MoveSelectionDragHandle: NSView {
             height: tint.size.height
         )
         tint.draw(in: drawRect)
+    }
+}
+
+/// Persistent "press Enter to finish" hint shown centered near the top of
+/// the selection during auto-scroll. It is its own window so it can be
+/// excluded from the ScreenCaptureKit capture — otherwise it would be baked
+/// into every stitched frame of the long screenshot.
+private final class ScrollCaptureHintWindow: NSPanel {
+    private let label = NSTextField(labelWithString: "")
+    private let horizontalPadding: CGFloat = 14
+    private let verticalPadding: CGFloat = 8
+    /// Gap between the selection's top edge and the hint pill.
+    private let topInset: CGFloat = 12
+
+    init() {
+        super.init(
+            contentRect: NSRect(x: 0, y: 0, width: 10, height: 10),
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+
+        level = .screenSaver + 3
+        isOpaque = false
+        backgroundColor = .clear
+        hasShadow = true
+        ignoresMouseEvents = true
+        hidesOnDeactivate = false
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        let container = NSView()
+        container.wantsLayer = true
+        container.layer?.backgroundColor = NSColor(white: 0.12, alpha: 0.92).cgColor
+        container.layer?.cornerRadius = 8
+
+        label.stringValue = L10n.scrollCaptureHint
+        label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
+        label.textColor = .white
+        label.alignment = .center
+        container.addSubview(label)
+        contentView = container
+    }
+
+    /// Size to the text and place top-center inside `selectionRect`
+    /// (AppKit screen coordinates).
+    func present(in selectionRect: NSRect) {
+        label.sizeToFit()
+        let textSize = label.frame.size
+        let width = textSize.width + horizontalPadding * 2
+        let height = textSize.height + verticalPadding * 2
+
+        contentView?.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        label.setFrameOrigin(NSPoint(x: horizontalPadding, y: verticalPadding))
+
+        let origin = NSPoint(
+            x: selectionRect.midX - width / 2,
+            y: selectionRect.maxY - topInset - height
+        )
+        setFrame(NSRect(origin: origin, size: NSSize(width: width, height: height)), display: true)
+        orderFrontRegardless()
+    }
+
+    func dismiss() {
+        orderOut(nil)
+        contentView = nil
     }
 }
 

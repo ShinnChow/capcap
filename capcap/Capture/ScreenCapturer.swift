@@ -2,7 +2,14 @@ import AppKit
 import ScreenCaptureKit
 
 struct ScreenCapturer {
-    static func capture(rect: CGRect, screen: NSScreen) -> NSImage? {
+    /// - Parameter excludingWindowNumbers: window numbers (`NSWindow.windowNumber`)
+    ///   to omit from the capture — used so capcap's own scroll-capture chrome
+    ///   (e.g. the on-screen hint toast) is never baked into a captured frame.
+    static func capture(
+        rect: CGRect,
+        screen: NSScreen,
+        excludingWindowNumbers: [CGWindowID] = []
+    ) -> NSImage? {
         guard rect.width > 0, rect.height > 0 else { return nil }
 
         var resultImage: NSImage?
@@ -10,7 +17,11 @@ struct ScreenCapturer {
 
         Task {
             do {
-                let image = try await captureAsync(rect: rect, screen: screen)
+                let image = try await captureAsync(
+                    rect: rect,
+                    screen: screen,
+                    excludingWindowNumbers: excludingWindowNumbers
+                )
                 resultImage = image
             } catch {
                 NSLog("capcap: Screen capture failed: \(error)")
@@ -22,8 +33,15 @@ struct ScreenCapturer {
         return resultImage
     }
 
-    private static func captureAsync(rect: CGRect, screen: NSScreen) async throws -> NSImage? {
+    private static func captureAsync(
+        rect: CGRect,
+        screen: NSScreen,
+        excludingWindowNumbers: [CGWindowID]
+    ) async throws -> NSImage? {
         let content = try await SCShareableContent.current
+        let excludedWindows = excludingWindowNumbers.isEmpty
+            ? []
+            : content.windows.filter { excludingWindowNumbers.contains($0.windowID) }
 
         // Find the matching SCDisplay for this screen
         guard let display = content.displays.first(where: { display in
@@ -31,14 +49,18 @@ struct ScreenCapturer {
         }) else {
             // Fallback: use first display
             guard let display = content.displays.first else { return nil }
-            return try await captureDisplay(display, rect: rect)
+            return try await captureDisplay(display, rect: rect, excludingWindows: excludedWindows)
         }
 
-        return try await captureDisplay(display, rect: rect)
+        return try await captureDisplay(display, rect: rect, excludingWindows: excludedWindows)
     }
 
-    private static func captureDisplay(_ display: SCDisplay, rect: CGRect) async throws -> NSImage? {
-        let filter = SCContentFilter(display: display, excludingWindows: [])
+    private static func captureDisplay(
+        _ display: SCDisplay,
+        rect: CGRect,
+        excludingWindows: [SCWindow]
+    ) async throws -> NSImage? {
+        let filter = SCContentFilter(display: display, excludingWindows: excludingWindows)
         let scale = max(screenScale(for: display), 1)
 
         // sourceRect must be in the display's local coordinate space (top-left
