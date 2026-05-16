@@ -3,13 +3,26 @@ import AppKit
 class ToastWindow: NSPanel {
     private static var current: ToastWindow?
 
-    static func show(message: String = L10n.copiedToClipboard, on screen: NSScreen? = nil) {
+    /// Shows a transient toast. When `topAnchor` is set (a point in screen
+    /// coordinates), the toast hangs just below that point with its horizontal
+    /// center aligned to it — used to pin the hint to the top-center of a
+    /// selection. Otherwise the toast is centered on `screen`.
+    static func show(
+        message: String = L10n.copiedToClipboard,
+        on screen: NSScreen? = nil,
+        topAnchor: NSPoint? = nil,
+        duration: TimeInterval = 1.5
+    ) {
         current?.orderOut(nil)
 
         let toast = ToastWindow(message: message)
         current = toast
 
-        if let screen = screen ?? NSScreen.main {
+        if let anchor = topAnchor {
+            let x = anchor.x - toast.frame.width / 2
+            let y = anchor.y - toast.frame.height - 12
+            toast.setFrameOrigin(NSPoint(x: x, y: y))
+        } else if let screen = screen ?? NSScreen.main {
             let x = screen.frame.midX - toast.frame.width / 2
             let y = screen.frame.midY - toast.frame.height / 2
             toast.setFrameOrigin(NSPoint(x: x, y: y))
@@ -23,7 +36,7 @@ class ToastWindow: NSPanel {
             toast.animator().alphaValue = 1.0
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + duration) {
             NSAnimationContext.runAnimationGroup({ ctx in
                 ctx.duration = 0.3
                 toast.animator().alphaValue = 0.0
@@ -32,6 +45,12 @@ class ToastWindow: NSPanel {
                 if current === toast { current = nil }
             })
         }
+    }
+
+    /// Immediately hides any visible toast. Safe to call when none is showing.
+    static func dismiss() {
+        current?.orderOut(nil)
+        current = nil
     }
 
     private init(message: String) {
