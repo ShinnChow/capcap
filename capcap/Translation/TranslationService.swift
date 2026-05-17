@@ -71,6 +71,22 @@ enum TranslationService {
         }
     }
 
+    /// Sends a tiny translation request to confirm the API key, endpoint and
+    /// model actually work. Returns `nil` on success, or the failure reason.
+    static func verify(
+        kind: TranslationProviderKind,
+        config: TranslationConfig
+    ) async -> Error? {
+        do {
+            for try await _ in stream(text: "hello", target: .chinese, kind: kind, config: config) {
+                return nil   // first delta arrived — credentials work
+            }
+            return nil       // finished without error
+        } catch {
+            return error
+        }
+    }
+
     // MARK: - Request building
 
     private static func systemPrompt(for target: TranslationLanguage) -> String {

@@ -341,6 +341,12 @@ enum L10n {
     static var translationSave: String { lang == .zh ? "保存" : "Save" }
     static var translationClear: String { lang == .zh ? "清空" : "Clear" }
     static var translationConfigSaved: String { lang == .zh ? "已保存配置" : "Config saved" }
+    static var translationTesting: String { lang == .zh ? "测试中…" : "Testing…" }
+    static var translationTestPassed: String { lang == .zh ? "测试通过" : "Test passed" }
+    static var translationTestFailed: String { lang == .zh ? "测试失败" : "Test failed" }
+    static var translationTestFailedTitle: String {
+        lang == .zh ? "已保存，但连接测试失败" : "Saved, but the connection test failed"
+    }
 }
 
 struct Defaults {

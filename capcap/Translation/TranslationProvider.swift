@@ -64,7 +64,7 @@ enum TranslationProviderKind: String, CaseIterable {
     var defaultModel: String {
         switch self {
         case .openai:   return "gpt-4o-mini"
-        case .deepseek: return "deepseek-chat"
+        case .deepseek: return "deepseek-v4-flash"
         case .custom:   return ""
         case .claude:   return "claude-3-5-haiku-latest"
         }

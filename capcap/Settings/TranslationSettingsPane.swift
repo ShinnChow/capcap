@@ -319,8 +319,50 @@ private final class TranslationProviderCard: NSView {
     }
 
     @objc private func saveTapped() {
-        TranslationConfigStore.save(currentConfig(), for: kind)
-        flashButton(saveButton, to: L10n.translationConfigSaved, restore: L10n.translationSave)
+        let config = currentConfig()
+        TranslationConfigStore.save(config, for: kind)
+
+        // Nothing to test against without an API key — just confirm the save.
+        guard !config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            flashButton(saveButton, to: L10n.translationConfigSaved, restore: L10n.translationSave)
+            return
+        }
+
+        saveButton.isEnabled = false
+        clearButton.isEnabled = false
+        saveButton.title = L10n.translationTesting
+
+        let testedKind = kind
+        Task { [weak self] in
+            let error = await TranslationService.verify(kind: testedKind, config: config)
+            await MainActor.run {
+                guard let self else { return }
+                self.saveButton.isEnabled = true
+                self.clearButton.isEnabled = true
+                if let error {
+                    flashButton(self.saveButton, to: L10n.translationTestFailed,
+                                restore: L10n.translationSave)
+                    self.showTestFailure(error)
+                } else {
+                    flashButton(self.saveButton, to: L10n.translationTestPassed,
+                                restore: L10n.translationSave)
+                }
+            }
+        }
+    }
+
+    /// Reports a failed connection test. The config was already saved.
+    private func showTestFailure(_ error: Error) {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = L10n.translationTestFailedTitle
+        alert.informativeText = error.localizedDescription
+        alert.addButton(withTitle: "OK")
+        if let window = window {
+            alert.beginSheetModal(for: window, completionHandler: nil)
+        } else {
+            alert.runModal()
+        }
     }
 
     @objc private func clearTapped() {
