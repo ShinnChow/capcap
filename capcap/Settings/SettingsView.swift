@@ -96,6 +96,19 @@ class SettingsView: NSView {
     private var aboutUpdateStatusLabel: NSTextField?
     private var aboutUpdateButton: NSButton?
 
+    // Error log card (About pane) — expandable crash log viewer.
+    private var errorLogTitleLabel: NSTextField?
+    private var errorLogStatusLabel: NSTextField?
+    private var errorLogChevron: NSImageView?
+    private var errorLogContentContainer: NSView?
+    private var errorLogHeightConstraint: NSLayoutConstraint?
+    private var errorLogTextView: NSTextView?
+    private var errorLogCopyButton: NSButton?
+    private var errorLogRevealButton: NSButton?
+    private var errorLogEntry: CrashLogReader.Entry?
+    private var errorLogExpanded = false
+    private var errorLogLoaded = false
+
     // Sidebar / detail chrome
     private var selectedTab: SettingsTab = .general
     private var tabButtons: [TabButton] = []
@@ -723,7 +736,244 @@ class SettingsView: NSView {
         stack.addArrangedSubview(infoCard)
         infoCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        // Error log card — collapsed by default, expands to show the most
+        // recent crash report so users can copy it into a bug report.
+        let errorLogCard = buildErrorLogCard()
+        stack.addArrangedSubview(errorLogCard)
+        errorLogCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
         return wrapPane(stack)
+    }
+
+    /// Builds the expandable "Error Log" card for the About pane. The header is
+    /// a clickable row; tapping it animates the crash-log viewer open or shut.
+    private func buildErrorLogCard() -> NSView {
+        let card = CardView()
+        card.layer?.masksToBounds = true
+
+        // Clickable header — toggles the expand / collapse animation.
+        let header = HoverButton()
+        header.translatesAutoresizingMaskIntoConstraints = false
+        header.target = self
+        header.action = #selector(toggleErrorLog)
+        header.title = ""
+        header.isBordered = false
+        header.cornerRadius = 0
+
+        let titleLabel = primaryLabel(L10n.aboutErrorLog)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+        errorLogTitleLabel = titleLabel
+
+        let statusLabel = NSTextField(labelWithString: "")
+        statusLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
+        statusLabel.textColor = NSColor.white.withAlphaComponent(0.55)
+        statusLabel.lineBreakMode = .byTruncatingTail
+        statusLabel.translatesAutoresizingMaskIntoConstraints = false
+        errorLogStatusLabel = statusLabel
+
+        let chevron = NSImageView()
+        chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
+        chevron.contentTintColor = NSColor.white.withAlphaComponent(0.32)
+        chevron.translatesAutoresizingMaskIntoConstraints = false
+        chevron.wantsLayer = true
+        chevron.setContentHuggingPriority(.required, for: .horizontal)
+        errorLogChevron = chevron
+
+        header.addSubview(titleLabel)
+        header.addSubview(statusLabel)
+        header.addSubview(chevron)
+        NSLayoutConstraint.activate([
+            header.heightAnchor.constraint(equalToConstant: 46),
+            titleLabel.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 14),
+            titleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -14),
+            chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            chevron.widthAnchor.constraint(equalToConstant: 12),
+            chevron.heightAnchor.constraint(equalToConstant: 12),
+            statusLabel.trailingAnchor.constraint(equalTo: chevron.leadingAnchor, constant: -8),
+            statusLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            statusLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 10),
+        ])
+
+        // Expandable content — clipped to its animatable height.
+        let content = NSView()
+        content.translatesAutoresizingMaskIntoConstraints = false
+        content.wantsLayer = true
+        content.layer?.masksToBounds = true
+        content.alphaValue = 0
+        errorLogContentContainer = content
+
+        let divider = rowDivider()
+        content.addSubview(divider)
+
+        // Crash log — read-only, selectable, monospace.
+        let scroll = NSScrollView()
+        scroll.translatesAutoresizingMaskIntoConstraints = false
+        scroll.drawsBackground = true
+        scroll.backgroundColor = NSColor.black.withAlphaComponent(0.22)
+        scroll.hasVerticalScroller = true
+        scroll.hasHorizontalScroller = false
+        scroll.autohidesScrollers = true
+        scroll.borderType = .noBorder
+        scroll.wantsLayer = true
+        scroll.layer?.cornerRadius = 8
+        scroll.layer?.masksToBounds = true
+
+        let textView = NSTextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.drawsBackground = false
+        textView.textColor = NSColor.white.withAlphaComponent(0.82)
+        textView.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        textView.textContainerInset = NSSize(width: 8, height: 8)
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude,
+                                  height: CGFloat.greatestFiniteMagnitude)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.widthTracksTextView = true
+        scroll.documentView = textView
+        errorLogTextView = textView
+
+        // Action buttons.
+        let copyButton = NSButton(title: L10n.aboutErrorLogCopy, target: self,
+                                  action: #selector(copyErrorLog))
+        copyButton.bezelStyle = .rounded
+        copyButton.controlSize = .small
+        copyButton.font = NSFont.systemFont(ofSize: 12)
+        copyButton.translatesAutoresizingMaskIntoConstraints = false
+        errorLogCopyButton = copyButton
+
+        let revealButton = NSButton(title: L10n.aboutErrorLogReveal, target: self,
+                                    action: #selector(revealErrorLog))
+        revealButton.bezelStyle = .rounded
+        revealButton.controlSize = .small
+        revealButton.font = NSFont.systemFont(ofSize: 12)
+        revealButton.translatesAutoresizingMaskIntoConstraints = false
+        errorLogRevealButton = revealButton
+
+        content.addSubview(scroll)
+        content.addSubview(copyButton)
+        content.addSubview(revealButton)
+        NSLayoutConstraint.activate([
+            divider.topAnchor.constraint(equalTo: content.topAnchor),
+            divider.leadingAnchor.constraint(equalTo: content.leadingAnchor),
+            divider.trailingAnchor.constraint(equalTo: content.trailingAnchor),
+
+            scroll.topAnchor.constraint(equalTo: divider.bottomAnchor, constant: 12),
+            scroll.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
+            scroll.trailingAnchor.constraint(equalTo: content.trailingAnchor, constant: -14),
+            scroll.heightAnchor.constraint(equalToConstant: 220),
+
+            copyButton.topAnchor.constraint(equalTo: scroll.bottomAnchor, constant: 10),
+            copyButton.leadingAnchor.constraint(equalTo: content.leadingAnchor, constant: 14),
+            copyButton.bottomAnchor.constraint(equalTo: content.bottomAnchor, constant: -14),
+
+            revealButton.centerYAnchor.constraint(equalTo: copyButton.centerYAnchor),
+            revealButton.leadingAnchor.constraint(equalTo: copyButton.trailingAnchor, constant: 8),
+        ])
+
+        let inner = verticalInnerStack()
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0))
+        inner.addArrangedSubview(header)
+        inner.addArrangedSubview(content)
+        header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        content.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let heightConstraint = content.heightAnchor.constraint(equalToConstant: 0)
+        heightConstraint.isActive = true
+        errorLogHeightConstraint = heightConstraint
+
+        refreshErrorLogStatus()
+        return card
+    }
+
+    /// Expands or collapses the crash-log viewer with a height animation.
+    @objc private func toggleErrorLog() {
+        errorLogExpanded.toggle()
+        if errorLogExpanded { loadErrorLogIfNeeded() }
+
+        guard let content = errorLogContentContainer,
+              let heightConstraint = errorLogHeightConstraint else { return }
+
+        // Measure the content's natural height with the clamp lifted.
+        var target: CGFloat = 0
+        if errorLogExpanded {
+            heightConstraint.isActive = false
+            content.layoutSubtreeIfNeeded()
+            target = content.fittingSize.height
+            heightConstraint.isActive = true
+            heightConstraint.constant = 0
+            content.layoutSubtreeIfNeeded()
+        }
+
+        NSAnimationContext.runAnimationGroup { ctx in
+            ctx.duration = 0.28
+            ctx.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            ctx.allowsImplicitAnimation = true
+            heightConstraint.animator().constant = target
+            content.animator().alphaValue = errorLogExpanded ? 1 : 0
+            errorLogChevron?.animator().frameCenterRotation = errorLogExpanded ? -90 : 0
+            self.layoutSubtreeIfNeeded()
+        }
+    }
+
+    /// Reads the latest crash report into the text view on first expansion.
+    private func loadErrorLogIfNeeded() {
+        guard !errorLogLoaded else { return }
+        errorLogLoaded = true
+
+        if let entry = errorLogEntry {
+            errorLogTextView?.string = CrashLogReader.readableText(at: entry.url)
+            errorLogTextView?.textColor = NSColor.white.withAlphaComponent(0.82)
+            errorLogCopyButton?.isEnabled = true
+            errorLogRevealButton?.isEnabled = true
+        } else {
+            errorLogTextView?.string = L10n.aboutErrorLogEmptyBody
+            errorLogTextView?.textColor = NSColor.white.withAlphaComponent(0.55)
+            errorLogCopyButton?.isEnabled = false
+            errorLogRevealButton?.isEnabled = false
+        }
+    }
+
+    /// Syncs the header status label to whether a crash report exists.
+    private func refreshErrorLogStatus() {
+        errorLogEntry = CrashLogReader.latestCrashFile()
+        guard let label = errorLogStatusLabel else { return }
+        if let entry = errorLogEntry {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
+            label.stringValue = L10n.aboutErrorLogLastCrash(formatter.string(from: entry.date))
+            label.textColor = NSColor(calibratedRed: 0.95, green: 0.55, blue: 0.45, alpha: 1.0)
+        } else {
+            label.stringValue = L10n.aboutErrorLogNoCrash
+            label.textColor = NSColor.white.withAlphaComponent(0.55)
+        }
+    }
+
+    /// Copies the crash log to the clipboard, flashing the button as feedback.
+    @objc private func copyErrorLog() {
+        guard errorLogEntry != nil,
+              let text = errorLogTextView?.string, !text.isEmpty else { return }
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+
+        guard let button = errorLogCopyButton else { return }
+        button.title = L10n.aboutErrorLogCopied
+        button.isEnabled = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self?.errorLogCopyButton?.title = L10n.aboutErrorLogCopy
+            self?.errorLogCopyButton?.isEnabled = true
+        }
+    }
+
+    /// Reveals the crash report file in Finder.
+    @objc private func revealErrorLog() {
+        guard let url = errorLogEntry?.url else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     /// Static left-title / right-value row, mirroring the permission row chrome.
@@ -1347,6 +1597,13 @@ class SettingsView: NSView {
         aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
         aboutSourceTitleLabel?.stringValue = L10n.aboutSourceCode
         aboutUpdateTitleLabel?.stringValue = L10n.aboutUpdateTitle
+        errorLogTitleLabel?.stringValue = L10n.aboutErrorLog
+        errorLogCopyButton?.title = L10n.aboutErrorLogCopy
+        errorLogRevealButton?.title = L10n.aboutErrorLogReveal
+        if errorLogLoaded, errorLogEntry == nil {
+            errorLogTextView?.string = L10n.aboutErrorLogEmptyBody
+        }
+        refreshErrorLogStatus()
         refreshUpdateRow()
         refreshShortcutDisplay()
         refreshBottomAction()

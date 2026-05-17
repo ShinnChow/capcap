@@ -149,6 +149,21 @@ enum L10n {
     static var aboutSourceCode: String { lang == .zh ? "源代码" : "Source code" }
     static var aboutUpdateTitle: String { lang == .zh ? "软件更新" : "Updates" }
 
+    // Error log — About pane
+    static var aboutErrorLog: String { lang == .zh ? "错误日志" : "Error Log" }
+    static var aboutErrorLogNoCrash: String { lang == .zh ? "无崩溃记录" : "No crashes" }
+    static func aboutErrorLogLastCrash(_ date: String) -> String {
+        lang == .zh ? "上次崩溃 · \(date)" : "Last crash · \(date)"
+    }
+    static var aboutErrorLogCopy: String { lang == .zh ? "复制日志" : "Copy Log" }
+    static var aboutErrorLogCopied: String { lang == .zh ? "已复制" : "Copied" }
+    static var aboutErrorLogReveal: String { lang == .zh ? "在访达中显示" : "Show in Finder" }
+    static var aboutErrorLogEmptyBody: String {
+        lang == .zh
+            ? "capcap 暂未记录到崩溃日志，运行一切正常。如果遇到闪退，请回到这里复制日志反馈给开发者。"
+            : "capcap hasn't recorded any crash logs — everything looks healthy. If it crashes, come back here to copy the log for a bug report."
+    }
+
     // Updates — About pane
     static var checkForUpdates: String { lang == .zh ? "检查更新" : "Check for Updates" }
     static var updateChecking: String { lang == .zh ? "正在检查…" : "Checking…" }
