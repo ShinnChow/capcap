@@ -19,3 +19,7 @@ Package.resolved
 .codex/
 .superpowers/
 docs/
+
+# Code-signing secrets — never commit (see scripts/signing/README.md)
+*.p12
+*.p12.base64

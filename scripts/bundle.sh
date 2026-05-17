@@ -63,9 +63,32 @@ cp "capcap/App/Info.plist" "$CONTENTS/Info.plist"
 # Copy app icon
 cp "Resources/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 
-# Code sign with ad-hoc signature (stable identity for macOS permissions)
+# Code signing
+# -----------------------------------------------------------------------------
+# Sign with the SAME self-signed certificate CI uses ("capcap Self-Signed") so
+# the app's code-signing identity — and therefore its macOS TCC permission
+# grants (Screen Recording / Accessibility) — stay stable between local test
+# builds and released builds. Without this, every local rebuild looks like a
+# different app to TCC and you must re-authorize.
+#
+# Import the cert once (it lives in capcap-signing.p12, default password "capcap"):
+#   security import ~/Desktop/capcap-signing.p12 \
+#     -k ~/Library/Keychains/login.keychain-db -P capcap -T /usr/bin/codesign
+#
+# Override the identity with the SIGN_IDENTITY env var. If the cert isn't in the
+# keychain, fall back to ad-hoc signing (still launchable, but TCC grants won't
+# match released builds).
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-codesign --force --sign "Apple Development: cnskyrin@gmail.com" --entitlements "$SCRIPT_DIR/capcap.entitlements" "$APP_DIR"
+SIGN_IDENTITY="${SIGN_IDENTITY:-capcap Self-Signed}"
+if security find-identity -p codesigning 2>/dev/null | grep -qF "$SIGN_IDENTITY"; then
+    echo "Signing with: $SIGN_IDENTITY"
+    codesign --force --deep --entitlements "$SCRIPT_DIR/capcap.entitlements" \
+        --sign "$SIGN_IDENTITY" "$APP_DIR"
+else
+    echo "warning: '$SIGN_IDENTITY' not found in keychain — falling back to ad-hoc signing." >&2
+    echo "warning: TCC permissions won't match released builds until you import capcap-signing.p12." >&2
+    codesign --force --deep --entitlements "$SCRIPT_DIR/capcap.entitlements" --sign - "$APP_DIR"
+fi
 
 echo "✅ Built and signed $APP_DIR"
 ARCHS=$(lipo -archs "$MACOS/capcap" 2>/dev/null || echo "unknown")

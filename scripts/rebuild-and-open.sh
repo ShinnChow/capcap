@@ -32,8 +32,14 @@ else
     echo "==> $APP_NAME is not running, skipping kill."
 fi
 
-echo "==> [3/4] Launching $APP_BUNDLE..."
-open "$APP_BUNDLE"
+# Install into /Applications and launch from there, so local testing exercises
+# the exact same install location (and code-signing identity) a real user gets.
+INSTALLED_APP="/Applications/$APP_NAME.app"
+echo "==> [3/4] Installing to $INSTALLED_APP..."
+rm -rf "$INSTALLED_APP"
+cp -R "$APP_BUNDLE" "$INSTALLED_APP"
+echo "==> Installed. Launching $INSTALLED_APP..."
+open "$INSTALLED_APP"
 
 echo "==> [4/4] Waiting for $APP_NAME to start..."
 for i in $(seq 1 50); do
