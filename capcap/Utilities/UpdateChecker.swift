@@ -9,9 +9,17 @@ enum UpdateState: Equatable {
     case upToDate
     case available(version: String)
     case downloading(version: String, fraction: Double)
-    case installing(version: String)
+    case installing(version: String, phase: InstallPhase)
     case failed
     case installFailed(version: String)
+}
+
+/// Sub-steps of the in-place install, surfaced so the UI can say "verifying"
+/// or "extracting" rather than one opaque "installing".
+enum InstallPhase: Equatable {
+    case verifying
+    case unzipping
+    case installing
 }
 
 extension Notification.Name {
@@ -187,11 +195,17 @@ final class UpdateChecker {
                     case .failure:
                         fail()
                     case .success(let zipPath):
-                        self.setState(.installing(version: version))
+                        self.setState(.installing(version: version, phase: .verifying))
                         DispatchQueue.global(qos: .userInitiated).async {
                             do {
-                                try UpdateInstaller.install(zipAt: zipPath,
-                                                            expectedSHA256: expectedHash)
+                                try UpdateInstaller.install(
+                                    zipAt: zipPath,
+                                    expectedSHA256: expectedHash,
+                                    phase: { phase in
+                                        self.setState(.installing(version: version,
+                                                                  phase: phase))
+                                    }
+                                )
                                 DispatchQueue.main.async { NSApp.terminate(nil) }
                             } catch {
                                 DispatchQueue.main.async { fail() }

@@ -200,6 +200,23 @@ enum L10n {
         lang == .zh ? "更新安装失败" : "Update Install Failed"
     }
 
+    // Updates — progress HUD
+    static var updateCheckingHUD: String {
+        lang == .zh ? "capcap 正在检查更新…" : "Checking for updates…"
+    }
+    static func updateDownloadingHUD(_ percent: Int) -> String {
+        lang == .zh ? "正在下载更新 \(percent)%" : "Downloading update \(percent)%"
+    }
+    static var updateVerifyingHUD: String {
+        lang == .zh ? "正在校验更新…" : "Verifying update…"
+    }
+    static var updateUnzippingHUD: String {
+        lang == .zh ? "正在解压…" : "Extracting…"
+    }
+    static var updateInstallingHUD: String {
+        lang == .zh ? "正在安装…" : "Installing…"
+    }
+
     // Updates — manual check result alert
     static func updateAvailableTitle(_ v: String) -> String {
         lang == .zh ? "发现新版本 v\(v)" : "Version v\(v) is available"

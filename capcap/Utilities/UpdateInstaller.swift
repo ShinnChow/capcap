@@ -58,11 +58,17 @@ final class UpdateInstaller: NSObject {
     /// release, and spawns the detached helper that swaps the bundle and
     /// relaunches. Throws before spawning the helper if anything looks wrong,
     /// so a failure always leaves the running app untouched.
-    static func install(zipAt zipURL: URL, expectedSHA256: String?) throws {
+    ///
+    /// `phase` is invoked synchronously on this thread as each step begins, so
+    /// the UI can show "verifying / extracting / installing" in turn.
+    static func install(zipAt zipURL: URL,
+                         expectedSHA256: String?,
+                         phase: (InstallPhase) -> Void) throws {
         let fm = FileManager.default
         defer { try? fm.removeItem(at: zipURL) }
 
         // 1. Checksum — guards against a truncated or corrupted download.
+        phase(.verifying)
         if let expected = expectedSHA256 {
             let data = try Data(contentsOf: zipURL)
             let hex = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -70,6 +76,7 @@ final class UpdateInstaller: NSObject {
         }
 
         // 2. Unzip into a scratch directory.
+        phase(.unzipping)
         let workDir = fm.temporaryDirectory
             .appendingPathComponent("capcap-update-\(UUID().uuidString)", isDirectory: true)
         try fm.createDirectory(at: workDir, withIntermediateDirectories: true)
@@ -77,6 +84,7 @@ final class UpdateInstaller: NSObject {
                        throwing: .unzipFailed)
 
         // 3. Locate the unpacked .app and sanity-check it has an executable.
+        phase(.installing)
         let entries = (try? fm.contentsOfDirectory(atPath: workDir.path)) ?? []
         guard let appName = entries.first(where: { $0.hasSuffix(".app") }) else {
             throw InstallError.bundleNotFound

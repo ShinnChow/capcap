@@ -34,6 +34,7 @@ class StatusBarController: NSObject {
         }
         NotificationCenter.default.addObserver(forName: .updateStateDidChange, object: nil, queue: .main) { [weak self] _ in
             self?.setupMenu()
+            self?.syncUpdateProgressHUD()
         }
     }
 
@@ -135,8 +136,36 @@ class StatusBarController: NSObject {
     }
 
     @objc private func checkForUpdatesClicked() {
+        // Give the manual check immediate feedback — the GitHub round trip can
+        // take a moment, and otherwise nothing visible happens until it lands.
+        UpdateProgressWindow.show(message: L10n.updateCheckingHUD, style: .spinner)
         UpdateChecker.shared.check(manual: true) { state in
+            UpdateProgressWindow.dismiss()
             Self.presentManualCheckResult(state)
+        }
+    }
+
+    /// Reflects an in-flight download/install into the progress HUD. The
+    /// checking HUD and every dismissal are driven explicitly by the
+    /// manual-check and install-failure paths, so this only advances the HUD
+    /// through the download and install phases.
+    private func syncUpdateProgressHUD() {
+        switch UpdateChecker.shared.state {
+        case .downloading(_, let fraction):
+            UpdateProgressWindow.show(
+                message: L10n.updateDownloadingHUD(Int(fraction * 100)),
+                style: .bar(fraction: fraction)
+            )
+        case .installing(_, let phase):
+            let message: String
+            switch phase {
+            case .verifying:  message = L10n.updateVerifyingHUD
+            case .unzipping:  message = L10n.updateUnzippingHUD
+            case .installing: message = L10n.updateInstallingHUD
+            }
+            UpdateProgressWindow.show(message: message, style: .spinner)
+        default:
+            break
         }
     }
 
@@ -205,6 +234,7 @@ class StatusBarController: NSObject {
     /// Shown when a download or install fails — offers the release page as a
     /// manual fallback.
     static func presentInstallFailedAlert() {
+        UpdateProgressWindow.dismiss()
         let alert = NSAlert()
         alert.messageText = L10n.updateInstallFailedTitle
         alert.informativeText = L10n.updateInstallFailedBody
