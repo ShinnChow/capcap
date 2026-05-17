@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-05-17
+
+### Added
+- `feat(ocr): add OCR text extraction and BYOK AI translation` (5c8c2b5)
+- `feat(translation): test AI config on save and default DeepSeek to deepseek-v4-flash` (a6546b0)
+
+### Changed
+- `build: sign local builds with shared self-signed cert and install to /Applications` (6444ea3)
+
 ## [1.1.6] - 2026-05-17
 
 ### Added
