@@ -1,0 +1,341 @@
+import AppKit
+
+/// Content of the Settings "翻译" tab: a target-language picker plus one
+/// editable config card per AI translation provider.
+final class TranslationSettingsPane: NSView {
+    private var providerCards: [TranslationProviderCard] = []
+    private var langTitleLabel: NSTextField!
+    private var langHintLabel: NSTextField!
+    private var langPicker: NSPopUpButton!
+    private var providersHeaderLabel: NSTextField!
+
+    init() {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        buildUI()
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(onLanguageChanged),
+            name: .languageDidChange, object: nil
+        )
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    deinit { NotificationCenter.default.removeObserver(self) }
+
+    private func buildUI() {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 12
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        // Target language card.
+        let langCard = makeCard()
+        let langInner = NSStackView()
+        langInner.orientation = .vertical
+        langInner.alignment = .leading
+        langInner.spacing = 8
+        langInner.translatesAutoresizingMaskIntoConstraints = false
+        langCard.addSubview(langInner)
+        pin(langInner, to: langCard, inset: 14)
+
+        langTitleLabel = makeLabel(L10n.translationTargetLanguage, size: 13, weight: .semibold, alpha: 0.94)
+        langPicker = NSPopUpButton(frame: .zero, pullsDown: false)
+        langPicker.controlSize = .small
+        langPicker.font = NSFont.systemFont(ofSize: 12)
+        langPicker.translatesAutoresizingMaskIntoConstraints = false
+        langPicker.addItems(withTitles: TranslationLanguage.allCases.map { $0.displayName })
+        if let idx = TranslationLanguage.allCases.firstIndex(of: Defaults.translationTargetLanguage) {
+            langPicker.selectItem(at: idx)
+        }
+        langPicker.target = self
+        langPicker.action = #selector(languageChanged)
+
+        let langRow = NSStackView(views: [langTitleLabel, flexSpacer(), langPicker])
+        langRow.orientation = .horizontal
+        langRow.alignment = .centerY
+        langRow.translatesAutoresizingMaskIntoConstraints = false
+        langInner.addArrangedSubview(langRow)
+        langRow.widthAnchor.constraint(equalTo: langInner.widthAnchor).isActive = true
+
+        langHintLabel = makeLabel(L10n.translationTargetHint, size: 11, weight: .regular, alpha: 0.55)
+        langHintLabel.lineBreakMode = .byWordWrapping
+        langHintLabel.usesSingleLineMode = false
+        langHintLabel.preferredMaxLayoutWidth = 420
+        langInner.addArrangedSubview(langHintLabel)
+
+        stack.addArrangedSubview(langCard)
+        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Providers header.
+        providersHeaderLabel = makeLabel(L10n.translationProvidersHeader, size: 12, weight: .semibold, alpha: 0.62)
+        stack.addArrangedSubview(providersHeaderLabel)
+
+        // Provider cards.
+        for kind in TranslationProviderKind.allCases {
+            let card = TranslationProviderCard(kind: kind)
+            card.translatesAutoresizingMaskIntoConstraints = false
+            providerCards.append(card)
+            stack.addArrangedSubview(card)
+            card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        }
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 4),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 22),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -22),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -22),
+        ])
+    }
+
+    private func makeCard() -> NSView {
+        let v = NSView()
+        v.translatesAutoresizingMaskIntoConstraints = false
+        v.wantsLayer = true
+        v.layer?.cornerRadius = 12
+        v.layer?.cornerCurve = .continuous
+        v.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
+        v.layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        v.layer?.borderWidth = 1
+        return v
+    }
+
+    @objc private func languageChanged() {
+        let idx = langPicker.indexOfSelectedItem
+        guard TranslationLanguage.allCases.indices.contains(idx) else { return }
+        Defaults.translationTargetLanguage = TranslationLanguage.allCases[idx]
+    }
+
+    @objc private func onLanguageChanged() {
+        langTitleLabel.stringValue = L10n.translationTargetLanguage
+        langHintLabel.stringValue = L10n.translationTargetHint
+        providersHeaderLabel.stringValue = L10n.translationProvidersHeader
+        let selected = langPicker.indexOfSelectedItem
+        langPicker.removeAllItems()
+        langPicker.addItems(withTitles: TranslationLanguage.allCases.map { $0.displayName })
+        if TranslationLanguage.allCases.indices.contains(selected) {
+            langPicker.selectItem(at: selected)
+        }
+        for card in providerCards { card.refreshLocalization() }
+    }
+}
+
+// MARK: - Pasteable text field
+
+/// Text field that honors Cmd+C/V/X/A in a menu-less LSUIElement app.
+private final class TKTextField: NSTextField {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.modifierFlags.intersection(.deviceIndependentFlagsMask) == .command else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let action: Selector
+        switch event.charactersIgnoringModifiers {
+        case "x": action = #selector(NSText.cut(_:))
+        case "c": action = #selector(NSText.copy(_:))
+        case "v": action = #selector(NSText.paste(_:))
+        case "a": action = #selector(NSText.selectAll(_:))
+        default: return super.performKeyEquivalent(with: event)
+        }
+        return NSApp.sendAction(action, to: nil, from: nil)
+    }
+}
+
+// MARK: - Provider card
+
+private final class TranslationProviderCard: NSView {
+    private let kind: TranslationProviderKind
+    private let titleLabel = NSTextField(labelWithString: "")
+    private let enableSwitch = NSSwitch()
+    private let apiKeyField = TKTextField()
+    private let modelField = TKTextField()
+    private let endpointField = TKTextField()
+    private let apiKeyLabel = NSTextField(labelWithString: "")
+    private let modelLabel = NSTextField(labelWithString: "")
+    private let endpointLabel = NSTextField(labelWithString: "")
+    private let saveButton = NSButton(title: "", target: nil, action: nil)
+    private let clearButton = NSButton(title: "", target: nil, action: nil)
+    private let bodyContainer = NSView()
+
+    init(kind: TranslationProviderKind) {
+        self.kind = kind
+        super.init(frame: .zero)
+        wantsLayer = true
+        layer?.cornerRadius = 12
+        layer?.cornerCurve = .continuous
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
+        layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        layer?.borderWidth = 1
+        buildUI()
+        loadFromStore()
+        let enabled = TranslationConfigStore.isEnabled(kind)
+        enableSwitch.state = enabled ? .on : .off
+        bodyContainer.isHidden = !enabled
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    private func buildUI() {
+        let outer = NSStackView()
+        outer.orientation = .vertical
+        outer.alignment = .leading
+        outer.spacing = 10
+        outer.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(outer)
+        pin(outer, to: self, inset: 14)
+
+        // Header.
+        titleLabel.stringValue = kind.displayName
+        titleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titleLabel.textColor = NSColor.white.withAlphaComponent(0.94)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        enableSwitch.controlSize = .small
+        enableSwitch.target = self
+        enableSwitch.action = #selector(switchToggled)
+        enableSwitch.translatesAutoresizingMaskIntoConstraints = false
+
+        let header = NSStackView(views: [titleLabel, flexSpacer(), enableSwitch])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        header.translatesAutoresizingMaskIntoConstraints = false
+        outer.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: outer.widthAnchor).isActive = true
+
+        // Body.
+        let body = NSStackView()
+        body.orientation = .vertical
+        body.alignment = .leading
+        body.spacing = 10
+        body.translatesAutoresizingMaskIntoConstraints = false
+        bodyContainer.translatesAutoresizingMaskIntoConstraints = false
+        bodyContainer.addSubview(body)
+        NSLayoutConstraint.activate([
+            body.topAnchor.constraint(equalTo: bodyContainer.topAnchor),
+            body.leadingAnchor.constraint(equalTo: bodyContainer.leadingAnchor),
+            body.trailingAnchor.constraint(equalTo: bodyContainer.trailingAnchor),
+            body.bottomAnchor.constraint(equalTo: bodyContainer.bottomAnchor),
+        ])
+
+        body.addArrangedSubview(makeFieldRow(apiKeyLabel, apiKeyField,
+                                             label: L10n.translationApiKey,
+                                             placeholder: "sk-…", width: body))
+        body.addArrangedSubview(makeFieldRow(modelLabel, modelField,
+                                             label: L10n.translationModel,
+                                             placeholder: modelPlaceholder(), width: body))
+        body.addArrangedSubview(makeFieldRow(endpointLabel, endpointField,
+                                             label: endpointLabelText(),
+                                             placeholder: endpointPlaceholder(), width: body))
+
+        saveButton.title = L10n.translationSave
+        saveButton.bezelStyle = .rounded
+        saveButton.controlSize = .small
+        saveButton.target = self
+        saveButton.action = #selector(saveTapped)
+
+        clearButton.title = L10n.translationClear
+        clearButton.bezelStyle = .rounded
+        clearButton.controlSize = .small
+        clearButton.target = self
+        clearButton.action = #selector(clearTapped)
+
+        let footer = NSStackView(views: [flexSpacer(), clearButton, saveButton])
+        footer.orientation = .horizontal
+        footer.alignment = .centerY
+        footer.spacing = 8
+        footer.translatesAutoresizingMaskIntoConstraints = false
+        body.addArrangedSubview(footer)
+        footer.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true
+
+        outer.addArrangedSubview(bodyContainer)
+        bodyContainer.widthAnchor.constraint(equalTo: outer.widthAnchor).isActive = true
+    }
+
+    private func makeFieldRow(_ label: NSTextField, _ field: NSTextField,
+                              label labelText: String, placeholder: String,
+                              width: NSView) -> NSView {
+        label.stringValue = labelText
+        label.font = NSFont.systemFont(ofSize: 11)
+        label.textColor = NSColor.white.withAlphaComponent(0.74)
+        label.alignment = .right
+        label.isEditable = false
+        label.isBordered = false
+        label.drawsBackground = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        label.widthAnchor.constraint(equalToConstant: 110).isActive = true
+
+        field.placeholderString = placeholder
+        field.font = NSFont.systemFont(ofSize: 12)
+        field.translatesAutoresizingMaskIntoConstraints = false
+
+        let row = NSStackView(views: [label, field])
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 10
+        row.translatesAutoresizingMaskIntoConstraints = false
+        field.widthAnchor.constraint(greaterThanOrEqualToConstant: 220).isActive = true
+        return row
+    }
+
+    // MARK: Field metadata
+
+    private func modelPlaceholder() -> String {
+        kind.defaultModel.isEmpty ? "e.g. gpt-4o-mini" : kind.defaultModel
+    }
+
+    private func endpointLabelText() -> String {
+        kind.endpointRequired ? L10n.translationEndpoint : L10n.translationEndpointOptional
+    }
+
+    private func endpointPlaceholder() -> String {
+        kind.defaultEndpoint.isEmpty
+            ? "https://api.example.com/v1/chat/completions"
+            : kind.defaultEndpoint
+    }
+
+    // MARK: Persistence
+
+    private func loadFromStore() {
+        let cfg = TranslationConfigStore.load(kind)
+        apiKeyField.stringValue = cfg.apiKey
+        modelField.stringValue = cfg.model
+        endpointField.stringValue = cfg.endpoint
+    }
+
+    private func currentConfig() -> TranslationConfig {
+        TranslationConfig(
+            apiKey: apiKeyField.stringValue,
+            model: modelField.stringValue,
+            endpoint: endpointField.stringValue
+        )
+    }
+
+    @objc private func switchToggled() {
+        let on = enableSwitch.state == .on
+        if on { TranslationConfigStore.save(currentConfig(), for: kind) }
+        TranslationConfigStore.setEnabled(on, for: kind)
+        bodyContainer.isHidden = !on
+    }
+
+    @objc private func saveTapped() {
+        TranslationConfigStore.save(currentConfig(), for: kind)
+        flashButton(saveButton, to: L10n.translationConfigSaved, restore: L10n.translationSave)
+    }
+
+    @objc private func clearTapped() {
+        apiKeyField.stringValue = ""
+        modelField.stringValue = ""
+        endpointField.stringValue = ""
+        TranslationConfigStore.clear(kind)
+    }
+
+    func refreshLocalization() {
+        titleLabel.stringValue = kind.displayName
+        apiKeyLabel.stringValue = L10n.translationApiKey
+        modelLabel.stringValue = L10n.translationModel
+        endpointLabel.stringValue = endpointLabelText()
+        saveButton.title = L10n.translationSave
+        clearButton.title = L10n.translationClear
+    }
+}

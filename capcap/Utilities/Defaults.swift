@@ -10,6 +10,7 @@ extension Notification.Name {
     static let historyCacheLimitDidChange = Notification.Name("capcap.historyCacheLimitDidChange")
     static let historyDidUpdate = Notification.Name("capcap.historyDidUpdate")
     static let hotkeyDidChange = Notification.Name("capcap.hotkeyDidChange")
+    static let translationConfigDidChange = Notification.Name("capcap.translationConfigDidChange")
 }
 
 enum L10n {
@@ -116,6 +117,7 @@ enum L10n {
     static var tipMoveSelection: String { lang == .zh ? "移动选区" : "Move Selection" }
     static var tipScrollCapture: String { lang == .zh ? "长截图" : "Scroll Capture" }
     static var tipBeautify: String { lang == .zh ? "美化" : "Beautify" }
+    static var tipOCR: String { lang == .zh ? "文字识别" : "OCR & Translate" }
     static var tipSave: String { lang == .zh ? "保存" : "Save" }
     static var tipPin: String { lang == .zh ? "钉在屏幕" : "Pin to Screen" }
     static var tipCancel: String { lang == .zh ? "取消" : "Cancel" }
@@ -142,6 +144,7 @@ enum L10n {
     static var settingsTabPermissions: String { lang == .zh ? "权限" : "Permissions" }
     static var settingsTabUpload: String { lang == .zh ? "图床" : "Upload" }
     static var settingsTabAbout: String { lang == .zh ? "关于" : "About" }
+    static var settingsTabTranslation: String { lang == .zh ? "翻译" : "Translation" }
     static var settingsQuit: String { lang == .zh ? "退出应用" : "Quit App" }
 
     // About pane
@@ -303,6 +306,41 @@ enum L10n {
     static var uploadLogConfigCleared: String {
         lang == .zh ? "已清空配置" : "Config cleared"
     }
+
+    // OCR & Translation — result panel
+    static var ocrTextHeader: String { lang == .zh ? "识别文本" : "Recognized Text" }
+    static var ocrRecognizing: String { lang == .zh ? "正在识别…" : "Recognizing…" }
+    static var ocrNoText: String { lang == .zh ? "未识别到文字" : "No text found" }
+    static var ocrCopy: String { lang == .zh ? "复制" : "Copy" }
+    static var ocrCopied: String { lang == .zh ? "已复制" : "Copied" }
+    static var ocrRetry: String { lang == .zh ? "重试" : "Retry" }
+    static var ocrTranslating: String { lang == .zh ? "翻译中…" : "Translating…" }
+    static var ocrTranslateFailedPrefix: String { lang == .zh ? "翻译失败: " : "Failed: " }
+    static var ocrNoProviderTitle: String {
+        lang == .zh ? "未配置翻译服务" : "No translation service configured"
+    }
+    static var ocrNoProviderHint: String {
+        lang == .zh ? "前往「设置 → 翻译」添加 AI 服务" : "Add an AI service in Settings → Translation"
+    }
+    static var ocrOpenSettings: String { lang == .zh ? "打开设置" : "Open Settings" }
+
+    // Translation — settings tab
+    static var translationTargetLanguage: String { lang == .zh ? "目标语言" : "Target Language" }
+    static var translationTargetHint: String {
+        lang == .zh
+            ? "识别文本将翻译成该语言；若原文已是该语言则译为英文。"
+            : "Recognized text is translated into this language; if it is already in that language, it is translated to English instead."
+    }
+    static var translationProvidersHeader: String { lang == .zh ? "AI 翻译服务" : "AI Translation Services" }
+    static var translationApiKey: String { "API Key" }
+    static var translationModel: String { lang == .zh ? "模型" : "Model" }
+    static var translationEndpoint: String { lang == .zh ? "接口地址" : "Endpoint" }
+    static var translationEndpointOptional: String {
+        lang == .zh ? "接口地址(可选)" : "Endpoint (optional)"
+    }
+    static var translationSave: String { lang == .zh ? "保存" : "Save" }
+    static var translationClear: String { lang == .zh ? "清空" : "Clear" }
+    static var translationConfigSaved: String { lang == .zh ? "已保存配置" : "Config saved" }
 }
 
 struct Defaults {

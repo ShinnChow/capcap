@@ -144,6 +144,7 @@ class EditWindowController {
         tv.onColorPicker = { [weak self] in self?.runColorPicker() }
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
+        tv.onOCR = { [weak self] in self?.performOCR() }
         tv.onSave = { [weak self] in self?.save() }
         tv.onUpload = { [weak self] in self?.upload() }
         tv.onPin = { [weak self] in self?.pin() }
@@ -901,6 +902,20 @@ class EditWindowController {
         UploadManager.shared.upload(image: finalImage, on: targetScreen)
     }
 
+    /// OCR action: exits the selection/editor, then opens the OCR + translation
+    /// panel anchored to the original selection. Uses the raw capture (no
+    /// annotations) so recognition is not polluted by drawn marks.
+    private func performOCR() {
+        canvasView?.commitActiveTextEditing()
+        let baseImage = canvasView?.resolveBaseImageForEditing() ?? currentCompositeImage()
+        let anchorRect = selectionRect
+        let targetScreen = screen
+        tearDown()
+        onComplete(nil)
+        guard let baseImage else { return }
+        OCRTranslatePanel.present(image: baseImage, anchorRect: anchorRect, screen: targetScreen)
+    }
+
     private func pin() {
         canvasView?.commitActiveTextEditing()
         guard let finalImage = currentCompositeImage() else { return }
@@ -1209,7 +1224,7 @@ class ToolbarView: NSView {
     static let buttonSize: CGFloat = 32
     static let buttonSpacing: CGFloat = 6
     static let separatorWidth: CGFloat = 8
-    static let totalButtons: Int = 19
+    static let totalButtons: Int = 20
     static let horizontalPadding: CGFloat = 15
 
     static var preferredWidth: CGFloat {
@@ -1224,6 +1239,7 @@ class ToolbarView: NSView {
     var onColorPicker: (() -> Void)?
     var onScrollCapture: (() -> Void)?
     var onBeautify: (() -> Void)?
+    var onOCR: (() -> Void)?
     var onSave: (() -> Void)?
     var onUpload: (() -> Void)?
     var onPin: (() -> Void)?
@@ -1264,7 +1280,7 @@ class ToolbarView: NSView {
     }
 
     private func setupButtons() {
-        // 19 buttons: rect, ellipse, arrow, pen, marker, mosaic, numbered, text, colorPicker, undo, redo, moveSelection, scrollCapture, beautify | save, upload, pin, cancel, confirm
+        // 20 buttons: rect, ellipse, arrow, pen, marker, mosaic, numbered, text, colorPicker, undo, redo, moveSelection, scrollCapture, beautify, ocr | save, upload, pin, cancel, confirm
         let buttonSize = Self.buttonSize
         let spacing = Self.buttonSpacing
         let separatorWidth = Self.separatorWidth
@@ -1380,6 +1396,19 @@ class ToolbarView: NSView {
         beautifyBtn.action = #selector(beautifyTapped)
         addSubview(beautifyBtn)
         self.beautifyBtn = beautifyBtn
+        x += buttonSize + spacing
+
+        // OCR button — recognizes text in the selection and offers translation.
+        let ocrBtn = ToolButton(
+            frame: NSRect(x: x, y: y, width: buttonSize, height: buttonSize),
+            symbolName: "text.viewfinder",
+            normalColor: .white,
+            selectedColor: .white
+        )
+        ocrBtn.hoverTip = L10n.tipOCR
+        ocrBtn.target = self
+        ocrBtn.action = #selector(ocrTapped)
+        addSubview(ocrBtn)
         x += buttonSize + spacing + separatorWidth
 
         // Save button
@@ -1474,6 +1503,7 @@ class ToolbarView: NSView {
     @objc private func colorPickerTapped() { onColorPicker?() }
     @objc private func scrollCaptureTapped() { onScrollCapture?() }
     @objc private func beautifyTapped() { onBeautify?() }
+    @objc private func ocrTapped() { onOCR?() }
     @objc private func saveTapped() { onSave?() }
     @objc private func uploadTapped() { onUpload?() }
     @objc private func pinTapped() { onPin?() }
