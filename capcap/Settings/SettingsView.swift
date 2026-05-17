@@ -771,26 +771,36 @@ class SettingsView: NSView {
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
         errorLogStatusLabel = statusLabel
 
-        let chevron = NSImageView()
+        // The chevron lives inside a fixed-size Auto Layout container, while the
+        // image view itself uses a static frame. This keeps Auto Layout from
+        // resetting the image view's frame on each layout pass — which would
+        // otherwise discard the pivot compensation `frameCenterRotation` needs
+        // and make the chevron rotate around its corner instead of its center.
+        let chevronBox = NSView()
+        chevronBox.translatesAutoresizingMaskIntoConstraints = false
+        chevronBox.setContentHuggingPriority(.required, for: .horizontal)
+
+        let chevron = NSImageView(frame: NSRect(x: 0, y: 0, width: 12, height: 12))
         chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
         chevron.contentTintColor = NSColor.white.withAlphaComponent(0.32)
-        chevron.translatesAutoresizingMaskIntoConstraints = false
+        chevron.imageScaling = .scaleProportionallyUpOrDown
         chevron.wantsLayer = true
-        chevron.setContentHuggingPriority(.required, for: .horizontal)
+        chevron.autoresizingMask = []
+        chevronBox.addSubview(chevron)
         errorLogChevron = chevron
 
         header.addSubview(titleLabel)
         header.addSubview(statusLabel)
-        header.addSubview(chevron)
+        header.addSubview(chevronBox)
         NSLayoutConstraint.activate([
             header.heightAnchor.constraint(equalToConstant: 46),
             titleLabel.leadingAnchor.constraint(equalTo: header.leadingAnchor, constant: 14),
             titleLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            chevron.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -14),
-            chevron.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            chevron.widthAnchor.constraint(equalToConstant: 12),
-            chevron.heightAnchor.constraint(equalToConstant: 12),
-            statusLabel.trailingAnchor.constraint(equalTo: chevron.leadingAnchor, constant: -8),
+            chevronBox.trailingAnchor.constraint(equalTo: header.trailingAnchor, constant: -14),
+            chevronBox.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            chevronBox.widthAnchor.constraint(equalToConstant: 12),
+            chevronBox.heightAnchor.constraint(equalToConstant: 12),
+            statusLabel.trailingAnchor.constraint(equalTo: chevronBox.leadingAnchor, constant: -8),
             statusLabel.centerYAnchor.constraint(equalTo: header.centerYAnchor),
             statusLabel.leadingAnchor.constraint(greaterThanOrEqualTo: titleLabel.trailingAnchor, constant: 10),
         ])
