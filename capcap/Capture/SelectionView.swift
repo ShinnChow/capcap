@@ -405,7 +405,7 @@ class SelectionView: NSView {
             context.setLineWidth(borderWidth + 1)
             context.stroke(hoverRect.insetBy(dx: -1.5, dy: -1.5))
             // Size label
-            drawSizeLabel(context: context, rect: hoverRect)
+            SelectionView.drawSizeLabel(context: context, rect: hoverRect)
             return
         }
 
@@ -452,7 +452,7 @@ class SelectionView: NSView {
             // Draw 8 control handles
             drawHandles(context: context, rect: rect)
             // Draw size label
-            drawSizeLabel(context: context, rect: rect)
+            SelectionView.drawSizeLabel(context: context, rect: rect)
         }
     }
 
@@ -470,7 +470,7 @@ class SelectionView: NSView {
         }
     }
 
-    private func drawSizeLabel(context: CGContext, rect: NSRect) {
+    static func drawSizeLabel(context: CGContext, rect: NSRect) {
         let text = "\(Int(rect.width)) x \(Int(rect.height))"
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: NSColor.white,

@@ -2840,5 +2840,9 @@ final class SelectionChromeOverlay: NSView {
             context.setFillColor(accentColor.cgColor)
             context.fillEllipse(in: handleRect)
         }
+
+        // The SelectionView draws its own size label underneath, but the
+        // beautify gradient frame covers it. Re-draw it here, above the frame.
+        SelectionView.drawSizeLabel(context: context, rect: rect)
     }
 }
