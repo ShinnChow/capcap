@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-17
+
+### Added
+- `feat(upload): add Amazon S3 and Cloudflare R2 image hosts` (e8f4cb6)
+
+### Changed
+- `ci(release): sign builds with a reusable self-signed certificate` (c254931) — keeps macOS Screen Recording / Accessibility grants across updates
+
 ## [1.1.3] - 2026-05-16
 
 ### Added
