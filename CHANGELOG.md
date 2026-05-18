@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-05-18
+
+### Added
+- `feat(upload): add copy-as-Markdown-link toggle and ⌘-click in history` (b09b8ff)
+- `feat(upload): reveal-toggle on translation API key and fix upload button gating` (f17e58c)
+
+### Changed
+- `refactor(i18n): move UI strings to .lproj resource bundles via Localizer` (1966378)
+- `i18n: clarify edit-mode cancel hints with source context` (de128cf)
+
 ## [1.1.7] - 2026-05-17
 
 ### Added
