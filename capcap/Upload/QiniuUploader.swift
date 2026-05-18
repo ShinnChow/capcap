@@ -9,10 +9,9 @@ enum QiniuUploader: UploaderProtocol {
     static let kind: UploadProviderKind = .qiniu
 
     static func validate(_ config: ProviderConfig) -> String? {
-        let zh = L10n.lang == .zh
         for key in ["accessKey", "secretKey", "bucket", "domain"] {
             if config.nonEmpty(key) == nil {
-                return zh ? "缺少 \(key)" : "Missing \(key)"
+                return L10n.missingField(key)
             }
         }
         return nil

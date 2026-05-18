@@ -1,0 +1,260 @@
+/* capcap — Русский */
+
+/* Settings */
+"settingsTitle" = "Настройки capcap";
+"showMenuBarIcon" = "Показывать значок в строке меню";
+"permissionsHeader" = "Необходимые разрешения";
+"accessibilityPermission" = "Универсальный доступ";
+"accessibilityDescription" = "Необходимо для обнаружения двойного нажатия клавиши ⌘ Command для создания снимков экрана.";
+"screenRecordingPermission" = "Запись экрана";
+"screenRecordingDescription" = "Необходимо для захвата содержимого экрана при создании снимков.";
+"launchApp" = "Запустить приложение";
+"launchAtLogin" = "Запускать при входе";
+"demoMode" = "Демонстрационный режим";
+"demoModeHint" = "Разрешает программам записи экрана захватывать область выделения и редактор";
+"historyCacheLabel" = "Размер кэша истории";
+"historyCacheHint" = "Хранит недавние снимки для быстрого повторного копирования";
+"countdownLabel" = "Секунды обратного отсчёта";
+"countdownHint" = "Удерживайте ⌥ Option, затем дважды нажмите ⌘ или сочетание для снимка, чтобы запустить обратный отсчёт перед захватом (Esc — отмена)";
+"countdownSecondsSuffix" = "с";
+
+/* Screenshot shortcut */
+"shortcutHeader" = "Сочетание для снимка";
+"shortcutHint" = "По умолчанию: двойное нажатие ⌘. Назначение своего сочетания отключает двойное нажатие.";
+"shortcutDefaultDisplay" = "Двойное нажатие ⌘";
+"shortcutSet" = "Задать";
+"shortcutCancel" = "Отмена";
+"shortcutWaiting" = "Нажмите клавиши…";
+"shortcutRestore" = "Сбросить";
+
+/* Menu bar */
+"takeScreenshot" = "Сделать снимок";
+"settings" = "Настройки...";
+"quitApp" = "Завершить capcap";
+"historyMenu" = "История";
+"historyEmpty" = "История пуста";
+"historyClear" = "Очистить историю";
+
+/* Cursor chip */
+"dragToScreenshot" = "Нажмите на окно или перетащите для снимка";
+
+/* Toast */
+"copiedToClipboard" = "Скопировано в буфер обмена";
+"mergedLongScreenshot" = "Длинный снимок объединён";
+"autoScrollPermissionNeeded" = "Для захвата с прокруткой нужен Универсальный доступ — разрешите capcap в Системных настройках → Конфиденциальность и безопасность → Универсальный доступ.";
+"cropLongScreenshotHint" = "Перетащите верхний/нижний край для обрезки — нажмите Enter или ✓";
+"scrollCaptureHint" = "Нажмите Enter, чтобы завершить длинный снимок";
+"cancelFinderSelectionHint" = "Нажмите X для снятия выделения";
+"cancelClipboardEditHint" = "Нажмите X для отмены";
+"colorCopied" = "Цвет %@ скопирован";
+
+/* Toolbar tooltips */
+"tipRectangle" = "Прямоугольник";
+"tipEllipse" = "Эллипс";
+"tipArrow" = "Стрелка";
+"tipPen" = "Карандаш";
+"tipMarker" = "Маркер";
+"tipMosaic" = "Мозаика";
+"tipNumbered" = "Нумерация";
+"tipText" = "Текст";
+"tipColorPicker" = "Пипетка";
+"tipUndo" = "Отменить";
+"tipRedo" = "Повторить";
+"tipMoveSelection" = "Переместить выделение";
+"tipScrollCapture" = "Длинный снимок";
+"tipBeautify" = "Оформление";
+"tipOCR" = "OCR и перевод";
+"tipSave" = "Сохранить";
+"tipPin" = "Закрепить на экране";
+"tipCancel" = "Отмена";
+"tipConfirm" = "Подтвердить";
+
+/* Beautify */
+"beautify" = "Оформление";
+"beautifyPresetPeachBlue" = "Персиково-синий";
+"beautifyPresetMintTeal" = "Мятно-бирюзовый";
+"beautifyPresetPeachPink" = "Персиково-розовый";
+"beautifyPresetBluePurple" = "Сине-фиолетовый";
+"beautifyPresetWarmOrange" = "Тёплый оранжевый";
+"beautifyPresetTealPink" = "Бирюзово-розовый";
+"beautifyPresetDeepPurple" = "Тёмно-фиолетовый";
+"beautifyPresetNeutralGray" = "Нейтральный серый";
+"beautifyPresetWallpaper" = "Обои";
+
+/* Language */
+"languageHeader" = "Язык";
+
+/* Settings sidebar tabs */
+"settingsTabGeneral" = "Основные";
+"settingsTabShortcuts" = "Сочетания";
+"settingsTabPermissions" = "Разрешения";
+"settingsTabUpload" = "Хостинг";
+"settingsTabAbout" = "О программе";
+"settingsTabTranslation" = "Перевод";
+"settingsQuit" = "Завершить приложение";
+
+/* About pane */
+"aboutTagline" = "Инструмент для снимков экрана в строке меню";
+"aboutLicense" = "Лицензия";
+"aboutSourceCode" = "Исходный код";
+"aboutUpdateTitle" = "Обновления";
+"aboutErrorLog" = "Журнал ошибок";
+"aboutErrorLogNoCrash" = "Сбоев нет";
+"aboutErrorLogLastCrash" = "Последний сбой · %@";
+"aboutErrorLogCopy" = "Скопировать журнал";
+"aboutErrorLogCopied" = "Скопировано";
+"aboutErrorLogReveal" = "Показать в Finder";
+"aboutErrorLogEmptyBody" = "capcap не зафиксировал журналов сбоев — всё работает исправно. Если произойдёт сбой, вернитесь сюда, чтобы скопировать журнал для отчёта об ошибке.";
+
+/* Updates — About pane */
+"checkForUpdates" = "Проверить обновления";
+"updateChecking" = "Проверка…";
+"updateUpToDateStatus" = "Установлена последняя версия";
+"updateNewVersionStatus" = "Новая версия v%@";
+"updateFailedStatus" = "Не удалось проверить";
+"updateDownloadButton" = "Загрузить";
+"updateRetryButton" = "Повторить";
+"updateInstallNowButton" = "Обновить сейчас";
+"updateDownloadingStatus" = "Загрузка %d%%";
+"updateInstallingStatus" = "Установка…";
+"updateInstallFailedStatus" = "Не удалось установить";
+
+/* Updates — menu bar */
+"checkForUpdatesMenu" = "Проверить обновления…";
+"checkingForUpdatesMenu" = "Проверка обновлений…";
+"updateAvailableMenu" = "Доступна новая версия v%@";
+"updateDownloadingMenu" = "Загрузка обновления… %d%%";
+"updateInstallingMenu" = "Установка обновления…";
+"updateInstallFailedMenu" = "Не удалось установить обновление";
+
+/* Updates — progress HUD */
+"updateCheckingHUD" = "Проверка обновлений…";
+"updateDownloadingHUD" = "Загрузка обновления %d%%";
+"updateVerifyingHUD" = "Проверка обновления…";
+"updateUnzippingHUD" = "Распаковка…";
+"updateInstallingHUD" = "Установка…";
+
+/* Updates — manual check result alert */
+"updateAvailableTitle" = "Доступна версия v%@";
+"updateAvailableBody" = "capcap загрузит и установит последнюю версию, затем автоматически перезапустится.";
+"updateUpToDateTitle" = "У вас последняя версия";
+"updateUpToDateBody" = "capcap v%@ — это последняя версия.";
+"updateFailedTitle" = "Не удалось проверить обновления";
+"updateFailedBody" = "Не удалось связаться с GitHub. Проверьте подключение и повторите попытку.";
+"updateInstallFailedTitle" = "Не удалось обновить";
+"updateInstallFailedBody" = "При загрузке или установке обновления произошла ошибка. Вы можете загрузить его вручную со страницы релизов GitHub.";
+"updateOpenPageButton" = "Открыть GitHub";
+"updateSkipButton" = "Пропустить эту версию";
+"updateLaterButton" = "Позже";
+"updateOKButton" = "ОК";
+
+/* Quit confirmation dialog */
+"quitConfirmTitle" = "Завершить capcap?";
+"quitConfirmMessage" = "После выхода значок в строке меню исчезнет, а сочетание для снимка будет отключено до следующего запуска capcap.";
+"quitConfirmAction" = "Завершить";
+"quitConfirmCancel" = "Отмена";
+
+/* Upload — toolbar / toast / progress */
+"tipUpload" = "Загрузить на хостинг изображений";
+"uploadingTitle" = "Загрузка";
+"uploadCopied" = "URL изображения скопирован";
+"uploadCopiedMarkdown" = "Ссылка Markdown скопирована";
+"uploadNoProvider" = "Сначала настройте хостинг в настройках";
+"uploadFailedPrefix" = "Не удалось загрузить: ";
+
+/* Upload — settings tab */
+"uploadDefaultProvider" = "Хостинг по умолчанию";
+"uploadDefaultNone" = "Отключено";
+"uploadSetDefaultButton" = "Сделать основным";
+"uploadSaveButton" = "Сохранить";
+"uploadClearButton" = "Очистить";
+"uploadSavedToast" = "Конфигурация сохранена";
+"uploadCurrentDefault" = "Текущий по умолчанию";
+"uploadMarkdownToggleTitle" = "Копировать как ссылку Markdown";
+"uploadMarkdownToggleSubtitle" = "Если включено, после загрузки копируется тег изображения Markdown (![](url)); если выключено — обычный URL. В истории нажмите ⌘ и щёлкните по загруженному изображению, чтобы скопировать ссылку Markdown, или просто щёлкните для обычного URL.";
+
+/* Upload — provider field labels */
+"uploadFieldBucket" = "Бакет";
+"uploadFieldBucketSpace" = "Бакет";
+"uploadFieldRegion" = "Регион";
+"uploadFieldRegionOptional" = "Регион (необязательно)";
+"uploadFieldPathOptional" = "Путь (необязательно)";
+"uploadFieldCustomUrlOptional" = "Свой домен (необязательно)";
+"uploadFieldPublicDomain" = "Публичный домен";
+"uploadFieldEndpointArea" = "Эндпоинт";
+"uploadFieldEndpointOptional" = "Эндпоинт (необязательно)";
+"uploadFieldAccountId" = "ID аккаунта";
+"uploadTestImageFailed" = "Не удалось создать тестовое изображение";
+
+/* Upload — provider names */
+"providerTencentCOS" = "Tencent COS";
+"providerQiniuKodo" = "Qiniu Kodo";
+"providerAliyunOSS" = "Aliyun OSS";
+
+/* Upload — errors */
+"uploadErrMissingConfig" = "Хостинг не настроен";
+"uploadErrInvalidConfigPrefix" = "Неверная конфигурация: ";
+"uploadErrNetworkPrefix" = "Ошибка сети: ";
+"uploadErrServerPrefix" = "Не удалось загрузить (%d): ";
+"uploadErrUnexpectedResponsePrefix" = "Неожиданный ответ: ";
+"missingField" = "Отсутствует %@";
+
+/* Upload — test/validation pill */
+"uploadStatusUntested" = "Не проверено";
+"uploadStatusTesting" = "Проверка…";
+"uploadStatusValid" = "Активно";
+"uploadStatusInvalid" = "Неверная конфигурация";
+
+/* Upload — log lines */
+"uploadLogStartingTest" = "Запуск тестовой загрузки…";
+"uploadLogConfigSaved" = "Конфигурация сохранена";
+"uploadLogMissingFields" = "Отсутствуют обязательные поля: %@";
+"uploadLogTestSucceeded" = "Тестовая загрузка успешна: %@";
+"uploadLogTestFailed" = "Тестовая загрузка не удалась: %@";
+"uploadLogProviderDisabled" = "Хостинг отключён";
+"uploadLogConfigCleared" = "Конфигурация очищена";
+
+/* Permissions — status label */
+"permissionGranted" = "Предоставлено";
+"permissionNotGranted" = "Не предоставлено";
+
+/* OCR & Translation — result panel */
+"ocrTextHeader" = "Распознанный текст";
+"ocrRecognizing" = "Распознавание…";
+"ocrNoText" = "Текст не найден";
+"ocrCopy" = "Копировать";
+"ocrCopied" = "Скопировано";
+"ocrRetry" = "Повторить";
+"ocrTranslating" = "Перевод…";
+"ocrTranslateFailedPrefix" = "Ошибка: ";
+"ocrNoProviderTitle" = "Служба перевода не настроена";
+"ocrNoProviderHint" = "Добавьте ИИ-службу в Настройки → Перевод";
+"ocrOpenSettings" = "Открыть настройки";
+
+/* Translation — settings tab */
+"translationTargetLanguage" = "Язык перевода";
+"translationTargetHint" = "Распознанный текст переводится на этот язык; если он уже на этом языке, он переводится на английский.";
+"translationProvidersHeader" = "ИИ-службы перевода";
+"translationApiKey" = "Ключ API";
+"translationModel" = "Модель";
+"translationEndpoint" = "Эндпоинт";
+"translationEndpointOptional" = "Эндпоинт (необязательно)";
+"translationSave" = "Сохранить";
+"translationClear" = "Очистить";
+"translationConfigSaved" = "Конфигурация сохранена";
+"translationTesting" = "Проверка…";
+"translationTestPassed" = "Проверка пройдена";
+"translationTestFailed" = "Проверка не пройдена";
+"translationTestFailedTitle" = "Сохранено, но проверка соединения не удалась";
+"translationProviderCustom" = "Свой (совместимый с OpenAI)";
+
+/* Translation — target language names */
+"transLangChinese" = "Китайский";
+"transLangEnglish" = "Английский";
+"transLangJapanese" = "Японский";
+"transLangKorean" = "Корейский";
+
+/* Translation — errors */
+"translationErrMissingAPIKey" = "Ключ API не настроен";
+"translationErrBadEndpoint" = "Неверный эндпоинт";
+"translationErrBadResponse" = "Неожиданный ответ";

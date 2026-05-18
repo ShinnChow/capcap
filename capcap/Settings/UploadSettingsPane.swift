@@ -167,67 +167,67 @@ final class UploadSettingsPane: NSView {
             return [
                 .init(key: "secretId",  label: "SecretId",  placeholder: "AKIDxxxxxxxx", secure: false),
                 .init(key: "secretKey", label: "SecretKey", placeholder: "********",     secure: true),
-                .init(key: "bucket",    label: L10n.lang == .zh ? "存储桶" : "Bucket",
+                .init(key: "bucket",    label: L10n.uploadFieldBucket,
                       placeholder: "examplebucket-1250000000", secure: false),
-                .init(key: "region",    label: L10n.lang == .zh ? "地域" : "Region",
+                .init(key: "region",    label: L10n.uploadFieldRegion,
                       placeholder: "ap-shanghai", secure: false),
-                .init(key: "path",      label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                .init(key: "path",      label: L10n.uploadFieldPathOptional,
                       placeholder: "screenshots", secure: false),
-                .init(key: "customUrl", label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
+                .init(key: "customUrl", label: L10n.uploadFieldCustomUrlOptional,
                       placeholder: "https://cdn.example.com", secure: false),
             ]
         case .qiniu:
             return [
                 .init(key: "accessKey", label: "AccessKey", placeholder: "********", secure: false),
                 .init(key: "secretKey", label: "SecretKey", placeholder: "********", secure: true),
-                .init(key: "bucket",    label: L10n.lang == .zh ? "存储空间" : "Bucket",
+                .init(key: "bucket",    label: L10n.uploadFieldBucketSpace,
                       placeholder: "my-bucket", secure: false),
-                .init(key: "domain",    label: L10n.lang == .zh ? "外链域名" : "Public Domain",
+                .init(key: "domain",    label: L10n.uploadFieldPublicDomain,
                       placeholder: "https://cdn.example.com", secure: false),
-                .init(key: "region",    label: L10n.lang == .zh ? "区域(可选)" : "Region (optional)",
+                .init(key: "region",    label: L10n.uploadFieldRegionOptional,
                       placeholder: "z0 / z1 / z2 / na0 / as0 / cn-east-2", secure: false),
-                .init(key: "path",      label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                .init(key: "path",      label: L10n.uploadFieldPathOptional,
                       placeholder: "screenshots", secure: false),
             ]
         case .aliyun:
             return [
                 .init(key: "accessKeyId",     label: "AccessKey Id",     placeholder: "LTAIxxxxxxx",  secure: false),
                 .init(key: "accessKeySecret", label: "AccessKey Secret", placeholder: "********",     secure: true),
-                .init(key: "bucket",          label: L10n.lang == .zh ? "存储桶" : "Bucket",
+                .init(key: "bucket",          label: L10n.uploadFieldBucket,
                       placeholder: "my-bucket", secure: false),
-                .init(key: "area",            label: L10n.lang == .zh ? "Endpoint 地域" : "Endpoint",
+                .init(key: "area",            label: L10n.uploadFieldEndpointArea,
                       placeholder: "oss-cn-hangzhou", secure: false),
-                .init(key: "path",            label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                .init(key: "path",            label: L10n.uploadFieldPathOptional,
                       placeholder: "screenshots", secure: false),
-                .init(key: "customUrl",       label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
+                .init(key: "customUrl",       label: L10n.uploadFieldCustomUrlOptional,
                       placeholder: "https://cdn.example.com", secure: false),
             ]
         case .s3:
             return [
                 .init(key: "accessKeyId",     label: "Access Key ID",     placeholder: "AKIAxxxxxxxx", secure: false),
                 .init(key: "secretAccessKey", label: "Secret Access Key", placeholder: "********",      secure: true),
-                .init(key: "bucket",          label: L10n.lang == .zh ? "存储桶" : "Bucket",
+                .init(key: "bucket",          label: L10n.uploadFieldBucket,
                       placeholder: "my-bucket", secure: false),
-                .init(key: "region",          label: L10n.lang == .zh ? "区域" : "Region",
+                .init(key: "region",          label: L10n.uploadFieldRegion,
                       placeholder: "us-east-1", secure: false),
-                .init(key: "endpoint",        label: L10n.lang == .zh ? "Endpoint(可选)" : "Endpoint (optional)",
+                .init(key: "endpoint",        label: L10n.uploadFieldEndpointOptional,
                       placeholder: "minio.example.com", secure: false),
-                .init(key: "path",            label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                .init(key: "path",            label: L10n.uploadFieldPathOptional,
                       placeholder: "screenshots", secure: false),
-                .init(key: "customUrl",       label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
+                .init(key: "customUrl",       label: L10n.uploadFieldCustomUrlOptional,
                       placeholder: "https://cdn.example.com", secure: false),
             ]
         case .r2:
             return [
                 .init(key: "accessKeyId",     label: "Access Key ID",     placeholder: "********", secure: false),
                 .init(key: "secretAccessKey", label: "Secret Access Key", placeholder: "********", secure: true),
-                .init(key: "accountId",       label: L10n.lang == .zh ? "账户 ID" : "Account ID",
+                .init(key: "accountId",       label: L10n.uploadFieldAccountId,
                       placeholder: "Cloudflare Account ID", secure: false),
-                .init(key: "bucket",          label: L10n.lang == .zh ? "存储桶" : "Bucket",
+                .init(key: "bucket",          label: L10n.uploadFieldBucket,
                       placeholder: "my-bucket", secure: false),
-                .init(key: "path",            label: L10n.lang == .zh ? "路径(可选)" : "Path (optional)",
+                .init(key: "path",            label: L10n.uploadFieldPathOptional,
                       placeholder: "screenshots", secure: false),
-                .init(key: "customUrl",       label: L10n.lang == .zh ? "自定义域名(可选)" : "Custom URL (optional)",
+                .init(key: "customUrl",       label: L10n.uploadFieldCustomUrlOptional,
                       placeholder: "https://img.example.com", secure: false),
             ]
         }
@@ -649,7 +649,7 @@ private final class ProviderCard: NSView {
 
         guard let png = Self.tinyTestPNG() else {
             status = .invalid
-            logView.append(.error, L10n.lang == .zh ? "无法生成测试图片" : "Failed to build test image")
+            logView.append(.error, L10n.uploadTestImageFailed)
             return
         }
 

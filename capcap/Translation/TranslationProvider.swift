@@ -12,10 +12,10 @@ enum TranslationLanguage: String, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .chinese:  return L10n.lang == .zh ? "中文" : "Chinese"
-        case .english:  return L10n.lang == .zh ? "英文" : "English"
-        case .japanese: return L10n.lang == .zh ? "日文" : "Japanese"
-        case .korean:   return L10n.lang == .zh ? "韩文" : "Korean"
+        case .chinese:  return L10n.transLangChinese
+        case .english:  return L10n.transLangEnglish
+        case .japanese: return L10n.transLangJapanese
+        case .korean:   return L10n.transLangKorean
         }
     }
 
@@ -44,7 +44,7 @@ enum TranslationProviderKind: String, CaseIterable {
         switch self {
         case .openai:   return "OpenAI"
         case .deepseek: return "DeepSeek"
-        case .custom:   return L10n.lang == .zh ? "自定义 (OpenAI 兼容)" : "Custom (OpenAI-compatible)"
+        case .custom:   return L10n.translationProviderCustom
         case .claude:   return "Claude"
         }
     }

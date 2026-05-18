@@ -1,0 +1,260 @@
+/* capcap — 日本語 */
+
+/* Settings */
+"settingsTitle" = "capcap 設定";
+"showMenuBarIcon" = "メニューバーアイコンを表示";
+"permissionsHeader" = "必要な権限";
+"accessibilityPermission" = "アクセシビリティ";
+"accessibilityDescription" = "⌘ Command キーのダブルタップを検出してスクリーンショットを起動するために必要です。";
+"screenRecordingPermission" = "画面収録";
+"screenRecordingDescription" = "スクリーンショットのために画面の内容をキャプチャするのに必要です。";
+"launchApp" = "アプリを起動";
+"launchAtLogin" = "ログイン時に起動";
+"demoMode" = "デモモード";
+"demoModeHint" = "画面収録ソフトが選択範囲のオーバーレイとエディタを録画できるようにします";
+"historyCacheLabel" = "履歴キャッシュ数";
+"historyCacheHint" = "最近のスクリーンショットを保持し、すばやく再コピーできます";
+"countdownLabel" = "カウントダウン秒数";
+"countdownHint" = "⌥ Option を押しながら ⌘ をダブルタップするか、スクリーンショットのショートカットを押すと、撮影前にカウントダウンが始まります（Esc でキャンセル）";
+"countdownSecondsSuffix" = "秒";
+
+/* Screenshot shortcut */
+"shortcutHeader" = "スクリーンショットのショートカット";
+"shortcutHint" = "デフォルトは ⌘ のダブルタップ。カスタムショートカットを設定するとダブルタップは無効になります。";
+"shortcutDefaultDisplay" = "⌘ をダブルタップ";
+"shortcutSet" = "記録";
+"shortcutCancel" = "キャンセル";
+"shortcutWaiting" = "キー入力待ち…";
+"shortcutRestore" = "デフォルトに戻す";
+
+/* Menu bar */
+"takeScreenshot" = "スクリーンショット";
+"settings" = "設定...";
+"quitApp" = "capcap を終了";
+"historyMenu" = "履歴";
+"historyEmpty" = "履歴がありません";
+"historyClear" = "履歴を消去";
+
+/* Cursor chip */
+"dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";
+
+/* Toast */
+"copiedToClipboard" = "クリップボードにコピーしました";
+"mergedLongScreenshot" = "長いスクリーンショットを結合しました";
+"autoScrollPermissionNeeded" = "スクロールキャプチャにはアクセシビリティ権限が必要です。システム設定 → プライバシーとセキュリティ → アクセシビリティ で capcap を許可してください。";
+"cropLongScreenshotHint" = "上下の端をドラッグしてトリミング — Enter キーまたは ✓ をタップ";
+"scrollCaptureHint" = "Enter キーで長いスクリーンショットを終了";
+"cancelFinderSelectionHint" = "X キーで選択解除";
+"cancelClipboardEditHint" = "X キーでキャンセル";
+"colorCopied" = "カラー %@ をコピーしました";
+
+/* Toolbar tooltips */
+"tipRectangle" = "長方形";
+"tipEllipse" = "楕円";
+"tipArrow" = "矢印";
+"tipPen" = "ペン";
+"tipMarker" = "マーカー";
+"tipMosaic" = "モザイク";
+"tipNumbered" = "番号";
+"tipText" = "テキスト";
+"tipColorPicker" = "カラーピッカー";
+"tipUndo" = "取り消す";
+"tipRedo" = "やり直す";
+"tipMoveSelection" = "選択範囲を移動";
+"tipScrollCapture" = "長いスクリーンショット";
+"tipBeautify" = "装飾";
+"tipOCR" = "OCR・翻訳";
+"tipSave" = "保存";
+"tipPin" = "画面に固定";
+"tipCancel" = "キャンセル";
+"tipConfirm" = "確定";
+
+/* Beautify */
+"beautify" = "装飾";
+"beautifyPresetPeachBlue" = "ピーチブルー";
+"beautifyPresetMintTeal" = "ミントティール";
+"beautifyPresetPeachPink" = "ピーチピンク";
+"beautifyPresetBluePurple" = "ブルーパープル";
+"beautifyPresetWarmOrange" = "ウォームオレンジ";
+"beautifyPresetTealPink" = "ティールピンク";
+"beautifyPresetDeepPurple" = "ディープパープル";
+"beautifyPresetNeutralGray" = "ニュートラルグレー";
+"beautifyPresetWallpaper" = "壁紙";
+
+/* Language */
+"languageHeader" = "言語";
+
+/* Settings sidebar tabs */
+"settingsTabGeneral" = "一般";
+"settingsTabShortcuts" = "ショートカット";
+"settingsTabPermissions" = "権限";
+"settingsTabUpload" = "画像ホスト";
+"settingsTabAbout" = "情報";
+"settingsTabTranslation" = "翻訳";
+"settingsQuit" = "アプリを終了";
+
+/* About pane */
+"aboutTagline" = "メニューバー スクリーンショットツール";
+"aboutLicense" = "ライセンス";
+"aboutSourceCode" = "ソースコード";
+"aboutUpdateTitle" = "アップデート";
+"aboutErrorLog" = "エラーログ";
+"aboutErrorLogNoCrash" = "クラッシュなし";
+"aboutErrorLogLastCrash" = "前回のクラッシュ · %@";
+"aboutErrorLogCopy" = "ログをコピー";
+"aboutErrorLogCopied" = "コピーしました";
+"aboutErrorLogReveal" = "Finder に表示";
+"aboutErrorLogEmptyBody" = "capcap はクラッシュログを記録していません — すべて正常に動作しています。クラッシュが発生した場合は、ここに戻ってログをコピーし、バグ報告にご利用ください。";
+
+/* Updates — About pane */
+"checkForUpdates" = "アップデートを確認";
+"updateChecking" = "確認中…";
+"updateUpToDateStatus" = "最新です";
+"updateNewVersionStatus" = "新しいバージョン v%@";
+"updateFailedStatus" = "確認に失敗";
+"updateDownloadButton" = "ダウンロード";
+"updateRetryButton" = "再試行";
+"updateInstallNowButton" = "今すぐ更新";
+"updateDownloadingStatus" = "ダウンロード中 %d%%";
+"updateInstallingStatus" = "インストール中…";
+"updateInstallFailedStatus" = "インストールに失敗";
+
+/* Updates — menu bar */
+"checkForUpdatesMenu" = "アップデートを確認…";
+"checkingForUpdatesMenu" = "アップデートを確認中…";
+"updateAvailableMenu" = "新しいバージョン v%@ が利用可能";
+"updateDownloadingMenu" = "アップデートをダウンロード中… %d%%";
+"updateInstallingMenu" = "アップデートをインストール中…";
+"updateInstallFailedMenu" = "アップデートのインストールに失敗";
+
+/* Updates — progress HUD */
+"updateCheckingHUD" = "アップデートを確認中…";
+"updateDownloadingHUD" = "アップデートをダウンロード中 %d%%";
+"updateVerifyingHUD" = "アップデートを検証中…";
+"updateUnzippingHUD" = "展開中…";
+"updateInstallingHUD" = "インストール中…";
+
+/* Updates — manual check result alert */
+"updateAvailableTitle" = "バージョン v%@ が利用可能です";
+"updateAvailableBody" = "capcap は最新バージョンをダウンロードしてインストールし、自動的に再起動します。";
+"updateUpToDateTitle" = "最新の状態です";
+"updateUpToDateBody" = "capcap v%@ が最新バージョンです。";
+"updateFailedTitle" = "アップデートの確認に失敗";
+"updateFailedBody" = "GitHub に接続できませんでした。ネットワークを確認して再試行してください。";
+"updateInstallFailedTitle" = "アップデートに失敗";
+"updateInstallFailedBody" = "アップデートのダウンロードまたはインストール中に問題が発生しました。GitHub のリリースページから手動でダウンロードできます。";
+"updateOpenPageButton" = "GitHub を開く";
+"updateSkipButton" = "このバージョンをスキップ";
+"updateLaterButton" = "後で";
+"updateOKButton" = "OK";
+
+/* Quit confirmation dialog */
+"quitConfirmTitle" = "capcap を終了しますか？";
+"quitConfirmMessage" = "終了するとメニューバーアイコンが消え、capcap を再起動するまでスクリーンショットのショートカットが無効になります。";
+"quitConfirmAction" = "終了";
+"quitConfirmCancel" = "キャンセル";
+
+/* Upload — toolbar / toast / progress */
+"tipUpload" = "画像ホストにアップロード";
+"uploadingTitle" = "アップロード中";
+"uploadCopied" = "画像 URL をコピーしました";
+"uploadCopiedMarkdown" = "Markdown リンクをコピーしました";
+"uploadNoProvider" = "先に設定で画像ホストを構成してください";
+"uploadFailedPrefix" = "アップロードに失敗: ";
+
+/* Upload — settings tab */
+"uploadDefaultProvider" = "デフォルトの画像ホスト";
+"uploadDefaultNone" = "無効";
+"uploadSetDefaultButton" = "デフォルトに設定";
+"uploadSaveButton" = "保存";
+"uploadClearButton" = "クリア";
+"uploadSavedToast" = "設定を保存しました";
+"uploadCurrentDefault" = "現在のデフォルト";
+"uploadMarkdownToggleTitle" = "Markdown リンクとしてコピー";
+"uploadMarkdownToggleSubtitle" = "オンにすると、アップロード後に Markdown 画像タグ（![](url)）をコピーします。オフの場合は通常の URL をコピーします。履歴では、⌘ を押しながらアップロード済み画像をクリックすると Markdown リンクを、そのままクリックすると通常の URL をコピーします。";
+
+/* Upload — provider field labels */
+"uploadFieldBucket" = "バケット";
+"uploadFieldBucketSpace" = "バケット";
+"uploadFieldRegion" = "リージョン";
+"uploadFieldRegionOptional" = "リージョン（任意）";
+"uploadFieldPathOptional" = "パス（任意）";
+"uploadFieldCustomUrlOptional" = "カスタムドメイン（任意）";
+"uploadFieldPublicDomain" = "公開ドメイン";
+"uploadFieldEndpointArea" = "エンドポイント";
+"uploadFieldEndpointOptional" = "エンドポイント（任意）";
+"uploadFieldAccountId" = "アカウント ID";
+"uploadTestImageFailed" = "テスト画像を生成できませんでした";
+
+/* Upload — provider names */
+"providerTencentCOS" = "Tencent COS";
+"providerQiniuKodo" = "Qiniu Kodo";
+"providerAliyunOSS" = "Aliyun OSS";
+
+/* Upload — errors */
+"uploadErrMissingConfig" = "アップロード先が設定されていません";
+"uploadErrInvalidConfigPrefix" = "設定が無効です: ";
+"uploadErrNetworkPrefix" = "ネットワークエラー: ";
+"uploadErrServerPrefix" = "アップロードに失敗 (%d): ";
+"uploadErrUnexpectedResponsePrefix" = "予期しない応答: ";
+"missingField" = "%@ がありません";
+
+/* Upload — test/validation pill */
+"uploadStatusUntested" = "未テスト";
+"uploadStatusTesting" = "テスト中…";
+"uploadStatusValid" = "有効";
+"uploadStatusInvalid" = "無効な設定";
+
+/* Upload — log lines */
+"uploadLogStartingTest" = "テストアップロードを開始…";
+"uploadLogConfigSaved" = "設定を保存しました";
+"uploadLogMissingFields" = "必須項目が不足しています: %@";
+"uploadLogTestSucceeded" = "テストアップロード成功: %@";
+"uploadLogTestFailed" = "テストアップロード失敗: %@";
+"uploadLogProviderDisabled" = "この画像ホストを無効にしました";
+"uploadLogConfigCleared" = "設定をクリアしました";
+
+/* Permissions — status label */
+"permissionGranted" = "許可済み";
+"permissionNotGranted" = "未許可";
+
+/* OCR & Translation — result panel */
+"ocrTextHeader" = "認識されたテキスト";
+"ocrRecognizing" = "認識中…";
+"ocrNoText" = "テキストが見つかりません";
+"ocrCopy" = "コピー";
+"ocrCopied" = "コピーしました";
+"ocrRetry" = "再試行";
+"ocrTranslating" = "翻訳中…";
+"ocrTranslateFailedPrefix" = "失敗: ";
+"ocrNoProviderTitle" = "翻訳サービスが設定されていません";
+"ocrNoProviderHint" = "設定 → 翻訳 で AI サービスを追加してください";
+"ocrOpenSettings" = "設定を開く";
+
+/* Translation — settings tab */
+"translationTargetLanguage" = "翻訳先の言語";
+"translationTargetHint" = "認識されたテキストはこの言語に翻訳されます。すでにこの言語の場合は英語に翻訳されます。";
+"translationProvidersHeader" = "AI 翻訳サービス";
+"translationApiKey" = "API キー";
+"translationModel" = "モデル";
+"translationEndpoint" = "エンドポイント";
+"translationEndpointOptional" = "エンドポイント（任意）";
+"translationSave" = "保存";
+"translationClear" = "クリア";
+"translationConfigSaved" = "設定を保存しました";
+"translationTesting" = "テスト中…";
+"translationTestPassed" = "テスト成功";
+"translationTestFailed" = "テスト失敗";
+"translationTestFailedTitle" = "保存しましたが、接続テストに失敗しました";
+"translationProviderCustom" = "カスタム (OpenAI 互換)";
+
+/* Translation — target language names */
+"transLangChinese" = "中国語";
+"transLangEnglish" = "英語";
+"transLangJapanese" = "日本語";
+"transLangKorean" = "韓国語";
+
+/* Translation — errors */
+"translationErrMissingAPIKey" = "API キーが設定されていません";
+"translationErrBadEndpoint" = "エンドポイントが無効です";
+"translationErrBadResponse" = "予期しない応答";

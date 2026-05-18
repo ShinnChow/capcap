@@ -9,11 +9,11 @@ enum TranslationError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingAPIKey:
-            return L10n.lang == .zh ? "未配置 API Key" : "API key not configured"
+            return L10n.translationErrMissingAPIKey
         case .badEndpoint:
-            return L10n.lang == .zh ? "接口地址无效" : "Invalid endpoint"
+            return L10n.translationErrBadEndpoint
         case .badResponse:
-            return L10n.lang == .zh ? "响应格式异常" : "Unexpected response"
+            return L10n.translationErrBadResponse
         case let .http(code, body):
             let detail = body.isEmpty ? "" : " — \(body)"
             return "HTTP \(code)\(detail)"

@@ -1,0 +1,260 @@
+/* capcap — English (base language) */
+
+/* Settings */
+"settingsTitle" = "capcap Settings";
+"showMenuBarIcon" = "Show Menu Bar Icon";
+"permissionsHeader" = "Required Permissions";
+"accessibilityPermission" = "Accessibility";
+"accessibilityDescription" = "Needed to detect double-tap ⌘ Command key globally to trigger screenshots.";
+"screenRecordingPermission" = "Screen Recording";
+"screenRecordingDescription" = "Needed to capture screen content for screenshots.";
+"launchApp" = "Launch App";
+"launchAtLogin" = "Launch at Login";
+"demoMode" = "Demo Mode";
+"demoModeHint" = "Allow screen recorders to capture the selection overlay and editor";
+"historyCacheLabel" = "History Cache Size";
+"historyCacheHint" = "Keep the most recent screenshots for quick re-copy";
+"countdownLabel" = "Countdown Seconds";
+"countdownHint" = "Hold ⌥ Option then double-tap ⌘ or press the screenshot shortcut to start a countdown before capture (Esc cancels)";
+"countdownSecondsSuffix" = "s";
+
+/* Screenshot shortcut */
+"shortcutHeader" = "Screenshot Shortcut";
+"shortcutHint" = "Default: double-tap ⌘. Setting a custom shortcut disables double-tap.";
+"shortcutDefaultDisplay" = "Double-tap ⌘";
+"shortcutSet" = "Set";
+"shortcutCancel" = "Cancel";
+"shortcutWaiting" = "Press keys…";
+"shortcutRestore" = "Restore Default";
+
+/* Menu bar */
+"takeScreenshot" = "Take Screenshot";
+"settings" = "Settings...";
+"quitApp" = "Quit capcap";
+"historyMenu" = "History";
+"historyEmpty" = "No history yet";
+"historyClear" = "Clear History";
+
+/* Cursor chip */
+"dragToScreenshot" = "Click window or drag to screenshot";
+
+/* Toast */
+"copiedToClipboard" = "Copied to clipboard";
+"mergedLongScreenshot" = "Long screenshot merged";
+"autoScrollPermissionNeeded" = "Scroll capture needs Accessibility access — grant capcap in System Settings → Privacy & Security → Accessibility.";
+"cropLongScreenshotHint" = "Drag the top/bottom edges to crop — press Enter or tap ✓";
+"scrollCaptureHint" = "Press Enter to finish long screenshot";
+"cancelFinderSelectionHint" = "Press X to deselect";
+"cancelClipboardEditHint" = "Press X to cancel";
+"colorCopied" = "Copied color %@";
+
+/* Toolbar tooltips */
+"tipRectangle" = "Rectangle";
+"tipEllipse" = "Ellipse";
+"tipArrow" = "Arrow";
+"tipPen" = "Pen";
+"tipMarker" = "Marker";
+"tipMosaic" = "Mosaic";
+"tipNumbered" = "Numbered";
+"tipText" = "Text";
+"tipColorPicker" = "Color Picker";
+"tipUndo" = "Undo";
+"tipRedo" = "Redo";
+"tipMoveSelection" = "Move Selection";
+"tipScrollCapture" = "Scroll Capture";
+"tipBeautify" = "Beautify";
+"tipOCR" = "OCR & Translate";
+"tipSave" = "Save";
+"tipPin" = "Pin to Screen";
+"tipCancel" = "Cancel";
+"tipConfirm" = "Confirm";
+
+/* Beautify */
+"beautify" = "Beautify";
+"beautifyPresetPeachBlue" = "Peach Blue";
+"beautifyPresetMintTeal" = "Mint Teal";
+"beautifyPresetPeachPink" = "Peach Pink";
+"beautifyPresetBluePurple" = "Blue Purple";
+"beautifyPresetWarmOrange" = "Warm Orange";
+"beautifyPresetTealPink" = "Teal Pink";
+"beautifyPresetDeepPurple" = "Deep Purple";
+"beautifyPresetNeutralGray" = "Neutral Gray";
+"beautifyPresetWallpaper" = "Wallpaper";
+
+/* Language */
+"languageHeader" = "Language";
+
+/* Settings sidebar tabs */
+"settingsTabGeneral" = "General";
+"settingsTabShortcuts" = "Shortcuts";
+"settingsTabPermissions" = "Permissions";
+"settingsTabUpload" = "Upload";
+"settingsTabAbout" = "About";
+"settingsTabTranslation" = "Translation";
+"settingsQuit" = "Quit App";
+
+/* About pane */
+"aboutTagline" = "Menu bar screenshot tool";
+"aboutLicense" = "License";
+"aboutSourceCode" = "Source code";
+"aboutUpdateTitle" = "Updates";
+"aboutErrorLog" = "Error Log";
+"aboutErrorLogNoCrash" = "No crashes";
+"aboutErrorLogLastCrash" = "Last crash · %@";
+"aboutErrorLogCopy" = "Copy Log";
+"aboutErrorLogCopied" = "Copied";
+"aboutErrorLogReveal" = "Show in Finder";
+"aboutErrorLogEmptyBody" = "capcap hasn't recorded any crash logs — everything looks healthy. If it crashes, come back here to copy the log for a bug report.";
+
+/* Updates — About pane */
+"checkForUpdates" = "Check for Updates";
+"updateChecking" = "Checking…";
+"updateUpToDateStatus" = "Up to date";
+"updateNewVersionStatus" = "New version v%@";
+"updateFailedStatus" = "Check failed";
+"updateDownloadButton" = "Download";
+"updateRetryButton" = "Retry";
+"updateInstallNowButton" = "Update Now";
+"updateDownloadingStatus" = "Downloading %d%%";
+"updateInstallingStatus" = "Installing…";
+"updateInstallFailedStatus" = "Install failed";
+
+/* Updates — menu bar */
+"checkForUpdatesMenu" = "Check for Updates…";
+"checkingForUpdatesMenu" = "Checking for Updates…";
+"updateAvailableMenu" = "New Version v%@ Available";
+"updateDownloadingMenu" = "Downloading Update… %d%%";
+"updateInstallingMenu" = "Installing Update…";
+"updateInstallFailedMenu" = "Update Install Failed";
+
+/* Updates — progress HUD */
+"updateCheckingHUD" = "Checking for updates…";
+"updateDownloadingHUD" = "Downloading update %d%%";
+"updateVerifyingHUD" = "Verifying update…";
+"updateUnzippingHUD" = "Extracting…";
+"updateInstallingHUD" = "Installing…";
+
+/* Updates — manual check result alert */
+"updateAvailableTitle" = "Version v%@ is available";
+"updateAvailableBody" = "capcap will download and install the latest version, then relaunch automatically.";
+"updateUpToDateTitle" = "You're up to date";
+"updateUpToDateBody" = "capcap v%@ is the latest version.";
+"updateFailedTitle" = "Update check failed";
+"updateFailedBody" = "Could not reach GitHub. Check your connection and try again.";
+"updateInstallFailedTitle" = "Update failed";
+"updateInstallFailedBody" = "Something went wrong while downloading or installing the update. You can download it manually from the GitHub releases page.";
+"updateOpenPageButton" = "Open GitHub";
+"updateSkipButton" = "Skip This Version";
+"updateLaterButton" = "Later";
+"updateOKButton" = "OK";
+
+/* Quit confirmation dialog */
+"quitConfirmTitle" = "Quit capcap?";
+"quitConfirmMessage" = "Quitting removes the menu bar icon and disables the screenshot shortcut until you launch capcap again.";
+"quitConfirmAction" = "Quit";
+"quitConfirmCancel" = "Cancel";
+
+/* Upload — toolbar / toast / progress */
+"tipUpload" = "Upload to image host";
+"uploadingTitle" = "Uploading";
+"uploadCopied" = "Image URL copied";
+"uploadCopiedMarkdown" = "Markdown link copied";
+"uploadNoProvider" = "Configure an uploader in Settings first";
+"uploadFailedPrefix" = "Upload failed: ";
+
+/* Upload — settings tab */
+"uploadDefaultProvider" = "Default Uploader";
+"uploadDefaultNone" = "Disabled";
+"uploadSetDefaultButton" = "Set Default";
+"uploadSaveButton" = "Save";
+"uploadClearButton" = "Clear";
+"uploadSavedToast" = "Config saved";
+"uploadCurrentDefault" = "Current default";
+"uploadMarkdownToggleTitle" = "Copy as Markdown link";
+"uploadMarkdownToggleSubtitle" = "When on, copies a Markdown image tag (![](url)) after upload; when off, copies a plain URL. In History, ⌘-click an uploaded image to copy a Markdown link, or click it directly for a plain URL.";
+
+/* Upload — provider field labels */
+"uploadFieldBucket" = "Bucket";
+"uploadFieldBucketSpace" = "Bucket";
+"uploadFieldRegion" = "Region";
+"uploadFieldRegionOptional" = "Region (optional)";
+"uploadFieldPathOptional" = "Path (optional)";
+"uploadFieldCustomUrlOptional" = "Custom URL (optional)";
+"uploadFieldPublicDomain" = "Public Domain";
+"uploadFieldEndpointArea" = "Endpoint";
+"uploadFieldEndpointOptional" = "Endpoint (optional)";
+"uploadFieldAccountId" = "Account ID";
+"uploadTestImageFailed" = "Failed to build test image";
+
+/* Upload — provider names */
+"providerTencentCOS" = "Tencent COS";
+"providerQiniuKodo" = "Qiniu Kodo";
+"providerAliyunOSS" = "Aliyun OSS";
+
+/* Upload — errors */
+"uploadErrMissingConfig" = "No uploader configured";
+"uploadErrInvalidConfigPrefix" = "Invalid config: ";
+"uploadErrNetworkPrefix" = "Network error: ";
+"uploadErrServerPrefix" = "Upload failed (%d): ";
+"uploadErrUnexpectedResponsePrefix" = "Unexpected response: ";
+"missingField" = "Missing %@";
+
+/* Upload — test/validation pill */
+"uploadStatusUntested" = "Not tested";
+"uploadStatusTesting" = "Testing…";
+"uploadStatusValid" = "Active";
+"uploadStatusInvalid" = "Invalid config";
+
+/* Upload — log lines */
+"uploadLogStartingTest" = "Starting test upload…";
+"uploadLogConfigSaved" = "Config saved";
+"uploadLogMissingFields" = "Missing required fields: %@";
+"uploadLogTestSucceeded" = "Test upload succeeded: %@";
+"uploadLogTestFailed" = "Test upload failed: %@";
+"uploadLogProviderDisabled" = "Provider disabled";
+"uploadLogConfigCleared" = "Config cleared";
+
+/* Permissions — status label */
+"permissionGranted" = "Granted";
+"permissionNotGranted" = "Not granted";
+
+/* OCR & Translation — result panel */
+"ocrTextHeader" = "Recognized Text";
+"ocrRecognizing" = "Recognizing…";
+"ocrNoText" = "No text found";
+"ocrCopy" = "Copy";
+"ocrCopied" = "Copied";
+"ocrRetry" = "Retry";
+"ocrTranslating" = "Translating…";
+"ocrTranslateFailedPrefix" = "Failed: ";
+"ocrNoProviderTitle" = "No translation service configured";
+"ocrNoProviderHint" = "Add an AI service in Settings → Translation";
+"ocrOpenSettings" = "Open Settings";
+
+/* Translation — settings tab */
+"translationTargetLanguage" = "Target Language";
+"translationTargetHint" = "Recognized text is translated into this language; if it is already in that language, it is translated to English instead.";
+"translationProvidersHeader" = "AI Translation Services";
+"translationApiKey" = "API Key";
+"translationModel" = "Model";
+"translationEndpoint" = "Endpoint";
+"translationEndpointOptional" = "Endpoint (optional)";
+"translationSave" = "Save";
+"translationClear" = "Clear";
+"translationConfigSaved" = "Config saved";
+"translationTesting" = "Testing…";
+"translationTestPassed" = "Test passed";
+"translationTestFailed" = "Test failed";
+"translationTestFailedTitle" = "Saved, but the connection test failed";
+"translationProviderCustom" = "Custom (OpenAI-compatible)";
+
+/* Translation — target language names */
+"transLangChinese" = "Chinese";
+"transLangEnglish" = "English";
+"transLangJapanese" = "Japanese";
+"transLangKorean" = "Korean";
+
+/* Translation — errors */
+"translationErrMissingAPIKey" = "API key not configured";
+"translationErrBadEndpoint" = "Invalid endpoint";
+"translationErrBadResponse" = "Unexpected response";

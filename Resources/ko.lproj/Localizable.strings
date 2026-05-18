@@ -1,0 +1,260 @@
+/* capcap — 한국어 */
+
+/* Settings */
+"settingsTitle" = "capcap 설정";
+"showMenuBarIcon" = "메뉴 막대 아이콘 표시";
+"permissionsHeader" = "필요한 권한";
+"accessibilityPermission" = "손쉬운 사용";
+"accessibilityDescription" = "⌘ Command 키 두 번 누르기를 감지해 스크린샷을 실행하는 데 필요합니다.";
+"screenRecordingPermission" = "화면 기록";
+"screenRecordingDescription" = "스크린샷을 위해 화면 내용을 캡처하는 데 필요합니다.";
+"launchApp" = "앱 실행";
+"launchAtLogin" = "로그인 시 실행";
+"demoMode" = "데모 모드";
+"demoModeHint" = "화면 녹화 프로그램이 선택 영역 오버레이와 편집기를 녹화할 수 있도록 허용합니다";
+"historyCacheLabel" = "기록 캐시 개수";
+"historyCacheHint" = "최근 스크린샷을 보관해 빠르게 다시 복사할 수 있습니다";
+"countdownLabel" = "카운트다운 초";
+"countdownHint" = "⌥ Option 을 누른 채 ⌘ 를 두 번 누르거나 스크린샷 단축키를 누르면 캡처 전에 카운트다운이 시작됩니다 (Esc 로 취소)";
+"countdownSecondsSuffix" = "초";
+
+/* Screenshot shortcut */
+"shortcutHeader" = "스크린샷 단축키";
+"shortcutHint" = "기본값은 ⌘ 두 번 누르기입니다. 사용자 단축키를 설정하면 두 번 누르기는 비활성화됩니다.";
+"shortcutDefaultDisplay" = "⌘ 두 번 누르기";
+"shortcutSet" = "기록";
+"shortcutCancel" = "취소";
+"shortcutWaiting" = "키 입력 대기 중…";
+"shortcutRestore" = "기본값 복원";
+
+/* Menu bar */
+"takeScreenshot" = "스크린샷";
+"settings" = "설정...";
+"quitApp" = "capcap 종료";
+"historyMenu" = "기록";
+"historyEmpty" = "기록 없음";
+"historyClear" = "기록 지우기";
+
+/* Cursor chip */
+"dragToScreenshot" = "창을 클릭하거나 드래그하여 스크린샷";
+
+/* Toast */
+"copiedToClipboard" = "클립보드에 복사됨";
+"mergedLongScreenshot" = "긴 스크린샷이 병합됨";
+"autoScrollPermissionNeeded" = "스크롤 캡처에는 손쉬운 사용 권한이 필요합니다. 시스템 설정 → 개인정보 보호 및 보안 → 손쉬운 사용 에서 capcap 을 허용하세요.";
+"cropLongScreenshotHint" = "위/아래 가장자리를 드래그해 자르기 — Enter 키 또는 ✓ 탭";
+"scrollCaptureHint" = "Enter 키로 긴 스크린샷 종료";
+"cancelFinderSelectionHint" = "X 키로 선택 해제";
+"cancelClipboardEditHint" = "X 키로 취소";
+"colorCopied" = "색상 %@ 복사됨";
+
+/* Toolbar tooltips */
+"tipRectangle" = "사각형";
+"tipEllipse" = "타원";
+"tipArrow" = "화살표";
+"tipPen" = "펜";
+"tipMarker" = "형광펜";
+"tipMosaic" = "모자이크";
+"tipNumbered" = "번호";
+"tipText" = "텍스트";
+"tipColorPicker" = "색상 추출기";
+"tipUndo" = "실행 취소";
+"tipRedo" = "다시 실행";
+"tipMoveSelection" = "선택 영역 이동";
+"tipScrollCapture" = "긴 스크린샷";
+"tipBeautify" = "꾸미기";
+"tipOCR" = "OCR 및 번역";
+"tipSave" = "저장";
+"tipPin" = "화면에 고정";
+"tipCancel" = "취소";
+"tipConfirm" = "확인";
+
+/* Beautify */
+"beautify" = "꾸미기";
+"beautifyPresetPeachBlue" = "피치 블루";
+"beautifyPresetMintTeal" = "민트 틸";
+"beautifyPresetPeachPink" = "피치 핑크";
+"beautifyPresetBluePurple" = "블루 퍼플";
+"beautifyPresetWarmOrange" = "웜 오렌지";
+"beautifyPresetTealPink" = "틸 핑크";
+"beautifyPresetDeepPurple" = "딥 퍼플";
+"beautifyPresetNeutralGray" = "뉴트럴 그레이";
+"beautifyPresetWallpaper" = "배경화면";
+
+/* Language */
+"languageHeader" = "언어";
+
+/* Settings sidebar tabs */
+"settingsTabGeneral" = "일반";
+"settingsTabShortcuts" = "단축키";
+"settingsTabPermissions" = "권한";
+"settingsTabUpload" = "이미지 호스트";
+"settingsTabAbout" = "정보";
+"settingsTabTranslation" = "번역";
+"settingsQuit" = "앱 종료";
+
+/* About pane */
+"aboutTagline" = "메뉴 막대 스크린샷 도구";
+"aboutLicense" = "라이선스";
+"aboutSourceCode" = "소스 코드";
+"aboutUpdateTitle" = "업데이트";
+"aboutErrorLog" = "오류 로그";
+"aboutErrorLogNoCrash" = "충돌 없음";
+"aboutErrorLogLastCrash" = "마지막 충돌 · %@";
+"aboutErrorLogCopy" = "로그 복사";
+"aboutErrorLogCopied" = "복사됨";
+"aboutErrorLogReveal" = "Finder에 표시";
+"aboutErrorLogEmptyBody" = "capcap에 기록된 충돌 로그가 없습니다 — 모두 정상입니다. 충돌이 발생하면 여기로 돌아와 로그를 복사해 버그 신고에 사용하세요.";
+
+/* Updates — About pane */
+"checkForUpdates" = "업데이트 확인";
+"updateChecking" = "확인 중…";
+"updateUpToDateStatus" = "최신 버전";
+"updateNewVersionStatus" = "새 버전 v%@";
+"updateFailedStatus" = "확인 실패";
+"updateDownloadButton" = "다운로드";
+"updateRetryButton" = "다시 시도";
+"updateInstallNowButton" = "지금 업데이트";
+"updateDownloadingStatus" = "다운로드 중 %d%%";
+"updateInstallingStatus" = "설치 중…";
+"updateInstallFailedStatus" = "설치 실패";
+
+/* Updates — menu bar */
+"checkForUpdatesMenu" = "업데이트 확인…";
+"checkingForUpdatesMenu" = "업데이트 확인 중…";
+"updateAvailableMenu" = "새 버전 v%@ 사용 가능";
+"updateDownloadingMenu" = "업데이트 다운로드 중… %d%%";
+"updateInstallingMenu" = "업데이트 설치 중…";
+"updateInstallFailedMenu" = "업데이트 설치 실패";
+
+/* Updates — progress HUD */
+"updateCheckingHUD" = "업데이트 확인 중…";
+"updateDownloadingHUD" = "업데이트 다운로드 중 %d%%";
+"updateVerifyingHUD" = "업데이트 검증 중…";
+"updateUnzippingHUD" = "압축 해제 중…";
+"updateInstallingHUD" = "설치 중…";
+
+/* Updates — manual check result alert */
+"updateAvailableTitle" = "버전 v%@ 사용 가능";
+"updateAvailableBody" = "capcap이 최신 버전을 다운로드하고 설치한 후 자동으로 다시 시작합니다.";
+"updateUpToDateTitle" = "최신 상태입니다";
+"updateUpToDateBody" = "capcap v%@ 가 최신 버전입니다.";
+"updateFailedTitle" = "업데이트 확인 실패";
+"updateFailedBody" = "GitHub에 연결할 수 없습니다. 네트워크를 확인하고 다시 시도하세요.";
+"updateInstallFailedTitle" = "업데이트 실패";
+"updateInstallFailedBody" = "업데이트를 다운로드하거나 설치하는 중 문제가 발생했습니다. GitHub 릴리스 페이지에서 수동으로 다운로드할 수 있습니다.";
+"updateOpenPageButton" = "GitHub 열기";
+"updateSkipButton" = "이 버전 건너뛰기";
+"updateLaterButton" = "나중에";
+"updateOKButton" = "확인";
+
+/* Quit confirmation dialog */
+"quitConfirmTitle" = "capcap을 종료할까요?";
+"quitConfirmMessage" = "종료하면 메뉴 막대 아이콘이 사라지고 capcap을 다시 실행할 때까지 스크린샷 단축키가 비활성화됩니다.";
+"quitConfirmAction" = "종료";
+"quitConfirmCancel" = "취소";
+
+/* Upload — toolbar / toast / progress */
+"tipUpload" = "이미지 호스트에 업로드";
+"uploadingTitle" = "업로드 중";
+"uploadCopied" = "이미지 URL이 복사됨";
+"uploadCopiedMarkdown" = "Markdown 링크가 복사됨";
+"uploadNoProvider" = "먼저 설정에서 이미지 호스트를 구성하세요";
+"uploadFailedPrefix" = "업로드 실패: ";
+
+/* Upload — settings tab */
+"uploadDefaultProvider" = "기본 이미지 호스트";
+"uploadDefaultNone" = "비활성화됨";
+"uploadSetDefaultButton" = "기본값으로 설정";
+"uploadSaveButton" = "저장";
+"uploadClearButton" = "지우기";
+"uploadSavedToast" = "설정이 저장됨";
+"uploadCurrentDefault" = "현재 기본값";
+"uploadMarkdownToggleTitle" = "Markdown 링크로 복사";
+"uploadMarkdownToggleSubtitle" = "켜면 업로드 후 Markdown 이미지 태그(![](url))를 복사하고, 끄면 일반 URL을 복사합니다. 기록에서 ⌘ 를 누른 채 업로드된 이미지를 클릭하면 Markdown 링크를, 그냥 클릭하면 일반 URL을 복사합니다.";
+
+/* Upload — provider field labels */
+"uploadFieldBucket" = "버킷";
+"uploadFieldBucketSpace" = "버킷";
+"uploadFieldRegion" = "리전";
+"uploadFieldRegionOptional" = "리전(선택)";
+"uploadFieldPathOptional" = "경로(선택)";
+"uploadFieldCustomUrlOptional" = "사용자 도메인(선택)";
+"uploadFieldPublicDomain" = "공개 도메인";
+"uploadFieldEndpointArea" = "엔드포인트";
+"uploadFieldEndpointOptional" = "엔드포인트(선택)";
+"uploadFieldAccountId" = "계정 ID";
+"uploadTestImageFailed" = "테스트 이미지를 생성할 수 없습니다";
+
+/* Upload — provider names */
+"providerTencentCOS" = "Tencent COS";
+"providerQiniuKodo" = "Qiniu Kodo";
+"providerAliyunOSS" = "Aliyun OSS";
+
+/* Upload — errors */
+"uploadErrMissingConfig" = "업로드 호스트가 설정되지 않음";
+"uploadErrInvalidConfigPrefix" = "잘못된 설정: ";
+"uploadErrNetworkPrefix" = "네트워크 오류: ";
+"uploadErrServerPrefix" = "업로드 실패 (%d): ";
+"uploadErrUnexpectedResponsePrefix" = "예기치 않은 응답: ";
+"missingField" = "%@ 누락됨";
+
+/* Upload — test/validation pill */
+"uploadStatusUntested" = "테스트 안 됨";
+"uploadStatusTesting" = "테스트 중…";
+"uploadStatusValid" = "활성";
+"uploadStatusInvalid" = "잘못된 설정";
+
+/* Upload — log lines */
+"uploadLogStartingTest" = "테스트 업로드 시작…";
+"uploadLogConfigSaved" = "설정이 저장됨";
+"uploadLogMissingFields" = "필수 항목 누락: %@";
+"uploadLogTestSucceeded" = "테스트 업로드 성공: %@";
+"uploadLogTestFailed" = "테스트 업로드 실패: %@";
+"uploadLogProviderDisabled" = "이 이미지 호스트가 비활성화됨";
+"uploadLogConfigCleared" = "설정이 지워짐";
+
+/* Permissions — status label */
+"permissionGranted" = "허용됨";
+"permissionNotGranted" = "허용 안 됨";
+
+/* OCR & Translation — result panel */
+"ocrTextHeader" = "인식된 텍스트";
+"ocrRecognizing" = "인식 중…";
+"ocrNoText" = "텍스트를 찾을 수 없음";
+"ocrCopy" = "복사";
+"ocrCopied" = "복사됨";
+"ocrRetry" = "다시 시도";
+"ocrTranslating" = "번역 중…";
+"ocrTranslateFailedPrefix" = "실패: ";
+"ocrNoProviderTitle" = "번역 서비스가 설정되지 않음";
+"ocrNoProviderHint" = "설정 → 번역 에서 AI 서비스를 추가하세요";
+"ocrOpenSettings" = "설정 열기";
+
+/* Translation — settings tab */
+"translationTargetLanguage" = "대상 언어";
+"translationTargetHint" = "인식된 텍스트는 이 언어로 번역됩니다. 이미 해당 언어인 경우 영어로 번역됩니다.";
+"translationProvidersHeader" = "AI 번역 서비스";
+"translationApiKey" = "API 키";
+"translationModel" = "모델";
+"translationEndpoint" = "엔드포인트";
+"translationEndpointOptional" = "엔드포인트(선택)";
+"translationSave" = "저장";
+"translationClear" = "지우기";
+"translationConfigSaved" = "설정이 저장됨";
+"translationTesting" = "테스트 중…";
+"translationTestPassed" = "테스트 통과";
+"translationTestFailed" = "테스트 실패";
+"translationTestFailedTitle" = "저장했지만 연결 테스트에 실패했습니다";
+"translationProviderCustom" = "사용자 정의 (OpenAI 호환)";
+
+/* Translation — target language names */
+"transLangChinese" = "중국어";
+"transLangEnglish" = "영어";
+"transLangJapanese" = "일본어";
+"transLangKorean" = "한국어";
+
+/* Translation — errors */
+"translationErrMissingAPIKey" = "API 키가 설정되지 않음";
+"translationErrBadEndpoint" = "잘못된 엔드포인트";
+"translationErrBadResponse" = "예기치 않은 응답";

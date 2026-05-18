@@ -63,6 +63,13 @@ cp "capcap/App/Info.plist" "$CONTENTS/Info.plist"
 # Copy app icon
 cp "Resources/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 
+# Copy localization bundles (.lproj). The app loads these directly for its
+# in-app language picker — see Localizer.swift.
+for lproj in Resources/*.lproj; do
+    [ -d "$lproj" ] || continue
+    cp -R "$lproj" "$RESOURCES/"
+done
+
 # Code signing
 # -----------------------------------------------------------------------------
 # Sign with the SAME self-signed certificate CI uses ("capcap Self-Signed") so

@@ -1,0 +1,260 @@
+/* capcap — Français */
+
+/* Settings */
+"settingsTitle" = "Réglages capcap";
+"showMenuBarIcon" = "Afficher l'icône dans la barre des menus";
+"permissionsHeader" = "Autorisations requises";
+"accessibilityPermission" = "Accessibilité";
+"accessibilityDescription" = "Nécessaire pour détecter le double appui sur la touche ⌘ Command et déclencher les captures d'écran.";
+"screenRecordingPermission" = "Enregistrement de l'écran";
+"screenRecordingDescription" = "Nécessaire pour capturer le contenu de l'écran lors des captures.";
+"launchApp" = "Lancer l'application";
+"launchAtLogin" = "Lancer à la connexion";
+"demoMode" = "Mode démo";
+"demoModeHint" = "Permet aux logiciels d'enregistrement de capturer la sélection et l'éditeur";
+"historyCacheLabel" = "Taille du cache d'historique";
+"historyCacheHint" = "Conserve les captures récentes pour les recopier rapidement";
+"countdownLabel" = "Secondes du compte à rebours";
+"countdownHint" = "Maintenez ⌥ Option puis double-appuyez sur ⌘ ou utilisez le raccourci de capture pour lancer un compte à rebours avant la capture (Échap pour annuler)";
+"countdownSecondsSuffix" = "s";
+
+/* Screenshot shortcut */
+"shortcutHeader" = "Raccourci de capture";
+"shortcutHint" = "Par défaut : double appui sur ⌘. Définir un raccourci personnalisé désactive le double appui.";
+"shortcutDefaultDisplay" = "Double appui sur ⌘";
+"shortcutSet" = "Définir";
+"shortcutCancel" = "Annuler";
+"shortcutWaiting" = "Appuyez sur des touches…";
+"shortcutRestore" = "Réinitialiser";
+
+/* Menu bar */
+"takeScreenshot" = "Capturer l'écran";
+"settings" = "Réglages...";
+"quitApp" = "Quitter capcap";
+"historyMenu" = "Historique";
+"historyEmpty" = "Aucun historique";
+"historyClear" = "Effacer l'historique";
+
+/* Cursor chip */
+"dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";
+
+/* Toast */
+"copiedToClipboard" = "Copié dans le presse-papiers";
+"mergedLongScreenshot" = "Capture longue fusionnée";
+"autoScrollPermissionNeeded" = "La capture défilante nécessite l'autorisation Accessibilité — autorisez capcap dans Réglages Système → Confidentialité et sécurité → Accessibilité.";
+"cropLongScreenshotHint" = "Faites glisser les bords haut/bas pour rogner — appuyez sur Entrée ou touchez ✓";
+"scrollCaptureHint" = "Appuyez sur Entrée pour terminer la capture longue";
+"cancelFinderSelectionHint" = "Appuyez sur X pour désélectionner";
+"cancelClipboardEditHint" = "Appuyez sur X pour annuler";
+"colorCopied" = "Couleur %@ copiée";
+
+/* Toolbar tooltips */
+"tipRectangle" = "Rectangle";
+"tipEllipse" = "Ellipse";
+"tipArrow" = "Flèche";
+"tipPen" = "Stylo";
+"tipMarker" = "Surligneur";
+"tipMosaic" = "Mosaïque";
+"tipNumbered" = "Numéro";
+"tipText" = "Texte";
+"tipColorPicker" = "Pipette";
+"tipUndo" = "Annuler";
+"tipRedo" = "Rétablir";
+"tipMoveSelection" = "Déplacer la sélection";
+"tipScrollCapture" = "Capture longue";
+"tipBeautify" = "Embellir";
+"tipOCR" = "OCR et traduction";
+"tipSave" = "Enregistrer";
+"tipPin" = "Épingler à l'écran";
+"tipCancel" = "Annuler";
+"tipConfirm" = "Confirmer";
+
+/* Beautify */
+"beautify" = "Embellir";
+"beautifyPresetPeachBlue" = "Pêche bleu";
+"beautifyPresetMintTeal" = "Menthe sarcelle";
+"beautifyPresetPeachPink" = "Pêche rose";
+"beautifyPresetBluePurple" = "Bleu violet";
+"beautifyPresetWarmOrange" = "Orange chaud";
+"beautifyPresetTealPink" = "Sarcelle rose";
+"beautifyPresetDeepPurple" = "Violet profond";
+"beautifyPresetNeutralGray" = "Gris neutre";
+"beautifyPresetWallpaper" = "Fond d'écran";
+
+/* Language */
+"languageHeader" = "Langue";
+
+/* Settings sidebar tabs */
+"settingsTabGeneral" = "Général";
+"settingsTabShortcuts" = "Raccourcis";
+"settingsTabPermissions" = "Autorisations";
+"settingsTabUpload" = "Hébergement";
+"settingsTabAbout" = "À propos";
+"settingsTabTranslation" = "Traduction";
+"settingsQuit" = "Quitter l'application";
+
+/* About pane */
+"aboutTagline" = "Outil de capture d'écran dans la barre des menus";
+"aboutLicense" = "Licence";
+"aboutSourceCode" = "Code source";
+"aboutUpdateTitle" = "Mises à jour";
+"aboutErrorLog" = "Journal d'erreurs";
+"aboutErrorLogNoCrash" = "Aucun plantage";
+"aboutErrorLogLastCrash" = "Dernier plantage · %@";
+"aboutErrorLogCopy" = "Copier le journal";
+"aboutErrorLogCopied" = "Copié";
+"aboutErrorLogReveal" = "Afficher dans le Finder";
+"aboutErrorLogEmptyBody" = "capcap n'a enregistré aucun journal de plantage — tout fonctionne correctement. En cas de plantage, revenez ici pour copier le journal et le joindre à un rapport de bug.";
+
+/* Updates — About pane */
+"checkForUpdates" = "Rechercher des mises à jour";
+"updateChecking" = "Vérification…";
+"updateUpToDateStatus" = "À jour";
+"updateNewVersionStatus" = "Nouvelle version v%@";
+"updateFailedStatus" = "Échec de la vérification";
+"updateDownloadButton" = "Télécharger";
+"updateRetryButton" = "Réessayer";
+"updateInstallNowButton" = "Mettre à jour";
+"updateDownloadingStatus" = "Téléchargement %d%%";
+"updateInstallingStatus" = "Installation…";
+"updateInstallFailedStatus" = "Échec de l'installation";
+
+/* Updates — menu bar */
+"checkForUpdatesMenu" = "Rechercher des mises à jour…";
+"checkingForUpdatesMenu" = "Recherche de mises à jour…";
+"updateAvailableMenu" = "Nouvelle version v%@ disponible";
+"updateDownloadingMenu" = "Téléchargement de la mise à jour… %d%%";
+"updateInstallingMenu" = "Installation de la mise à jour…";
+"updateInstallFailedMenu" = "Échec de l'installation de la mise à jour";
+
+/* Updates — progress HUD */
+"updateCheckingHUD" = "Recherche de mises à jour…";
+"updateDownloadingHUD" = "Téléchargement de la mise à jour %d%%";
+"updateVerifyingHUD" = "Vérification de la mise à jour…";
+"updateUnzippingHUD" = "Extraction…";
+"updateInstallingHUD" = "Installation…";
+
+/* Updates — manual check result alert */
+"updateAvailableTitle" = "La version v%@ est disponible";
+"updateAvailableBody" = "capcap va télécharger et installer la dernière version, puis redémarrer automatiquement.";
+"updateUpToDateTitle" = "Vous êtes à jour";
+"updateUpToDateBody" = "capcap v%@ est la dernière version.";
+"updateFailedTitle" = "Échec de la recherche de mise à jour";
+"updateFailedBody" = "Impossible de joindre GitHub. Vérifiez votre connexion et réessayez.";
+"updateInstallFailedTitle" = "Échec de la mise à jour";
+"updateInstallFailedBody" = "Un problème est survenu lors du téléchargement ou de l'installation de la mise à jour. Vous pouvez la télécharger manuellement depuis la page des versions GitHub.";
+"updateOpenPageButton" = "Ouvrir GitHub";
+"updateSkipButton" = "Ignorer cette version";
+"updateLaterButton" = "Plus tard";
+"updateOKButton" = "OK";
+
+/* Quit confirmation dialog */
+"quitConfirmTitle" = "Quitter capcap ?";
+"quitConfirmMessage" = "Quitter supprime l'icône de la barre des menus et désactive le raccourci de capture jusqu'au prochain lancement de capcap.";
+"quitConfirmAction" = "Quitter";
+"quitConfirmCancel" = "Annuler";
+
+/* Upload — toolbar / toast / progress */
+"tipUpload" = "Envoyer vers l'hébergeur d'images";
+"uploadingTitle" = "Envoi en cours";
+"uploadCopied" = "URL de l'image copiée";
+"uploadCopiedMarkdown" = "Lien Markdown copié";
+"uploadNoProvider" = "Configurez d'abord un hébergeur dans les réglages";
+"uploadFailedPrefix" = "Échec de l'envoi : ";
+
+/* Upload — settings tab */
+"uploadDefaultProvider" = "Hébergeur par défaut";
+"uploadDefaultNone" = "Désactivé";
+"uploadSetDefaultButton" = "Définir par défaut";
+"uploadSaveButton" = "Enregistrer";
+"uploadClearButton" = "Effacer";
+"uploadSavedToast" = "Configuration enregistrée";
+"uploadCurrentDefault" = "Défaut actuel";
+"uploadMarkdownToggleTitle" = "Copier en lien Markdown";
+"uploadMarkdownToggleSubtitle" = "Si activé, copie une balise d'image Markdown (![](url)) après l'envoi ; sinon, copie une URL simple. Dans l'historique, ⌘-cliquez sur une image envoyée pour copier un lien Markdown, ou cliquez simplement dessus pour une URL simple.";
+
+/* Upload — provider field labels */
+"uploadFieldBucket" = "Bucket";
+"uploadFieldBucketSpace" = "Bucket";
+"uploadFieldRegion" = "Région";
+"uploadFieldRegionOptional" = "Région (facultatif)";
+"uploadFieldPathOptional" = "Chemin (facultatif)";
+"uploadFieldCustomUrlOptional" = "Domaine personnalisé (facultatif)";
+"uploadFieldPublicDomain" = "Domaine public";
+"uploadFieldEndpointArea" = "Point de terminaison";
+"uploadFieldEndpointOptional" = "Point de terminaison (facultatif)";
+"uploadFieldAccountId" = "ID de compte";
+"uploadTestImageFailed" = "Impossible de générer l'image de test";
+
+/* Upload — provider names */
+"providerTencentCOS" = "Tencent COS";
+"providerQiniuKodo" = "Qiniu Kodo";
+"providerAliyunOSS" = "Aliyun OSS";
+
+/* Upload — errors */
+"uploadErrMissingConfig" = "Aucun hébergeur configuré";
+"uploadErrInvalidConfigPrefix" = "Configuration invalide : ";
+"uploadErrNetworkPrefix" = "Erreur réseau : ";
+"uploadErrServerPrefix" = "Échec de l'envoi (%d) : ";
+"uploadErrUnexpectedResponsePrefix" = "Réponse inattendue : ";
+"missingField" = "%@ manquant";
+
+/* Upload — test/validation pill */
+"uploadStatusUntested" = "Non testé";
+"uploadStatusTesting" = "Test…";
+"uploadStatusValid" = "Actif";
+"uploadStatusInvalid" = "Configuration invalide";
+
+/* Upload — log lines */
+"uploadLogStartingTest" = "Démarrage de l'envoi de test…";
+"uploadLogConfigSaved" = "Configuration enregistrée";
+"uploadLogMissingFields" = "Champs obligatoires manquants : %@";
+"uploadLogTestSucceeded" = "Envoi de test réussi : %@";
+"uploadLogTestFailed" = "Échec de l'envoi de test : %@";
+"uploadLogProviderDisabled" = "Hébergeur désactivé";
+"uploadLogConfigCleared" = "Configuration effacée";
+
+/* Permissions — status label */
+"permissionGranted" = "Accordée";
+"permissionNotGranted" = "Non accordée";
+
+/* OCR & Translation — result panel */
+"ocrTextHeader" = "Texte reconnu";
+"ocrRecognizing" = "Reconnaissance…";
+"ocrNoText" = "Aucun texte trouvé";
+"ocrCopy" = "Copier";
+"ocrCopied" = "Copié";
+"ocrRetry" = "Réessayer";
+"ocrTranslating" = "Traduction…";
+"ocrTranslateFailedPrefix" = "Échec : ";
+"ocrNoProviderTitle" = "Aucun service de traduction configuré";
+"ocrNoProviderHint" = "Ajoutez un service IA dans Réglages → Traduction";
+"ocrOpenSettings" = "Ouvrir les réglages";
+
+/* Translation — settings tab */
+"translationTargetLanguage" = "Langue cible";
+"translationTargetHint" = "Le texte reconnu est traduit dans cette langue ; s'il est déjà dans cette langue, il est traduit en anglais.";
+"translationProvidersHeader" = "Services de traduction IA";
+"translationApiKey" = "Clé API";
+"translationModel" = "Modèle";
+"translationEndpoint" = "Point de terminaison";
+"translationEndpointOptional" = "Point de terminaison (facultatif)";
+"translationSave" = "Enregistrer";
+"translationClear" = "Effacer";
+"translationConfigSaved" = "Configuration enregistrée";
+"translationTesting" = "Test…";
+"translationTestPassed" = "Test réussi";
+"translationTestFailed" = "Échec du test";
+"translationTestFailedTitle" = "Enregistré, mais le test de connexion a échoué";
+"translationProviderCustom" = "Personnalisé (compatible OpenAI)";
+
+/* Translation — target language names */
+"transLangChinese" = "Chinois";
+"transLangEnglish" = "Anglais";
+"transLangJapanese" = "Japonais";
+"transLangKorean" = "Coréen";
+
+/* Translation — errors */
+"translationErrMissingAPIKey" = "Clé API non configurée";
+"translationErrBadEndpoint" = "Point de terminaison invalide";
+"translationErrBadResponse" = "Réponse inattendue";

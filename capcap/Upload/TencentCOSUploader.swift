@@ -7,10 +7,9 @@ enum TencentCOSUploader: UploaderProtocol {
     static let kind: UploadProviderKind = .tencent
 
     static func validate(_ config: ProviderConfig) -> String? {
-        let zh = L10n.lang == .zh
         for key in ["secretId", "secretKey", "bucket", "region"] {
             if config.nonEmpty(key) == nil {
-                return zh ? "缺少 \(key)" : "Missing \(key)"
+                return L10n.missingField(key)
             }
         }
         return nil

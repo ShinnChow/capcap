@@ -377,8 +377,8 @@ class SettingsView: NSView {
         langRow.addArrangedSubview(flexSpacer())
 
         langPicker = NSPopUpButton(frame: .zero, pullsDown: false)
-        langPicker.addItems(withTitles: ["中文", "English"])
-        langPicker.selectItem(at: Defaults.language == .zh ? 0 : 1)
+        langPicker.addItems(withTitles: AppLanguage.allCases.map { $0.displayName })
+        langPicker.selectItem(at: AppLanguage.allCases.firstIndex(of: Defaults.language) ?? 0)
         langPicker.target = self
         langPicker.action = #selector(languageChanged(_:))
         langPicker.controlSize = .small
@@ -1461,7 +1461,10 @@ class SettingsView: NSView {
     // MARK: - Actions
 
     @objc private func languageChanged(_ sender: NSPopUpButton) {
-        Defaults.language = sender.indexOfSelectedItem == 0 ? .zh : .en
+        let cases = AppLanguage.allCases
+        let index = sender.indexOfSelectedItem
+        guard cases.indices.contains(index) else { return }
+        Defaults.language = cases[index]
     }
 
     @objc private func historyCacheSliderChanged(_ sender: NSSlider) {
@@ -2045,9 +2048,8 @@ final class StatusBadge: NSView {
     }
 
     func refreshTitle() {
-        let zh = L10n.lang == .zh
         let color: NSColor = granted ? .systemGreen : .systemOrange
-        label.stringValue = granted ? (zh ? "已授权" : "Granted") : (zh ? "未授权" : "Not granted")
+        label.stringValue = granted ? L10n.permissionGranted : L10n.permissionNotGranted
         label.textColor = color
         layer?.backgroundColor = color.withAlphaComponent(0.18).cgColor
     }

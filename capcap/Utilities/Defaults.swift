@@ -1,8 +1,50 @@
 import Foundation
 
-enum AppLanguage: String {
-    case en = "en"
-    case zh = "zh"
+/// A language the app's UI can be displayed in. Raw values double as the
+/// `appLanguage` UserDefaults value (kept stable for backward compatibility).
+enum AppLanguage: String, CaseIterable {
+    case zh
+    case en
+    case ja
+    case ko
+    case fr
+    case ru
+
+    /// Folder name (without extension) of the matching `.lproj` bundle inside
+    /// `capcap.app/Contents/Resources/`.
+    var lprojName: String {
+        switch self {
+        case .zh: return "zh-Hans"
+        default:  return rawValue
+        }
+    }
+
+    /// Native language name shown in the in-app language picker.
+    var displayName: String {
+        switch self {
+        case .zh: return "中文"
+        case .en: return "English"
+        case .ja: return "日本語"
+        case .ko: return "한국어"
+        case .fr: return "Français"
+        case .ru: return "Русский"
+        }
+    }
+
+    /// Best-effort match of the system's preferred languages to a supported
+    /// app language — used on first launch before the user picks explicitly.
+    static var systemDefault: AppLanguage {
+        for code in Locale.preferredLanguages {
+            let lower = code.lowercased()
+            if lower.hasPrefix("zh") { return .zh }
+            if lower.hasPrefix("ja") { return .ja }
+            if lower.hasPrefix("ko") { return .ko }
+            if lower.hasPrefix("fr") { return .fr }
+            if lower.hasPrefix("ru") { return .ru }
+            if lower.hasPrefix("en") { return .en }
+        }
+        return .en
+    }
 }
 
 extension Notification.Name {
@@ -13,351 +55,302 @@ extension Notification.Name {
     static let translationConfigDidChange = Notification.Name("capcap.translationConfigDidChange")
 }
 
+/// Centralized accessor for every user-facing string. Each property resolves a
+/// key from the current language's `Localizable.strings`; the translations
+/// themselves live in `Resources/<lang>.lproj/Localizable.strings`.
 enum L10n {
     static var lang: AppLanguage { Defaults.language }
 
+    private static func s(_ key: String) -> String { Localizer.string(key) }
+
     // Settings
-    static var settingsTitle: String { lang == .zh ? "capcap 设置" : "capcap Settings" }
-    static var showMenuBarIcon: String { lang == .zh ? "显示菜单栏图标" : "Show Menu Bar Icon" }
-    static var permissionsHeader: String { lang == .zh ? "所需权限" : "Required Permissions" }
-    static var accessibilityPermission: String { lang == .zh ? "辅助功能" : "Accessibility" }
-    static var accessibilityDescription: String {
-        lang == .zh
-            ? "用于检测双击 ⌘ Command 键来触发截图"
-            : "Needed to detect double-tap \u{2318} Command key globally to trigger screenshots."
-    }
-    static var screenRecordingPermission: String { lang == .zh ? "屏幕录制" : "Screen Recording" }
-    static var screenRecordingDescription: String {
-        lang == .zh
-            ? "用于捕获屏幕内容进行截图"
-            : "Needed to capture screen content for screenshots."
-    }
-    static var launchApp: String { lang == .zh ? "启动应用" : "Launch App" }
-    static var launchAtLogin: String { lang == .zh ? "开机自动启动" : "Launch at Login" }
-    static var demoMode: String { lang == .zh ? "演示模式" : "Demo Mode" }
-    static var demoModeHint: String {
-        lang == .zh
-            ? "录屏软件可以录到选区遮罩与编辑器（仅影响外部录制）"
-            : "Allow screen recorders to capture the selection overlay and editor"
-    }
-    static var historyCacheLabel: String { lang == .zh ? "历史缓存数量" : "History Cache Size" }
-    static var historyCacheHint: String {
-        lang == .zh
-            ? "保留最近的截图数量，便于快速再次复制"
-            : "Keep the most recent screenshots for quick re-copy"
-    }
-    static var countdownLabel: String { lang == .zh ? "倒计时秒数" : "Countdown Seconds" }
-    static var countdownHint: String {
-        lang == .zh
-            ? "按住 \u{2325} Option 后双击 \u{2318} 或按截图快捷键，先弹出倒计时再截图（按 Esc 取消）"
-            : "Hold \u{2325} Option then double-tap \u{2318} or press the screenshot shortcut to start a countdown before capture (Esc cancels)"
-    }
-    static var countdownSecondsSuffix: String { lang == .zh ? "秒" : "s" }
+    static var settingsTitle: String { s("settingsTitle") }
+    static var showMenuBarIcon: String { s("showMenuBarIcon") }
+    static var permissionsHeader: String { s("permissionsHeader") }
+    static var accessibilityPermission: String { s("accessibilityPermission") }
+    static var accessibilityDescription: String { s("accessibilityDescription") }
+    static var screenRecordingPermission: String { s("screenRecordingPermission") }
+    static var screenRecordingDescription: String { s("screenRecordingDescription") }
+    static var launchApp: String { s("launchApp") }
+    static var launchAtLogin: String { s("launchAtLogin") }
+    static var demoMode: String { s("demoMode") }
+    static var demoModeHint: String { s("demoModeHint") }
+    static var historyCacheLabel: String { s("historyCacheLabel") }
+    static var historyCacheHint: String { s("historyCacheHint") }
+    static var countdownLabel: String { s("countdownLabel") }
+    static var countdownHint: String { s("countdownHint") }
+    static var countdownSecondsSuffix: String { s("countdownSecondsSuffix") }
 
     // Screenshot shortcut
-    static var shortcutHeader: String { lang == .zh ? "截图快捷键" : "Screenshot Shortcut" }
-    static var shortcutHint: String {
-        lang == .zh
-            ? "默认双击 ⌘ 触发；自定义后双击 ⌘ 失效，可点恢复回到默认"
-            : "Default: double-tap \u{2318}. Setting a custom shortcut disables double-tap."
-    }
-    static var shortcutDefaultDisplay: String { lang == .zh ? "双击 \u{2318}" : "Double-tap \u{2318}" }
-    static var shortcutSet: String { lang == .zh ? "录制" : "Set" }
-    static var shortcutCancel: String { lang == .zh ? "取消" : "Cancel" }
-    static var shortcutWaiting: String { lang == .zh ? "等待按键…" : "Press keys…" }
-    static var shortcutRestore: String { lang == .zh ? "恢复默认" : "Restore Default" }
+    static var shortcutHeader: String { s("shortcutHeader") }
+    static var shortcutHint: String { s("shortcutHint") }
+    static var shortcutDefaultDisplay: String { s("shortcutDefaultDisplay") }
+    static var shortcutSet: String { s("shortcutSet") }
+    static var shortcutCancel: String { s("shortcutCancel") }
+    static var shortcutWaiting: String { s("shortcutWaiting") }
+    static var shortcutRestore: String { s("shortcutRestore") }
 
     // Menu bar
-    static var takeScreenshot: String { lang == .zh ? "截图" : "Take Screenshot" }
-    static var settings: String { lang == .zh ? "设置..." : "Settings..." }
-    static var quitApp: String { lang == .zh ? "退出 capcap" : "Quit capcap" }
-    static var historyMenu: String { lang == .zh ? "历史" : "History" }
-    static var historyEmpty: String { lang == .zh ? "暂无历史" : "No history yet" }
-    static var historyClear: String { lang == .zh ? "清除历史" : "Clear History" }
+    static var takeScreenshot: String { s("takeScreenshot") }
+    static var settings: String { s("settings") }
+    static var quitApp: String { s("quitApp") }
+    static var historyMenu: String { s("historyMenu") }
+    static var historyEmpty: String { s("historyEmpty") }
+    static var historyClear: String { s("historyClear") }
 
     // Cursor chip
-    static var dragToScreenshot: String { lang == .zh ? "点击窗口或拖动以截图" : "Click window or drag to screenshot" }
+    static var dragToScreenshot: String { s("dragToScreenshot") }
 
     // Toast
-    static var copiedToClipboard: String { lang == .zh ? "已添加到剪贴板" : "Copied to clipboard" }
-    static var mergedLongScreenshot: String { lang == .zh ? "已合并长截图" : "Long screenshot merged" }
-    static var autoScrollPermissionNeeded: String {
-        lang == .zh
-            ? "长截图需要辅助功能权限，请在系统设置 → 隐私与安全性 → 辅助功能中授权 capcap"
-            : "Scroll capture needs Accessibility access — grant capcap in System Settings → Privacy & Security → Accessibility."
-    }
-    static var cropLongScreenshotHint: String {
-        lang == .zh ? "拖动上下边裁剪长图，回车或点对勾确认" : "Drag the top/bottom edges to crop — press Enter or tap ✓"
-    }
-    static var scrollCaptureHint: String {
-        lang == .zh ? "按回车结束长截图" : "Press Enter to finish long screenshot"
-    }
-    static var cancelFinderSelectionHint: String {
-        lang == .zh ? "按 X 取消选中" : "Press X to deselect"
-    }
-    static var cancelClipboardEditHint: String {
-        lang == .zh ? "按 X 取消编辑" : "Press X to cancel"
-    }
+    static var copiedToClipboard: String { s("copiedToClipboard") }
+    static var mergedLongScreenshot: String { s("mergedLongScreenshot") }
+    static var autoScrollPermissionNeeded: String { s("autoScrollPermissionNeeded") }
+    static var cropLongScreenshotHint: String { s("cropLongScreenshotHint") }
+    static var scrollCaptureHint: String { s("scrollCaptureHint") }
+    static var cancelFinderSelectionHint: String { s("cancelFinderSelectionHint") }
+    static var cancelClipboardEditHint: String { s("cancelClipboardEditHint") }
     static func colorCopied(_ hex: String) -> String {
-        lang == .zh ? "已复制颜色 \(hex)" : "Copied color \(hex)"
+        String(format: s("colorCopied"), hex)
     }
 
     // Toolbar tooltips
-    static var tipRectangle: String { lang == .zh ? "矩形" : "Rectangle" }
-    static var tipEllipse: String { lang == .zh ? "椭圆" : "Ellipse" }
-    static var tipArrow: String { lang == .zh ? "箭头" : "Arrow" }
-    static var tipPen: String { lang == .zh ? "画笔" : "Pen" }
-    static var tipMarker: String { lang == .zh ? "高亮笔" : "Marker" }
-    static var tipMosaic: String { lang == .zh ? "马赛克" : "Mosaic" }
-    static var tipNumbered: String { lang == .zh ? "序号" : "Numbered" }
-    static var tipText: String { lang == .zh ? "文字" : "Text" }
-    static var tipColorPicker: String { lang == .zh ? "取色器" : "Color Picker" }
-    static var tipUndo: String { lang == .zh ? "撤销" : "Undo" }
-    static var tipRedo: String { lang == .zh ? "恢复撤销" : "Redo" }
-    static var tipMoveSelection: String { lang == .zh ? "移动选区" : "Move Selection" }
-    static var tipScrollCapture: String { lang == .zh ? "长截图" : "Scroll Capture" }
-    static var tipBeautify: String { lang == .zh ? "美化" : "Beautify" }
-    static var tipOCR: String { lang == .zh ? "文字识别" : "OCR & Translate" }
-    static var tipSave: String { lang == .zh ? "保存" : "Save" }
-    static var tipPin: String { lang == .zh ? "钉在屏幕" : "Pin to Screen" }
-    static var tipCancel: String { lang == .zh ? "取消" : "Cancel" }
-    static var tipConfirm: String { lang == .zh ? "确认" : "Confirm" }
+    static var tipRectangle: String { s("tipRectangle") }
+    static var tipEllipse: String { s("tipEllipse") }
+    static var tipArrow: String { s("tipArrow") }
+    static var tipPen: String { s("tipPen") }
+    static var tipMarker: String { s("tipMarker") }
+    static var tipMosaic: String { s("tipMosaic") }
+    static var tipNumbered: String { s("tipNumbered") }
+    static var tipText: String { s("tipText") }
+    static var tipColorPicker: String { s("tipColorPicker") }
+    static var tipUndo: String { s("tipUndo") }
+    static var tipRedo: String { s("tipRedo") }
+    static var tipMoveSelection: String { s("tipMoveSelection") }
+    static var tipScrollCapture: String { s("tipScrollCapture") }
+    static var tipBeautify: String { s("tipBeautify") }
+    static var tipOCR: String { s("tipOCR") }
+    static var tipSave: String { s("tipSave") }
+    static var tipPin: String { s("tipPin") }
+    static var tipCancel: String { s("tipCancel") }
+    static var tipConfirm: String { s("tipConfirm") }
 
     // Beautify
-    static var beautify: String { lang == .zh ? "美化" : "Beautify" }
-    static var beautifyPresetPeachBlue: String { lang == .zh ? "粉蓝" : "Peach Blue" }
-    static var beautifyPresetMintTeal: String { lang == .zh ? "薄荷青" : "Mint Teal" }
-    static var beautifyPresetPeachPink: String { lang == .zh ? "桃粉" : "Peach Pink" }
-    static var beautifyPresetBluePurple: String { lang == .zh ? "蓝紫梦" : "Blue Purple" }
-    static var beautifyPresetWarmOrange: String { lang == .zh ? "暖橘黄" : "Warm Orange" }
-    static var beautifyPresetTealPink: String { lang == .zh ? "青粉" : "Teal Pink" }
-    static var beautifyPresetDeepPurple: String { lang == .zh ? "深邃紫" : "Deep Purple" }
-    static var beautifyPresetNeutralGray: String { lang == .zh ? "中性灰" : "Neutral Gray" }
-    static var beautifyPresetWallpaper: String { lang == .zh ? "壁纸" : "Wallpaper" }
+    static var beautify: String { s("beautify") }
+    static var beautifyPresetPeachBlue: String { s("beautifyPresetPeachBlue") }
+    static var beautifyPresetMintTeal: String { s("beautifyPresetMintTeal") }
+    static var beautifyPresetPeachPink: String { s("beautifyPresetPeachPink") }
+    static var beautifyPresetBluePurple: String { s("beautifyPresetBluePurple") }
+    static var beautifyPresetWarmOrange: String { s("beautifyPresetWarmOrange") }
+    static var beautifyPresetTealPink: String { s("beautifyPresetTealPink") }
+    static var beautifyPresetDeepPurple: String { s("beautifyPresetDeepPurple") }
+    static var beautifyPresetNeutralGray: String { s("beautifyPresetNeutralGray") }
+    static var beautifyPresetWallpaper: String { s("beautifyPresetWallpaper") }
 
     // Language
-    static var languageHeader: String { lang == .zh ? "语言" : "Language" }
+    static var languageHeader: String { s("languageHeader") }
 
     // Settings sidebar tabs
-    static var settingsTabGeneral: String { lang == .zh ? "通用" : "General" }
-    static var settingsTabShortcuts: String { lang == .zh ? "快捷键" : "Shortcuts" }
-    static var settingsTabPermissions: String { lang == .zh ? "权限" : "Permissions" }
-    static var settingsTabUpload: String { lang == .zh ? "图床" : "Upload" }
-    static var settingsTabAbout: String { lang == .zh ? "关于" : "About" }
-    static var settingsTabTranslation: String { lang == .zh ? "翻译" : "Translation" }
-    static var settingsQuit: String { lang == .zh ? "退出应用" : "Quit App" }
+    static var settingsTabGeneral: String { s("settingsTabGeneral") }
+    static var settingsTabShortcuts: String { s("settingsTabShortcuts") }
+    static var settingsTabPermissions: String { s("settingsTabPermissions") }
+    static var settingsTabUpload: String { s("settingsTabUpload") }
+    static var settingsTabAbout: String { s("settingsTabAbout") }
+    static var settingsTabTranslation: String { s("settingsTabTranslation") }
+    static var settingsQuit: String { s("settingsQuit") }
 
     // About pane
-    static var aboutTagline: String {
-        lang == .zh ? "菜单栏截图工具" : "Menu bar screenshot tool"
-    }
-    static var aboutLicense: String { lang == .zh ? "开源协议" : "License" }
-    static var aboutSourceCode: String { lang == .zh ? "源代码" : "Source code" }
-    static var aboutUpdateTitle: String { lang == .zh ? "软件更新" : "Updates" }
+    static var aboutTagline: String { s("aboutTagline") }
+    static var aboutLicense: String { s("aboutLicense") }
+    static var aboutSourceCode: String { s("aboutSourceCode") }
+    static var aboutUpdateTitle: String { s("aboutUpdateTitle") }
 
     // Error log — About pane
-    static var aboutErrorLog: String { lang == .zh ? "错误日志" : "Error Log" }
-    static var aboutErrorLogNoCrash: String { lang == .zh ? "无崩溃记录" : "No crashes" }
+    static var aboutErrorLog: String { s("aboutErrorLog") }
+    static var aboutErrorLogNoCrash: String { s("aboutErrorLogNoCrash") }
     static func aboutErrorLogLastCrash(_ date: String) -> String {
-        lang == .zh ? "上次崩溃 · \(date)" : "Last crash · \(date)"
+        String(format: s("aboutErrorLogLastCrash"), date)
     }
-    static var aboutErrorLogCopy: String { lang == .zh ? "复制日志" : "Copy Log" }
-    static var aboutErrorLogCopied: String { lang == .zh ? "已复制" : "Copied" }
-    static var aboutErrorLogReveal: String { lang == .zh ? "在访达中显示" : "Show in Finder" }
-    static var aboutErrorLogEmptyBody: String {
-        lang == .zh
-            ? "capcap 暂未记录到崩溃日志，运行一切正常。如果遇到闪退，请回到这里复制日志反馈给开发者。"
-            : "capcap hasn't recorded any crash logs — everything looks healthy. If it crashes, come back here to copy the log for a bug report."
-    }
+    static var aboutErrorLogCopy: String { s("aboutErrorLogCopy") }
+    static var aboutErrorLogCopied: String { s("aboutErrorLogCopied") }
+    static var aboutErrorLogReveal: String { s("aboutErrorLogReveal") }
+    static var aboutErrorLogEmptyBody: String { s("aboutErrorLogEmptyBody") }
 
     // Updates — About pane
-    static var checkForUpdates: String { lang == .zh ? "检查更新" : "Check for Updates" }
-    static var updateChecking: String { lang == .zh ? "正在检查…" : "Checking…" }
-    static var updateUpToDateStatus: String { lang == .zh ? "已是最新版本" : "Up to date" }
+    static var checkForUpdates: String { s("checkForUpdates") }
+    static var updateChecking: String { s("updateChecking") }
+    static var updateUpToDateStatus: String { s("updateUpToDateStatus") }
     static func updateNewVersionStatus(_ v: String) -> String {
-        lang == .zh ? "发现新版本 v\(v)" : "New version v\(v)"
+        String(format: s("updateNewVersionStatus"), v)
     }
-    static var updateFailedStatus: String { lang == .zh ? "检查失败" : "Check failed" }
-    static var updateDownloadButton: String { lang == .zh ? "前往下载" : "Download" }
-    static var updateRetryButton: String { lang == .zh ? "重试" : "Retry" }
-    static var updateInstallNowButton: String { lang == .zh ? "立即更新" : "Update Now" }
+    static var updateFailedStatus: String { s("updateFailedStatus") }
+    static var updateDownloadButton: String { s("updateDownloadButton") }
+    static var updateRetryButton: String { s("updateRetryButton") }
+    static var updateInstallNowButton: String { s("updateInstallNowButton") }
     static func updateDownloadingStatus(_ percent: Int) -> String {
-        lang == .zh ? "下载中 \(percent)%" : "Downloading \(percent)%"
+        String(format: s("updateDownloadingStatus"), percent)
     }
-    static var updateInstallingStatus: String { lang == .zh ? "正在安装…" : "Installing…" }
-    static var updateInstallFailedStatus: String { lang == .zh ? "安装失败" : "Install failed" }
+    static var updateInstallingStatus: String { s("updateInstallingStatus") }
+    static var updateInstallFailedStatus: String { s("updateInstallFailedStatus") }
 
     // Updates — menu bar
-    static var checkForUpdatesMenu: String { lang == .zh ? "检查更新…" : "Check for Updates…" }
-    static var checkingForUpdatesMenu: String { lang == .zh ? "正在检查更新…" : "Checking for Updates…" }
+    static var checkForUpdatesMenu: String { s("checkForUpdatesMenu") }
+    static var checkingForUpdatesMenu: String { s("checkingForUpdatesMenu") }
     static func updateAvailableMenu(_ v: String) -> String {
-        lang == .zh ? "有新版本 v\(v)" : "New Version v\(v) Available"
+        String(format: s("updateAvailableMenu"), v)
     }
     static func updateDownloadingMenu(_ percent: Int) -> String {
-        lang == .zh ? "正在下载更新… \(percent)%" : "Downloading Update… \(percent)%"
+        String(format: s("updateDownloadingMenu"), percent)
     }
-    static var updateInstallingMenu: String {
-        lang == .zh ? "正在安装更新…" : "Installing Update…"
-    }
-    static var updateInstallFailedMenu: String {
-        lang == .zh ? "更新安装失败" : "Update Install Failed"
-    }
+    static var updateInstallingMenu: String { s("updateInstallingMenu") }
+    static var updateInstallFailedMenu: String { s("updateInstallFailedMenu") }
 
     // Updates — progress HUD
-    static var updateCheckingHUD: String {
-        lang == .zh ? "capcap 正在检查更新…" : "Checking for updates…"
-    }
+    static var updateCheckingHUD: String { s("updateCheckingHUD") }
     static func updateDownloadingHUD(_ percent: Int) -> String {
-        lang == .zh ? "正在下载更新 \(percent)%" : "Downloading update \(percent)%"
+        String(format: s("updateDownloadingHUD"), percent)
     }
-    static var updateVerifyingHUD: String {
-        lang == .zh ? "正在校验更新…" : "Verifying update…"
-    }
-    static var updateUnzippingHUD: String {
-        lang == .zh ? "正在解压…" : "Extracting…"
-    }
-    static var updateInstallingHUD: String {
-        lang == .zh ? "正在安装…" : "Installing…"
-    }
+    static var updateVerifyingHUD: String { s("updateVerifyingHUD") }
+    static var updateUnzippingHUD: String { s("updateUnzippingHUD") }
+    static var updateInstallingHUD: String { s("updateInstallingHUD") }
 
     // Updates — manual check result alert
     static func updateAvailableTitle(_ v: String) -> String {
-        lang == .zh ? "发现新版本 v\(v)" : "Version v\(v) is available"
+        String(format: s("updateAvailableTitle"), v)
     }
-    static var updateAvailableBody: String {
-        lang == .zh
-            ? "capcap 将自动下载并安装最新版本，完成后会自动重启。"
-            : "capcap will download and install the latest version, then relaunch automatically."
-    }
-    static var updateUpToDateTitle: String { lang == .zh ? "已是最新版本" : "You're up to date" }
+    static var updateAvailableBody: String { s("updateAvailableBody") }
+    static var updateUpToDateTitle: String { s("updateUpToDateTitle") }
     static func updateUpToDateBody(_ v: String) -> String {
-        lang == .zh ? "当前版本 v\(v) 已是最新。" : "capcap v\(v) is the latest version."
+        String(format: s("updateUpToDateBody"), v)
     }
-    static var updateFailedTitle: String { lang == .zh ? "检查更新失败" : "Update check failed" }
-    static var updateFailedBody: String {
-        lang == .zh
-            ? "无法连接到 GitHub，请检查网络后重试。"
-            : "Could not reach GitHub. Check your connection and try again."
-    }
-    static var updateInstallFailedTitle: String {
-        lang == .zh ? "更新安装失败" : "Update failed"
-    }
-    static var updateInstallFailedBody: String {
-        lang == .zh
-            ? "下载或安装更新时出错。你可以前往 GitHub 发布页面手动下载。"
-            : "Something went wrong while downloading or installing the update. You can download it manually from the GitHub releases page."
-    }
-    static var updateOpenPageButton: String { lang == .zh ? "前往 GitHub" : "Open GitHub" }
-    static var updateSkipButton: String { lang == .zh ? "跳过此版本" : "Skip This Version" }
-    static var updateLaterButton: String { lang == .zh ? "稍后" : "Later" }
-    static var updateOKButton: String { lang == .zh ? "好" : "OK" }
+    static var updateFailedTitle: String { s("updateFailedTitle") }
+    static var updateFailedBody: String { s("updateFailedBody") }
+    static var updateInstallFailedTitle: String { s("updateInstallFailedTitle") }
+    static var updateInstallFailedBody: String { s("updateInstallFailedBody") }
+    static var updateOpenPageButton: String { s("updateOpenPageButton") }
+    static var updateSkipButton: String { s("updateSkipButton") }
+    static var updateLaterButton: String { s("updateLaterButton") }
+    static var updateOKButton: String { s("updateOKButton") }
 
     // Quit confirmation dialog
-    static var quitConfirmTitle: String { lang == .zh ? "退出 capcap?" : "Quit capcap?" }
-    static var quitConfirmMessage: String {
-        lang == .zh
-            ? "退出后菜单栏图标和截图快捷键将不再可用，需要重新启动 capcap。"
-            : "Quitting removes the menu bar icon and disables the screenshot shortcut until you launch capcap again."
-    }
-    static var quitConfirmAction: String { lang == .zh ? "退出" : "Quit" }
-    static var quitConfirmCancel: String { lang == .zh ? "取消" : "Cancel" }
+    static var quitConfirmTitle: String { s("quitConfirmTitle") }
+    static var quitConfirmMessage: String { s("quitConfirmMessage") }
+    static var quitConfirmAction: String { s("quitConfirmAction") }
+    static var quitConfirmCancel: String { s("quitConfirmCancel") }
 
     // Upload — toolbar / toast / progress
-    static var tipUpload: String { lang == .zh ? "上传到图床" : "Upload to image host" }
-    static var uploadingTitle: String { lang == .zh ? "上传中" : "Uploading" }
-    static var uploadCopied: String { lang == .zh ? "已复制图床链接" : "Image URL copied" }
-    static var uploadCopiedMarkdown: String {
-        lang == .zh ? "已复制 Markdown 链接" : "Markdown link copied"
-    }
-    static var uploadNoProvider: String {
-        lang == .zh ? "请先在设置中配置图床" : "Configure an uploader in Settings first"
-    }
-    static var uploadFailedPrefix: String { lang == .zh ? "上传失败: " : "Upload failed: " }
+    static var tipUpload: String { s("tipUpload") }
+    static var uploadingTitle: String { s("uploadingTitle") }
+    static var uploadCopied: String { s("uploadCopied") }
+    static var uploadCopiedMarkdown: String { s("uploadCopiedMarkdown") }
+    static var uploadNoProvider: String { s("uploadNoProvider") }
+    static var uploadFailedPrefix: String { s("uploadFailedPrefix") }
 
     // Upload — settings tab
-    static var uploadDefaultProvider: String { lang == .zh ? "默认图床" : "Default Uploader" }
-    static var uploadDefaultNone: String { lang == .zh ? "未启用" : "Disabled" }
-    static var uploadSetDefaultButton: String { lang == .zh ? "设为默认" : "Set Default" }
-    static var uploadSaveButton: String { lang == .zh ? "保存" : "Save" }
-    static var uploadClearButton: String { lang == .zh ? "清空" : "Clear" }
-    static var uploadSavedToast: String { lang == .zh ? "已保存配置" : "Config saved" }
-    static var uploadCurrentDefault: String { lang == .zh ? "当前默认" : "Current default" }
-    static var uploadMarkdownToggleTitle: String {
-        lang == .zh ? "复制为 Markdown 链接" : "Copy as Markdown link"
+    static var uploadDefaultProvider: String { s("uploadDefaultProvider") }
+    static var uploadDefaultNone: String { s("uploadDefaultNone") }
+    static var uploadSetDefaultButton: String { s("uploadSetDefaultButton") }
+    static var uploadSaveButton: String { s("uploadSaveButton") }
+    static var uploadClearButton: String { s("uploadClearButton") }
+    static var uploadSavedToast: String { s("uploadSavedToast") }
+    static var uploadCurrentDefault: String { s("uploadCurrentDefault") }
+    static var uploadMarkdownToggleTitle: String { s("uploadMarkdownToggleTitle") }
+    static var uploadMarkdownToggleSubtitle: String { s("uploadMarkdownToggleSubtitle") }
+
+    // Upload — provider field labels
+    static var uploadFieldBucket: String { s("uploadFieldBucket") }
+    static var uploadFieldBucketSpace: String { s("uploadFieldBucketSpace") }
+    static var uploadFieldRegion: String { s("uploadFieldRegion") }
+    static var uploadFieldRegionOptional: String { s("uploadFieldRegionOptional") }
+    static var uploadFieldPathOptional: String { s("uploadFieldPathOptional") }
+    static var uploadFieldCustomUrlOptional: String { s("uploadFieldCustomUrlOptional") }
+    static var uploadFieldPublicDomain: String { s("uploadFieldPublicDomain") }
+    static var uploadFieldEndpointArea: String { s("uploadFieldEndpointArea") }
+    static var uploadFieldEndpointOptional: String { s("uploadFieldEndpointOptional") }
+    static var uploadFieldAccountId: String { s("uploadFieldAccountId") }
+    static var uploadTestImageFailed: String { s("uploadTestImageFailed") }
+
+    // Upload — provider names
+    static var providerTencentCOS: String { s("providerTencentCOS") }
+    static var providerQiniuKodo: String { s("providerQiniuKodo") }
+    static var providerAliyunOSS: String { s("providerAliyunOSS") }
+
+    // Upload — errors
+    static var uploadErrMissingConfig: String { s("uploadErrMissingConfig") }
+    static var uploadErrInvalidConfigPrefix: String { s("uploadErrInvalidConfigPrefix") }
+    static var uploadErrNetworkPrefix: String { s("uploadErrNetworkPrefix") }
+    static func uploadErrServerPrefix(_ code: Int) -> String {
+        String(format: s("uploadErrServerPrefix"), code)
     }
-    static var uploadMarkdownToggleSubtitle: String {
-        lang == .zh
-            ? "开启后上传完成自动复制 Markdown 图片格式（![](链接)），关闭则复制普通 URL。在历史记录中，按住 ⌘ 点击已上传到图床的图片复制 Markdown 链接，直接点击则复制普通链接。"
-            : "When on, copies a Markdown image tag (![](url)) after upload; when off, copies a plain URL. In History, ⌘-click an uploaded image to copy a Markdown link, or click it directly for a plain URL."
+    static var uploadErrUnexpectedResponsePrefix: String { s("uploadErrUnexpectedResponsePrefix") }
+    static func missingField(_ key: String) -> String {
+        String(format: s("missingField"), key)
     }
 
     // Upload — test/validation pill
-    static var uploadStatusUntested: String { lang == .zh ? "未测试" : "Not tested" }
-    static var uploadStatusTesting: String { lang == .zh ? "测试中…" : "Testing…" }
-    static var uploadStatusValid: String { lang == .zh ? "已生效" : "Active" }
-    static var uploadStatusInvalid: String { lang == .zh ? "无效的配置" : "Invalid config" }
+    static var uploadStatusUntested: String { s("uploadStatusUntested") }
+    static var uploadStatusTesting: String { s("uploadStatusTesting") }
+    static var uploadStatusValid: String { s("uploadStatusValid") }
+    static var uploadStatusInvalid: String { s("uploadStatusInvalid") }
 
     // Upload — log lines
-    static var uploadLogStartingTest: String { lang == .zh ? "开始测试上传…" : "Starting test upload…" }
-    static var uploadLogConfigSaved: String { lang == .zh ? "已保存配置" : "Config saved" }
+    static var uploadLogStartingTest: String { s("uploadLogStartingTest") }
+    static var uploadLogConfigSaved: String { s("uploadLogConfigSaved") }
     static func uploadLogMissingFields(_ keys: [String]) -> String {
-        lang == .zh
-            ? "缺少必填字段: \(keys.joined(separator: ", "))"
-            : "Missing required fields: \(keys.joined(separator: ", "))"
+        String(format: s("uploadLogMissingFields"), keys.joined(separator: ", "))
     }
     static func uploadLogTestSucceeded(_ url: String) -> String {
-        lang == .zh ? "测试上传成功: \(url)" : "Test upload succeeded: \(url)"
+        String(format: s("uploadLogTestSucceeded"), url)
     }
     static func uploadLogTestFailed(_ message: String) -> String {
-        lang == .zh ? "测试上传失败: \(message)" : "Test upload failed: \(message)"
+        String(format: s("uploadLogTestFailed"), message)
     }
-    static var uploadLogProviderDisabled: String {
-        lang == .zh ? "已停用该图床" : "Provider disabled"
-    }
-    static var uploadLogConfigCleared: String {
-        lang == .zh ? "已清空配置" : "Config cleared"
-    }
+    static var uploadLogProviderDisabled: String { s("uploadLogProviderDisabled") }
+    static var uploadLogConfigCleared: String { s("uploadLogConfigCleared") }
+
+    // Permissions — status label
+    static var permissionGranted: String { s("permissionGranted") }
+    static var permissionNotGranted: String { s("permissionNotGranted") }
 
     // OCR & Translation — result panel
-    static var ocrTextHeader: String { lang == .zh ? "识别文本" : "Recognized Text" }
-    static var ocrRecognizing: String { lang == .zh ? "正在识别…" : "Recognizing…" }
-    static var ocrNoText: String { lang == .zh ? "未识别到文字" : "No text found" }
-    static var ocrCopy: String { lang == .zh ? "复制" : "Copy" }
-    static var ocrCopied: String { lang == .zh ? "已复制" : "Copied" }
-    static var ocrRetry: String { lang == .zh ? "重试" : "Retry" }
-    static var ocrTranslating: String { lang == .zh ? "翻译中…" : "Translating…" }
-    static var ocrTranslateFailedPrefix: String { lang == .zh ? "翻译失败: " : "Failed: " }
-    static var ocrNoProviderTitle: String {
-        lang == .zh ? "未配置翻译服务" : "No translation service configured"
-    }
-    static var ocrNoProviderHint: String {
-        lang == .zh ? "前往「设置 → 翻译」添加 AI 服务" : "Add an AI service in Settings → Translation"
-    }
-    static var ocrOpenSettings: String { lang == .zh ? "打开设置" : "Open Settings" }
+    static var ocrTextHeader: String { s("ocrTextHeader") }
+    static var ocrRecognizing: String { s("ocrRecognizing") }
+    static var ocrNoText: String { s("ocrNoText") }
+    static var ocrCopy: String { s("ocrCopy") }
+    static var ocrCopied: String { s("ocrCopied") }
+    static var ocrRetry: String { s("ocrRetry") }
+    static var ocrTranslating: String { s("ocrTranslating") }
+    static var ocrTranslateFailedPrefix: String { s("ocrTranslateFailedPrefix") }
+    static var ocrNoProviderTitle: String { s("ocrNoProviderTitle") }
+    static var ocrNoProviderHint: String { s("ocrNoProviderHint") }
+    static var ocrOpenSettings: String { s("ocrOpenSettings") }
 
     // Translation — settings tab
-    static var translationTargetLanguage: String { lang == .zh ? "目标语言" : "Target Language" }
-    static var translationTargetHint: String {
-        lang == .zh
-            ? "识别文本将翻译成该语言；若原文已是该语言则译为英文。"
-            : "Recognized text is translated into this language; if it is already in that language, it is translated to English instead."
-    }
-    static var translationProvidersHeader: String { lang == .zh ? "AI 翻译服务" : "AI Translation Services" }
-    static var translationApiKey: String { "API Key" }
-    static var translationModel: String { lang == .zh ? "模型" : "Model" }
-    static var translationEndpoint: String { lang == .zh ? "接口地址" : "Endpoint" }
-    static var translationEndpointOptional: String {
-        lang == .zh ? "接口地址(可选)" : "Endpoint (optional)"
-    }
-    static var translationSave: String { lang == .zh ? "保存" : "Save" }
-    static var translationClear: String { lang == .zh ? "清空" : "Clear" }
-    static var translationConfigSaved: String { lang == .zh ? "已保存配置" : "Config saved" }
-    static var translationTesting: String { lang == .zh ? "测试中…" : "Testing…" }
-    static var translationTestPassed: String { lang == .zh ? "测试通过" : "Test passed" }
-    static var translationTestFailed: String { lang == .zh ? "测试失败" : "Test failed" }
-    static var translationTestFailedTitle: String {
-        lang == .zh ? "已保存，但连接测试失败" : "Saved, but the connection test failed"
-    }
+    static var translationTargetLanguage: String { s("translationTargetLanguage") }
+    static var translationTargetHint: String { s("translationTargetHint") }
+    static var translationProvidersHeader: String { s("translationProvidersHeader") }
+    static var translationApiKey: String { s("translationApiKey") }
+    static var translationModel: String { s("translationModel") }
+    static var translationEndpoint: String { s("translationEndpoint") }
+    static var translationEndpointOptional: String { s("translationEndpointOptional") }
+    static var translationSave: String { s("translationSave") }
+    static var translationClear: String { s("translationClear") }
+    static var translationConfigSaved: String { s("translationConfigSaved") }
+    static var translationTesting: String { s("translationTesting") }
+    static var translationTestPassed: String { s("translationTestPassed") }
+    static var translationTestFailed: String { s("translationTestFailed") }
+    static var translationTestFailedTitle: String { s("translationTestFailedTitle") }
+    static var translationProviderCustom: String { s("translationProviderCustom") }
+
+    // Translation — target language names
+    static var transLangChinese: String { s("transLangChinese") }
+    static var transLangEnglish: String { s("transLangEnglish") }
+    static var transLangJapanese: String { s("transLangJapanese") }
+    static var transLangKorean: String { s("transLangKorean") }
+
+    // Translation — errors
+    static var translationErrMissingAPIKey: String { s("translationErrMissingAPIKey") }
+    static var translationErrBadEndpoint: String { s("translationErrBadEndpoint") }
+    static var translationErrBadResponse: String { s("translationErrBadResponse") }
 }
 
 struct Defaults {
@@ -515,7 +508,13 @@ struct Defaults {
 
     static var language: AppLanguage {
         get {
-            AppLanguage(rawValue: defaults.string(forKey: "appLanguage") ?? "") ?? .zh
+            // Explicit user choice wins; otherwise follow the system locale on
+            // first launch so a fresh install opens in a familiar language.
+            if let raw = defaults.string(forKey: "appLanguage"),
+               let lang = AppLanguage(rawValue: raw) {
+                return lang
+            }
+            return AppLanguage.systemDefault
         }
         set {
             let old = language

@@ -9,9 +9,9 @@ enum UploadProviderKind: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .tencent: return L10n.lang == .zh ? "腾讯云 COS" : "Tencent COS"
-        case .qiniu:   return L10n.lang == .zh ? "七牛云 Kodo" : "Qiniu Kodo"
-        case .aliyun:  return L10n.lang == .zh ? "阿里云 OSS" : "Aliyun OSS"
+        case .tencent: return L10n.providerTencentCOS
+        case .qiniu:   return L10n.providerQiniuKodo
+        case .aliyun:  return L10n.providerAliyunOSS
         case .s3:      return "Amazon S3"
         case .r2:      return "Cloudflare R2"
         }
@@ -42,15 +42,15 @@ enum UploadError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .missingConfig:
-            return L10n.lang == .zh ? "未配置上传图床" : "No uploader configured"
+            return L10n.uploadErrMissingConfig
         case .invalidConfig(let m):
-            return (L10n.lang == .zh ? "配置无效: " : "Invalid config: ") + m
+            return L10n.uploadErrInvalidConfigPrefix + m
         case .network(let m):
-            return (L10n.lang == .zh ? "网络错误: " : "Network error: ") + m
+            return L10n.uploadErrNetworkPrefix + m
         case .server(let code, let m):
-            return (L10n.lang == .zh ? "上传失败 (\(code)): " : "Upload failed (\(code)): ") + m
+            return L10n.uploadErrServerPrefix(code) + m
         case .unexpectedResponse(let m):
-            return (L10n.lang == .zh ? "响应异常: " : "Unexpected response: ") + m
+            return L10n.uploadErrUnexpectedResponsePrefix + m
         }
     }
 }

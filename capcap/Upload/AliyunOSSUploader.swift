@@ -9,10 +9,9 @@ enum AliyunOSSUploader: UploaderProtocol {
     static let kind: UploadProviderKind = .aliyun
 
     static func validate(_ config: ProviderConfig) -> String? {
-        let zh = L10n.lang == .zh
         for key in ["accessKeyId", "accessKeySecret", "bucket", "area"] {
             if config.nonEmpty(key) == nil {
-                return zh ? "缺少 \(key)" : "Missing \(key)"
+                return L10n.missingField(key)
             }
         }
         return nil

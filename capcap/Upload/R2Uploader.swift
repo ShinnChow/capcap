@@ -15,10 +15,9 @@ enum R2Uploader: UploaderProtocol {
     static let kind: UploadProviderKind = .r2
 
     static func validate(_ config: ProviderConfig) -> String? {
-        let zh = L10n.lang == .zh
         for key in ["accessKeyId", "secretAccessKey", "accountId", "bucket"] {
             if config.nonEmpty(key) == nil {
-                return zh ? "缺少 \(key)" : "Missing \(key)"
+                return L10n.missingField(key)
             }
         }
         return nil
