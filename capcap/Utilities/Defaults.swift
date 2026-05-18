@@ -370,7 +370,10 @@ struct Defaults {
         }
     }
 
-    // Custom screenshot hotkey. keyCode == 0 means "no custom hotkey" (fall back to double-tap ⌘).
+    // Custom screenshot hotkey. When the key is absent, no custom hotkey is set
+    // (fall back to double-tap ⌘). keyCode 0 is a valid value — it is the `A` key
+    // (kVK_ANSI_A) — so presence must be checked via `hasCustomScreenshotHotkey`,
+    // never by comparing the key code to 0.
     // Modifiers are stored using Carbon flags (cmdKey | shiftKey | optionKey | controlKey).
 
     static var screenshotHotkeyKeyCode: Int {
@@ -384,7 +387,7 @@ struct Defaults {
     }
 
     static var hasCustomScreenshotHotkey: Bool {
-        screenshotHotkeyKeyCode != 0
+        defaults.object(forKey: "screenshotHotkeyKeyCode") != nil
     }
 
     static func clearScreenshotHotkey() {

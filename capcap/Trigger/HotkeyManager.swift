@@ -113,8 +113,8 @@ final class HotkeyManager {
 
     /// Returns (keyCode, carbonModifiers) for the saved hotkey, or nil if none/invalid.
     func currentHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomScreenshotHotkey else { return nil }
         let kc = UInt32(Defaults.screenshotHotkeyKeyCode)
-        guard kc != 0 else { return nil }
         let mods = UInt32(Defaults.screenshotHotkeyModifiers)
         // Require at least one modifier unless it is a standalone function key.
         guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
