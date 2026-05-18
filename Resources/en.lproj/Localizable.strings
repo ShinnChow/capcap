@@ -44,8 +44,8 @@
 "autoScrollPermissionNeeded" = "Scroll capture needs Accessibility access — grant capcap in System Settings → Privacy & Security → Accessibility.";
 "cropLongScreenshotHint" = "Drag the top/bottom edges to crop — press Enter or tap ✓";
 "scrollCaptureHint" = "Press Enter to finish long screenshot";
-"cancelFinderSelectionHint" = "Press X to deselect";
-"cancelClipboardEditHint" = "Press X to cancel";
+"cancelFinderSelectionHint" = "Editing from Finder. Press X to cancel";
+"cancelClipboardEditHint" = "Editing from clipboard. Press X to cancel";
 "colorCopied" = "Copied color %@";
 
 /* Toolbar tooltips */
