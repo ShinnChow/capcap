@@ -13,6 +13,12 @@ enum FinderSelection {
         return url
     }
 
+    /// Returns every image file currently selected in Finder, preserving
+    /// Finder's selection order and ignoring non-image files.
+    static func currentImageFileURLs() -> [URL] {
+        currentSelectionURLs().filter(isImage)
+    }
+
     /// Clears Finder's current selection. Used after the image-edit shortcut
     /// fires by mistake, so the next screenshot trigger runs the normal flow
     /// instead of re-opening the same image. Silently no-ops on any failure.

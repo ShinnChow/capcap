@@ -56,15 +56,17 @@ final class PinWindow: NSWindow {
 /// Builds pinned-image windows. Used both by the editor's pin button and by the
 /// global pin hotkey.
 enum PinLauncher {
+    private static let stackOffset = NSSize(width: 28, height: -28)
+    private static let maxDistinctStackOffsets = 8
+
     /// Pins the image currently selected in Finder, or — failing that — the
     /// image on the clipboard, onto the screen. Shows a toast on success or
     /// when neither source has an image. Returns true if something was pinned.
     @discardableResult
     static func pinFromSourcesIfAvailable() -> Bool {
-        if let url = FinderSelection.currentImageFileURL(),
-           let image = NSImage(contentsOf: url),
-           image.size.width > 0, image.size.height > 0 {
-            pin(image: image, source: .finder)
+        let finderImages = FinderSelection.currentImageFileURLs().compactMap(loadImage)
+        if !finderImages.isEmpty {
+            pin(images: finderImages, source: .finder)
             ToastWindow.show(message: L10n.pinFromFinderHint)
             return true
         }
@@ -83,11 +85,32 @@ enum PinLauncher {
     /// window is centered on the screen under the cursor. Oversized images are
     /// scaled down to fit the screen.
     static func pin(image: NSImage, at origin: NSPoint? = nil, source: PinSource? = nil) {
-        let size = fittedSize(for: image.size)
-        let frameOrigin = origin ?? centeredOrigin(for: size)
+        let screen = activeScreen()
+        let size = fittedSize(for: image.size, on: screen)
+        let frameOrigin = origin ?? centeredOrigin(for: size, on: screen)
 
+        makeWindow(image: image, size: size, origin: frameOrigin, source: source)
+    }
+
+    private static func pin(images: [NSImage], source: PinSource) {
+        let screen = activeScreen()
+        let pins = images.compactMap { image -> (image: NSImage, size: NSSize)? in
+            let size = fittedSize(for: image.size, on: screen)
+            guard size.width > 0, size.height > 0 else { return nil }
+            return (image, size)
+        }
+        guard let first = pins.first else { return }
+
+        let baseOrigin = centeredOrigin(for: first.size, on: screen)
+        for (index, pin) in pins.enumerated() {
+            let origin = stackedOrigin(baseOrigin: baseOrigin, index: index, size: pin.size, on: screen)
+            makeWindow(image: pin.image, size: pin.size, origin: origin, source: source)
+        }
+    }
+
+    private static func makeWindow(image: NSImage, size: NSSize, origin: NSPoint, source: PinSource?) {
         let window = PinWindow(
-            contentRect: NSRect(origin: frameOrigin, size: size),
+            contentRect: NSRect(origin: origin, size: size),
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
@@ -120,11 +143,18 @@ enum PinLauncher {
             ?? NSScreen.screens[0]
     }
 
+    private static func loadImage(from url: URL) -> NSImage? {
+        guard let image = NSImage(contentsOf: url),
+              image.size.width > 0, image.size.height > 0
+        else { return nil }
+        return image
+    }
+
     /// Scales `size` down to fit within the active screen (with a margin),
     /// keeping the aspect ratio. Returns it unchanged when it already fits.
-    private static func fittedSize(for size: NSSize) -> NSSize {
+    private static func fittedSize(for size: NSSize, on screen: NSScreen) -> NSSize {
         guard size.width > 0, size.height > 0 else { return size }
-        let frame = activeScreen().visibleFrame
+        let frame = screen.visibleFrame
         let maxWidth = max(200, frame.width - 80)
         let maxHeight = max(200, frame.height - 80)
         let ratio = min(1.0, min(maxWidth / size.width, maxHeight / size.height))
@@ -132,11 +162,36 @@ enum PinLauncher {
         return NSSize(width: floor(size.width * ratio), height: floor(size.height * ratio))
     }
 
-    private static func centeredOrigin(for size: NSSize) -> NSPoint {
-        let frame = activeScreen().visibleFrame
+    private static func centeredOrigin(for size: NSSize, on screen: NSScreen) -> NSPoint {
+        let frame = screen.visibleFrame
         return NSPoint(
             x: frame.midX - size.width / 2,
             y: frame.midY - size.height / 2
+        )
+    }
+
+    private static func stackedOrigin(
+        baseOrigin: NSPoint,
+        index: Int,
+        size: NSSize,
+        on screen: NSScreen
+    ) -> NSPoint {
+        let distinctIndex = index % maxDistinctStackOffsets
+        let wrapIndex = index / maxDistinctStackOffsets
+        let proposed = NSPoint(
+            x: baseOrigin.x + CGFloat(distinctIndex) * stackOffset.width + CGFloat(wrapIndex) * 10,
+            y: baseOrigin.y + CGFloat(distinctIndex) * stackOffset.height - CGFloat(wrapIndex) * 10
+        )
+        return clampedOrigin(proposed, size: size, on: screen)
+    }
+
+    private static func clampedOrigin(_ origin: NSPoint, size: NSSize, on screen: NSScreen) -> NSPoint {
+        let frame = screen.visibleFrame
+        let maxX = max(frame.minX, frame.maxX - size.width)
+        let maxY = max(frame.minY, frame.maxY - size.height)
+        return NSPoint(
+            x: min(max(origin.x, frame.minX), maxX),
+            y: min(max(origin.y, frame.minY), maxY)
         )
     }
 }
