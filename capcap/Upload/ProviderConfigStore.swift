@@ -89,4 +89,11 @@ extension Defaults {
     static var hasUsableUploadProvider: Bool {
         defaultUploadProviderKind != nil
     }
+
+    /// When enabled, a successful upload copies a Markdown image tag
+    /// (`![](url)`) to the clipboard instead of a bare URL. Defaults to off.
+    static var copyUploadAsMarkdown: Bool {
+        get { UserDefaults.standard.bool(forKey: "uploader.copyAsMarkdown") }
+        set { UserDefaults.standard.set(newValue, forKey: "uploader.copyAsMarkdown") }
+    }
 }

@@ -51,11 +51,18 @@ final class UploadManager {
                 self.progressWindow = nil
                 switch result {
                 case .success(let url):
+                    let asMarkdown = Defaults.copyUploadAsMarkdown
+                    let copyText = asMarkdown
+                        ? "![](\(url.absoluteString))"
+                        : url.absoluteString
                     let pasteboard = NSPasteboard.general
                     pasteboard.clearContents()
-                    pasteboard.setString(url.absoluteString, forType: .string)
+                    pasteboard.setString(copyText, forType: .string)
                     HistoryManager.shared.add(image: image, cloudURL: url)
-                    ToastWindow.show(message: L10n.uploadCopied, on: screen)
+                    ToastWindow.show(
+                        message: asMarkdown ? L10n.uploadCopiedMarkdown : L10n.uploadCopied,
+                        on: screen
+                    )
                 case .failure(let err):
                     HistoryManager.shared.add(image: image)
                     let msg = (err as? UploadError)?.errorDescription

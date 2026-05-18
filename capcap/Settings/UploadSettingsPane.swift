@@ -6,6 +6,9 @@ final class UploadSettingsPane: NSView {
     private var defaultBadges: [UploadProviderKind: NSTextField] = [:]
     private var setDefaultButtons: [UploadProviderKind: NSButton] = [:]
     private var providerCards: [UploadProviderKind: ProviderCard] = [:]
+    private let markdownSwitch = NSSwitch()
+    private let markdownTitleLabel = NSTextField(labelWithString: "")
+    private let markdownSubtitleLabel = NSTextField(wrappingLabelWithString: "")
 
     init() {
         super.init(frame: .zero)
@@ -39,6 +42,10 @@ final class UploadSettingsPane: NSView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
+        let markdownCard = buildMarkdownCard()
+        stack.addArrangedSubview(markdownCard)
+        markdownCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
         for kind in UploadProviderKind.allCases {
             let card = ProviderCard(kind: kind, fields: Self.fields(for: kind))
             card.translatesAutoresizingMaskIntoConstraints = false
@@ -60,6 +67,64 @@ final class UploadSettingsPane: NSView {
         refreshDefaultIndicators()
     }
 
+    /// Card with the "copy as Markdown link" switch, shown above the provider
+    /// cards. Controls whether a successful upload copies `![](url)` or a raw URL.
+    private func buildMarkdownCard() -> NSView {
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 12
+        card.layer?.cornerCurve = .continuous
+        card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
+        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        card.layer?.borderWidth = 1
+
+        markdownTitleLabel.stringValue = L10n.uploadMarkdownToggleTitle
+        markdownTitleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        markdownTitleLabel.textColor = NSColor.white.withAlphaComponent(0.94)
+
+        markdownSubtitleLabel.stringValue = L10n.uploadMarkdownToggleSubtitle
+        markdownSubtitleLabel.font = NSFont.systemFont(ofSize: 11)
+        markdownSubtitleLabel.textColor = NSColor.white.withAlphaComponent(0.55)
+        markdownSubtitleLabel.maximumNumberOfLines = 0
+        // Let the label wrap to the card width instead of widening the window.
+        markdownSubtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let textStack = NSStackView(views: [markdownTitleLabel, markdownSubtitleLabel])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 3
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        markdownSwitch.controlSize = .small
+        markdownSwitch.state = Defaults.copyUploadAsMarkdown ? .on : .off
+        markdownSwitch.target = self
+        markdownSwitch.action = #selector(markdownSwitchToggled)
+        markdownSwitch.translatesAutoresizingMaskIntoConstraints = false
+
+        card.addSubview(textStack)
+        card.addSubview(markdownSwitch)
+
+        NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            textStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            textStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+            textStack.trailingAnchor.constraint(equalTo: markdownSwitch.leadingAnchor, constant: -12),
+
+            markdownSwitch.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            markdownSwitch.centerYAnchor.constraint(equalTo: textStack.centerYAnchor),
+
+            // Pin the wrapping subtitle to the stack's definite width so it
+            // wraps to multiple lines instead of forcing the window wider.
+            markdownSubtitleLabel.widthAnchor.constraint(equalTo: textStack.widthAnchor),
+        ])
+        return card
+    }
+
+    @objc private func markdownSwitchToggled() {
+        Defaults.copyUploadAsMarkdown = markdownSwitch.state == .on
+    }
+
     private func setDefault(_ kind: UploadProviderKind) {
         // Persist whatever the user has typed before flipping the default.
         providerCards[kind]?.persistFields()
@@ -78,6 +143,8 @@ final class UploadSettingsPane: NSView {
     }
 
     @objc private func onLanguageChanged() {
+        markdownTitleLabel.stringValue = L10n.uploadMarkdownToggleTitle
+        markdownSubtitleLabel.stringValue = L10n.uploadMarkdownToggleSubtitle
         for (kind, card) in providerCards {
             card.refreshLocalization(fields: Self.fields(for: kind))
         }

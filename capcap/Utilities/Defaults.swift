@@ -266,6 +266,9 @@ enum L10n {
     static var tipUpload: String { lang == .zh ? "上传到图床" : "Upload to image host" }
     static var uploadingTitle: String { lang == .zh ? "上传中" : "Uploading" }
     static var uploadCopied: String { lang == .zh ? "已复制图床链接" : "Image URL copied" }
+    static var uploadCopiedMarkdown: String {
+        lang == .zh ? "已复制 Markdown 链接" : "Markdown link copied"
+    }
     static var uploadNoProvider: String {
         lang == .zh ? "请先在设置中配置图床" : "Configure an uploader in Settings first"
     }
@@ -279,6 +282,14 @@ enum L10n {
     static var uploadClearButton: String { lang == .zh ? "清空" : "Clear" }
     static var uploadSavedToast: String { lang == .zh ? "已保存配置" : "Config saved" }
     static var uploadCurrentDefault: String { lang == .zh ? "当前默认" : "Current default" }
+    static var uploadMarkdownToggleTitle: String {
+        lang == .zh ? "复制为 Markdown 链接" : "Copy as Markdown link"
+    }
+    static var uploadMarkdownToggleSubtitle: String {
+        lang == .zh
+            ? "开启后上传完成自动复制 Markdown 图片格式（![](链接)），关闭则复制普通 URL。在历史记录中，按住 ⌘ 点击已上传到图床的图片复制 Markdown 链接，直接点击则复制普通链接。"
+            : "When on, copies a Markdown image tag (![](url)) after upload; when off, copies a plain URL. In History, ⌘-click an uploaded image to copy a Markdown link, or click it directly for a plain URL."
+    }
 
     // Upload — test/validation pill
     static var uploadStatusUntested: String { lang == .zh ? "未测试" : "Not tested" }

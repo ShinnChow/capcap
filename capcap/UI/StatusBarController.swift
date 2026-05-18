@@ -261,11 +261,17 @@ class StatusBarController: NSObject {
         guard let entry = entry else { return }
         switch entry.kind {
         case .image:
+            // Cloud-hosted images copy a URL; holding ⌘ copies a Markdown image
+            // tag instead. Plain (non-uploaded) images always copy the image.
             if let cloudURL = entry.cloudURL {
+                let asMarkdown = NSEvent.modifierFlags.contains(.command)
+                let copyText = asMarkdown
+                    ? "![](\(cloudURL.absoluteString))"
+                    : cloudURL.absoluteString
                 let pasteboard = NSPasteboard.general
                 pasteboard.clearContents()
-                pasteboard.setString(cloudURL.absoluteString, forType: .string)
-                ToastWindow.show(message: L10n.uploadCopied)
+                pasteboard.setString(copyText, forType: .string)
+                ToastWindow.show(message: asMarkdown ? L10n.uploadCopiedMarkdown : L10n.uploadCopied)
                 return
             }
             guard let image = NSImage(contentsOf: entry.fileURL) else { return }
