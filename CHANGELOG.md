@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-05-18
+
+### Fixed
+- `fix(ci): copy .lproj localization bundles into release .app` (b98d7b1) — the v1.2.0 release shipped with no localization resources, causing every UI string to render as its raw key
+
 ## [1.2.0] - 2026-05-18
 
 ### Added
