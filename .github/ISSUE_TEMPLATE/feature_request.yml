@@ -1,0 +1,69 @@
+name: ✨ Feature Request / 功能请求
+description: Suggest a new feature or improvement for capcap / 为 capcap 提出新功能或改进建议
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping make capcap better! / 感谢你帮助 capcap 变得更好！
+
+        Please search [existing issues](https://github.com/realskyrin/capcap/issues) first to avoid duplicates.
+        提交前请先搜索[已有 issue](https://github.com/realskyrin/capcap/issues)，避免重复。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve? / 想解决什么问题？
+      description: Describe the pain point or limitation you are running into. / 描述你遇到的痛点或限制。
+      placeholder: When I capture multiple monitors, I can't choose which display...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution / 期望的方案
+      description: Describe the feature or change you'd like to see. / 描述你希望看到的功能或改动。
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered / 考虑过的替代方案
+      description: Any other approaches or workarounds you've thought about or currently use. / 你想到过或正在使用的其他做法或变通方案。
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which area does this relate to? / 涉及哪个模块？
+      options:
+        - Capture (region / window / scroll-stitch) / 截图（区域 / 窗口 / 滚动拼接）
+        - Annotation editor / 标注编辑器
+        - Beautify & pin / 美化与贴图
+        - Upload / image host / 上传 / 图床
+        - Menu bar & history / 菜单栏与历史
+        - Shortcuts & triggers / 快捷键与触发
+        - Settings / 设置
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context / 补充信息
+      description: Mockups, references to other tools, or anything else that helps. / 草图、其他工具的参考，或任何有帮助的信息。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmation / 确认
+      options:
+        - label: I have searched existing issues and this is not a duplicate. / 我已搜索过现有 issue，确认这不是重复请求。
+          required: true

@@ -1,0 +1,120 @@
+name: 🐞 Bug Report / 问题反馈
+description: Report a bug or unexpected behavior in capcap / 报告 capcap 的缺陷或异常行为
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report! / 感谢你抽时间反馈问题！
+
+        Please search [existing issues](https://github.com/realskyrin/capcap/issues) first to avoid duplicates.
+        提交前请先搜索[已有 issue](https://github.com/realskyrin/capcap/issues)，避免重复。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened? / 发生了什么？
+      description: A clear and concise description of the bug. / 清晰简要地描述这个问题。
+      placeholder: When I capture a scrolling area, the stitched preview is blank...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤
+      description: List the exact steps so we can reproduce it. / 列出能稳定复现该问题的操作步骤。
+      placeholder: |
+        1. Double-tap ⌘ to start capture
+        2. Drag a region over a window
+        3. Click the scroll-stitch button
+        4. See the error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / 预期行为
+      description: What did you expect to happen instead? / 你原本期望发生什么？
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording / 截图或录屏
+      description: If applicable, drag images or a video here to help explain. / 如有需要，可拖入截图或录屏帮助说明。
+    validations:
+      required: false
+
+  - type: input
+    id: capcap-version
+    attributes:
+      label: capcap version / capcap 版本
+      description: Find it in the menu bar icon → About, or Settings. / 可在菜单栏图标 → 关于，或设置中查看。
+      placeholder: "1.2.1"
+    validations:
+      required: true
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version / macOS 版本
+      description: Apple menu → About This Mac. / 苹果菜单 → 关于本机。
+      placeholder: "macOS 14.5 (Sonoma)"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: architecture
+    attributes:
+      label: Mac chip / Mac 芯片
+      options:
+        - Apple Silicon (M1/M2/M3/M4...)
+        - Intel
+        - Not sure / 不确定
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: How did you install capcap? / 安装方式
+      options:
+        - GitHub Release (.dmg / .zip)
+        - Homebrew Cask
+        - Built from source / 源码编译
+        - Other / 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Crash log or console output / 崩溃日志或控制台输出
+      description: |
+        If the app crashed, paste the relevant crash report (Console.app → Crash Reports), or any console output.
+        如果应用崩溃，请粘贴相关崩溃报告（控制台.app → 崩溃报告），或任何控制台输出。
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context / 补充信息
+      description: Anything else that might help — display setup, other tools running, etc. / 其他可能有帮助的信息——显示器配置、同时运行的工具等。
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Confirmation / 确认
+      options:
+        - label: I have searched existing issues and this is not a duplicate. / 我已搜索过现有 issue，确认这不是重复问题。
+          required: true
+        - label: I am running the latest version of capcap. / 我使用的是 capcap 最新版本。
+          required: false

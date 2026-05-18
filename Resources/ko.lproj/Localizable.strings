@@ -97,6 +97,8 @@
 "aboutTagline" = "메뉴 막대 스크린샷 도구";
 "aboutLicense" = "라이선스";
 "aboutSourceCode" = "소스 코드";
+"aboutFeatureRequest" = "기능 요청";
+"aboutBugReport" = "버그 신고";
 "aboutUpdateTitle" = "업데이트";
 "aboutErrorLog" = "오류 로그";
 "aboutErrorLogNoCrash" = "충돌 없음";

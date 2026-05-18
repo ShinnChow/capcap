@@ -97,6 +97,8 @@
 "aboutTagline" = "Outil de capture d'écran dans la barre des menus";
 "aboutLicense" = "Licence";
 "aboutSourceCode" = "Code source";
+"aboutFeatureRequest" = "Demander une fonctionnalité";
+"aboutBugReport" = "Signaler un bug";
 "aboutUpdateTitle" = "Mises à jour";
 "aboutErrorLog" = "Journal d'erreurs";
 "aboutErrorLogNoCrash" = "Aucun plantage";

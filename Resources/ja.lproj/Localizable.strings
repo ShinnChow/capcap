@@ -97,6 +97,8 @@
 "aboutTagline" = "メニューバー スクリーンショットツール";
 "aboutLicense" = "ライセンス";
 "aboutSourceCode" = "ソースコード";
+"aboutFeatureRequest" = "機能をリクエスト";
+"aboutBugReport" = "バグを報告";
 "aboutUpdateTitle" = "アップデート";
 "aboutErrorLog" = "エラーログ";
 "aboutErrorLogNoCrash" = "クラッシュなし";

@@ -96,6 +96,8 @@ class SettingsView: NSView {
     private var aboutTaglineLabel: NSTextField?
     private var aboutLicenseTitleLabel: NSTextField?
     private var aboutSourceTitleLabel: NSTextField?
+    private var aboutFeatureRequestTitleLabel: NSTextField?
+    private var aboutBugReportTitleLabel: NSTextField?
     private var aboutUpdateTitleLabel: NSTextField?
     private var aboutUpdateStatusLabel: NSTextField?
     private var aboutUpdateButton: NSButton?
@@ -751,6 +753,26 @@ class SettingsView: NSView {
         aboutSourceTitleLabel = repo.title
         infoInner.addArrangedSubview(repo.row)
         repo.row.widthAnchor.constraint(equalTo: infoInner.widthAnchor).isActive = true
+        infoInner.addArrangedSubview(rowDivider())
+
+        let featureRequest = makeLinkRow(
+            title: L10n.aboutFeatureRequest,
+            value: "",
+            action: #selector(openFeatureRequest)
+        )
+        aboutFeatureRequestTitleLabel = featureRequest.title
+        infoInner.addArrangedSubview(featureRequest.row)
+        featureRequest.row.widthAnchor.constraint(equalTo: infoInner.widthAnchor).isActive = true
+        infoInner.addArrangedSubview(rowDivider())
+
+        let bugReport = makeLinkRow(
+            title: L10n.aboutBugReport,
+            value: "",
+            action: #selector(openBugReport)
+        )
+        aboutBugReportTitleLabel = bugReport.title
+        infoInner.addArrangedSubview(bugReport.row)
+        bugReport.row.widthAnchor.constraint(equalTo: infoInner.widthAnchor).isActive = true
 
         stack.addArrangedSubview(infoCard)
         infoCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -1074,6 +1096,18 @@ class SettingsView: NSView {
 
     @objc private func openSourceRepo() {
         if let url = URL(string: "https://github.com/realskyrin/capcap") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func openFeatureRequest() {
+        if let url = URL(string: "https://github.com/realskyrin/capcap/issues/new?template=feature_request.yml") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    @objc private func openBugReport() {
+        if let url = URL(string: "https://github.com/realskyrin/capcap/issues/new?template=bug_report.yml") {
             NSWorkspace.shared.open(url)
         }
     }
@@ -1648,6 +1682,8 @@ class SettingsView: NSView {
         aboutTaglineLabel?.stringValue = L10n.aboutTagline
         aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
         aboutSourceTitleLabel?.stringValue = L10n.aboutSourceCode
+        aboutFeatureRequestTitleLabel?.stringValue = L10n.aboutFeatureRequest
+        aboutBugReportTitleLabel?.stringValue = L10n.aboutBugReport
         aboutUpdateTitleLabel?.stringValue = L10n.aboutUpdateTitle
         errorLogTitleLabel?.stringValue = L10n.aboutErrorLog
         errorLogCopyButton?.title = L10n.aboutErrorLogCopy

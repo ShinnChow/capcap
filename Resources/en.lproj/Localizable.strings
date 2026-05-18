@@ -97,6 +97,8 @@
 "aboutTagline" = "Menu bar screenshot tool";
 "aboutLicense" = "License";
 "aboutSourceCode" = "Source code";
+"aboutFeatureRequest" = "Request a feature";
+"aboutBugReport" = "Report a bug";
 "aboutUpdateTitle" = "Updates";
 "aboutErrorLog" = "Error Log";
 "aboutErrorLogNoCrash" = "No crashes";
