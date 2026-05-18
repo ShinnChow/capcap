@@ -64,15 +64,17 @@ extension Notification.Name {
 }
 
 extension Defaults {
-    /// Persisted by raw value; cleared if the stored value is invalid.
+    /// Persisted by raw value. Falls back to the first usable provider when no
+    /// explicit default is set (or the stored one became unusable), so a single
+    /// configured provider works without the user having to click "Set Default".
     static var defaultUploadProviderKind: UploadProviderKind? {
         get {
-            guard let raw = UserDefaults.standard.string(forKey: "uploader.defaultKind"),
-                  let kind = UploadProviderKind(rawValue: raw),
-                  ProviderConfigStore.isUsable(kind: kind) else {
-                return nil
+            if let raw = UserDefaults.standard.string(forKey: "uploader.defaultKind"),
+               let kind = UploadProviderKind(rawValue: raw),
+               ProviderConfigStore.isUsable(kind: kind) {
+                return kind
             }
-            return kind
+            return ProviderConfigStore.usableKinds().first
         }
         set {
             if let v = newValue {

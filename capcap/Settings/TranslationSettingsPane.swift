@@ -148,7 +148,7 @@ private final class TranslationProviderCard: NSView {
     private let kind: TranslationProviderKind
     private let titleLabel = NSTextField(labelWithString: "")
     private let enableSwitch = NSSwitch()
-    private let apiKeyField = TKTextField()
+    private let apiKeyField = RevealableSecureField()
     private let modelField = TKTextField()
     private let endpointField = TKTextField()
     private let apiKeyLabel = NSTextField(labelWithString: "")
@@ -252,7 +252,7 @@ private final class TranslationProviderCard: NSView {
         bodyContainer.widthAnchor.constraint(equalTo: outer.widthAnchor).isActive = true
     }
 
-    private func makeFieldRow(_ label: NSTextField, _ field: NSTextField,
+    private func makeFieldRow(_ label: NSTextField, _ field: any ProviderFieldInput,
                               label labelText: String, placeholder: String,
                               width: NSView) -> NSView {
         label.stringValue = labelText

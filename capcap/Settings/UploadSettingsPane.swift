@@ -778,7 +778,7 @@ private final class ClippingView: NSView {
 
 /// Common surface for the row's input view so secret rows (with reveal toggle)
 /// and plain rows can both live in the same `inputs` map.
-private protocol ProviderFieldInput: NSView {
+protocol ProviderFieldInput: NSView {
     var stringValue: String { get set }
     var placeholderString: String? { get set }
     var font: NSFont? { get set }
@@ -788,7 +788,7 @@ extension NSTextField: ProviderFieldInput {}
 
 /// Secure input that shows a small eye button on the right; clicking it swaps
 /// to a plain field so the user can read back the value they typed.
-private final class RevealableSecureField: NSView, ProviderFieldInput, NSTextFieldDelegate {
+final class RevealableSecureField: NSView, ProviderFieldInput, NSTextFieldDelegate {
     private let secureField = PasteableSecureTextField()
     private let plainField = PasteableTextField()
     private let toggleButton = NSButton()
