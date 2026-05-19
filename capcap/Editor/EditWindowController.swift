@@ -23,6 +23,12 @@ class EditWindowController {
     private var currentBeautifyPreset: BeautifyPreset?
     private var currentBeautifyPadding: CGFloat = CGFloat(Defaults.lastBeautifyPadding)
 
+    /// True when the capture came from clicking a single window (not a free
+    /// drag). Drives the rounded-corner + drop-shadow effect on the final
+    /// output. Cleared by OverlayWindowController if the user resizes the
+    /// selection, since the rect no longer matches the window.
+    var isWindowCapture: Bool = false
+
     // Pre-captured screen snapshot (preserves transient menus/popups)
     private let preSnapshot: CGImage?
 
@@ -73,6 +79,7 @@ class EditWindowController {
         hostSelectionView: SelectionView,
         preSnapshot: CGImage? = nil,
         overrideBaseImage: NSImage? = nil,
+        isWindowCapture: Bool = false,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.captureRect = captureRect
@@ -82,6 +89,7 @@ class EditWindowController {
         self.hostSelectionView = hostSelectionView
         self.preSnapshot = preSnapshot
         self.overrideBaseImage = overrideBaseImage
+        self.isWindowCapture = isWindowCapture
         self.onComplete = onComplete
     }
 
@@ -1071,12 +1079,24 @@ class EditWindowController {
             fallbackBaseImage = ScreenCapturer.capture(rect: captureRect, screen: screen)
         }
 
-        return canvasView?.compositeImage(
+        guard let composite = canvasView?.compositeImage(
             fallbackBaseImage: fallbackBaseImage,
             beautifyPreset: currentBeautifyPreset,
             beautifyPadding: isBeautifyActive ? currentBeautifyPadding : nil,
             wallpaperImage: isBeautifyActive ? beautifyContainerView?.wallpaperImage : nil
-        )
+        ) else { return nil }
+
+        // Window captures get rounded corners — and, when enabled, a
+        // macOS-style drop shadow — mimicking the system's native window
+        // screenshots. Skipped while beautify is active (beautify supplies its
+        // own card styling) and for scroll-capture stitched results.
+        guard isWindowCapture, !isBeautifyActive, canvasView?.hasPreviewImage != true else {
+            return composite
+        }
+
+        let rounded = WindowEffects.roundedCorners(composite)
+        guard Defaults.windowShadowEnabled else { return rounded }
+        return WindowEffects.withShadow(rounded, size: CGFloat(Defaults.windowShadowSize))
     }
 
     /// While auto-scroll runs capcap is deactivated, so a local key monitor

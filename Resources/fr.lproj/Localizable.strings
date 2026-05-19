@@ -17,6 +17,10 @@
 "countdownLabel" = "Secondes du compte à rebours";
 "countdownHint" = "Maintenez ⌥ Option puis double-appuyez sur ⌘ ou utilisez le raccourci de capture pour lancer un compte à rebours avant la capture (Échap pour annuler)";
 "countdownSecondsSuffix" = "s";
+"windowShadowToggleLabel" = "Ombre des captures de fenêtre";
+"windowShadowToggleHint" = "Arrondit les coins des captures de fenêtre et ajoute une ombre portée façon macOS";
+"windowShadowSizeLabel" = "Taille de l'ombre";
+"windowShadowSizeHint" = "Des valeurs élevées adoucissent et élargissent l'ombre : la fenêtre semble flotter plus haut";
 
 /* Screenshot shortcut */
 "shortcutHeader" = "Raccourci de capture";

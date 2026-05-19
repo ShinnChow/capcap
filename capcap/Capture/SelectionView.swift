@@ -2,7 +2,10 @@ import AppKit
 
 protocol SelectionViewDelegate: AnyObject {
     func selectionDidStart()
-    func selectionDidComplete(rect: NSRect, inView view: NSView)
+    /// - Parameter isWindowSelection: true when the rect came from clicking a
+    ///   detected window (no drag), so the editor can apply window-only
+    ///   effects like rounded corners. False for free-drag / resize / preset.
+    func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool)
     func selectionDidChange(rect: NSRect, inView view: NSView)
 }
 
@@ -106,7 +109,7 @@ class SelectionView: NSView {
     /// selection rect's final position is committed.
     func finalizeExternalDrag() {
         if let rect = selectionRect {
-            delegate?.selectionDidComplete(rect: rect, inView: self)
+            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
         }
     }
 
@@ -128,7 +131,7 @@ class SelectionView: NSView {
     /// Mirror of `mouseUp`'s `.resize` finalize.
     func finalizeExternalResize() {
         if let rect = selectionRect {
-            delegate?.selectionDidComplete(rect: rect, inView: self)
+            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
         }
     }
 
@@ -254,7 +257,7 @@ class SelectionView: NSView {
                 selectionRect = windowRect
                 state = .selected
                 dragAction = .none
-                delegate?.selectionDidComplete(rect: windowRect, inView: self)
+                delegate?.selectionDidComplete(rect: windowRect, inView: self, isWindowSelection: true)
                 needsDisplay = true
                 return
             }
@@ -266,12 +269,12 @@ class SelectionView: NSView {
                 return
             }
             state = .selected
-            delegate?.selectionDidComplete(rect: rect, inView: self)
+            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
             needsDisplay = true
 
         case .move, .resize:
             if let rect = selectionRect {
-                delegate?.selectionDidComplete(rect: rect, inView: self)
+                delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
             }
             needsDisplay = true
 

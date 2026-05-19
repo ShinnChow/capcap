@@ -80,6 +80,10 @@ enum L10n {
     static var countdownLabel: String { s("countdownLabel") }
     static var countdownHint: String { s("countdownHint") }
     static var countdownSecondsSuffix: String { s("countdownSecondsSuffix") }
+    static var windowShadowToggleLabel: String { s("windowShadowToggleLabel") }
+    static var windowShadowToggleHint: String { s("windowShadowToggleHint") }
+    static var windowShadowSizeLabel: String { s("windowShadowSizeLabel") }
+    static var windowShadowSizeHint: String { s("windowShadowSizeHint") }
 
     // Screenshot shortcut
     static var shortcutHeader: String { s("shortcutHeader") }
@@ -556,6 +560,39 @@ struct Defaults {
         }
         set {
             defaults.set(newValue, forKey: "showMenuBar")
+        }
+    }
+
+    // Window-capture drop shadow. When enabled, single-window screenshots get
+    // rounded corners and a macOS-style drop shadow in the final output.
+    // Rounded corners are always applied to window captures; this toggle only
+    // governs the shadow.
+
+    static let windowShadowSizeMin: Double = 6
+    static let windowShadowSizeMax: Double = 60
+
+    static var windowShadowEnabled: Bool {
+        get {
+            if defaults.object(forKey: "windowShadowEnabled") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "windowShadowEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "windowShadowEnabled")
+        }
+    }
+
+    static var windowShadowSize: Double {
+        get {
+            if defaults.object(forKey: "windowShadowSize") == nil {
+                return 22
+            }
+            let val = defaults.double(forKey: "windowShadowSize")
+            return min(max(val, windowShadowSizeMin), windowShadowSizeMax)
+        }
+        set {
+            defaults.set(min(max(newValue, windowShadowSizeMin), windowShadowSizeMax), forKey: "windowShadowSize")
         }
     }
 

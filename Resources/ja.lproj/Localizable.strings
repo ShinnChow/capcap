@@ -17,6 +17,10 @@
 "countdownLabel" = "カウントダウン秒数";
 "countdownHint" = "⌥ Option を押しながら ⌘ をダブルタップするか、スクリーンショットのショートカットを押すと、撮影前にカウントダウンが始まります（Esc でキャンセル）";
 "countdownSecondsSuffix" = "秒";
+"windowShadowToggleLabel" = "ウインドウ撮影の影";
+"windowShadowToggleHint" = "ウインドウを選んで撮影すると角を丸め、macOS 風のドロップシャドウを追加します";
+"windowShadowSizeLabel" = "影のサイズ";
+"windowShadowSizeHint" = "値を大きくするほど影が柔らかく広がり、ウインドウが高く浮いて見えます";
 
 /* Screenshot shortcut */
 "shortcutHeader" = "スクリーンショットのショートカット";

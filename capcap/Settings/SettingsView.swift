@@ -69,6 +69,16 @@ class SettingsView: NSView {
     private var countdownTitleLabel: NSTextField!
     private var countdownHintLabel: NSTextField!
 
+    // Window-capture shadow card
+    private var windowShadowSwitch: NSSwitch!
+    private var windowShadowSlider: NSSlider!
+    private var windowShadowSizeValueLabel: NSTextField!
+    private var windowShadowPreview: ShadowPreviewView!
+    private var windowShadowTitleLabel: NSTextField!
+    private var windowShadowSubtitleLabel: NSTextField?
+    private var windowShadowSizeTitleLabel: NSTextField!
+    private var windowShadowSizeHintLabel: NSTextField!
+
     // Screenshot shortcut card
     private var shortcutTitleLabel: NSTextField!
     private var shortcutHintLabel: NSTextField!
@@ -450,9 +460,101 @@ class SettingsView: NSView {
         stack.addArrangedSubview(togglesCard)
         togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        buildWindowShadowCard(into: stack)
+
         buildHistoryAndCountdownCards(into: stack)
 
         return wrapPane(stack)
+    }
+
+    /// Window-capture shadow card: a toggle for the rounded-corner + drop
+    /// shadow effect, a size slider, and a live preview of the result.
+    private func buildWindowShadowCard(into stack: NSStackView) {
+        let card = CardView()
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 10
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 4, left: 14, bottom: 14, right: 14))
+
+        // Enable toggle
+        let toggle = makeToggleRow(
+            title: L10n.windowShadowToggleLabel,
+            subtitle: L10n.windowShadowToggleHint,
+            isOn: Defaults.windowShadowEnabled,
+            action: #selector(windowShadowToggled(_:))
+        )
+        windowShadowTitleLabel = toggle.title
+        windowShadowSubtitleLabel = toggle.subtitle
+        windowShadowSwitch = toggle.toggle
+        inner.addArrangedSubview(toggle.row)
+        toggle.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let divider = rowDivider()
+        inner.addArrangedSubview(divider)
+        divider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        // Size header — title + numeric value
+        let header = NSStackView()
+        header.orientation = .horizontal
+        header.alignment = .firstBaseline
+        header.spacing = 8
+        header.translatesAutoresizingMaskIntoConstraints = false
+
+        windowShadowSizeTitleLabel = primaryLabel(L10n.windowShadowSizeLabel)
+        header.addArrangedSubview(windowShadowSizeTitleLabel)
+        header.addArrangedSubview(flexSpacer())
+
+        windowShadowSizeValueLabel = NSTextField(labelWithString: "\(Int(Defaults.windowShadowSize.rounded()))")
+        windowShadowSizeValueLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 13, weight: .semibold)
+        windowShadowSizeValueLabel.textColor = NSColor.white.withAlphaComponent(0.88)
+        header.addArrangedSubview(windowShadowSizeValueLabel)
+
+        inner.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        // Size slider
+        let slider = NSSlider(
+            value: Defaults.windowShadowSize,
+            minValue: Defaults.windowShadowSizeMin,
+            maxValue: Defaults.windowShadowSizeMax,
+            target: self,
+            action: #selector(windowShadowSizeChanged(_:))
+        )
+        slider.controlSize = .small
+        slider.translatesAutoresizingMaskIntoConstraints = false
+        windowShadowSlider = slider
+        inner.addArrangedSubview(slider)
+        slider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        // Live preview
+        let preview = ShadowPreviewView()
+        preview.translatesAutoresizingMaskIntoConstraints = false
+        preview.shadowSize = CGFloat(Defaults.windowShadowSize)
+        windowShadowPreview = preview
+        inner.addArrangedSubview(preview)
+        preview.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        preview.heightAnchor.constraint(equalToConstant: 120).isActive = true
+
+        windowShadowSizeHintLabel = secondaryLabel(L10n.windowShadowSizeHint, wrapping: true)
+        inner.addArrangedSubview(windowShadowSizeHintLabel)
+        windowShadowSizeHintLabel.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        updateWindowShadowControlsEnabled()
+
+        stack.addArrangedSubview(card)
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    /// Dim and disable the size controls when the shadow toggle is off.
+    private func updateWindowShadowControlsEnabled() {
+        let on = Defaults.windowShadowEnabled
+        windowShadowSlider?.isEnabled = on
+        windowShadowSizeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
+        windowShadowSizeValueLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.88 : 0.4)
+        windowShadowPreview?.isEffectEnabled = on
     }
 
     private func buildShortcutsPane() -> NSView {
@@ -1605,6 +1707,17 @@ class SettingsView: NSView {
         countdownValueLabel?.stringValue = "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)"
     }
 
+    @objc private func windowShadowToggled(_ sender: NSSwitch) {
+        Defaults.windowShadowEnabled = sender.state == .on
+        updateWindowShadowControlsEnabled()
+    }
+
+    @objc private func windowShadowSizeChanged(_ sender: NSSlider) {
+        Defaults.windowShadowSize = sender.doubleValue
+        windowShadowSizeValueLabel?.stringValue = "\(Int(Defaults.windowShadowSize.rounded()))"
+        windowShadowPreview?.shadowSize = CGFloat(Defaults.windowShadowSize)
+    }
+
     @objc private func launchAtLoginToggled(_ sender: NSSwitch) {
         let enable = sender.state == .on
         let ok = LaunchAtLogin.setEnabled(enable)
@@ -1850,6 +1963,10 @@ class SettingsView: NSView {
         screenRecordingDescLabel?.stringValue = L10n.screenRecordingDescription
         historyCacheTitleLabel?.stringValue = L10n.historyCacheLabel
         historyCacheHintLabel?.stringValue = L10n.historyCacheHint
+        windowShadowTitleLabel?.stringValue = L10n.windowShadowToggleLabel
+        windowShadowSubtitleLabel?.stringValue = L10n.windowShadowToggleHint
+        windowShadowSizeTitleLabel?.stringValue = L10n.windowShadowSizeLabel
+        windowShadowSizeHintLabel?.stringValue = L10n.windowShadowSizeHint
         countdownTitleLabel?.stringValue = L10n.countdownLabel
         countdownHintLabel?.stringValue = L10n.countdownHint
         countdownValueLabel?.stringValue = "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)"
@@ -2206,6 +2323,84 @@ private final class ActionButton: NSControl {
 }
 
 // MARK: - Card view
+
+/// Live preview of the window-capture shadow: a small window-like card
+/// floating on a desktop-like backdrop. The shadow scales with `shadowSize`
+/// so the user sees how high the captured window will appear to float.
+private final class ShadowPreviewView: NSView {
+    var shadowSize: CGFloat = 22 { didSet { needsDisplay = true } }
+    var isEffectEnabled: Bool = true { didSet { needsDisplay = true } }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let backdrop = NSBezierPath(roundedRect: bounds, xRadius: 8, yRadius: 8)
+        backdrop.addClip()
+
+        // Desktop-like light backdrop so the dark shadow stays visible
+        // (the settings UI itself is dark).
+        let gradient = NSGradient(colors: [
+            NSColor(calibratedRed: 0.74, green: 0.78, blue: 0.85, alpha: 1),
+            NSColor(calibratedRed: 0.60, green: 0.64, blue: 0.72, alpha: 1)
+        ])
+        gradient?.draw(in: bounds, angle: -90)
+
+        // Window card geometry, centered; floats higher as the shadow grows.
+        let cardW = min(bounds.width * 0.56, 210)
+        let cardH: CGFloat = 64
+        let lift = isEffectEnabled ? min(shadowSize, 60) * 0.10 : 0
+        let cardRect = NSRect(
+            x: ((bounds.width - cardW) / 2).rounded(),
+            y: ((bounds.height - cardH) / 2 + lift).rounded(),
+            width: cardW,
+            height: cardH
+        )
+        let radius: CGFloat = 9
+        let cardPath = NSBezierPath(roundedRect: cardRect, xRadius: radius, yRadius: radius)
+
+        guard let ctx = NSGraphicsContext.current else { return }
+
+        // Shadow pass. Scaled down relative to the real export — the preview
+        // card is tiny — but proportional, so the slider's effect reads.
+        ctx.saveGraphicsState()
+        if isEffectEnabled, shadowSize > 0 {
+            let shadow = NSShadow()
+            shadow.shadowColor = NSColor.black.withAlphaComponent(0.42)
+            shadow.shadowBlurRadius = shadowSize * 0.62
+            shadow.shadowOffset = NSSize(width: 0, height: -shadowSize * 0.30)
+            shadow.set()
+        }
+        NSColor.white.setFill()
+        cardPath.fill()
+        ctx.restoreGraphicsState()
+
+        // Title-bar strip + traffic-light dots, clipped to the card.
+        ctx.saveGraphicsState()
+        cardPath.addClip()
+        NSColor(calibratedWhite: 0.93, alpha: 1).setFill()
+        NSBezierPath(rect: NSRect(
+            x: cardRect.minX, y: cardRect.maxY - 16,
+            width: cardRect.width, height: 16
+        )).fill()
+        let dotColors: [NSColor] = [
+            NSColor(calibratedRed: 1.00, green: 0.37, blue: 0.35, alpha: 1),
+            NSColor(calibratedRed: 1.00, green: 0.74, blue: 0.18, alpha: 1),
+            NSColor(calibratedRed: 0.31, green: 0.79, blue: 0.31, alpha: 1)
+        ]
+        for (i, color) in dotColors.enumerated() {
+            color.setFill()
+            let d: CGFloat = 7
+            NSBezierPath(ovalIn: NSRect(
+                x: cardRect.minX + 9 + CGFloat(i) * 12,
+                y: cardRect.maxY - 11.5, width: d, height: d
+            )).fill()
+        }
+        ctx.restoreGraphicsState()
+
+        // Hairline border for crispness.
+        NSColor.black.withAlphaComponent(0.08).setStroke()
+        cardPath.lineWidth = 1
+        cardPath.stroke()
+    }
+}
 
 private final class CardView: NSView {
     override init(frame frameRect: NSRect) {
