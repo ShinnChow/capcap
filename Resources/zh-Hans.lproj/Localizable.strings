@@ -98,7 +98,19 @@
 "settingsTabUpload" = "图床";
 "settingsTabAbout" = "关于";
 "settingsTabTranslation" = "翻译";
+"settingsTabToolbar" = "工具栏";
 "settingsQuit" = "退出应用";
+
+"toolbarSettingsPrimaryTitle" = "主工具栏";
+"toolbarSettingsPrimaryHint" = "工具会在选区上方或下方显示";
+"toolbarSettingsSideTitle" = "侧工具栏";
+"toolbarSettingsSideHint" = "工具会在选区左侧或右侧显示";
+"toolbarSettingsHiddenTitle" = "隐藏的工具";
+"toolbarSettingsHiddenHint" = "拖到这里的工具不会出现在任何工具栏中";
+"toolbarSettingsFootnote" = "工具栏会根据选区位置自动切换为上下或左右布局。";
+"toolbarSettingsReset" = "重置为默认";
+"toolbarSettingsCancel" = "取消";
+"toolbarSettingsApply" = "应用";
 
 /* About pane */
 "aboutTagline" = "菜单栏截图工具";

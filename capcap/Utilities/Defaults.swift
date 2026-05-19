@@ -165,7 +165,20 @@ enum L10n {
     static var settingsTabUpload: String { s("settingsTabUpload") }
     static var settingsTabAbout: String { s("settingsTabAbout") }
     static var settingsTabTranslation: String { s("settingsTabTranslation") }
+    static var settingsTabToolbar: String { s("settingsTabToolbar") }
     static var settingsQuit: String { s("settingsQuit") }
+
+    // Toolbar settings
+    static var toolbarSettingsPrimaryTitle: String { s("toolbarSettingsPrimaryTitle") }
+    static var toolbarSettingsPrimaryHint: String { s("toolbarSettingsPrimaryHint") }
+    static var toolbarSettingsSideTitle: String { s("toolbarSettingsSideTitle") }
+    static var toolbarSettingsSideHint: String { s("toolbarSettingsSideHint") }
+    static var toolbarSettingsHiddenTitle: String { s("toolbarSettingsHiddenTitle") }
+    static var toolbarSettingsHiddenHint: String { s("toolbarSettingsHiddenHint") }
+    static var toolbarSettingsFootnote: String { s("toolbarSettingsFootnote") }
+    static var toolbarSettingsReset: String { s("toolbarSettingsReset") }
+    static var toolbarSettingsCancel: String { s("toolbarSettingsCancel") }
+    static var toolbarSettingsApply: String { s("toolbarSettingsApply") }
 
     // About pane
     static var aboutTagline: String { s("aboutTagline") }
