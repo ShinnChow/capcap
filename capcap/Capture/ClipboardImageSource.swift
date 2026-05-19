@@ -11,18 +11,10 @@ enum ClipboardImageSource {
     static func currentImage() -> NSImage? {
         let pasteboard = NSPasteboard.general
 
-        // Raw bitmap data takes priority: a copied screenshot or web image.
-        // Decode through NSBitmapImageRep so the editor canvas works at the
-        // image's true pixel resolution rather than DPI-scaled points.
-        for type in [NSPasteboard.PasteboardType.png, .tiff] {
-            if let data = pasteboard.data(forType: type),
-               let rep = NSBitmapImageRep(data: data) {
-                return image(from: rep)
-            }
-        }
-
-        // A copied image file (e.g. ⌘C on a file in Finder) lands on the
-        // clipboard as a file URL — load and decode it the same way.
+        // A copied image file (e.g. ⌘C on a file in Finder) takes priority.
+        // Finder puts the file's *icon* on the clipboard as TIFF data too, so
+        // the raw-bitmap path below would decode that generic document icon
+        // instead of the real image. Load from the file URL first.
         if let urls = pasteboard.readObjects(
             forClasses: [NSURL.self],
             options: [.urlReadingFileURLsOnly: true]
@@ -32,6 +24,16 @@ enum ClipboardImageSource {
            let data = try? Data(contentsOf: urls[0]),
            let rep = NSBitmapImageRep(data: data) {
             return image(from: rep)
+        }
+
+        // Otherwise fall back to raw bitmap data: a copied screenshot or web
+        // image. Decode through NSBitmapImageRep so the editor canvas works at
+        // the image's true pixel resolution rather than DPI-scaled points.
+        for type in [NSPasteboard.PasteboardType.png, .tiff] {
+            if let data = pasteboard.data(forType: type),
+               let rep = NSBitmapImageRep(data: data) {
+                return image(from: rep)
+            }
         }
 
         return nil
