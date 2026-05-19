@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-05-19
+
+### Added
+- Add side toolbar to the editor (60b4b3c)
+- Add Toolbar settings tab with layout preview (c3572be)
+- Add drag-and-drop editing to the toolbar layout grids (8936c58)
+- Add ToolbarLayout data model for customizable toolbars (c737ebb)
+- Pin multiple images in one action (61f58b7)
+
+### Changed
+- Keep side toolbar clear of the primary toolbar and split the default layout (715ec86)
+- Localize toolbar settings and handle an empty primary toolbar (0b46b92)
+- Make ToolbarView data-driven and orientation-aware (a7fa0b5)
+- Rework mosaic as a draggable rectangle with resize handles (ae993dc)
+- Move history cache and countdown cards to General settings pane (8acd138)
+- Prioritize file URL over icon data when editing image from clipboard (debf214)
+- Switch to capture mode instead of exiting on X in image-edit (3a86bb6)
+
 ## [1.3.0] - 2026-05-18
 
 ### Added
