@@ -98,7 +98,19 @@
 "settingsTabUpload" = "Upload";
 "settingsTabAbout" = "About";
 "settingsTabTranslation" = "Translation";
+"settingsTabToolbar" = "Toolbar";
 "settingsQuit" = "Quit App";
+
+"toolbarSettingsPrimaryTitle" = "Main toolbar";
+"toolbarSettingsPrimaryHint" = "Tools appear above or below the selection";
+"toolbarSettingsSideTitle" = "Side toolbar";
+"toolbarSettingsSideHint" = "Tools appear to the left or right of the selection";
+"toolbarSettingsHiddenTitle" = "Hidden tools";
+"toolbarSettingsHiddenHint" = "Tools dragged here won't appear in any toolbar";
+"toolbarSettingsFootnote" = "Toolbars switch automatically between top/bottom and left/right based on the selection's position.";
+"toolbarSettingsReset" = "Reset to Default";
+"toolbarSettingsCancel" = "Cancel";
+"toolbarSettingsApply" = "Apply";
 
 /* About pane */
 "aboutTagline" = "Menu bar screenshot tool";

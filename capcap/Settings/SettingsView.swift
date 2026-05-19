@@ -6,6 +6,7 @@ import Carbon
 enum SettingsTab: CaseIterable {
     case general
     case shortcuts
+    case toolbar
     case upload
     case translation
     case permissions
@@ -15,6 +16,7 @@ enum SettingsTab: CaseIterable {
         switch self {
         case .general: return L10n.settingsTabGeneral
         case .shortcuts: return L10n.settingsTabShortcuts
+        case .toolbar: return L10n.settingsTabToolbar
         case .upload: return L10n.settingsTabUpload
         case .translation: return L10n.settingsTabTranslation
         case .permissions: return L10n.settingsTabPermissions
@@ -26,6 +28,7 @@ enum SettingsTab: CaseIterable {
         switch self {
         case .general: return "gearshape.fill"
         case .shortcuts: return "keyboard"
+        case .toolbar: return "slider.horizontal.3"
         case .upload: return "icloud.and.arrow.up.fill"
         case .translation: return "character.bubble.fill"
         case .permissions: return "lock.shield.fill"
@@ -37,6 +40,7 @@ enum SettingsTab: CaseIterable {
         switch self {
         case .general: return NSColor(calibratedRed: 0.62, green: 0.66, blue: 0.72, alpha: 1.0)
         case .shortcuts: return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
+        case .toolbar: return NSColor(calibratedRed: 0.95, green: 0.54, blue: 0.62, alpha: 1.0)
         case .upload: return NSColor(calibratedRed: 0.99, green: 0.72, blue: 0.32, alpha: 1.0)
         case .translation: return NSColor(calibratedRed: 0.38, green: 0.80, blue: 0.78, alpha: 1.0)
         case .permissions: return NSColor(calibratedRed: 0.36, green: 0.78, blue: 0.50, alpha: 1.0)
@@ -212,6 +216,7 @@ class SettingsView: NSView {
         // Build all panes
         paneViews[.general] = buildGeneralPane()
         paneViews[.shortcuts] = buildShortcutsPane()
+        paneViews[.toolbar] = buildToolbarPane()
         paneViews[.upload] = buildUploadPane()
         paneViews[.translation] = buildTranslationPane()
         paneViews[.permissions] = buildPermissionsPane()
@@ -587,6 +592,20 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(countdownCard)
         countdownCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func buildToolbarPane() -> NSView {
+        let host = NSView()
+        host.translatesAutoresizingMaskIntoConstraints = false
+        let pane = ToolbarSettingsPane()
+        host.addSubview(pane)
+        NSLayoutConstraint.activate([
+            pane.topAnchor.constraint(equalTo: host.topAnchor),
+            pane.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            pane.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            pane.bottomAnchor.constraint(equalTo: host.bottomAnchor),
+        ])
+        return host
     }
 
     private func buildUploadPane() -> NSView {
