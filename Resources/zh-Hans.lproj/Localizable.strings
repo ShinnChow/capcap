@@ -38,6 +38,12 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 
+/* Shortcut conflict */
+"shortcutConflictTitle" = "快捷键已被占用";
+"shortcutConflictScreenshot" = "该按键组合已被截图快捷键占用，请换一个。";
+"shortcutConflictCountdown" = "该按键组合已被倒计时截图快捷键（截图快捷键 + ⌥）占用，请换一个。";
+"shortcutConflictPin" = "该按键组合已被钉图快捷键占用，请换一个。";
+
 /* Menu bar */
 "takeScreenshot" = "截图";
 "settings" = "设置...";

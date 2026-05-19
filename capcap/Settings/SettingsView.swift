@@ -1785,6 +1785,21 @@ class SettingsView: NSView {
 
     // MARK: - Shortcut recording
 
+    /// Tells the user a recorded combo is already taken by another function,
+    /// so they can pick a different one. Recording is already cancelled by the
+    /// caller before this is shown.
+    private func presentHotkeyConflictAlert(_ message: String) {
+        let alert = NSAlert()
+        alert.messageText = L10n.shortcutConflictTitle
+        alert.informativeText = message
+        alert.alertStyle = .warning
+        if let win = self.window {
+            alert.beginSheetModal(for: win, completionHandler: nil)
+        } else {
+            alert.runModal()
+        }
+    }
+
     @objc private func shortcutSetClicked() {
         if shortcutRecordingMonitor != nil {
             cancelShortcutRecording()
@@ -1820,6 +1835,15 @@ class SettingsView: NSView {
             // Reject bare keys (no modifier and not a function key) — the user must
             // hold at least one modifier so the shortcut won't collide with typing.
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            // No two functions may share a shortcut — reject a combo already
+            // bound to the pin hotkey (or the derived countdown hotkey).
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .screenshot) {
+                self.cancelShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
                 return nil
             }
 
@@ -1902,6 +1926,15 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            // No two functions may share a shortcut — reject a combo already
+            // bound to the screenshot or countdown hotkey.
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .pin) {
+                self.cancelPinShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
                 return nil
             }
 

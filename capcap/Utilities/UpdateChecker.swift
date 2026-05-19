@@ -170,6 +170,10 @@ final class UpdateChecker {
             return
         }
 
+        // Clear anything an earlier interrupted update left behind so temp
+        // artifacts never pile up across runs.
+        UpdateInstaller.cleanStaleArtifacts()
+
         setState(.downloading(version: version, fraction: 0))
 
         let fail: () -> Void = { [weak self] in

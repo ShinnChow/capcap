@@ -103,6 +103,12 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
 
+    // Shortcut conflict
+    static var shortcutConflictTitle: String { s("shortcutConflictTitle") }
+    static var shortcutConflictScreenshot: String { s("shortcutConflictScreenshot") }
+    static var shortcutConflictCountdown: String { s("shortcutConflictCountdown") }
+    static var shortcutConflictPin: String { s("shortcutConflictPin") }
+
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
     static var settings: String { s("settings") }

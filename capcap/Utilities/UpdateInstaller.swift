@@ -65,7 +65,17 @@ final class UpdateInstaller: NSObject {
                          expectedSHA256: String?,
                          phase: (InstallPhase) -> Void) throws {
         let fm = FileManager.default
-        defer { try? fm.removeItem(at: zipURL) }
+        // The downloaded zip is always disposable. The unpacked scratch dir is
+        // disposable too, *unless* the detached helper took ownership of it —
+        // it reads the new bundle from there after this process exits. So any
+        // failure before the hand-off cleans the scratch dir up here; a
+        // successful hand-off leaves it for the helper, which deletes it last.
+        var scratchDir: URL?
+        var handedOff = false
+        defer {
+            try? fm.removeItem(at: zipURL)
+            if let dir = scratchDir, !handedOff { try? fm.removeItem(at: dir) }
+        }
 
         // 1. Checksum — guards against a truncated or corrupted download.
         phase(.verifying)
@@ -79,6 +89,7 @@ final class UpdateInstaller: NSObject {
         phase(.unzipping)
         let workDir = fm.temporaryDirectory
             .appendingPathComponent("capcap-update-\(UUID().uuidString)", isDirectory: true)
+        scratchDir = workDir
         try fm.createDirectory(at: workDir, withIntermediateDirectories: true)
         try runProcess("/usr/bin/ditto", ["-x", "-k", zipURL.path, workDir.path],
                        throwing: .unzipFailed)
@@ -105,6 +116,22 @@ final class UpdateInstaller: NSObject {
 
         // 5. Hand the swap off to a detached helper and let the caller quit.
         spawnSwapHelper(newApp: newApp.path, oldApp: oldApp.path)
+        handedOff = true
+    }
+
+    /// Deletes leftover update artifacts (`capcap-update-*` zips and scratch
+    /// dirs) from the temp directory. The current run cleans up after itself,
+    /// but a crash or force-quit between download and swap can strand files;
+    /// calling this before each update keeps them from accumulating.
+    static func cleanStaleArtifacts() {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(
+            at: fm.temporaryDirectory,
+            includingPropertiesForKeys: nil
+        ) else { return }
+        for url in entries where url.lastPathComponent.hasPrefix("capcap-update-") {
+            try? fm.removeItem(at: url)
+        }
     }
 
     private static func runProcess(

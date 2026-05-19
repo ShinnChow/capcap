@@ -174,6 +174,47 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    // MARK: - Conflict detection
+
+    /// A user-configurable hotkey slot in Settings.
+    enum HotkeySlot {
+        case screenshot
+        case pin
+    }
+
+    /// Returns a localized message describing the existing binding a candidate
+    /// `(keyCode, modifiers)` would collide with, or nil when it is free to
+    /// assign. `slot` is the function being edited and is excluded from the
+    /// check, so re-recording its own combo is not flagged as a self-conflict.
+    ///
+    /// Assigning the screenshot hotkey also redefines the derived countdown
+    /// hotkey (screenshot + ⌥), so for that slot the ⌥ variant is checked
+    /// against the pin hotkey as well.
+    func hotkeyConflictMessage(forKeyCode keyCode: UInt32,
+                               modifiers: UInt32,
+                               assigningTo slot: HotkeySlot) -> String? {
+        if slot != .screenshot {
+            if let (kc, m) = currentHotkey(), kc == keyCode, m == modifiers {
+                return L10n.shortcutConflictScreenshot
+            }
+            if let (kc, m) = currentCountdownHotkey(), kc == keyCode, m == modifiers {
+                return L10n.shortcutConflictCountdown
+            }
+        }
+        if slot != .pin, let (kc, m) = currentPinHotkey() {
+            if kc == keyCode, m == modifiers {
+                return L10n.shortcutConflictPin
+            }
+            // The screenshot hotkey's ⌥ variant becomes the countdown hotkey;
+            // it must not land on the pin hotkey either.
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               kc == keyCode, m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictPin
+            }
+        }
+        return nil
+    }
+
     // MARK: - Event handler
 
     private func installEventHandlerIfNeeded() {

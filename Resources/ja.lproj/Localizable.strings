@@ -38,6 +38,12 @@
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 
+/* Shortcut conflict */
+"shortcutConflictTitle" = "ショートカットは既に使用中です";
+"shortcutConflictScreenshot" = "このキーの組み合わせはスクリーンショットのショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictCountdown" = "このキーの組み合わせはカウントダウン撮影のショートカット（スクリーンショットのショートカット + ⌥）で既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictPin" = "このキーの組み合わせは画像ピン留めのショートカットで既に使用されています。別の組み合わせを選んでください。";
+
 /* Menu bar */
 "takeScreenshot" = "スクリーンショット";
 "settings" = "設定...";
