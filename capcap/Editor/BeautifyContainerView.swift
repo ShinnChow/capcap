@@ -14,6 +14,9 @@ final class BeautifyContainerView: NSView {
     /// Cached wallpaper image for the wallpaper preset.
     var wallpaperImage: NSImage?
 
+    /// Controls the extra beautify shadow cast by the inner rounded card.
+    private(set) var shadowEnabled: Bool = true
+
     /// User-driven padding override. When `nil`, `relayout()` falls back to
     /// `BeautifyRenderer.padding(for:)`. When set, the live preview uses this
     /// value and the controller is responsible for forwarding the same value
@@ -57,6 +60,11 @@ final class BeautifyContainerView: NSView {
     func setPadding(_ padding: CGFloat?) {
         customPadding = padding
         relayout()
+        needsDisplay = true
+    }
+
+    func setShadowEnabled(_ enabled: Bool) {
+        shadowEnabled = enabled
         needsDisplay = true
     }
 
@@ -107,10 +115,12 @@ final class BeautifyContainerView: NSView {
         }
 
         // 2. Soft shadow silhouette under the canvas's rounded rect
-        BeautifyRenderer.drawInnerShadow(
-            innerRect: innerRect,
-            cornerRadius: BeautifyRenderer.innerCornerRadius,
-            context: context
-        )
+        if shadowEnabled {
+            BeautifyRenderer.drawInnerShadow(
+                innerRect: innerRect,
+                cornerRadius: BeautifyRenderer.innerCornerRadius,
+                context: context
+            )
+        }
     }
 }

@@ -914,6 +914,7 @@ class EditCanvasView: NSView {
         fallbackBaseImage: NSImage?,
         beautifyPreset: BeautifyPreset? = nil,
         beautifyPadding: CGFloat? = nil,
+        beautifyShadowEnabled: Bool = true,
         wallpaperImage: NSImage? = nil,
         annotationClipMask: NSImage? = nil
     ) -> NSImage? {
@@ -958,7 +959,8 @@ class EditCanvasView: NSView {
                 innerImage: innerImage,
                 preset: preset,
                 padding: pad,
-                wallpaperImage: wallpaperImage
+                wallpaperImage: wallpaperImage,
+                shadowEnabled: beautifyShadowEnabled
             )
         }
         return innerImage

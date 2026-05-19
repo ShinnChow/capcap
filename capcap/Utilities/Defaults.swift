@@ -159,6 +159,7 @@ enum L10n {
     static var beautifyPresetDeepPurple: String { s("beautifyPresetDeepPurple") }
     static var beautifyPresetNeutralGray: String { s("beautifyPresetNeutralGray") }
     static var beautifyPresetWallpaper: String { s("beautifyPresetWallpaper") }
+    static var beautifyShadowEffect: String { s("beautifyShadowEffect") }
 
     // Language
     static var languageHeader: String { s("languageHeader") }
@@ -504,10 +505,22 @@ struct Defaults {
                 return 24
             }
             let val = defaults.double(forKey: "lastBeautifyPadding")
-            return min(max(val, 8), 56)
+            return min(max(val, 0), 56)
         }
         set {
-            defaults.set(min(max(newValue, 8), 56), forKey: "lastBeautifyPadding")
+            defaults.set(min(max(newValue, 0), 56), forKey: "lastBeautifyPadding")
+        }
+    }
+
+    static var lastBeautifyShadowEnabled: Bool {
+        get {
+            if defaults.object(forKey: "lastBeautifyShadowEnabled") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "lastBeautifyShadowEnabled")
+        }
+        set {
+            defaults.set(newValue, forKey: "lastBeautifyShadowEnabled")
         }
     }
 

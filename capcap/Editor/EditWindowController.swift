@@ -22,6 +22,7 @@ class EditWindowController {
     private var isBeautifyActive: Bool = false
     private var currentBeautifyPreset: BeautifyPreset?
     private var currentBeautifyPadding: CGFloat = CGFloat(Defaults.lastBeautifyPadding)
+    private var currentBeautifyShadowEnabled: Bool = Defaults.lastBeautifyShadowEnabled
 
     /// True when the capture came from clicking a single window (not a free
     /// drag). Drives the rounded-corner + drop-shadow effect on the final
@@ -581,6 +582,7 @@ class EditWindowController {
         }
         container.setBeautify(preset: preset)
         container.setPadding(currentBeautifyPadding)
+        container.setShadowEnabled(currentBeautifyShadowEnabled)
         isBeautifyActive = true
         toolbars.forEach { $0.setBeautifyActive(true) }
         showBeautifySubToolbar(selecting: preset)
@@ -641,6 +643,13 @@ class EditWindowController {
         canvasView?.needsDisplay = true
     }
 
+    private func applyBeautifyShadowEnabled(_ enabled: Bool) {
+        currentBeautifyShadowEnabled = enabled
+        Defaults.lastBeautifyShadowEnabled = enabled
+        beautifyContainerView?.setShadowEnabled(enabled)
+        canvasView?.needsDisplay = true
+    }
+
     private func showBeautifySubToolbar(selecting preset: BeautifyPreset) {
         guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
 
@@ -659,7 +668,8 @@ class EditWindowController {
             frame: subRect,
             presets: BeautifyPreset.defaults,
             screen: screen,
-            initialPadding: currentBeautifyPadding
+            initialPadding: currentBeautifyPadding,
+            initialShadowEnabled: currentBeautifyShadowEnabled
         )
         view.currentPresetID = preset.id
         view.onPresetSelected = { [weak self] selected in
@@ -667,6 +677,9 @@ class EditWindowController {
         }
         view.onPaddingChanged = { [weak self] padding in
             self?.applyBeautifyPadding(padding)
+        }
+        view.onShadowEnabledChanged = { [weak self] enabled in
+            self?.applyBeautifyShadowEnabled(enabled)
         }
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
@@ -1101,6 +1114,7 @@ class EditWindowController {
             fallbackBaseImage: fallbackBaseImage,
             beautifyPreset: currentBeautifyPreset,
             beautifyPadding: isBeautifyActive ? currentBeautifyPadding : nil,
+            beautifyShadowEnabled: isBeautifyActive ? currentBeautifyShadowEnabled : true,
             wallpaperImage: isBeautifyActive ? beautifyContainerView?.wallpaperImage : nil,
             annotationClipMask: annotationClipMask
         ) else { return nil }
@@ -2379,22 +2393,34 @@ private class BeautifySubToolbar: NSView {
     }
 
     var onPaddingChanged: ((CGFloat) -> Void)?
+    var onShadowEnabledChanged: ((Bool) -> Void)?
 
     private var swatchButtons: [BeautifySwatchView] = []
     private let presets: [BeautifyPreset]
     private let initialPadding: CGFloat
+    private let initialShadowEnabled: Bool
     private let screen: NSScreen
     private var paddingSlider: NSSlider?
+    private var shadowCheckbox: NSButton?
     private let swatchDiameter: CGFloat = 24
     private let swatchSpacing: CGFloat = 8
     private let innerPadding: CGFloat = 12
     private let sliderWidth: CGFloat = 120
     private let sliderHeight: CGFloat = 20
+    private let checkboxWidth: CGFloat = 104
+    private let checkboxHeight: CGFloat = 20
 
-    init(frame: NSRect, presets: [BeautifyPreset], screen: NSScreen, initialPadding: CGFloat = BeautifyRenderer.paddingSliderDefault) {
+    init(
+        frame: NSRect,
+        presets: [BeautifyPreset],
+        screen: NSScreen,
+        initialPadding: CGFloat = BeautifyRenderer.paddingSliderDefault,
+        initialShadowEnabled: Bool = true
+    ) {
         self.presets = presets
         self.screen = screen
         self.initialPadding = initialPadding
+        self.initialShadowEnabled = initialShadowEnabled
         super.init(frame: frame)
         setup()
     }
@@ -2411,9 +2437,10 @@ private class BeautifySubToolbar: NSView {
         let innerPad: CGFloat = 12
         let separatorGap: CGFloat = 10
         let sliderWidth: CGFloat = 120
+        let checkboxWidth: CGFloat = 104
         let trailingPad: CGFloat = 12
         let swatches = CGFloat(presetCount) * diameter + CGFloat(max(presetCount - 1, 0)) * spacing
-        return innerPad + swatches + separatorGap + sliderWidth + trailingPad
+        return innerPad + swatches + separatorGap + sliderWidth + separatorGap + checkboxWidth + trailingPad
     }
 
     private func setup() {
@@ -2470,6 +2497,36 @@ private class BeautifySubToolbar: NSView {
         )
         addSubview(slider)
         paddingSlider = slider
+
+        let shadowSepX = sliderX + sliderWidth + 5
+        let shadowSep = NSView(frame: NSRect(x: shadowSepX, y: 6, width: 1, height: bounds.height - 12))
+        shadowSep.wantsLayer = true
+        shadowSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        addSubview(shadowSep)
+
+        let checkbox = NSButton(
+            checkboxWithTitle: L10n.beautifyShadowEffect,
+            target: self,
+            action: #selector(shadowCheckboxChanged(_:))
+        )
+        checkbox.state = initialShadowEnabled ? .on : .off
+        checkbox.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        checkbox.contentTintColor = NSColor.white.withAlphaComponent(0.9)
+        checkbox.attributedTitle = NSAttributedString(
+            string: L10n.beautifyShadowEffect,
+            attributes: [
+                .font: NSFont.systemFont(ofSize: 12, weight: .medium),
+                .foregroundColor: NSColor.white.withAlphaComponent(0.9),
+            ]
+        )
+        checkbox.frame = NSRect(
+            x: shadowSepX + 1 + 6,
+            y: midY - checkboxHeight / 2,
+            width: checkboxWidth,
+            height: checkboxHeight
+        )
+        addSubview(checkbox)
+        shadowCheckbox = checkbox
     }
 
     @objc private func swatchTapped(_ gesture: NSGestureRecognizer) {
@@ -2487,6 +2544,10 @@ private class BeautifySubToolbar: NSView {
             min(BeautifyRenderer.paddingSliderMax, CGFloat(sender.doubleValue))
         )
         onPaddingChanged?(clamped)
+    }
+
+    @objc private func shadowCheckboxChanged(_ sender: NSButton) {
+        onShadowEnabledChanged?(sender.state == .on)
     }
 
     private func updateSelection() {

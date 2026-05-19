@@ -92,6 +92,7 @@
 "beautifyPresetDeepPurple" = "Тёмно-фиолетовый";
 "beautifyPresetNeutralGray" = "Нейтральный серый";
 "beautifyPresetWallpaper" = "Обои";
+"beautifyShadowEffect" = "Тень";
 
 /* Language */
 "languageHeader" = "Язык";

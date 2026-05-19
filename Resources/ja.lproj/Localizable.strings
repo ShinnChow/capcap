@@ -92,6 +92,7 @@
 "beautifyPresetDeepPurple" = "ディープパープル";
 "beautifyPresetNeutralGray" = "ニュートラルグレー";
 "beautifyPresetWallpaper" = "壁紙";
+"beautifyShadowEffect" = "影効果";
 
 /* Language */
 "languageHeader" = "言語";

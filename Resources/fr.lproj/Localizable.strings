@@ -92,6 +92,7 @@
 "beautifyPresetDeepPurple" = "Violet profond";
 "beautifyPresetNeutralGray" = "Gris neutre";
 "beautifyPresetWallpaper" = "Fond d'écran";
+"beautifyShadowEffect" = "Ombre";
 
 /* Language */
 "languageHeader" = "Langue";
