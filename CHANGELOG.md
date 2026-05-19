@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.3] - 2026-05-19
+
+### Added
+- Add rounded corners and drop shadow to window captures (29954a2)
+- Add beautify shadow toggle and zero padding (6988ea7)
+
+### Changed
+- Center image-edit hint toast in selection (83fc49d)
+- Improve beautify shadows for window captures (17d8dc4)
+- Use real window alpha for captures (45f8f13)
+- Allow window detection to select capcap's own content windows (935902d)
+
 ## [1.3.2] - 2026-05-19
 
 ### Added
