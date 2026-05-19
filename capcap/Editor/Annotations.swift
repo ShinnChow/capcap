@@ -428,22 +428,13 @@ struct ArrowAnnotation: Annotation {
         context.setLineWidth(lineWidth)
         context.setLineCap(.round)
 
+        // Tangent at the endpoint — drives the arrowhead orientation.
         let endTangent: (dx: CGFloat, dy: CGFloat)
-
         if let cp = controlPoint {
-            // Quadratic bezier through controlPoint
-            context.move(to: startPoint)
-            context.addQuadCurve(to: endPoint, control: cp)
-            context.strokePath()
             endTangent = (endPoint.x - cp.x, endPoint.y - cp.y)
         } else {
-            context.move(to: startPoint)
-            context.addLine(to: endPoint)
-            context.strokePath()
             endTangent = (endPoint.x - startPoint.x, endPoint.y - startPoint.y)
         }
-
-        // Arrowhead — direction follows the local tangent at the endpoint
         let length = sqrt(endTangent.dx * endTangent.dx + endTangent.dy * endTangent.dy)
         guard length > 0 else { return }
 
@@ -456,6 +447,28 @@ struct ArrowAnnotation: Annotation {
         let baseX = endPoint.x - unitX * headLength
         let baseY = endPoint.y - unitY * headLength
 
+        // Shaft — stop at the arrowhead base so the round line cap stays
+        // tucked inside the filled triangle and the tip renders as a crisp
+        // point instead of a rounded nub.
+        if let cp = controlPoint {
+            // Truncate the quadratic bezier near its end via de Casteljau.
+            let t = max(0, min(1, 1 - headLength / (2 * length)))
+            let a = NSPoint(x: startPoint.x + (cp.x - startPoint.x) * t,
+                            y: startPoint.y + (cp.y - startPoint.y) * t)
+            let b = NSPoint(x: cp.x + (endPoint.x - cp.x) * t,
+                            y: cp.y + (endPoint.y - cp.y) * t)
+            let shaftEnd = NSPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t)
+            context.move(to: startPoint)
+            context.addQuadCurve(to: shaftEnd, control: a)
+            context.strokePath()
+        } else {
+            context.move(to: startPoint)
+            context.addLine(to: CGPoint(x: baseX, y: baseY))
+            context.strokePath()
+        }
+
+        // Arrowhead — filled triangle. Stroked with a round join so the tip
+        // is very slightly blunt rather than razor-sharp.
         let leftX = baseX - unitY * headWidth / 2
         let leftY = baseY + unitX * headWidth / 2
         let rightX = baseX + unitY * headWidth / 2
@@ -465,7 +478,9 @@ struct ArrowAnnotation: Annotation {
         context.addLine(to: CGPoint(x: leftX, y: leftY))
         context.addLine(to: CGPoint(x: rightX, y: rightY))
         context.closePath()
-        context.fillPath()
+        context.setLineJoin(.round)
+        context.setLineWidth(max(1.5, lineWidth * 0.5))
+        context.drawPath(using: .fillStroke)
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
@@ -869,16 +884,11 @@ struct NumberAnnotation: Annotation {
             context.setLineWidth(shaftWidth)
             context.setLineCap(.round)
 
+            // Tangent at the tip — drives the arrowhead orientation.
             let endTangent: (dx: CGFloat, dy: CGFloat)
             if let cp = controlPoint {
-                context.move(to: center)
-                context.addQuadCurve(to: tip, control: cp)
-                context.strokePath()
                 endTangent = (tip.x - cp.x, tip.y - cp.y)
             } else {
-                context.move(to: center)
-                context.addLine(to: tip)
-                context.strokePath()
                 endTangent = (tip.x - center.x, tip.y - center.y)
             }
 
@@ -891,11 +901,35 @@ struct NumberAnnotation: Annotation {
                 let headWidth: CGFloat = max(7, shaftWidth * 3)
                 let baseX = tip.x - unitX * headLength
                 let baseY = tip.y - unitY * headLength
+
+                // Shaft — stop at the arrowhead base so the round line cap
+                // stays hidden inside the filled triangle and the tip stays
+                // a crisp point.
+                if let cp = controlPoint {
+                    let t = max(0, min(1, 1 - headLength / (2 * tlen)))
+                    let a = NSPoint(x: center.x + (cp.x - center.x) * t,
+                                    y: center.y + (cp.y - center.y) * t)
+                    let b = NSPoint(x: cp.x + (tip.x - cp.x) * t,
+                                    y: cp.y + (tip.y - cp.y) * t)
+                    let shaftEnd = NSPoint(x: a.x + (b.x - a.x) * t,
+                                           y: a.y + (b.y - a.y) * t)
+                    context.move(to: center)
+                    context.addQuadCurve(to: shaftEnd, control: a)
+                    context.strokePath()
+                } else {
+                    context.move(to: center)
+                    context.addLine(to: CGPoint(x: baseX, y: baseY))
+                    context.strokePath()
+                }
+
                 context.move(to: tip)
                 context.addLine(to: CGPoint(x: baseX - unitY * headWidth / 2, y: baseY + unitX * headWidth / 2))
                 context.addLine(to: CGPoint(x: baseX + unitY * headWidth / 2, y: baseY - unitX * headWidth / 2))
                 context.closePath()
-                context.fillPath()
+                // Round join so the tip is very slightly blunt.
+                context.setLineJoin(.round)
+                context.setLineWidth(1.5)
+                context.drawPath(using: .fillStroke)
             }
         }
 
