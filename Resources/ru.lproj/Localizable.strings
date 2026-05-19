@@ -98,7 +98,19 @@
 "settingsTabUpload" = "Хостинг";
 "settingsTabAbout" = "О программе";
 "settingsTabTranslation" = "Перевод";
+"settingsTabToolbar" = "Панель инструментов";
 "settingsQuit" = "Завершить приложение";
+
+"toolbarSettingsPrimaryTitle" = "Основная панель";
+"toolbarSettingsPrimaryHint" = "Инструменты появляются над или под выделением";
+"toolbarSettingsSideTitle" = "Боковая панель";
+"toolbarSettingsSideHint" = "Инструменты появляются слева или справа от выделения";
+"toolbarSettingsHiddenTitle" = "Скрытые инструменты";
+"toolbarSettingsHiddenHint" = "Инструменты, перетащенные сюда, не появляются ни на одной панели";
+"toolbarSettingsFootnote" = "Панели автоматически переключаются между расположением сверху/снизу и слева/справа в зависимости от положения выделения.";
+"toolbarSettingsReset" = "Сбросить";
+"toolbarSettingsCancel" = "Отмена";
+"toolbarSettingsApply" = "Применить";
 
 /* About pane */
 "aboutTagline" = "Инструмент для снимков экрана в строке меню";

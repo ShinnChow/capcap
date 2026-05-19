@@ -98,7 +98,19 @@
 "settingsTabUpload" = "Hébergement";
 "settingsTabAbout" = "À propos";
 "settingsTabTranslation" = "Traduction";
+"settingsTabToolbar" = "Barre d'outils";
 "settingsQuit" = "Quitter l'application";
+
+"toolbarSettingsPrimaryTitle" = "Barre principale";
+"toolbarSettingsPrimaryHint" = "Les outils apparaissent au-dessus ou en dessous de la sélection";
+"toolbarSettingsSideTitle" = "Barre latérale";
+"toolbarSettingsSideHint" = "Les outils apparaissent à gauche ou à droite de la sélection";
+"toolbarSettingsHiddenTitle" = "Outils masqués";
+"toolbarSettingsHiddenHint" = "Les outils déposés ici n'apparaissent dans aucune barre d'outils";
+"toolbarSettingsFootnote" = "Les barres d'outils basculent automatiquement entre haut/bas et gauche/droite selon la position de la sélection.";
+"toolbarSettingsReset" = "Réinitialiser";
+"toolbarSettingsCancel" = "Annuler";
+"toolbarSettingsApply" = "Appliquer";
 
 /* About pane */
 "aboutTagline" = "Outil de capture d'écran dans la barre des menus";

@@ -98,7 +98,19 @@
 "settingsTabUpload" = "画像ホスト";
 "settingsTabAbout" = "情報";
 "settingsTabTranslation" = "翻訳";
+"settingsTabToolbar" = "ツールバー";
 "settingsQuit" = "アプリを終了";
+
+"toolbarSettingsPrimaryTitle" = "メインツールバー";
+"toolbarSettingsPrimaryHint" = "ツールは選択範囲の上または下に表示されます";
+"toolbarSettingsSideTitle" = "サイドツールバー";
+"toolbarSettingsSideHint" = "ツールは選択範囲の左または右に表示されます";
+"toolbarSettingsHiddenTitle" = "非表示のツール";
+"toolbarSettingsHiddenHint" = "ここにドラッグしたツールはどのツールバーにも表示されません";
+"toolbarSettingsFootnote" = "ツールバーは選択範囲の位置に応じて上下／左右のレイアウトに自動で切り替わります。";
+"toolbarSettingsReset" = "デフォルトに戻す";
+"toolbarSettingsCancel" = "キャンセル";
+"toolbarSettingsApply" = "適用";
 
 /* About pane */
 "aboutTagline" = "メニューバー スクリーンショットツール";

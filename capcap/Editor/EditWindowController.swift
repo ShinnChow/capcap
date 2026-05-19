@@ -140,14 +140,16 @@ class EditWindowController {
         guard let hostSelectionView else { return }
         let layout = Defaults.toolbarLayout
 
-        let tv = ToolbarView(items: layout.primary, orientation: .horizontal)
-        wireToolbarCallbacks(tv)
-        tv.frame = toolbarRect(in: hostSelectionView.bounds, size: tv.preferredSize)
-        styleFloatingHUD(tv)
-        self.toolbarView = tv
-        hostSelectionView.addSubview(tv)
+        // Each toolbar exists only when the user has assigned tools to it.
+        if !layout.primary.isEmpty {
+            let tv = ToolbarView(items: layout.primary, orientation: .horizontal)
+            wireToolbarCallbacks(tv)
+            tv.frame = toolbarRect(in: hostSelectionView.bounds, size: tv.preferredSize)
+            styleFloatingHUD(tv)
+            self.toolbarView = tv
+            hostSelectionView.addSubview(tv)
+        }
 
-        // The side toolbar exists only when the user has assigned tools to it.
         if !layout.side.isEmpty {
             let sv = ToolbarView(items: layout.side, orientation: .vertical)
             wireToolbarCallbacks(sv)
@@ -186,6 +188,13 @@ class EditWindowController {
     /// Primary + side toolbars currently on screen.
     private var toolbars: [ToolbarView] {
         [toolbarView, sideToolbarView].compactMap { $0 }
+    }
+
+    /// Frame the option sub-toolbars (color/size, text, beautify) anchor
+    /// against — the primary toolbar when it exists, otherwise the side
+    /// toolbar, so options still appear if the user emptied the primary bar.
+    private var subToolbarAnchorFrame: NSRect? {
+        toolbarView?.frame ?? sideToolbarView?.frame
     }
 
     func updateLayout(selectionRect: NSRect, selectionViewRect: NSRect, captureRect: CGRect) {
@@ -357,7 +366,7 @@ class EditWindowController {
         onColor: ((NSColor) -> Void)? = nil,
         onSize: ((CGFloat) -> Void)? = nil
     ) {
-        guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
+        guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
         let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
         let subRect = subToolbarRect(
             width: width,
@@ -396,7 +405,7 @@ class EditWindowController {
     }
 
     private func showTextSubToolbar() {
-        guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
+        guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
         let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
         let subRect = subToolbarRect(
             width: TextSubToolbar.preferredWidth,
@@ -437,7 +446,7 @@ class EditWindowController {
         guard
             let hostSelectionView,
             let subToolbarView,
-            let toolbarFrame = toolbarView?.frame
+            let toolbarFrame = subToolbarAnchorFrame
         else { return }
 
         // When the beautify gradient picker is up, keep the tool's color/size
@@ -473,7 +482,7 @@ class EditWindowController {
         }
         updateSubToolbarPosition()
         if isBeautifyActive,
-           let toolbarFrame = toolbarView?.frame,
+           let toolbarFrame = subToolbarAnchorFrame,
            let beautifySub = beautifySubToolbarView {
             beautifySub.frame = subToolbarRect(
                 width: beautifySub.frame.width,
@@ -604,7 +613,7 @@ class EditWindowController {
     }
 
     private func showBeautifySubToolbar(selecting preset: BeautifyPreset) {
-        guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
+        guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
 
         beautifySubToolbarView?.removeFromSuperview()
 
