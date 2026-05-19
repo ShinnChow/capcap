@@ -21,6 +21,8 @@ class EditCanvasView: NSView {
     /// When set (image-edit mode), this image is the source-of-truth base
     /// instead of preSnapshot/live capture.
     var overrideBaseImage: NSImage?
+    /// Exact clicked-window image, including the WindowServer alpha mask.
+    var windowBaseImage: NSImage?
     var activeTool: EditTool = .none {
         didSet {
             if oldValue == .text, activeTool != .text {
@@ -786,7 +788,7 @@ class EditCanvasView: NSView {
             didClip = false
         }
 
-        if let image = previewImage ?? externalBaseImage ?? overrideBaseImage {
+        if let image = previewImage ?? externalBaseImage ?? overrideBaseImage ?? windowBaseImage {
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
@@ -912,7 +914,8 @@ class EditCanvasView: NSView {
         fallbackBaseImage: NSImage?,
         beautifyPreset: BeautifyPreset? = nil,
         beautifyPadding: CGFloat? = nil,
-        wallpaperImage: NSImage? = nil
+        wallpaperImage: NSImage? = nil,
+        annotationClipMask: NSImage? = nil
     ) -> NSImage? {
         guard let baseImage = previewImage ?? fallbackBaseImage else { return nil }
 
@@ -933,6 +936,9 @@ class EditCanvasView: NSView {
             graphicsContext.imageInterpolation = .high
 
             let context = graphicsContext.cgContext
+            if let annotationClipMask {
+                _ = WindowEffects.clip(context, toAlphaOf: annotationClipMask, in: imageBounds)
+            }
             for annotation in annotations {
                 annotation.drawApplyingTransforms(in: context, bounds: imageBounds)
             }
@@ -980,6 +986,10 @@ class EditCanvasView: NSView {
 
         if let overrideBaseImage {
             return overrideBaseImage
+        }
+
+        if let windowBaseImage {
+            return windowBaseImage
         }
 
         if let snapshot = preSnapshot, let rect = captureRect, let screen = captureScreen {

@@ -33,6 +33,26 @@ struct ScreenCapturer {
         return resultImage
     }
 
+    /// Capture one WindowServer window directly, preserving its real alpha
+    /// silhouette. This gives window screenshots the exact system corner mask
+    /// instead of relying on a guessed radius.
+    static func capture(windowID: CGWindowID, pointSize: NSSize? = nil) -> NSImage? {
+        var resultImage: NSImage?
+        let semaphore = DispatchSemaphore(value: 0)
+
+        Task {
+            do {
+                resultImage = try await captureWindowAsync(windowID: windowID, pointSize: pointSize)
+            } catch {
+                NSLog("capcap: Window capture failed: \(error)")
+            }
+            semaphore.signal()
+        }
+
+        semaphore.wait()
+        return resultImage
+    }
+
     private static func captureAsync(
         rect: CGRect,
         screen: NSScreen,
@@ -53,6 +73,34 @@ struct ScreenCapturer {
         }
 
         return try await captureDisplay(display, rect: rect, excludingWindows: excludedWindows)
+    }
+
+    private static func captureWindowAsync(windowID: CGWindowID, pointSize: NSSize?) async throws -> NSImage? {
+        let content = try await SCShareableContent.current
+        guard let window = content.windows.first(where: { $0.windowID == windowID }) else {
+            return nil
+        }
+
+        let filter = SCContentFilter(desktopIndependentWindow: window)
+        let scale = max(CGFloat(filter.pointPixelScale), 1)
+        let contentSize = filter.contentRect.size
+        let imageSize = pointSize ?? NSSize(width: contentSize.width, height: contentSize.height)
+
+        let config = SCStreamConfiguration()
+        config.width = max(Int(ceil(contentSize.width * scale)), 1)
+        config.height = max(Int(ceil(contentSize.height * scale)), 1)
+        config.capturesAudio = false
+        config.showsCursor = false
+        config.captureResolution = .best
+        config.ignoreShadowsSingleWindow = true
+        config.shouldBeOpaque = false
+
+        let image = try await SCScreenshotManager.captureImage(
+            contentFilter: filter,
+            configuration: config
+        )
+
+        return NSImage(cgImage: image, size: imageSize)
     }
 
     private static func captureDisplay(

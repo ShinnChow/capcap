@@ -5,7 +5,9 @@ protocol SelectionViewDelegate: AnyObject {
     /// - Parameter isWindowSelection: true when the rect came from clicking a
     ///   detected window (no drag), so the editor can apply window-only
     ///   effects like rounded corners. False for free-drag / resize / preset.
-    func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool)
+    /// - Parameter windowID: the WindowServer id for clicked-window captures.
+    ///   nil for free-drag / resize / preset selections.
+    func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?)
     func selectionDidChange(rect: NSRect, inView view: NSView)
 }
 
@@ -67,9 +69,11 @@ class SelectionView: NSView {
 
     /// The window rect currently highlighted under the cursor (view coordinates).
     private var hoverWindowRect: NSRect?
+    private var hoverWindowID: CGWindowID?
 
     /// Pending window selection — confirmed on mouseUp if no significant drag occurs.
     private var pendingWindowRect: NSRect?
+    private var pendingWindowID: CGWindowID?
     private let windowClickThreshold: CGFloat = 4
 
     // MARK: - Constants
@@ -109,7 +113,7 @@ class SelectionView: NSView {
     /// selection rect's final position is committed.
     func finalizeExternalDrag() {
         if let rect = selectionRect {
-            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
+            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false, windowID: nil)
         }
     }
 
@@ -131,7 +135,7 @@ class SelectionView: NSView {
     /// Mirror of `mouseUp`'s `.resize` finalize.
     func finalizeExternalResize() {
         if let rect = selectionRect {
-            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
+            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false, windowID: nil)
         }
     }
 
@@ -149,7 +153,9 @@ class SelectionView: NSView {
         // If the user drags past the threshold, fall through to free-form drawing.
         if state == .idle, let hoverRect = hoverWindowRect {
             pendingWindowRect = hoverRect
+            pendingWindowID = hoverWindowID
             hoverWindowRect = nil
+            hoverWindowID = nil
             selectionOrigin = point
             dragStart = point
             selectionRect = NSRect(origin: point, size: .zero)
@@ -210,6 +216,7 @@ class SelectionView: NSView {
                 }
                 // Drag exceeded threshold → discard window snap, proceed with free draw
                 pendingWindowRect = nil
+                pendingWindowID = nil
             }
             NSCursor.crosshair.set()
             let x = min(selectionOrigin.x, point.x)
@@ -253,11 +260,13 @@ class SelectionView: NSView {
         case .drawNew:
             // Click without drag → confirm the pending window selection
             if let windowRect = pendingWindowRect {
+                let windowID = pendingWindowID
                 pendingWindowRect = nil
+                pendingWindowID = nil
                 selectionRect = windowRect
                 state = .selected
                 dragAction = .none
-                delegate?.selectionDidComplete(rect: windowRect, inView: self, isWindowSelection: true)
+                delegate?.selectionDidComplete(rect: windowRect, inView: self, isWindowSelection: true, windowID: windowID)
                 needsDisplay = true
                 return
             }
@@ -269,12 +278,12 @@ class SelectionView: NSView {
                 return
             }
             state = .selected
-            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
+            delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false, windowID: nil)
             needsDisplay = true
 
         case .move, .resize:
             if let rect = selectionRect {
-                delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false)
+                delegate?.selectionDidComplete(rect: rect, inView: self, isWindowSelection: false, windowID: nil)
             }
             needsDisplay = true
 
@@ -364,8 +373,9 @@ class SelectionView: NSView {
                 NSCursor.crosshair.set()
                 return
             }
-            if hoverWindowRect != clamped {
+            if hoverWindowRect != clamped || hoverWindowID != detected.windowID {
                 hoverWindowRect = clamped
+                hoverWindowID = detected.windowID
                 needsDisplay = true
             }
             NSCursor.pointingHand.set()
@@ -378,6 +388,7 @@ class SelectionView: NSView {
     private func clearHover() {
         if hoverWindowRect != nil {
             hoverWindowRect = nil
+            hoverWindowID = nil
             needsDisplay = true
         }
     }
