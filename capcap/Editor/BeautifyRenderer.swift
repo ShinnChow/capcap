@@ -19,7 +19,7 @@ enum BeautifyRenderer {
     static let keyShadowOffset: CGSize = CGSize(width: 0, height: -5)
 
     // MARK: - Slider bounds (user-controlled padding)
-    static let paddingSliderMin: CGFloat = 8
+    static let paddingSliderMin: CGFloat = 0
     static let paddingSliderMax: CGFloat = 56
     static let paddingSliderDefault: CGFloat = 24
 
@@ -152,8 +152,9 @@ enum BeautifyRenderer {
 
     /// Draws a two-layer shadow (ambient + key light) cast by a rounded-rect
     /// silhouette at `innerRect`, creating a natural floating-card effect.
-    /// The fills under the shadows are opaque black, so callers should draw
-    /// the actual image content on top afterwards (clipped to the same rounded rect).
+    /// The fill used to cast the shadow is clipped out, so transparent pixels
+    /// in the screenshot reveal the beautify background instead of a black
+    /// backing rectangle.
     static func drawInnerShadow(innerRect: CGRect, cornerRadius: CGFloat, context: CGContext) {
         let path = CGPath(
             roundedRect: innerRect,
@@ -163,23 +164,45 @@ enum BeautifyRenderer {
         )
 
         // Pass 1: ambient shadow — uniform glow around all edges
-        context.saveGState()
-        context.setShadow(
+        drawShadowOnly(
+            path: path,
+            innerRect: innerRect,
             offset: ambientShadowOffset,
             blur: ambientShadowBlur,
-            color: NSColor.black.withAlphaComponent(ambientShadowOpacity).cgColor
+            opacity: ambientShadowOpacity,
+            context: context
         )
-        context.addPath(path)
-        context.setFillColor(NSColor.black.cgColor)
-        context.fillPath()
-        context.restoreGState()
 
         // Pass 2: key shadow — slight downward offset for natural depth
-        context.saveGState()
-        context.setShadow(
+        drawShadowOnly(
+            path: path,
+            innerRect: innerRect,
             offset: keyShadowOffset,
             blur: keyShadowBlur,
-            color: NSColor.black.withAlphaComponent(keyShadowOpacity).cgColor
+            opacity: keyShadowOpacity,
+            context: context
+        )
+    }
+
+    private static func drawShadowOnly(
+        path: CGPath,
+        innerRect: CGRect,
+        offset: CGSize,
+        blur: CGFloat,
+        opacity: CGFloat,
+        context: CGContext
+    ) {
+        let shadowOutset = blur * 3 + max(abs(offset.width), abs(offset.height)) + 2
+        let clipRect = innerRect.insetBy(dx: -shadowOutset, dy: -shadowOutset)
+
+        context.saveGState()
+        context.addRect(clipRect)
+        context.addPath(path)
+        context.clip(using: .evenOdd)
+        context.setShadow(
+            offset: offset,
+            blur: blur,
+            color: NSColor.black.withAlphaComponent(opacity).cgColor
         )
         context.addPath(path)
         context.setFillColor(NSColor.black.cgColor)
@@ -218,7 +241,8 @@ enum BeautifyRenderer {
         innerImage: NSImage,
         preset: BeautifyPreset,
         padding: CGFloat,
-        wallpaperImage: NSImage? = nil
+        wallpaperImage: NSImage? = nil,
+        shadowEnabled: Bool = true
     ) -> NSImage {
         let innerSize = innerImage.size
         guard innerSize.width > 0, innerSize.height > 0 else { return innerImage }
@@ -264,7 +288,9 @@ enum BeautifyRenderer {
         }
 
         // 2. Soft shadow under the inner rounded rect
-        drawInnerShadow(innerRect: inner, cornerRadius: innerCornerRadius, context: cg)
+        if shadowEnabled {
+            drawInnerShadow(innerRect: inner, cornerRadius: innerCornerRadius, context: cg)
+        }
 
         // 3. Clip to the inner rounded rect and draw the image
         cg.saveGState()
