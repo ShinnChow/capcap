@@ -8,6 +8,9 @@ class EditWindowController {
     private var selectionChromeOverlay: SelectionChromeOverlay?
     private weak var hostSelectionView: SelectionView?
     private var toolbarView: ToolbarView?
+    /// Optional vertical toolbar on the left/right of the selection. Created
+    /// only when the user has assigned tools to it in settings.
+    private var sideToolbarView: ToolbarView?
     private var subToolbarView: NSView?
     private var captureRect: CGRect
     private var screen: NSScreen
@@ -138,7 +141,31 @@ class EditWindowController {
         let layout = Defaults.toolbarLayout
 
         let tv = ToolbarView(items: layout.primary, orientation: .horizontal)
+        wireToolbarCallbacks(tv)
         tv.frame = toolbarRect(in: hostSelectionView.bounds, size: tv.preferredSize)
+        styleFloatingHUD(tv)
+        self.toolbarView = tv
+        hostSelectionView.addSubview(tv)
+
+        // The side toolbar exists only when the user has assigned tools to it.
+        if !layout.side.isEmpty {
+            let sv = ToolbarView(items: layout.side, orientation: .vertical)
+            wireToolbarCallbacks(sv)
+            sv.frame = sideToolbarRect(in: hostSelectionView.bounds, size: sv.preferredSize)
+            styleFloatingHUD(sv)
+            self.sideToolbarView = sv
+            hostSelectionView.addSubview(sv)
+        }
+
+        if overrideBaseImage != nil {
+            toolbars.forEach { $0.setScrollCaptureEnabled(false) }
+        }
+    }
+
+    /// Injects the controller's action callbacks into a toolbar. Both the
+    /// primary and the side toolbar share the same wiring — a tool behaves
+    /// identically regardless of which bar it was dragged to.
+    private func wireToolbarCallbacks(_ tv: ToolbarView) {
         tv.onToolSelected = { [weak self] tool in self?.selectTool(tool) }
         tv.onUndo = { [weak self] in self?.canvasView?.undo() }
         tv.onRedo = { [weak self] in self?.canvasView?.redo() }
@@ -154,13 +181,11 @@ class EditWindowController {
         tv.onMoveSelectionStart = { [weak self] in self?.handleMoveSelectionStart() }
         tv.onMoveSelectionDrag = { [weak self] delta in self?.handleMoveSelectionDrag(delta: delta) }
         tv.onMoveSelectionEnd = { [weak self] in self?.handleMoveSelectionEnd() }
-        styleFloatingHUD(tv)
-        self.toolbarView = tv
-        hostSelectionView.addSubview(tv)
+    }
 
-        if overrideBaseImage != nil {
-            tv.setScrollCaptureEnabled(false)
-        }
+    /// Primary + side toolbars currently on screen.
+    private var toolbars: [ToolbarView] {
+        [toolbarView, sideToolbarView].compactMap { $0 }
     }
 
     func updateLayout(selectionRect: NSRect, selectionViewRect: NSRect, captureRect: CGRect) {
@@ -202,7 +227,7 @@ class EditWindowController {
         canvasView?.currentLineWidth = currentLineWidth
         canvasView?.currentMosaicBlockSize = currentMosaicBlockSize
         canvasView?.currentFontSize = currentFontSize
-        toolbarView?.updateSelection(tool: tool)
+        toolbars.forEach { $0.updateSelection(tool: tool) }
         updateEditorInteractionState()
 
         // Marker has its own color/size slot so it doesn't fight the pen
@@ -440,6 +465,12 @@ class EditWindowController {
                 size: toolbarView.preferredSize
             )
         }
+        if let sideToolbarView {
+            sideToolbarView.frame = sideToolbarRect(
+                in: hostSelectionView.bounds,
+                size: sideToolbarView.preferredSize
+            )
+        }
         updateSubToolbarPosition()
         if isBeautifyActive,
            let toolbarFrame = toolbarView?.frame,
@@ -513,7 +544,7 @@ class EditWindowController {
         container.setBeautify(preset: preset)
         container.setPadding(currentBeautifyPadding)
         isBeautifyActive = true
-        toolbarView?.setBeautifyActive(true)
+        toolbars.forEach { $0.setBeautifyActive(true) }
         showBeautifySubToolbar(selecting: preset)
         Defaults.lastBeautifyPresetID = preset.id
 
@@ -534,7 +565,7 @@ class EditWindowController {
         container.setBeautify(preset: nil)
         container.setPadding(nil)
         isBeautifyActive = false
-        toolbarView?.setBeautifyActive(false)
+        toolbars.forEach { $0.setBeautifyActive(false) }
         beautifySubToolbarView?.removeFromSuperview()
         beautifySubToolbarView = nil
 
@@ -681,10 +712,10 @@ class EditWindowController {
         isScrollCapturing = true
         activeTool = .none
         canvasView?.activeTool = .none
-        toolbarView?.updateSelection(tool: .none)
+        toolbars.forEach { $0.updateSelection(tool: .none) }
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
-        toolbarView?.setScrollCaptureActive(true)
+        toolbars.forEach { $0.setScrollCaptureActive(true) }
         hostSelectionView?.scrollCaptureActive = true
         updateEditorInteractionState()
         // The first SCK capture runs synchronously on the main thread inside
@@ -714,7 +745,7 @@ class EditWindowController {
         scrollCapturer = capturer
         installScrollCaptureKeyMonitor()
         showScrollCaptureControl()
-        toolbarView?.isHidden = true
+        toolbars.forEach { $0.isHidden = true }
         // The overlay stays click-through so capcap's synthetic auto-scroll
         // events reach the page underneath. The user's own trackpad / wheel
         // and click input over the selection is dropped by AutoScroller's
@@ -768,11 +799,11 @@ class EditWindowController {
         hostSelectionView?.window?.ignoresMouseEvents = false
         hostSelectionView?.scrollCaptureActive = false
         hostSelectionView?.needsDisplay = true
-        toolbarView?.setScrollCaptureActive(false)
+        toolbars.forEach { $0.setScrollCaptureActive(false) }
 
         guard let stitchedImage = scrollCapturer?.stopAndStitch() else {
             scrollCapturer = nil
-            toolbarView?.isHidden = false
+            toolbars.forEach { $0.isHidden = false }
             updateEditorInteractionState()
             bringEditorToFront()
             return
@@ -798,8 +829,8 @@ class EditWindowController {
         isCropping = true
         activeTool = .none
         canvasView?.activeTool = .none
-        toolbarView?.updateSelection(tool: .none)
-        toolbarView?.isHidden = true
+        toolbars.forEach { $0.updateSelection(tool: .none) }
+        toolbars.forEach { $0.isHidden = true }
         selectionChromeOverlay?.isHidden = true
 
         let cropView = ScrollCropView(frame: hostSelectionView.bounds, image: image)
@@ -818,7 +849,7 @@ class EditWindowController {
         canvasView?.loadPreviewImage(image)
         beautifyContainerView?.canvasSizeDidChange()
         canvasScrollView?.scrollToTop()
-        toolbarView?.isHidden = false
+        toolbars.forEach { $0.isHidden = false }
         updateEditorInteractionState()
         bringEditorToFront()
     }
@@ -845,7 +876,7 @@ class EditWindowController {
         scrollCropControlWindow?.dismiss()
         scrollCropControlWindow = nil
         selectionChromeOverlay?.isHidden = false
-        toolbarView?.isHidden = false
+        toolbars.forEach { $0.isHidden = false }
         bringEditorToFront()
     }
 
@@ -989,9 +1020,9 @@ class EditWindowController {
         hostSelectionView?.annotationToolActive = false
         hostSelectionView?.selectionInteractionEnabled = true
         hostSelectionView?.scrollCaptureActive = false
-        toolbarView?.isHidden = false
-        toolbarView?.removeFromSuperview()
+        toolbars.forEach { $0.isHidden = false; $0.removeFromSuperview() }
         toolbarView = nil
+        sideToolbarView = nil
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
         beautifySubToolbarView?.removeFromSuperview()
@@ -1060,13 +1091,13 @@ class EditWindowController {
         guard
             let hostSelectionView,
             let hostWindow = hostSelectionView.window,
-            let toolbarView,
-            let buttonFrame = toolbarView.scrollCaptureButtonFrame
+            let scrollToolbar = toolbars.first(where: { $0.contains(.scrollCapture) }),
+            let buttonFrame = scrollToolbar.scrollCaptureButtonFrame
         else {
             return
         }
 
-        let frameInSelectionView = toolbarView.convert(buttonFrame, to: hostSelectionView)
+        let frameInSelectionView = scrollToolbar.convert(buttonFrame, to: hostSelectionView)
         let frameInWindow = hostSelectionView.convert(frameInSelectionView, to: nil)
         let frameOnScreen = hostWindow.convertToScreen(frameInWindow)
 
@@ -1111,6 +1142,27 @@ class EditWindowController {
         if y < margin {
             y = min(referenceRect.maxY + margin, bounds.maxY - height - margin)
         }
+        y = max(margin, min(bounds.maxY - height - margin, y))
+
+        return NSRect(x: x, y: y, width: width, height: height)
+    }
+
+    /// Frame for the vertical side toolbar. Prefers the right of the
+    /// selection, flips to the left when there's no room, and stays
+    /// vertically centered on the selection.
+    private func sideToolbarRect(in bounds: NSRect, size: NSSize) -> NSRect {
+        let width = size.width
+        let height = size.height
+        let margin: CGFloat = 8
+
+        let referenceRect = outerVisualRect(in: bounds)
+        var x = referenceRect.maxX + margin
+        if x + width > bounds.maxX - margin {
+            x = referenceRect.minX - width - margin
+        }
+        x = max(margin, min(bounds.maxX - width - margin, x))
+
+        var y = referenceRect.midY - height / 2
         y = max(margin, min(bounds.maxY - height - margin, y))
 
         return NSRect(x: x, y: y, width: width, height: height)
