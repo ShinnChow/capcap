@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.2] - 2026-05-19
+
+### Added
+- Add line annotation tool with endpoint and rotation handles (bae136e)
+
+### Fixed
+- Cache and downscale wallpaper to fix beautify hang (8d64fb6)
+
+### Changed
+- Quit on startup dialog close to allow clean relaunch (7522ef4)
+
 ## [1.3.1] - 2026-05-19
 
 ### Added
