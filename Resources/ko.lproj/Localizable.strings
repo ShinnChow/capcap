@@ -59,6 +59,7 @@
 "tipRectangle" = "사각형";
 "tipEllipse" = "타원";
 "tipArrow" = "화살표";
+"tipLine" = "직선";
 "tipPen" = "펜";
 "tipMarker" = "형광펜";
 "tipMosaic" = "모자이크";

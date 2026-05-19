@@ -59,6 +59,7 @@
 "tipRectangle" = "長方形";
 "tipEllipse" = "楕円";
 "tipArrow" = "矢印";
+"tipLine" = "直線";
 "tipPen" = "ペン";
 "tipMarker" = "マーカー";
 "tipMosaic" = "モザイク";

@@ -29,3 +29,19 @@ This script builds the app bundle, kills any running instance, launches the new 
 - No SwiftUI — this project uses AppKit exclusively with programmatic UI.
 - No storyboards or XIBs.
 - Minimum deployment target: macOS 14.0.
+
+## Adding an Editor Tool
+
+Whenever a new annotation/editor tool is added, it MUST also be wired into the
+toolbar — a tool that isn't in `ToolbarLayout` never appears for the user.
+Checklist:
+
+- Add the `ToolbarItemID` case and update `editTool`, `symbolName`, `tooltip`,
+  and the `kind` switch in `ToolbarLayout.swift`.
+- Add the case to **both** `ToolbarLayout.canonicalOrder` and the `default`
+  layout's `primary`/`side`/`hidden` buckets. A tool missing from
+  `canonicalOrder` is invisible even though the enum case exists.
+- Add the `tipXxx` localization key to `Defaults.swift` and to every
+  `Resources/*.lproj/Localizable.strings` file.
+- If the user has not told you where the tool should sit in the toolbar by
+  default, **ask before placing it** — don't guess the position.

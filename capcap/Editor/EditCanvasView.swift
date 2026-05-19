@@ -8,6 +8,7 @@ enum EditTool {
     case rectangle
     case ellipse
     case arrow
+    case line
     case numbered
     case text
     case scrollCapture
@@ -411,6 +412,10 @@ class EditCanvasView: NSView {
                 && a.controlPoint == b.controlPoint && a.lineWidth == b.lineWidth
                 && a.color == b.color
         }
+        if let a = a as? LineAnnotation, let b = b as? LineAnnotation {
+            return a.startPoint == b.startPoint && a.endPoint == b.endPoint
+                && a.lineWidth == b.lineWidth && a.color == b.color
+        }
         if let a = a as? NumberAnnotation, let b = b as? NumberAnnotation {
             return a.center == b.center && a.tip == b.tip
                 && a.controlPoint == b.controlPoint && a.number == b.number
@@ -501,7 +506,7 @@ class EditCanvasView: NSView {
         case .marker:
             currentMarkerPoints = [point]
 
-        case .rectangle, .ellipse, .arrow, .mosaic:
+        case .rectangle, .ellipse, .arrow, .line, .mosaic:
             shapeStart = point
             shapeCurrent = point
 
@@ -575,7 +580,7 @@ class EditCanvasView: NSView {
             appendStrokePoint(point, to: &currentMarkerPoints)
             needsDisplay = true
 
-        case .rectangle, .ellipse, .arrow, .mosaic:
+        case .rectangle, .ellipse, .arrow, .line, .mosaic:
             shapeCurrent = point
             needsDisplay = true
         }
@@ -738,6 +743,22 @@ class EditCanvasView: NSView {
             }
             shapeStart = nil
             shapeCurrent = nil
+
+        case .line:
+            if let start = shapeStart, let end = shapeCurrent {
+                let dist = hypot(end.x - start.x, end.y - start.y)
+                if dist > 5 {
+                    recordUndo()
+                    annotations.append(LineAnnotation(
+                        startPoint: start,
+                        endPoint: end,
+                        color: currentColor,
+                        lineWidth: currentLineWidth
+                    ))
+                }
+            }
+            shapeStart = nil
+            shapeCurrent = nil
         }
 
         needsDisplay = true
@@ -823,6 +844,11 @@ class EditCanvasView: NSView {
                 let rect = rectFromTwoPoints(start, current)
                 context.setFillColor(NSColor.gray.withAlphaComponent(0.5).cgColor)
                 context.fill(rect)
+            case .line:
+                context.setLineCap(.round)
+                context.move(to: start)
+                context.addLine(to: current)
+                context.strokePath()
             case .arrow:
                 // Draw line preview
                 context.setLineCap(.round)
@@ -1240,16 +1266,20 @@ class EditCanvasView: NSView {
         )
     }
 
-    /// Start (tail) endpoint handle for a straight/curved arrow — sits at
-    /// the arrow's `startPoint` so the user can re-anchor the tail.
+    /// Start (tail) endpoint handle for a straight/curved arrow or a line —
+    /// sits at the `startPoint` so the user can re-anchor that end.
     private func arrowStartHandleCenter(for annotation: Annotation) -> NSPoint? {
-        (annotation as? ArrowAnnotation)?.startPoint
+        if let arrow = annotation as? ArrowAnnotation { return arrow.startPoint }
+        if let line = annotation as? LineAnnotation { return line.startPoint }
+        return nil
     }
 
-    /// Tip (arrowhead) endpoint handle — sits at the arrow's `endPoint` so
-    /// the user can redirect / re-extend the arrow without rebuilding it.
+    /// End endpoint handle — sits at the `endPoint` of an arrow or line so
+    /// the user can redirect / re-extend it without rebuilding the mark.
     private func arrowEndHandleCenter(for annotation: Annotation) -> NSPoint? {
-        (annotation as? ArrowAnnotation)?.endPoint
+        if let arrow = annotation as? ArrowAnnotation { return arrow.endPoint }
+        if let line = annotation as? LineAnnotation { return line.endPoint }
+        return nil
     }
 
     /// Delete button rect — always present in adjust mode.
@@ -1613,12 +1643,18 @@ class EditCanvasView: NSView {
             }
 
         case .arrowStart:
-            guard let arrow = state.original as? ArrowAnnotation else { return }
-            annotations[state.index] = arrow.withStartPoint(currentMouse)
+            if let arrow = state.original as? ArrowAnnotation {
+                annotations[state.index] = arrow.withStartPoint(currentMouse)
+            } else if let line = state.original as? LineAnnotation {
+                annotations[state.index] = line.withStartPoint(currentMouse)
+            }
 
         case .arrowEnd:
-            guard let arrow = state.original as? ArrowAnnotation else { return }
-            annotations[state.index] = arrow.withEndPoint(currentMouse)
+            if let arrow = state.original as? ArrowAnnotation {
+                annotations[state.index] = arrow.withEndPoint(currentMouse)
+            } else if let line = state.original as? LineAnnotation {
+                annotations[state.index] = line.withEndPoint(currentMouse)
+            }
 
         case .resize(let anchor):
             guard let mosaic = state.original as? MosaicAnnotation else { return }

@@ -281,6 +281,7 @@ class EditWindowController {
         case is RectAnnotation: return .rectangle
         case is EllipseAnnotation: return .ellipse
         case is ArrowAnnotation: return .arrow
+        case is LineAnnotation: return .line
         case is PenAnnotation: return .pen
         case is MarkerAnnotation: return .marker
         case is NumberAnnotation: return .numbered
@@ -311,6 +312,9 @@ class EditWindowController {
         case let a as ArrowAnnotation:
             currentColor = a.color
             currentLineWidth = a.lineWidth
+        case let l as LineAnnotation:
+            currentColor = l.color
+            currentLineWidth = l.lineWidth
         case let n as NumberAnnotation:
             currentColor = n.color
         default:
@@ -323,7 +327,7 @@ class EditWindowController {
         subToolbarView = nil
 
         switch tool {
-        case .pen, .rectangle, .ellipse, .arrow:
+        case .pen, .rectangle, .ellipse, .arrow, .line:
             showColorSizeSubToolbar(
                 sizes: [2, 4, 6],
                 currentSize: currentLineWidth,
@@ -1436,7 +1440,7 @@ class ToolbarView: NSView {
         guard sender.tag >= 0, sender.tag < items.count else { return }
         let id = items[sender.tag]
         switch id {
-        case .rectangle, .ellipse, .arrow, .pen, .marker, .mosaic, .numbered, .text:
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .numbered, .text:
             guard let tool = id.editTool else { return }
             // Click an already-selected tool to deselect it and enter adjust
             // mode (no tool, but existing marks remain draggable).

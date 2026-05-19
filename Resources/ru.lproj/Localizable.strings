@@ -59,6 +59,7 @@
 "tipRectangle" = "Прямоугольник";
 "tipEllipse" = "Эллипс";
 "tipArrow" = "Стрелка";
+"tipLine" = "Линия";
 "tipPen" = "Карандаш";
 "tipMarker" = "Маркер";
 "tipMosaic" = "Мозаика";

@@ -59,6 +59,7 @@
 "tipRectangle" = "Rectangle";
 "tipEllipse" = "Ellipse";
 "tipArrow" = "Arrow";
+"tipLine" = "Line";
 "tipPen" = "Pen";
 "tipMarker" = "Marker";
 "tipMosaic" = "Mosaic";

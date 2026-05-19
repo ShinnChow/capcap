@@ -59,6 +59,7 @@
 "tipRectangle" = "矩形";
 "tipEllipse" = "椭圆";
 "tipArrow" = "箭头";
+"tipLine" = "直线";
 "tipPen" = "画笔";
 "tipMarker" = "高亮笔";
 "tipMosaic" = "马赛克";

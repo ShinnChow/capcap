@@ -8,6 +8,7 @@ enum ToolbarItemID: String, Codable, CaseIterable {
     case rectangle
     case ellipse
     case arrow
+    case line
     case pen
     case marker
     case mosaic
@@ -45,7 +46,7 @@ extension ToolbarItemID {
 
     var kind: Kind {
         switch self {
-        case .rectangle, .ellipse, .arrow, .pen, .marker, .mosaic, .numbered, .text:
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .numbered, .text:
             return .toggleTool
         case .scrollCapture, .beautify:
             return .toggleAction
@@ -62,6 +63,7 @@ extension ToolbarItemID {
         case .rectangle: return .rectangle
         case .ellipse:   return .ellipse
         case .arrow:     return .arrow
+        case .line:      return .line
         case .pen:       return .pen
         case .marker:    return .marker
         case .mosaic:    return .mosaic
@@ -76,6 +78,7 @@ extension ToolbarItemID {
         case .rectangle:     return "rectangle"
         case .ellipse:       return "circle"
         case .arrow:         return "arrow.up.right"
+        case .line:          return "line.diagonal"
         case .pen:           return "pencil.tip"
         case .marker:        return "highlighter"
         case .mosaic:        return "square.grid.3x3"
@@ -102,6 +105,7 @@ extension ToolbarItemID {
         case .rectangle:     return L10n.tipRectangle
         case .ellipse:       return L10n.tipEllipse
         case .arrow:         return L10n.tipArrow
+        case .line:          return L10n.tipLine
         case .pen:           return L10n.tipPen
         case .marker:        return L10n.tipMarker
         case .mosaic:        return L10n.tipMosaic
@@ -158,7 +162,7 @@ struct ToolbarLayout: Equatable {
     /// place any newly-introduced tool that an older persisted layout never
     /// recorded.
     static let canonicalOrder: [ToolbarItemID] = [
-        .rectangle, .ellipse, .arrow, .pen, .marker, .mosaic, .numbered, .text,
+        .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .numbered, .text,
         .colorPicker, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .ocr,
         .save, .upload, .pin, .close, .confirm,
     ]
@@ -169,7 +173,7 @@ struct ToolbarLayout: Equatable {
     static var `default`: ToolbarLayout {
         ToolbarLayout(
             primary: [
-                .rectangle, .ellipse, .arrow, .pen, .marker, .mosaic, .numbered, .text,
+                .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .numbered, .text,
                 .colorPicker, .beautify, .ocr, .undo, .redo, .moveSelection,
             ],
             side: [.scrollCapture, .upload, .save, .pin, .close, .confirm],
@@ -177,19 +181,36 @@ struct ToolbarLayout: Equatable {
         )
     }
 
-    /// Drops duplicate / unknown ids and appends any tool missing from all
-    /// three buckets to `primary`, so the result always covers every
-    /// `ToolbarItemID` exactly once regardless of app-version drift.
+    /// Drops duplicate / unknown ids and slots any tool missing from all
+    /// three buckets next to its canonical neighbour, so the result always
+    /// covers every `ToolbarItemID` exactly once regardless of app-version
+    /// drift. A newly-introduced tool lands beside its siblings (e.g. `line`
+    /// after `ellipse`) instead of being dumped at the end of the bar.
     func normalized() -> ToolbarLayout {
         var seen = Set<ToolbarItemID>()
         func dedup(_ ids: [ToolbarItemID]) -> [ToolbarItemID] {
             ids.filter { seen.insert($0).inserted }
         }
         var p = dedup(primary)
-        let s = dedup(side)
-        let h = dedup(hidden)
+        var s = dedup(side)
+        var h = dedup(hidden)
+
         let missing = Self.canonicalOrder.filter { !seen.contains($0) }
-        p.append(contentsOf: missing)
+        for item in missing {
+            guard let canonicalIdx = Self.canonicalOrder.firstIndex(of: item) else { continue }
+            // Walk back through the canonical order to the nearest sibling
+            // that's already placed, then drop the new tool right after it
+            // in whichever bucket that sibling lives in.
+            var placed = false
+            for prevIdx in stride(from: canonicalIdx - 1, through: 0, by: -1) {
+                let prev = Self.canonicalOrder[prevIdx]
+                if let i = p.firstIndex(of: prev) { p.insert(item, at: i + 1); placed = true; break }
+                if let i = s.firstIndex(of: prev) { s.insert(item, at: i + 1); placed = true; break }
+                if let i = h.firstIndex(of: prev) { h.insert(item, at: i + 1); placed = true; break }
+            }
+            if !placed { p.insert(item, at: 0) }
+            seen.insert(item)
+        }
         return ToolbarLayout(primary: p, side: s, hidden: h)
     }
 }
