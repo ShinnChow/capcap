@@ -445,6 +445,8 @@ class SettingsView: NSView {
         stack.addArrangedSubview(togglesCard)
         togglesCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        buildHistoryAndCountdownCards(into: stack)
+
         return wrapPane(stack)
     }
 
@@ -482,6 +484,10 @@ class SettingsView: NSView {
         stack.addArrangedSubview(pinShortcut.card)
         pinShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        return wrapPane(stack)
+    }
+
+    private func buildHistoryAndCountdownCards(into stack: NSStackView) {
         // History cache card
         let historyCard = CardView()
         let historyInner = NSStackView()
@@ -581,8 +587,6 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(countdownCard)
         countdownCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
-        return wrapPane(stack)
     }
 
     private func buildUploadPane() -> NSView {
