@@ -17,6 +17,10 @@
 "countdownLabel" = "Countdown Seconds";
 "countdownHint" = "Hold ⌥ Option then double-tap ⌘ or press the screenshot shortcut to start a countdown before capture (Esc cancels)";
 "countdownSecondsSuffix" = "s";
+"windowShadowToggleLabel" = "Window Capture Shadow";
+"windowShadowToggleHint" = "Round the corners of window captures and add a macOS-style drop shadow";
+"windowShadowSizeLabel" = "Shadow Size";
+"windowShadowSizeHint" = "Larger values blur softer and spread wider, so the window appears to float higher";
 
 /* Screenshot shortcut */
 "shortcutHeader" = "Screenshot Shortcut";

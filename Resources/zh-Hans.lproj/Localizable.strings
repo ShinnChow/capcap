@@ -17,6 +17,10 @@
 "countdownLabel" = "倒计时秒数";
 "countdownHint" = "按住 ⌥ Option 后双击 ⌘ 或按截图快捷键，先弹出倒计时再截图（按 Esc 取消）";
 "countdownSecondsSuffix" = "秒";
+"windowShadowToggleLabel" = "窗口截图阴影";
+"windowShadowToggleHint" = "点选窗口截图时自动裁出圆角，并加上 macOS 风格的投影";
+"windowShadowSizeLabel" = "阴影大小";
+"windowShadowSizeHint" = "数值越大投影越柔和、扩散越远，窗口看起来悬浮得越高";
 
 /* Screenshot shortcut */
 "shortcutHeader" = "截图快捷键";

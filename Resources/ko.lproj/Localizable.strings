@@ -17,6 +17,10 @@
 "countdownLabel" = "카운트다운 초";
 "countdownHint" = "⌥ Option 을 누른 채 ⌘ 를 두 번 누르거나 스크린샷 단축키를 누르면 캡처 전에 카운트다운이 시작됩니다 (Esc 로 취소)";
 "countdownSecondsSuffix" = "초";
+"windowShadowToggleLabel" = "창 캡처 그림자";
+"windowShadowToggleHint" = "창을 선택해 캡처할 때 모서리를 둥글게 하고 macOS 스타일 그림자를 추가합니다";
+"windowShadowSizeLabel" = "그림자 크기";
+"windowShadowSizeHint" = "값이 클수록 그림자가 부드럽고 넓게 퍼져 창이 더 높이 떠 보입니다";
 
 /* Screenshot shortcut */
 "shortcutHeader" = "스크린샷 단축키";

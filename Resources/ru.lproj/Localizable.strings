@@ -17,6 +17,10 @@
 "countdownLabel" = "Секунды обратного отсчёта";
 "countdownHint" = "Удерживайте ⌥ Option, затем дважды нажмите ⌘ или сочетание для снимка, чтобы запустить обратный отсчёт перед захватом (Esc — отмена)";
 "countdownSecondsSuffix" = "с";
+"windowShadowToggleLabel" = "Тень при снимке окна";
+"windowShadowToggleHint" = "Скругляет углы снимков окон и добавляет тень в стиле macOS";
+"windowShadowSizeLabel" = "Размер тени";
+"windowShadowSizeHint" = "Чем больше значение, тем мягче и шире тень — окно словно приподнято выше";
 
 /* Screenshot shortcut */
 "shortcutHeader" = "Сочетание для снимка";

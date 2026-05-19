@@ -201,7 +201,7 @@ class OverlayWindowController {
         // Drive the same path as a real selection completion. The captureRect
         // is irrelevant because the editor uses overrideBaseImage, but we
         // pass a sensible value derived from the selection rect.
-        selectionDidComplete(rect: viewRect, inView: selectionView)
+        selectionDidComplete(rect: viewRect, inView: selectionView, isWindowSelection: false)
 
         // Pin a hint to the top-center of the loaded image: if this editor
         // opened by mistake, X bails out of it.
@@ -289,7 +289,7 @@ extension OverlayWindowController: SelectionViewDelegate {
         chipWindow = nil
     }
 
-    func selectionDidComplete(rect: NSRect, inView view: NSView) {
+    func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool) {
         guard let window = view.window, let screen = window.screen else {
             cancel()
             return
@@ -334,14 +334,17 @@ extension OverlayWindowController: SelectionViewDelegate {
                 selectionViewRect: rect,
                 hostSelectionView: selectionView,
                 preSnapshot: preSnapshot,
-                overrideBaseImage: presetImage
+                overrideBaseImage: presetImage,
+                isWindowCapture: isWindowSelection
             ) { [weak self] finalImage in
                 self?.tearDown()
                 self?.onComplete(finalImage)
             }
             editController?.show()
         } else {
-            // Selection was adjusted — update editor layout
+            // Selection was adjusted — it no longer matches the clicked
+            // window's bounds, so window-only effects no longer apply.
+            editController?.isWindowCapture = false
             editController?.updateLayout(
                 selectionRect: screenRect,
                 selectionViewRect: rect,
@@ -352,6 +355,8 @@ extension OverlayWindowController: SelectionViewDelegate {
 
     func selectionDidChange(rect: NSRect, inView view: NSView) {
         guard let _ = view.window else { return }
+        // A resize/move drag changes the rect away from the clicked window.
+        editController?.isWindowCapture = false
         let screenRect = convertToScreenRect(rect, view: view)
         let cgRect = convertToCGRect(screenRect)
         editController?.updateLayout(
