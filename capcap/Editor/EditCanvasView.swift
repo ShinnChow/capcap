@@ -71,8 +71,6 @@ class EditCanvasView: NSView {
     // matches the committed annotation.
     private var currentPenPoints: [NSPoint]?
     private var currentMarkerPoints: [NSPoint]?
-    private var currentMosaicPoints: [NSPoint] = []
-    private var mosaicBaseImage: NSImage?
     private var shapeStart: NSPoint?
     private var shapeCurrent: NSPoint?
     private var numberCounter: Int = 1
@@ -150,11 +148,30 @@ class EditCanvasView: NSView {
         var current: NSPoint
     }
 
-    /// Active drag on a selection handle (rotate / curve / number tip). The
-    /// original annotation is captured so escape-style cancellations
-    /// (e.g. tool switch mid-drag) can restore it cleanly.
+    /// One of the eight resize grips around a resizable annotation — four
+    /// corners plus four edge midpoints. Coordinates are y-up (canvas
+    /// space), so "top" maps to `maxY`.
+    enum ResizeAnchor: CaseIterable {
+        case topLeft, top, topRight, right, bottomRight, bottom, bottomLeft, left
+
+        var movesMinX: Bool { self == .topLeft || self == .left || self == .bottomLeft }
+        var movesMaxX: Bool { self == .topRight || self == .right || self == .bottomRight }
+        var movesMinY: Bool { self == .bottomLeft || self == .bottom || self == .bottomRight }
+        var movesMaxY: Bool { self == .topLeft || self == .top || self == .topRight }
+
+        /// Center of this grip for a given rect, in canvas coordinates.
+        func point(in rect: NSRect) -> NSPoint {
+            let x: CGFloat = movesMinX ? rect.minX : (movesMaxX ? rect.maxX : rect.midX)
+            let y: CGFloat = movesMinY ? rect.minY : (movesMaxY ? rect.maxY : rect.midY)
+            return NSPoint(x: x, y: y)
+        }
+    }
+
+    /// Active drag on a selection handle (rotate / curve / number tip /
+    /// resize). The original annotation is captured so escape-style
+    /// cancellations (e.g. tool switch mid-drag) can restore it cleanly.
     private struct HandleDragState {
-        enum Kind { case rotate, curve, tip, arrowStart, arrowEnd }
+        enum Kind { case rotate, curve, tip, arrowStart, arrowEnd, resize(ResizeAnchor) }
         let kind: Kind
         let index: Int
         let original: Annotation
@@ -171,6 +188,7 @@ class EditCanvasView: NSView {
     private static let curveHandleSize: CGFloat = 14
     private static let tipHandleSize: CGFloat = 14
     private static let endpointHandleSize: CGFloat = 12
+    private static let resizeHandleSize: CGFloat = 10
     private static let actionButtonSize: CGFloat = 22
     private static let selectionBoxPad: CGFloat = 6
 
@@ -483,11 +501,7 @@ class EditCanvasView: NSView {
         case .marker:
             currentMarkerPoints = [point]
 
-        case .mosaic:
-            mosaicBaseImage = resolveBaseImageForEditing()
-            currentMosaicPoints = [point]
-
-        case .rectangle, .ellipse, .arrow:
+        case .rectangle, .ellipse, .arrow, .mosaic:
             shapeStart = point
             shapeCurrent = point
 
@@ -561,11 +575,7 @@ class EditCanvasView: NSView {
             appendStrokePoint(point, to: &currentMarkerPoints)
             needsDisplay = true
 
-        case .mosaic:
-            currentMosaicPoints.append(point)
-            needsDisplay = true
-
-        case .rectangle, .ellipse, .arrow:
+        case .rectangle, .ellipse, .arrow, .mosaic:
             shapeCurrent = point
             needsDisplay = true
         }
@@ -663,23 +673,25 @@ class EditCanvasView: NSView {
             }
 
         case .mosaic:
-            if !currentMosaicPoints.isEmpty, let baseImage = mosaicBaseImage {
-                let brushRadius = currentMosaicBlockSize * 1.5
-                if let region = MosaicTool.createMosaicRegion(
-                    points: currentMosaicPoints,
-                    brushRadius: brushRadius,
-                    imageSize: bounds.size,
-                    baseImage: baseImage,
-                    blockSize: currentMosaicBlockSize
-                ) {
+            if let start = shapeStart, let end = shapeCurrent {
+                let rect = rectFromTwoPoints(start, end)
+                if rect.width > 2, rect.height > 2,
+                   let baseImage = resolveBaseImageForEditing(),
+                   let region = MosaicTool.createMosaicRegion(
+                       rect: rect,
+                       imageSize: bounds.size,
+                       baseImage: baseImage,
+                       blockSize: currentMosaicBlockSize
+                   ) {
                     recordUndo()
                     annotations.append(MosaicAnnotation(
                         rect: region.rect,
                         pixelatedImage: region.pixelatedImage
                     ))
                 }
-                currentMosaicPoints = []
             }
+            shapeStart = nil
+            shapeCurrent = nil
 
         case .rectangle:
             if let start = shapeStart, let end = shapeCurrent {
@@ -805,6 +817,12 @@ class EditCanvasView: NSView {
             case .ellipse:
                 let rect = rectFromTwoPoints(start, current)
                 context.strokeEllipse(in: rect)
+            case .mosaic:
+                // Mosaic preview: a semi-transparent gray fill marking the
+                // region that will be pixelated on mouseUp.
+                let rect = rectFromTwoPoints(start, current)
+                context.setFillColor(NSColor.gray.withAlphaComponent(0.5).cgColor)
+                context.fill(rect)
             case .arrow:
                 // Draw line preview
                 context.setLineCap(.round)
@@ -846,20 +864,6 @@ class EditCanvasView: NSView {
                 color: currentColor
             )
             preview.draw(in: context, bounds: bounds)
-        }
-
-        // Draw mosaic preview (points being brushed)
-        if !currentMosaicPoints.isEmpty {
-            let brushRadius = currentMosaicBlockSize * 1.5
-            context.setFillColor(NSColor.white.withAlphaComponent(0.3).cgColor)
-            for point in currentMosaicPoints {
-                context.fillEllipse(in: NSRect(
-                    x: point.x - brushRadius,
-                    y: point.y - brushRadius,
-                    width: brushRadius * 2,
-                    height: brushRadius * 2
-                ))
-            }
         }
 
         if didClip {
@@ -931,7 +935,6 @@ class EditCanvasView: NSView {
     func loadPreviewImage(_ image: NSImage) {
         cancelInFlightInteraction()
         previewImage = image
-        mosaicBaseImage = nil
         setFrameSize(image.size)
         needsDisplay = true
     }
@@ -966,8 +969,6 @@ class EditCanvasView: NSView {
     private func cancelInFlightInteraction() {
         currentPenPoints = nil
         currentMarkerPoints = nil
-        currentMosaicPoints = []
-        mosaicBaseImage = nil
         shapeStart = nil
         shapeCurrent = nil
         dragState = nil
@@ -1294,6 +1295,20 @@ class EditCanvasView: NSView {
         context.stroke(box)
         context.restoreGState()
 
+        // 1b. Resize grips — eight dots on the rect's corners + edge mids,
+        // shown for annotations that support resizing (mosaic).
+        if isResizable(annotation) {
+            for anchor in ResizeAnchor.allCases {
+                drawHandleDot(
+                    at: anchor.point(in: annotation.boundingRect),
+                    size: EditCanvasView.resizeHandleSize,
+                    fill: NSColor.white.withAlphaComponent(0.95),
+                    stroke: accentGreen,
+                    in: context
+                )
+            }
+        }
+
         // 2. Rotation handle — follows the rotated top-center via a dashed
         // tether so the user has a clear pivot point at any angle.
         if annotation.supportsRotation {
@@ -1479,12 +1494,29 @@ class EditCanvasView: NSView {
         return nil
     }
 
+    /// True for annotations that expose the eight-grip resize chrome.
+    private func isResizable(_ annotation: Annotation) -> Bool {
+        annotation is MosaicAnnotation
+    }
+
     private func hitTestSelectionHandle(at point: NSPoint) -> HandleDragState.Kind? {
         guard
             let idx = selectedIndex,
             idx < annotations.count
         else { return nil }
         let annotation = annotations[idx]
+
+        // Resize grips — checked first so a corner grip wins over a body
+        // drag on the same pixels.
+        if isResizable(annotation) {
+            let r = EditCanvasView.resizeHandleSize / 2 + 4
+            for anchor in ResizeAnchor.allCases {
+                let c = anchor.point(in: annotation.boundingRect)
+                if hypot(point.x - c.x, point.y - c.y) <= r {
+                    return .resize(anchor)
+                }
+            }
+        }
 
         if annotation.supportsRotation {
             let handleCenter = rotationHandleCenter(for: annotation)
@@ -1587,6 +1619,42 @@ class EditCanvasView: NSView {
         case .arrowEnd:
             guard let arrow = state.original as? ArrowAnnotation else { return }
             annotations[state.index] = arrow.withEndPoint(currentMouse)
+
+        case .resize(let anchor):
+            guard let mosaic = state.original as? MosaicAnnotation else { return }
+            // Move only the edge(s) this grip owns; the opposite edge(s)
+            // stay pinned. min/abs keep the rect valid if the user drags a
+            // grip past its opposite side.
+            let o = mosaic.rect
+            var minX = o.minX, maxX = o.maxX
+            var minY = o.minY, maxY = o.maxY
+            if anchor.movesMinX { minX = currentMouse.x }
+            if anchor.movesMaxX { maxX = currentMouse.x }
+            if anchor.movesMinY { minY = currentMouse.y }
+            if anchor.movesMaxY { maxY = currentMouse.y }
+            let newRect = NSRect(
+                x: min(minX, maxX),
+                y: min(minY, maxY),
+                width: abs(maxX - minX),
+                height: abs(maxY - minY)
+            )
+            guard newRect.width >= 4, newRect.height >= 4 else { return }
+            // Re-pixelate from the untouched base image so the mosaic always
+            // covers whatever content the new rect frames (rather than
+            // stretching the old pixels).
+            guard
+                let baseImage = resolveBaseImageForEditing(),
+                let region = MosaicTool.createMosaicRegion(
+                    rect: newRect,
+                    imageSize: bounds.size,
+                    baseImage: baseImage,
+                    blockSize: currentMosaicBlockSize
+                )
+            else { return }
+            annotations[state.index] = MosaicAnnotation(
+                rect: region.rect,
+                pixelatedImage: region.pixelatedImage
+            )
         }
 
         needsDisplay = true
@@ -1632,10 +1700,18 @@ class EditCanvasView: NSView {
             NSCursor.pointingHand.set()
             return
         }
-        // Drag handles (rotate / curve / number tip): open hand — they're
-        // grabbable.
-        if hitTestSelectionHandle(at: point) != nil {
-            NSCursor.openHand.set()
+        // Drag handles (rotate / curve / number tip / resize): resize grips
+        // get a directional cursor; the rest get an open hand.
+        if let kind = hitTestSelectionHandle(at: point) {
+            if case .resize(let anchor) = kind {
+                switch anchor {
+                case .left, .right: NSCursor.resizeLeftRight.set()
+                case .top, .bottom: NSCursor.resizeUpDown.set()
+                default: NSCursor.openHand.set()
+                }
+            } else {
+                NSCursor.openHand.set()
+            }
             return
         }
         // Hovering over any draggable mark: open hand so the user knows it

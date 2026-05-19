@@ -7,52 +7,32 @@ struct MosaicRegion {
 }
 
 struct MosaicTool {
+    /// Pixelate the part of `baseImage` framed by `rect` (drag-rectangle).
     static func createMosaicRegion(
-        points: [NSPoint],
-        brushRadius: CGFloat,
+        rect: NSRect,
         imageSize: NSSize,
         baseImage: NSImage,
         blockSize: CGFloat = 12
     ) -> MosaicRegion? {
-        guard !points.isEmpty else { return nil }
+        // Clamp the dragged rect to the image bounds.
+        let clamped = rect.intersection(NSRect(origin: .zero, size: imageSize))
+        guard clamped.width > 0, clamped.height > 0 else { return nil }
 
-        // Calculate bounding rect of all brush points with padding
-        var minX = CGFloat.infinity
-        var minY = CGFloat.infinity
-        var maxX = -CGFloat.infinity
-        var maxY = -CGFloat.infinity
-
-        for point in points {
-            minX = min(minX, point.x - brushRadius)
-            minY = min(minY, point.y - brushRadius)
-            maxX = max(maxX, point.x + brushRadius)
-            maxY = max(maxY, point.y + brushRadius)
-        }
-
-        // Clamp to image bounds
-        minX = max(0, minX)
-        minY = max(0, minY)
-        maxX = min(imageSize.width, maxX)
-        maxY = min(imageSize.height, maxY)
-
-        let regionRect = NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-        guard regionRect.width > 0, regionRect.height > 0 else { return nil }
-
-        // Extract the sub-image for this region
+        // Extract the sub-image for this region.
         guard let cgImage = baseImage.cgImagePreservingBacking() else { return nil }
 
-        // Convert to CG coordinates (flip Y)
+        // Convert to CG coordinates (flip Y).
         let scale = CGFloat(cgImage.width) / imageSize.width
         let cgRegion = CGRect(
-            x: regionRect.origin.x * scale,
-            y: (imageSize.height - regionRect.origin.y - regionRect.height) * scale,
-            width: regionRect.width * scale,
-            height: regionRect.height * scale
+            x: clamped.origin.x * scale,
+            y: (imageSize.height - clamped.origin.y - clamped.height) * scale,
+            width: clamped.width * scale,
+            height: clamped.height * scale
         )
 
         guard let croppedCG = cgImage.cropping(to: cgRegion) else { return nil }
 
-        // Apply pixelation using CIFilter
+        // Apply pixelation using CIFilter.
         let ciImage = CIImage(cgImage: croppedCG)
         let pixelateFilter = CIFilter(name: "CIPixellate")!
         pixelateFilter.setValue(ciImage, forKey: kCIInputImageKey)
@@ -64,7 +44,7 @@ struct MosaicTool {
         let context = CIContext()
         guard let outputCG = context.createCGImage(outputCI, from: ciImage.extent) else { return nil }
 
-        let pixelatedImage = NSImage(cgImage: outputCG, size: regionRect.size)
-        return MosaicRegion(rect: regionRect, pixelatedImage: pixelatedImage)
+        let pixelatedImage = NSImage(cgImage: outputCG, size: clamped.size)
+        return MosaicRegion(rect: clamped, pixelatedImage: pixelatedImage)
     }
 }

@@ -316,7 +316,8 @@ class EditWindowController {
                 width: 200
             )
         case .mosaic:
-            showMosaicSubToolbar()
+            // Mosaic has no sub-toolbar — drag a rectangle to pixelate.
+            break
         default:
             break
         }
@@ -362,28 +363,6 @@ class EditWindowController {
         view.onSizeChanged = { [weak self] size in
             onSize?(size)
             self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withLineWidth(size) }
-        }
-        styleFloatingHUD(view)
-        hostSelectionView.addSubview(view)
-        subToolbarView = view
-    }
-
-    private func showMosaicSubToolbar() {
-        guard let hostSelectionView, let toolbarFrame = toolbarView?.frame else { return }
-        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
-        let subRect = subToolbarRect(
-            width: 220,
-            height: 36,
-            toolbarFrame: toolbarFrame,
-            in: hostSelectionView.bounds,
-            offset: offset
-        )
-
-        let view = MosaicSubToolbar(frame: subRect)
-        view.currentBlockSize = currentMosaicBlockSize
-        view.onSizeChanged = { [weak self] size in
-            self?.currentMosaicBlockSize = size
-            self?.canvasView?.currentMosaicBlockSize = size
         }
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
@@ -2299,64 +2278,6 @@ private class TextSubToolbar: NSView {
         return abs(ac.redComponent - bc.redComponent) < 0.01 &&
                abs(ac.greenComponent - bc.greenComponent) < 0.01 &&
                abs(ac.blueComponent - bc.blueComponent) < 0.01
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
-        path.fill()
-    }
-}
-
-// MARK: - Mosaic Sub-toolbar
-
-private class MosaicSubToolbar: NSView {
-    var currentBlockSize: CGFloat = 12.0
-    var onSizeChanged: ((CGFloat) -> Void)?
-
-    private var sizeButtons: [NSView] = []
-    private let sizes: [CGFloat] = [8, 12, 18]
-
-    override init(frame: NSRect) {
-        super.init(frame: frame)
-        setup()
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-    private func setup() {
-        var x: CGFloat = 12
-        let midY = bounds.midY
-
-        // Size dots
-        for (i, size) in sizes.enumerated() {
-            let dotSize = 6 + CGFloat(i) * 4
-            let dot = SizeDotView(
-                frame: NSRect(x: x - dotSize/2 + 8, y: midY - dotSize/2, width: dotSize, height: dotSize),
-                isSelected: abs(currentBlockSize - size) < 0.5
-            )
-            dot.itemIndex = i
-            let click = NSClickGestureRecognizer(target: self, action: #selector(sizeTapped(_:)))
-            dot.addGestureRecognizer(click)
-            addSubview(dot)
-            sizeButtons.append(dot)
-            x += dotSize + 10
-        }
-    }
-
-    @objc private func sizeTapped(_ gesture: NSGestureRecognizer) {
-        guard let view = gesture.view as? SizeDotView else { return }
-        let index = view.itemIndex
-        guard index < sizes.count else { return }
-        currentBlockSize = sizes[index]
-        onSizeChanged?(currentBlockSize)
-        for (i, v) in sizeButtons.enumerated() {
-            (v as? SizeDotView)?.isSelected = (i == index)
-        }
     }
 
     override func draw(_ dirtyRect: NSRect) {
