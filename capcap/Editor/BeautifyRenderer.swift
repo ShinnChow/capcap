@@ -1,5 +1,6 @@
 import AppKit
 import CoreGraphics
+import ImageIO
 
 enum BeautifyRenderer {
     // MARK: - Layout constants
@@ -54,11 +55,61 @@ enum BeautifyRenderer {
 
     // MARK: - Wallpaper
 
+    /// Longest-edge pixel cap for the cached wallpaper bitmap. The raw desktop
+    /// image is often a multi-frame "dynamic" HEIC well over 100 MB; that only
+    /// ever fills the thin padding band, so a 2560 px copy is plenty.
+    private static let wallpaperMaxEdge: CGFloat = 2560
+
+    /// Decoded + downscaled wallpaper bitmaps, keyed by source file path.
+    private static var wallpaperCache: [String: NSImage] = [:]
+    private static let wallpaperCacheLock = NSLock()
+
     /// Loads the desktop wallpaper image for the given screen.
+    ///
+    /// The desktop image returned by `desktopImageURL` can be a dynamic HEIC
+    /// containing many full-resolution frames. Decoding that synchronously —
+    /// and re-decoding it on every swatch/preview redraw, since nothing was
+    /// cached — froze the editor for several seconds on machines using the
+    /// default macOS dynamic wallpaper. We instead decode a single downscaled
+    /// thumbnail once (ImageIO never expands the full-size image) and cache it.
     static func wallpaperImage(for screen: NSScreen) -> NSImage? {
-        guard let url = NSWorkspace.shared.desktopImageURL(for: screen),
-              let image = NSImage(contentsOf: url) else { return nil }
+        guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
+        let key = url.path
+
+        wallpaperCacheLock.lock()
+        if let cached = wallpaperCache[key] {
+            wallpaperCacheLock.unlock()
+            return cached
+        }
+        wallpaperCacheLock.unlock()
+
+        guard let image = downscaledWallpaper(url: url) else { return nil }
+
+        wallpaperCacheLock.lock()
+        wallpaperCache[key] = image
+        wallpaperCacheLock.unlock()
         return image
+    }
+
+    /// Decodes only the primary frame of `url`, downscaled so the longest edge
+    /// is at most `wallpaperMaxEdge`. `CGImageSourceCreateThumbnailAtIndex`
+    /// performs the scaling inside ImageIO, so a 100 MB+ dynamic wallpaper is
+    /// never fully decoded into memory.
+    private static func downscaledWallpaper(url: URL) -> NSImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
+            return NSImage(contentsOf: url)
+        }
+        let index = CGImageSourceGetPrimaryImageIndex(source)
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: wallpaperMaxEdge,
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(source, index, options as CFDictionary) else {
+            return NSImage(contentsOf: url)
+        }
+        return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
     }
 
     // MARK: - Drawing primitives
