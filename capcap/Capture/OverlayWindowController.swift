@@ -201,7 +201,7 @@ class OverlayWindowController {
         // Drive the same path as a real selection completion. The captureRect
         // is irrelevant because the editor uses overrideBaseImage, but we
         // pass a sensible value derived from the selection rect.
-        selectionDidComplete(rect: viewRect, inView: selectionView, isWindowSelection: false)
+        selectionDidComplete(rect: viewRect, inView: selectionView, isWindowSelection: false, windowID: nil)
 
         // Pin a hint to the top-center of the loaded image: if this editor
         // opened by mistake, X bails out of it.
@@ -289,7 +289,7 @@ extension OverlayWindowController: SelectionViewDelegate {
         chipWindow = nil
     }
 
-    func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool) {
+    func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?) {
         guard let window = view.window, let screen = window.screen else {
             cancel()
             return
@@ -326,6 +326,9 @@ extension OverlayWindowController: SelectionViewDelegate {
             // First time selection complete — show editor
             let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             let preSnapshot = displayID.flatMap { screenSnapshots[$0] }
+            let windowBaseImage = isWindowSelection
+                ? windowID.flatMap { ScreenCapturer.capture(windowID: $0, pointSize: rect.size) }
+                : nil
 
             editController = EditWindowController(
                 captureRect: cgRect,
@@ -335,6 +338,7 @@ extension OverlayWindowController: SelectionViewDelegate {
                 hostSelectionView: selectionView,
                 preSnapshot: preSnapshot,
                 overrideBaseImage: presetImage,
+                windowBaseImage: windowBaseImage,
                 isWindowCapture: isWindowSelection
             ) { [weak self] finalImage in
                 self?.tearDown()

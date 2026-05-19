@@ -37,6 +37,11 @@ class EditWindowController {
     /// crop). Also disables scroll capture, which is a screen-only concept.
     private let overrideBaseImage: NSImage?
 
+    /// Single-window capture with the WindowServer's real alpha silhouette.
+    /// Used as the base image and annotation clip mask for clicked-window
+    /// captures so the final corners match the system window exactly.
+    private let windowBaseImage: NSImage?
+
     // Scroll capture state
     private var scrollCapturer: ScrollCapturer?
     private var isScrollCapturing = false
@@ -79,6 +84,7 @@ class EditWindowController {
         hostSelectionView: SelectionView,
         preSnapshot: CGImage? = nil,
         overrideBaseImage: NSImage? = nil,
+        windowBaseImage: NSImage? = nil,
         isWindowCapture: Bool = false,
         onComplete: @escaping (NSImage?) -> Void
     ) {
@@ -89,6 +95,7 @@ class EditWindowController {
         self.hostSelectionView = hostSelectionView
         self.preSnapshot = preSnapshot
         self.overrideBaseImage = overrideBaseImage
+        self.windowBaseImage = windowBaseImage
         self.isWindowCapture = isWindowCapture
         self.onComplete = onComplete
     }
@@ -113,6 +120,7 @@ class EditWindowController {
         canvas.captureScreen = screen
         canvas.preSnapshot = preSnapshot
         canvas.overrideBaseImage = overrideBaseImage
+        canvas.windowBaseImage = windowBaseImage
         canvas.autoresizingMask = []
         canvas.onAnnotationSelected = { [weak self] annotation in
             self?.handleAnnotationSelectionChanged(annotation)
@@ -213,6 +221,10 @@ class EditWindowController {
         self.selectionRect = selectionRect
         self.selectionViewRect = selectionViewRect
         self.captureRect = captureRect
+
+        if !isWindowCapture {
+            canvasView?.windowBaseImage = nil
+        }
 
         canvasView?.updateViewportSize(selectionViewRect.size)
         beautifyContainerView?.canvasSizeDidChange()
@@ -1073,17 +1085,24 @@ class EditWindowController {
             fallbackBaseImage = nil
         } else if let overrideBaseImage {
             fallbackBaseImage = overrideBaseImage
+        } else if isWindowCapture, let windowBaseImage {
+            fallbackBaseImage = windowBaseImage
         } else if let snapshot = preSnapshot {
             fallbackBaseImage = ScreenCapturer.crop(from: snapshot, captureRect: captureRect, screen: screen)
         } else {
             fallbackBaseImage = ScreenCapturer.capture(rect: captureRect, screen: screen)
         }
 
+        let annotationClipMask = isWindowCapture && !isBeautifyActive && canvasView?.hasPreviewImage != true
+            ? windowBaseImage
+            : nil
+
         guard let composite = canvasView?.compositeImage(
             fallbackBaseImage: fallbackBaseImage,
             beautifyPreset: currentBeautifyPreset,
             beautifyPadding: isBeautifyActive ? currentBeautifyPadding : nil,
-            wallpaperImage: isBeautifyActive ? beautifyContainerView?.wallpaperImage : nil
+            wallpaperImage: isBeautifyActive ? beautifyContainerView?.wallpaperImage : nil,
+            annotationClipMask: annotationClipMask
         ) else { return nil }
 
         // Window captures get rounded corners — and, when enabled, a
@@ -1094,7 +1113,7 @@ class EditWindowController {
             return composite
         }
 
-        let rounded = WindowEffects.roundedCorners(composite)
+        let rounded = windowBaseImage == nil ? WindowEffects.roundedCorners(composite) : composite
         guard Defaults.windowShadowEnabled else { return rounded }
         return WindowEffects.withShadow(rounded, size: CGFloat(Defaults.windowShadowSize))
     }
