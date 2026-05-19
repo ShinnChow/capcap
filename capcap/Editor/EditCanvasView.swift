@@ -916,7 +916,10 @@ class EditCanvasView: NSView {
         beautifyPadding: CGFloat? = nil,
         beautifyShadowEnabled: Bool = true,
         wallpaperImage: NSImage? = nil,
-        annotationClipMask: NSImage? = nil
+        annotationClipMask: NSImage? = nil,
+        beautifyInnerClipRadius: CGFloat? = BeautifyRenderer.innerCornerRadius,
+        beautifyInnerShadowCornerRadius: CGFloat = BeautifyRenderer.innerCornerRadius,
+        beautifyInnerShadowInset: CGFloat = 0
     ) -> NSImage? {
         guard let baseImage = previewImage ?? fallbackBaseImage else { return nil }
 
@@ -960,7 +963,10 @@ class EditCanvasView: NSView {
                 preset: preset,
                 padding: pad,
                 wallpaperImage: wallpaperImage,
-                shadowEnabled: beautifyShadowEnabled
+                shadowEnabled: beautifyShadowEnabled,
+                innerClipRadius: beautifyInnerClipRadius,
+                innerShadowCornerRadius: beautifyInnerShadowCornerRadius,
+                innerShadowInset: beautifyInnerShadowInset
             )
         }
         return innerImage

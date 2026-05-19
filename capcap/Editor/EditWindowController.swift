@@ -232,6 +232,16 @@ class EditWindowController {
         canvasView?.captureRect = captureRect
         canvasView?.captureScreen = screen
 
+        if isBeautifyActive {
+            canvasView?.beautifyCornerRadius = isWindowCapture ? nil : BeautifyRenderer.innerCornerRadius
+            beautifyContainerView?.setInnerShadowCornerRadius(
+                isWindowCapture ? WindowEffects.cornerRadiusPoints : BeautifyRenderer.innerCornerRadius
+            )
+            beautifyContainerView?.setInnerShadowInset(
+                isWindowCapture ? BeautifyRenderer.windowInnerShadowInset : 0
+            )
+        }
+
         // Beautify caches the cropped screenshot in `externalBaseImage` so the
         // canvas can clip it to rounded corners. Without re-cropping here, a
         // selection resize would just stretch the cached image to the new
@@ -239,7 +249,9 @@ class EditWindowController {
         if isBeautifyActive,
            let canvasView,
            canvasView.previewImage == nil {
-            canvasView.externalBaseImage = canvasView.resolveBaseImageForEditing()
+            canvasView.externalBaseImage = windowShapedBaseImage(
+                from: canvasView.resolveBaseImageForEditing()
+            )
         }
 
         canvasView?.needsDisplay = true
@@ -568,12 +580,19 @@ class EditWindowController {
         // Beautify and annotation tools coexist — don't clear the active tool.
 
         // The canvas draws its content (previewImage or externalBaseImage)
-        // clipped to rounded corners. For normal screenshots there's no
-        // previewImage, so we snapshot the selection area once and hand it
-        // to the canvas as externalBaseImage.
-        canvasView.beautifyCornerRadius = BeautifyRenderer.innerCornerRadius
+        // inside the beautify card. Normal selections use a fixed card clip;
+        // clicked-window captures use the window's own rounded alpha mask.
+        canvasView.beautifyCornerRadius = isWindowCapture ? nil : BeautifyRenderer.innerCornerRadius
+        container.setInnerShadowCornerRadius(
+            isWindowCapture ? WindowEffects.cornerRadiusPoints : BeautifyRenderer.innerCornerRadius
+        )
+        container.setInnerShadowInset(
+            isWindowCapture ? BeautifyRenderer.windowInnerShadowInset : 0
+        )
         if canvasView.previewImage == nil, canvasView.externalBaseImage == nil {
-            canvasView.externalBaseImage = canvasView.resolveBaseImageForEditing()
+            canvasView.externalBaseImage = windowShapedBaseImage(
+                from: canvasView.resolveBaseImageForEditing()
+            )
         }
 
         currentBeautifyPreset = preset
@@ -604,6 +623,8 @@ class EditWindowController {
 
         container.setBeautify(preset: nil)
         container.setPadding(nil)
+        container.setInnerShadowCornerRadius(BeautifyRenderer.innerCornerRadius)
+        container.setInnerShadowInset(0)
         isBeautifyActive = false
         toolbars.forEach { $0.setBeautifyActive(false) }
         beautifySubToolbarView?.removeFromSuperview()
@@ -1093,7 +1114,7 @@ class EditWindowController {
     }
 
     private func currentCompositeImage() -> NSImage? {
-        let fallbackBaseImage: NSImage?
+        var fallbackBaseImage: NSImage?
         if canvasView?.hasPreviewImage == true {
             fallbackBaseImage = nil
         } else if let overrideBaseImage {
@@ -1106,8 +1127,12 @@ class EditWindowController {
             fallbackBaseImage = ScreenCapturer.capture(rect: captureRect, screen: screen)
         }
 
-        let annotationClipMask = isWindowCapture && !isBeautifyActive && canvasView?.hasPreviewImage != true
-            ? windowBaseImage
+        if canvasView?.hasPreviewImage != true {
+            fallbackBaseImage = windowShapedBaseImage(from: fallbackBaseImage)
+        }
+
+        let annotationClipMask = isWindowCapture && canvasView?.hasPreviewImage != true
+            ? fallbackBaseImage
             : nil
 
         guard let composite = canvasView?.compositeImage(
@@ -1116,7 +1141,14 @@ class EditWindowController {
             beautifyPadding: isBeautifyActive ? currentBeautifyPadding : nil,
             beautifyShadowEnabled: isBeautifyActive ? currentBeautifyShadowEnabled : true,
             wallpaperImage: isBeautifyActive ? beautifyContainerView?.wallpaperImage : nil,
-            annotationClipMask: annotationClipMask
+            annotationClipMask: annotationClipMask,
+            beautifyInnerClipRadius: isBeautifyActive && isWindowCapture ? nil : BeautifyRenderer.innerCornerRadius,
+            beautifyInnerShadowCornerRadius: isBeautifyActive && isWindowCapture
+                ? WindowEffects.cornerRadiusPoints
+                : BeautifyRenderer.innerCornerRadius,
+            beautifyInnerShadowInset: isBeautifyActive && isWindowCapture
+                ? BeautifyRenderer.windowInnerShadowInset
+                : 0
         ) else { return nil }
 
         // Window captures get rounded corners — and, when enabled, a
@@ -1130,6 +1162,12 @@ class EditWindowController {
         let rounded = windowBaseImage == nil ? WindowEffects.roundedCorners(composite) : composite
         guard Defaults.windowShadowEnabled else { return rounded }
         return WindowEffects.withShadow(rounded, size: CGFloat(Defaults.windowShadowSize))
+    }
+
+    private func windowShapedBaseImage(from image: NSImage?) -> NSImage? {
+        guard let image else { return nil }
+        guard isWindowCapture, canvasView?.hasPreviewImage != true else { return image }
+        return windowBaseImage ?? WindowEffects.roundedCorners(image)
     }
 
     /// While auto-scroll runs capcap is deactivated, so a local key monitor

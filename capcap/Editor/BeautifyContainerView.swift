@@ -17,6 +17,15 @@ final class BeautifyContainerView: NSView {
     /// Controls the extra beautify shadow cast by the inner rounded card.
     private(set) var shadowEnabled: Bool = true
 
+    /// Corner radius used for the beautify shadow silhouette. The canvas may
+    /// use an image alpha mask instead of a fixed clip for clicked-window
+    /// captures, but the shadow still needs a close window-shaped fallback.
+    private var innerShadowCornerRadius: CGFloat = BeautifyRenderer.innerCornerRadius
+
+    /// Insets the shadow source for clicked-window captures. This is much
+    /// cheaper than extracting the exact window alpha and avoids corner bleed.
+    private var innerShadowInset: CGFloat = 0
+
     /// User-driven padding override. When `nil`, `relayout()` falls back to
     /// `BeautifyRenderer.padding(for:)`. When set, the live preview uses this
     /// value and the controller is responsible for forwarding the same value
@@ -65,6 +74,16 @@ final class BeautifyContainerView: NSView {
 
     func setShadowEnabled(_ enabled: Bool) {
         shadowEnabled = enabled
+        needsDisplay = true
+    }
+
+    func setInnerShadowCornerRadius(_ radius: CGFloat) {
+        innerShadowCornerRadius = radius
+        needsDisplay = true
+    }
+
+    func setInnerShadowInset(_ inset: CGFloat) {
+        innerShadowInset = inset
         needsDisplay = true
     }
 
@@ -118,7 +137,8 @@ final class BeautifyContainerView: NSView {
         if shadowEnabled {
             BeautifyRenderer.drawInnerShadow(
                 innerRect: innerRect,
-                cornerRadius: BeautifyRenderer.innerCornerRadius,
+                cornerRadius: innerShadowCornerRadius,
+                inset: innerShadowInset,
                 context: context
             )
         }

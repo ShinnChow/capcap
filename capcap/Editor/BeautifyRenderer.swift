@@ -10,13 +10,17 @@ enum BeautifyRenderer {
     static let paddingMax: CGFloat = 220
     static let innerCornerRadius: CGFloat = 12
     // Ambient shadow (uniform glow around all edges)
-    static let ambientShadowBlur: CGFloat = 20
-    static let ambientShadowOpacity: CGFloat = 0.22
+    static let ambientShadowBlur: CGFloat = 24
+    static let ambientShadowOpacity: CGFloat = 0.30
     static let ambientShadowOffset: CGSize = CGSize(width: 0, height: 0)
     // Key shadow (slight downward bias for natural depth)
-    static let keyShadowBlur: CGFloat = 30
-    static let keyShadowOpacity: CGFloat = 0.25
-    static let keyShadowOffset: CGSize = CGSize(width: 0, height: -5)
+    static let keyShadowBlur: CGFloat = 38
+    static let keyShadowOpacity: CGFloat = 0.36
+    static let keyShadowOffset: CGSize = CGSize(width: 0, height: -7)
+    /// Window captures already carry the real system corner alpha. Their
+    /// beautify shadow only needs to start slightly inside that edge so the
+    /// light background does not peek through corner mismatches.
+    static let windowInnerShadowInset: CGFloat = 5
 
     // MARK: - Slider bounds (user-controlled padding)
     static let paddingSliderMin: CGFloat = 0
@@ -156,17 +160,29 @@ enum BeautifyRenderer {
     /// in the screenshot reveal the beautify background instead of a black
     /// backing rectangle.
     static func drawInnerShadow(innerRect: CGRect, cornerRadius: CGFloat, context: CGContext) {
+        drawInnerShadow(
+            innerRect: innerRect,
+            cornerRadius: cornerRadius,
+            inset: 0,
+            context: context
+        )
+    }
+
+    static func drawInnerShadow(innerRect: CGRect, cornerRadius: CGFloat, inset: CGFloat, context: CGContext) {
+        let shadowRect = innerRect.insetBy(dx: inset, dy: inset)
+        guard shadowRect.width > 0, shadowRect.height > 0 else { return }
+        let radius = max(0, cornerRadius - inset)
         let path = CGPath(
-            roundedRect: innerRect,
-            cornerWidth: cornerRadius,
-            cornerHeight: cornerRadius,
+            roundedRect: shadowRect,
+            cornerWidth: radius,
+            cornerHeight: radius,
             transform: nil
         )
 
         // Pass 1: ambient shadow — uniform glow around all edges
         drawShadowOnly(
             path: path,
-            innerRect: innerRect,
+            innerRect: shadowRect,
             offset: ambientShadowOffset,
             blur: ambientShadowBlur,
             opacity: ambientShadowOpacity,
@@ -176,7 +192,7 @@ enum BeautifyRenderer {
         // Pass 2: key shadow — slight downward offset for natural depth
         drawShadowOnly(
             path: path,
-            innerRect: innerRect,
+            innerRect: shadowRect,
             offset: keyShadowOffset,
             blur: keyShadowBlur,
             opacity: keyShadowOpacity,
@@ -192,7 +208,7 @@ enum BeautifyRenderer {
         opacity: CGFloat,
         context: CGContext
     ) {
-        let shadowOutset = blur * 3 + max(abs(offset.width), abs(offset.height)) + 2
+        let shadowOutset = shadowOutset(blur: blur, offset: offset)
         let clipRect = innerRect.insetBy(dx: -shadowOutset, dy: -shadowOutset)
 
         context.saveGState()
@@ -208,6 +224,10 @@ enum BeautifyRenderer {
         context.setFillColor(NSColor.black.cgColor)
         context.fillPath()
         context.restoreGState()
+    }
+
+    private static func shadowOutset(blur: CGFloat, offset: CGSize) -> CGFloat {
+        blur * 3 + max(abs(offset.width), abs(offset.height)) + 2
     }
 
     // MARK: - Full composite
@@ -242,7 +262,10 @@ enum BeautifyRenderer {
         preset: BeautifyPreset,
         padding: CGFloat,
         wallpaperImage: NSImage? = nil,
-        shadowEnabled: Bool = true
+        shadowEnabled: Bool = true,
+        innerClipRadius: CGFloat? = BeautifyRenderer.innerCornerRadius,
+        innerShadowCornerRadius: CGFloat = BeautifyRenderer.innerCornerRadius,
+        innerShadowInset: CGFloat = 0
     ) -> NSImage {
         let innerSize = innerImage.size
         guard innerSize.width > 0, innerSize.height > 0 else { return innerImage }
@@ -289,28 +312,46 @@ enum BeautifyRenderer {
 
         // 2. Soft shadow under the inner rounded rect
         if shadowEnabled {
-            drawInnerShadow(innerRect: inner, cornerRadius: innerCornerRadius, context: cg)
+            drawInnerShadow(
+                innerRect: inner,
+                cornerRadius: innerShadowCornerRadius,
+                inset: innerShadowInset,
+                context: cg
+            )
         }
 
-        // 3. Clip to the inner rounded rect and draw the image
-        cg.saveGState()
-        let clipPath = CGPath(
-            roundedRect: inner,
-            cornerWidth: innerCornerRadius,
-            cornerHeight: innerCornerRadius,
-            transform: nil
-        )
-        cg.addPath(clipPath)
-        cg.clip()
-        innerImage.draw(
-            in: inner,
-            from: .zero,
-            operation: .sourceOver,
-            fraction: 1.0,
-            respectFlipped: true,
-            hints: nil
-        )
-        cg.restoreGState()
+        // 3. Draw the image. Normal selections use the beautify card's fixed
+        // rounded clip; clicked-window captures pass nil here because their
+        // base image is already cut to the window's own alpha/rounded shape.
+        if let innerClipRadius {
+            cg.saveGState()
+            let clipPath = CGPath(
+                roundedRect: inner,
+                cornerWidth: innerClipRadius,
+                cornerHeight: innerClipRadius,
+                transform: nil
+            )
+            cg.addPath(clipPath)
+            cg.clip()
+            innerImage.draw(
+                in: inner,
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1.0,
+                respectFlipped: true,
+                hints: nil
+            )
+            cg.restoreGState()
+        } else {
+            innerImage.draw(
+                in: inner,
+                from: .zero,
+                operation: .sourceOver,
+                fraction: 1.0,
+                respectFlipped: true,
+                hints: nil
+            )
+        }
 
         NSGraphicsContext.restoreGraphicsState()
 
