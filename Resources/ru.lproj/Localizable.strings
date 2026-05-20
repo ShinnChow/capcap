@@ -30,11 +30,14 @@
 "shortcutCancel" = "Отмена";
 "shortcutWaiting" = "Нажмите клавиши…";
 "shortcutRestore" = "Сбросить";
-"pinShortcutHeader" = "Закрепление изображения";
-"pinShortcutHint" = "Закрепляет изображение, выбранное в Finder, или изображение из буфера обмена, если в Finder ничего нет. Когда закреплённое изображение в фокусе, нажмите X, чтобы очистить выбор Finder или буфер обмена.";
-"pinShortcutDefaultDisplay" = "Не задано";
-"pinShortcutClear" = "Очистить сочетание закрепления";
-"pinNoImage" = "Нет изображения для закрепления";
+"selectedImagePinShortcutHeader" = "Закрепить выбранное изображение";
+"selectedImagePinShortcutDefaultDisplay" = "Не задано";
+"selectedImagePinShortcutClear" = "Очистить сочетание закрепления выбранного изображения";
+"clipboardImagePinShortcutHeader" = "Закрепить изображение из буфера";
+"clipboardImagePinShortcutDefaultDisplay" = "Не задано";
+"clipboardImagePinShortcutClear" = "Очистить сочетание закрепления изображения из буфера";
+"selectedImagePinNoImage" = "В Finder не выбрано изображение";
+"clipboardImagePinNoImage" = "В буфере нет изображения для закрепления";
 "pinFromFinderHint" = "Изображение Finder закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardHint" = "Изображение из буфера закреплено, нажмите X, чтобы закрыть";
 
@@ -59,7 +62,8 @@
 "shortcutConflictTitle" = "Сочетание уже используется";
 "shortcutConflictScreenshot" = "Это сочетание клавиш уже назначено для снимка экрана. Выберите другое.";
 "shortcutConflictCountdown" = "Это сочетание клавиш уже назначено для снимка экрана с обратным отсчётом (сочетание для снимка + ⌥). Выберите другое.";
-"shortcutConflictPin" = "Это сочетание клавиш уже назначено для закрепления изображения. Выберите другое.";
+"shortcutConflictSelectedImagePin" = "Это сочетание клавиш уже назначено для закрепления выбранного изображения. Выберите другое.";
+"shortcutConflictClipboardImagePin" = "Это сочетание клавиш уже назначено для закрепления изображения из буфера. Выберите другое.";
 "shortcutConflictClipboard" = "Это сочетание клавиш уже назначено для копирования в буфер обмена. Выберите другое.";
 "shortcutConflictFileSave" = "Это сочетание клавиш уже назначено для сохранения в файл. Выберите другое.";
 "shortcutConflictSelectedImageEdit" = "Это сочетание клавиш уже назначено для редактирования выбранного изображения. Выберите другое.";

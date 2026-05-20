@@ -73,7 +73,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if HotkeyManager.shared.isRecording {
             HotkeyManager.shared.unregister()
             HotkeyManager.shared.unregisterCountdown()
-            HotkeyManager.shared.unregisterPin()
+            HotkeyManager.shared.unregisterSelectedImagePin()
+            HotkeyManager.shared.unregisterClipboardImagePin()
             HotkeyManager.shared.unregisterSelectedImageEdit()
             HotkeyManager.shared.unregisterClipboardImageEdit()
             keyMonitor?.isEnabled = false
@@ -100,13 +101,21 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             || (overlayController != nil && !Defaults.hasCustomClipboardHotkey)
         keyMonitor?.isRegularDoubleTapEnabled = needsDoubleTap
 
-        // The pin hotkey is independent of the screenshot hotkey.
-        if Defaults.hasCustomPinHotkey {
-            HotkeyManager.shared.registerPin { [weak self] in
-                self?.handlePinTrigger()
+        // The pin hotkeys are independent of the screenshot hotkey.
+        if Defaults.hasCustomSelectedImagePinHotkey {
+            HotkeyManager.shared.registerSelectedImagePin { [weak self] in
+                self?.handleSelectedImagePinTrigger()
             }
         } else {
-            HotkeyManager.shared.unregisterPin()
+            HotkeyManager.shared.unregisterSelectedImagePin()
+        }
+
+        if Defaults.hasCustomClipboardImagePinHotkey {
+            HotkeyManager.shared.registerClipboardImagePin { [weak self] in
+                self?.handleClipboardImagePinTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterClipboardImagePin()
         }
 
         if Defaults.hasCustomSelectedImageEditHotkey {
@@ -208,11 +217,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    /// Pin-hotkey trigger: pin the Finder selection or clipboard image onto the
-    /// screen. Skipped while a capture overlay is up.
-    func handlePinTrigger() {
+    /// Pin-hotkey trigger: pin Finder selection onto the screen. Skipped while
+    /// a capture overlay is up.
+    func handleSelectedImagePinTrigger() {
         guard overlayController == nil else { return }
-        PinLauncher.pinFromSourcesIfAvailable()
+        PinLauncher.pinSelectedImagesIfAvailable()
+    }
+
+    /// Pin-hotkey trigger: pin the clipboard image onto the screen. Skipped
+    /// while a capture overlay is up.
+    func handleClipboardImagePinTrigger() {
+        guard overlayController == nil else { return }
+        PinLauncher.pinClipboardImageIfAvailable()
     }
 
     func handleSelectedImageEditTrigger() {

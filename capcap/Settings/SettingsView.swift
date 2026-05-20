@@ -81,23 +81,27 @@ class SettingsView: NSView {
 
     // Screenshot shortcut card
     private var shortcutTitleLabel: NSTextField!
-    private var shortcutHintLabel: NSTextField!
     private var shortcutField: NSTextField!
     private var shortcutSetButton: NSButton!
     private var shortcutRestoreButton: NSButton!
     private var shortcutRecordingMonitor: Any?
 
-    // Pin-image shortcut card
-    private var pinShortcutTitleLabel: NSTextField!
-    private var pinShortcutHintLabel: NSTextField!
-    private var pinShortcutField: NSTextField!
-    private var pinShortcutSetButton: NSButton!
-    private var pinShortcutRestoreButton: NSButton!
-    private var pinShortcutRecordingMonitor: Any?
+    // Pin selected image shortcut card
+    private var selectedImagePinShortcutTitleLabel: NSTextField!
+    private var selectedImagePinShortcutField: NSTextField!
+    private var selectedImagePinShortcutSetButton: NSButton!
+    private var selectedImagePinShortcutRestoreButton: NSButton!
+    private var selectedImagePinShortcutRecordingMonitor: Any?
+
+    // Pin clipboard image shortcut card
+    private var clipboardImagePinShortcutTitleLabel: NSTextField!
+    private var clipboardImagePinShortcutField: NSTextField!
+    private var clipboardImagePinShortcutSetButton: NSButton!
+    private var clipboardImagePinShortcutRestoreButton: NSButton!
+    private var clipboardImagePinShortcutRecordingMonitor: Any?
 
     // Edit selected image shortcut card
     private var selectedImageEditShortcutTitleLabel: NSTextField!
-    private var selectedImageEditShortcutHintLabel: NSTextField!
     private var selectedImageEditShortcutField: NSTextField!
     private var selectedImageEditShortcutSetButton: NSButton!
     private var selectedImageEditShortcutRestoreButton: NSButton!
@@ -105,7 +109,6 @@ class SettingsView: NSView {
 
     // Edit clipboard image shortcut card
     private var clipboardImageEditShortcutTitleLabel: NSTextField!
-    private var clipboardImageEditShortcutHintLabel: NSTextField!
     private var clipboardImageEditShortcutField: NSTextField!
     private var clipboardImageEditShortcutSetButton: NSButton!
     private var clipboardImageEditShortcutRestoreButton: NSButton!
@@ -113,7 +116,6 @@ class SettingsView: NSView {
 
     // Copy-to-clipboard (editor confirm) shortcut card
     private var clipboardShortcutTitleLabel: NSTextField!
-    private var clipboardShortcutHintLabel: NSTextField!
     private var clipboardShortcutField: NSTextField!
     private var clipboardShortcutSetButton: NSButton!
     private var clipboardShortcutRestoreButton: NSButton!
@@ -121,11 +123,12 @@ class SettingsView: NSView {
 
     // Save-to-file shortcut card (default ⌘S)
     private var fileSaveShortcutTitleLabel: NSTextField!
-    private var fileSaveShortcutHintLabel: NSTextField!
     private var fileSaveShortcutField: NSTextField!
     private var fileSaveShortcutSetButton: NSButton!
     private var fileSaveShortcutRestoreButton: NSButton!
     private var fileSaveShortcutRecordingMonitor: Any?
+
+    private var shortcutResetButton: NSButton?
 
     // Permission badges
     private var accessibilityBadge: StatusBadge!
@@ -211,7 +214,8 @@ class SettingsView: NSView {
     deinit {
         refreshTimer?.invalidate()
         cancelShortcutRecording()
-        cancelPinShortcutRecording()
+        cancelSelectedImagePinShortcutRecording()
+        cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
         cancelClipboardImageEditShortcutRecording()
         cancelClipboardShortcutRecording()
@@ -276,7 +280,8 @@ class SettingsView: NSView {
         updateLaunchButtonVisibility()
         refreshPermissionStatus()
         refreshShortcutDisplay()
-        refreshPinShortcutDisplay()
+        refreshSelectedImagePinShortcutDisplay()
+        refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
         refreshClipboardImageEditShortcutDisplay()
         refreshClipboardShortcutDisplay()
@@ -604,7 +609,6 @@ class SettingsView: NSView {
         // Screenshot shortcut card
         let shortcut = buildShortcutCard(
             title: L10n.shortcutHeader,
-            hint: L10n.shortcutHint,
             setAction: #selector(shortcutSetClicked),
             restoreAction: #selector(shortcutRestoreClicked)
         )
@@ -612,14 +616,12 @@ class SettingsView: NSView {
         shortcutField = shortcut.field
         shortcutSetButton = shortcut.setButton
         shortcutRestoreButton = shortcut.restoreButton
-        shortcutHintLabel = shortcut.hint
         stack.addArrangedSubview(shortcut.card)
         shortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit selected image shortcut card
         let selectedImageEditShortcut = buildShortcutCard(
             title: L10n.selectedImageEditShortcutHeader,
-            hint: L10n.selectedImageEditShortcutHint,
             setAction: #selector(selectedImageEditShortcutSetClicked),
             restoreAction: #selector(selectedImageEditShortcutRestoreClicked)
         )
@@ -627,14 +629,12 @@ class SettingsView: NSView {
         selectedImageEditShortcutField = selectedImageEditShortcut.field
         selectedImageEditShortcutSetButton = selectedImageEditShortcut.setButton
         selectedImageEditShortcutRestoreButton = selectedImageEditShortcut.restoreButton
-        selectedImageEditShortcutHintLabel = selectedImageEditShortcut.hint
         stack.addArrangedSubview(selectedImageEditShortcut.card)
         selectedImageEditShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit clipboard image shortcut card
         let clipboardImageEditShortcut = buildShortcutCard(
             title: L10n.clipboardImageEditShortcutHeader,
-            hint: L10n.clipboardImageEditShortcutHint,
             setAction: #selector(clipboardImageEditShortcutSetClicked),
             restoreAction: #selector(clipboardImageEditShortcutRestoreClicked)
         )
@@ -642,30 +642,40 @@ class SettingsView: NSView {
         clipboardImageEditShortcutField = clipboardImageEditShortcut.field
         clipboardImageEditShortcutSetButton = clipboardImageEditShortcut.setButton
         clipboardImageEditShortcutRestoreButton = clipboardImageEditShortcut.restoreButton
-        clipboardImageEditShortcutHintLabel = clipboardImageEditShortcut.hint
         stack.addArrangedSubview(clipboardImageEditShortcut.card)
         clipboardImageEditShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Pin-image shortcut card
-        let pinShortcut = buildShortcutCard(
-            title: L10n.pinShortcutHeader,
-            hint: L10n.pinShortcutHint,
-            setAction: #selector(pinShortcutSetClicked),
-            restoreAction: #selector(pinShortcutRestoreClicked)
+        // Pin selected image shortcut card
+        let selectedImagePinShortcut = buildShortcutCard(
+            title: L10n.selectedImagePinShortcutHeader,
+            setAction: #selector(selectedImagePinShortcutSetClicked),
+            restoreAction: #selector(selectedImagePinShortcutRestoreClicked)
         )
-        pinShortcutTitleLabel = pinShortcut.title
-        pinShortcutField = pinShortcut.field
-        pinShortcutSetButton = pinShortcut.setButton
-        pinShortcutRestoreButton = pinShortcut.restoreButton
-        pinShortcutRestoreButton.toolTip = L10n.pinShortcutClear
-        pinShortcutHintLabel = pinShortcut.hint
-        stack.addArrangedSubview(pinShortcut.card)
-        pinShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        selectedImagePinShortcutTitleLabel = selectedImagePinShortcut.title
+        selectedImagePinShortcutField = selectedImagePinShortcut.field
+        selectedImagePinShortcutSetButton = selectedImagePinShortcut.setButton
+        selectedImagePinShortcutRestoreButton = selectedImagePinShortcut.restoreButton
+        selectedImagePinShortcutRestoreButton.toolTip = L10n.selectedImagePinShortcutClear
+        stack.addArrangedSubview(selectedImagePinShortcut.card)
+        selectedImagePinShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Pin clipboard image shortcut card
+        let clipboardImagePinShortcut = buildShortcutCard(
+            title: L10n.clipboardImagePinShortcutHeader,
+            setAction: #selector(clipboardImagePinShortcutSetClicked),
+            restoreAction: #selector(clipboardImagePinShortcutRestoreClicked)
+        )
+        clipboardImagePinShortcutTitleLabel = clipboardImagePinShortcut.title
+        clipboardImagePinShortcutField = clipboardImagePinShortcut.field
+        clipboardImagePinShortcutSetButton = clipboardImagePinShortcut.setButton
+        clipboardImagePinShortcutRestoreButton = clipboardImagePinShortcut.restoreButton
+        clipboardImagePinShortcutRestoreButton.toolTip = L10n.clipboardImagePinShortcutClear
+        stack.addArrangedSubview(clipboardImagePinShortcut.card)
+        clipboardImagePinShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Copy-to-clipboard (editor confirm) shortcut card
         let clipboardShortcut = buildShortcutCard(
             title: L10n.clipboardShortcutHeader,
-            hint: L10n.clipboardShortcutHint,
             setAction: #selector(clipboardShortcutSetClicked),
             restoreAction: #selector(clipboardShortcutRestoreClicked)
         )
@@ -673,14 +683,12 @@ class SettingsView: NSView {
         clipboardShortcutField = clipboardShortcut.field
         clipboardShortcutSetButton = clipboardShortcut.setButton
         clipboardShortcutRestoreButton = clipboardShortcut.restoreButton
-        clipboardShortcutHintLabel = clipboardShortcut.hint
         stack.addArrangedSubview(clipboardShortcut.card)
         clipboardShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Save-to-file shortcut card (default ⌘S)
         let fileSaveShortcut = buildShortcutCard(
             title: L10n.fileSaveShortcutHeader,
-            hint: L10n.fileSaveShortcutHint,
             setAction: #selector(fileSaveShortcutSetClicked),
             restoreAction: #selector(fileSaveShortcutRestoreClicked)
         )
@@ -688,9 +696,28 @@ class SettingsView: NSView {
         fileSaveShortcutField = fileSaveShortcut.field
         fileSaveShortcutSetButton = fileSaveShortcut.setButton
         fileSaveShortcutRestoreButton = fileSaveShortcut.restoreButton
-        fileSaveShortcutHintLabel = fileSaveShortcut.hint
         stack.addArrangedSubview(fileSaveShortcut.card)
         fileSaveShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        let footer = NSStackView()
+        footer.orientation = .horizontal
+        footer.alignment = .centerY
+        footer.spacing = 10
+        footer.translatesAutoresizingMaskIntoConstraints = false
+
+        let resetButton = NSButton(title: L10n.toolbarSettingsReset,
+                                   target: self,
+                                   action: #selector(shortcutsResetClicked))
+        resetButton.bezelStyle = .rounded
+        resetButton.controlSize = .large
+        resetButton.translatesAutoresizingMaskIntoConstraints = false
+        resetButton.setContentHuggingPriority(.required, for: .horizontal)
+        shortcutResetButton = resetButton
+
+        footer.addArrangedSubview(resetButton)
+        footer.addArrangedSubview(flexSpacer())
+        stack.addArrangedSubview(footer)
+        footer.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         return wrapPane(stack)
     }
@@ -1508,7 +1535,6 @@ class SettingsView: NSView {
     private struct ShortcutCardBuild {
         let card: CardView
         let title: NSTextField
-        let hint: NSTextField
         let field: NSTextField
         let setButton: NSButton
         let restoreButton: NSButton
@@ -1516,7 +1542,6 @@ class SettingsView: NSView {
 
     private func buildShortcutCard(
         title: String,
-        hint: String,
         setAction: Selector,
         restoreAction: Selector
     ) -> ShortcutCardBuild {
@@ -1594,14 +1619,9 @@ class SettingsView: NSView {
         inner.addArrangedSubview(row)
         row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
-        let hintLabel = secondaryLabel(hint, wrapping: true)
-        inner.addArrangedSubview(hintLabel)
-        hintLabel.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-
         return ShortcutCardBuild(
             card: card,
             title: titleLabel,
-            hint: hintLabel,
             field: field,
             setButton: setButton,
             restoreButton: restoreButton
@@ -1921,8 +1941,11 @@ class SettingsView: NSView {
         if slot != .screenshot, shortcutRecordingMonitor != nil {
             cancelShortcutRecording()
         }
-        if slot != .pin, pinShortcutRecordingMonitor != nil {
-            cancelPinShortcutRecording()
+        if slot != .selectedImagePin, selectedImagePinShortcutRecordingMonitor != nil {
+            cancelSelectedImagePinShortcutRecording()
+        }
+        if slot != .clipboardImagePin, clipboardImagePinShortcutRecordingMonitor != nil {
+            cancelClipboardImagePinShortcutRecording()
         }
         if slot != .selectedImageEdit, selectedImageEditShortcutRecordingMonitor != nil {
             cancelSelectedImageEditShortcutRecording()
@@ -1974,8 +1997,6 @@ class SettingsView: NSView {
                 return nil
             }
 
-            // No two functions may share a shortcut — reject a combo already
-            // bound to the pin hotkey (or the derived countdown hotkey).
             if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
                 forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .screenshot) {
                 self.cancelShortcutRecording()
@@ -2029,18 +2050,18 @@ class SettingsView: NSView {
         }
     }
 
-    @objc private func pinShortcutSetClicked() {
-        if pinShortcutRecordingMonitor != nil {
-            cancelPinShortcutRecording()
+    @objc private func selectedImagePinShortcutSetClicked() {
+        if selectedImagePinShortcutRecordingMonitor != nil {
+            cancelSelectedImagePinShortcutRecording()
             return
         }
-        cancelShortcutRecordings(except: .pin)
+        cancelShortcutRecordings(except: .selectedImagePin)
         HotkeyManager.shared.beginRecording()
-        pinShortcutSetButton.title = L10n.shortcutCancel
-        pinShortcutField.stringValue = L10n.shortcutWaiting
-        pinShortcutRestoreButton.isHidden = true
+        selectedImagePinShortcutSetButton.title = L10n.shortcutCancel
+        selectedImagePinShortcutField.stringValue = L10n.shortcutWaiting
+        selectedImagePinShortcutRestoreButton.isHidden = true
 
-        pinShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        selectedImagePinShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
             let modifiers = event.modifierFlags
             let isEscape = event.keyCode == UInt16(kVK_Escape)
@@ -2048,7 +2069,7 @@ class SettingsView: NSView {
             let pressedModifiers = modifiers.intersection(activeModifierMask)
 
             if isEscape && pressedModifiers.isEmpty {
-                self.cancelPinShortcutRecording()
+                self.cancelSelectedImagePinShortcutRecording()
                 return nil
             }
 
@@ -2066,55 +2087,144 @@ class SettingsView: NSView {
             // No two functions may share a shortcut — reject a combo already
             // bound to the screenshot or countdown hotkey.
             if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
-                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .pin) {
-                self.cancelPinShortcutRecording()
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .selectedImagePin) {
+                self.cancelSelectedImagePinShortcutRecording()
                 self.presentHotkeyConflictAlert(conflict)
                 return nil
             }
 
-            Defaults.pinHotkeyKeyCode = Int(keyCode)
-            Defaults.pinHotkeyModifiers = Int(carbonMods)
-            self.finishPinShortcutRecording()
+            Defaults.selectedImagePinHotkeyKeyCode = Int(keyCode)
+            Defaults.selectedImagePinHotkeyModifiers = Int(carbonMods)
+            self.finishSelectedImagePinShortcutRecording()
             return nil
         }
     }
 
-    @objc private func pinShortcutRestoreClicked() {
-        if pinShortcutRecordingMonitor != nil {
-            cancelPinShortcutRecording()
+    @objc private func selectedImagePinShortcutRestoreClicked() {
+        if selectedImagePinShortcutRecordingMonitor != nil {
+            cancelSelectedImagePinShortcutRecording()
         }
-        Defaults.clearPinHotkey()
+        Defaults.clearSelectedImagePinHotkey()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
-        refreshPinShortcutDisplay()
+        refreshSelectedImagePinShortcutDisplay()
     }
 
-    private func finishPinShortcutRecording() {
-        if let m = pinShortcutRecordingMonitor {
+    private func finishSelectedImagePinShortcutRecording() {
+        if let m = selectedImagePinShortcutRecordingMonitor {
             NSEvent.removeMonitor(m)
-            pinShortcutRecordingMonitor = nil
+            selectedImagePinShortcutRecordingMonitor = nil
         }
         HotkeyManager.shared.endRecording()
-        refreshPinShortcutDisplay()
+        refreshSelectedImagePinShortcutDisplay()
     }
 
-    func cancelPinShortcutRecording() {
-        guard pinShortcutRecordingMonitor != nil else { return }
-        if let m = pinShortcutRecordingMonitor {
+    func cancelSelectedImagePinShortcutRecording() {
+        guard selectedImagePinShortcutRecordingMonitor != nil else { return }
+        if let m = selectedImagePinShortcutRecordingMonitor {
             NSEvent.removeMonitor(m)
-            pinShortcutRecordingMonitor = nil
+            selectedImagePinShortcutRecordingMonitor = nil
         }
         HotkeyManager.shared.endRecording()
-        refreshPinShortcutDisplay()
+        refreshSelectedImagePinShortcutDisplay()
     }
 
-    private func refreshPinShortcutDisplay() {
-        pinShortcutSetButton?.title = L10n.shortcutSet
-        if let display = HotkeyManager.currentPinDisplayString() {
-            pinShortcutField?.stringValue = display
-            pinShortcutRestoreButton?.isHidden = false
+    private func refreshSelectedImagePinShortcutDisplay() {
+        selectedImagePinShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentSelectedImagePinDisplayString() {
+            selectedImagePinShortcutField?.stringValue = display
+            selectedImagePinShortcutRestoreButton?.isHidden = false
         } else {
-            pinShortcutField?.stringValue = L10n.pinShortcutDefaultDisplay
-            pinShortcutRestoreButton?.isHidden = true
+            selectedImagePinShortcutField?.stringValue = L10n.selectedImagePinShortcutDefaultDisplay
+            selectedImagePinShortcutRestoreButton?.isHidden = true
+        }
+    }
+
+    @objc private func clipboardImagePinShortcutSetClicked() {
+        if clipboardImagePinShortcutRecordingMonitor != nil {
+            cancelClipboardImagePinShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .clipboardImagePin)
+        HotkeyManager.shared.beginRecording()
+        clipboardImagePinShortcutSetButton.title = L10n.shortcutCancel
+        clipboardImagePinShortcutField.stringValue = L10n.shortcutWaiting
+        clipboardImagePinShortcutRestoreButton.isHidden = true
+
+        clipboardImagePinShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelClipboardImagePinShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            // No two functions may share a shortcut — reject a combo already
+            // bound to the screenshot or countdown hotkey.
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .clipboardImagePin) {
+                self.cancelClipboardImagePinShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.clipboardImagePinHotkeyKeyCode = Int(keyCode)
+            Defaults.clipboardImagePinHotkeyModifiers = Int(carbonMods)
+            self.finishClipboardImagePinShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func clipboardImagePinShortcutRestoreClicked() {
+        if clipboardImagePinShortcutRecordingMonitor != nil {
+            cancelClipboardImagePinShortcutRecording()
+        }
+        Defaults.clearClipboardImagePinHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshClipboardImagePinShortcutDisplay()
+    }
+
+    private func finishClipboardImagePinShortcutRecording() {
+        if let m = clipboardImagePinShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            clipboardImagePinShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshClipboardImagePinShortcutDisplay()
+    }
+
+    func cancelClipboardImagePinShortcutRecording() {
+        guard clipboardImagePinShortcutRecordingMonitor != nil else { return }
+        if let m = clipboardImagePinShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            clipboardImagePinShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshClipboardImagePinShortcutDisplay()
+    }
+
+    private func refreshClipboardImagePinShortcutDisplay() {
+        clipboardImagePinShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentClipboardImagePinDisplayString() {
+            clipboardImagePinShortcutField?.stringValue = display
+            clipboardImagePinShortcutRestoreButton?.isHidden = false
+        } else {
+            clipboardImagePinShortcutField?.stringValue = L10n.clipboardImagePinShortcutDefaultDisplay
+            clipboardImagePinShortcutRestoreButton?.isHidden = true
         }
     }
 
@@ -2458,6 +2568,26 @@ class SettingsView: NSView {
         fileSaveShortcutRestoreButton?.isHidden = !Defaults.hasCustomFileSaveHotkey
     }
 
+    @objc private func shortcutsResetClicked() {
+        cancelShortcutRecording()
+        cancelSelectedImagePinShortcutRecording()
+        cancelClipboardImagePinShortcutRecording()
+        cancelSelectedImageEditShortcutRecording()
+        cancelClipboardImageEditShortcutRecording()
+        cancelClipboardShortcutRecording()
+        cancelFileSaveShortcutRecording()
+
+        Defaults.resetShortcutHotkeysToDefaults()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshShortcutDisplay()
+        refreshSelectedImagePinShortcutDisplay()
+        refreshClipboardImagePinShortcutDisplay()
+        refreshSelectedImageEditShortcutDisplay()
+        refreshClipboardImageEditShortcutDisplay()
+        refreshClipboardShortcutDisplay()
+        refreshFileSaveShortcutDisplay()
+    }
+
     @objc private func updateLocalization() {
         menuBarTitleLabel?.stringValue = L10n.showMenuBarIcon
         launchAtLoginTitleLabel?.stringValue = L10n.launchAtLogin
@@ -2478,23 +2608,20 @@ class SettingsView: NSView {
         countdownHintLabel?.stringValue = L10n.countdownHint
         countdownValueLabel?.stringValue = "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)"
         shortcutTitleLabel?.stringValue = L10n.shortcutHeader
-        shortcutHintLabel?.stringValue = L10n.shortcutHint
         shortcutRestoreButton?.toolTip = L10n.shortcutRestore
-        pinShortcutTitleLabel?.stringValue = L10n.pinShortcutHeader
-        pinShortcutHintLabel?.stringValue = L10n.pinShortcutHint
-        pinShortcutRestoreButton?.toolTip = L10n.pinShortcutClear
+        selectedImagePinShortcutTitleLabel?.stringValue = L10n.selectedImagePinShortcutHeader
+        selectedImagePinShortcutRestoreButton?.toolTip = L10n.selectedImagePinShortcutClear
+        clipboardImagePinShortcutTitleLabel?.stringValue = L10n.clipboardImagePinShortcutHeader
+        clipboardImagePinShortcutRestoreButton?.toolTip = L10n.clipboardImagePinShortcutClear
         selectedImageEditShortcutTitleLabel?.stringValue = L10n.selectedImageEditShortcutHeader
-        selectedImageEditShortcutHintLabel?.stringValue = L10n.selectedImageEditShortcutHint
         selectedImageEditShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardImageEditShortcutTitleLabel?.stringValue = L10n.clipboardImageEditShortcutHeader
-        clipboardImageEditShortcutHintLabel?.stringValue = L10n.clipboardImageEditShortcutHint
         clipboardImageEditShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardShortcutTitleLabel?.stringValue = L10n.clipboardShortcutHeader
-        clipboardShortcutHintLabel?.stringValue = L10n.clipboardShortcutHint
         clipboardShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         fileSaveShortcutTitleLabel?.stringValue = L10n.fileSaveShortcutHeader
-        fileSaveShortcutHintLabel?.stringValue = L10n.fileSaveShortcutHint
         fileSaveShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        shortcutResetButton?.title = L10n.toolbarSettingsReset
         aboutTaglineLabel?.stringValue = L10n.aboutTagline
         aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
         aboutSourceTitleLabel?.stringValue = L10n.aboutSourceCode
@@ -2511,7 +2638,8 @@ class SettingsView: NSView {
         refreshErrorLogStatus()
         refreshUpdateRow()
         refreshShortcutDisplay()
-        refreshPinShortcutDisplay()
+        refreshSelectedImagePinShortcutDisplay()
+        refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
         refreshClipboardImageEditShortcutDisplay()
         refreshClipboardShortcutDisplay()

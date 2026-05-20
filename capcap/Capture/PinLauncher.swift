@@ -53,32 +53,39 @@ final class PinWindow: NSWindow {
     }
 }
 
-/// Builds pinned-image windows. Used both by the editor's pin button and by the
-/// global pin hotkey.
+/// Builds pinned-image windows. Used by the editor's pin button and by the
+/// source-specific global pin hotkeys.
 enum PinLauncher {
     private static let stackOffset = NSSize(width: 28, height: -28)
     private static let maxDistinctStackOffsets = 8
 
-    /// Pins the image currently selected in Finder, or — failing that — the
-    /// image on the clipboard, onto the screen. Shows a toast on success or
-    /// when neither source has an image. Returns true if something was pinned.
+    /// Pins images currently selected in Finder. This shortcut is intentionally
+    /// source-specific: it does not fall back to the clipboard.
     @discardableResult
-    static func pinFromSourcesIfAvailable() -> Bool {
+    static func pinSelectedImagesIfAvailable() -> Bool {
         let finderImages = FinderSelection.currentImageFileURLs().compactMap(loadImage)
-        if !finderImages.isEmpty {
-            pin(images: finderImages, source: .finder)
-            ToastWindow.show(message: L10n.pinFromFinderHint)
-            return true
+        guard !finderImages.isEmpty else {
+            ToastWindow.show(message: L10n.selectedImagePinNoImage)
+            return false
         }
 
-        if let image = ClipboardImageSource.currentImage() {
-            pin(image: image, source: .clipboard)
-            ToastWindow.show(message: L10n.pinFromClipboardHint)
-            return true
+        pin(images: finderImages, source: .finder)
+        ToastWindow.show(message: L10n.pinFromFinderHint)
+        return true
+    }
+
+    /// Pins the image currently on the clipboard. This shortcut is
+    /// source-specific: it does not check the Finder selection.
+    @discardableResult
+    static func pinClipboardImageIfAvailable() -> Bool {
+        guard let image = ClipboardImageSource.currentImage() else {
+            ToastWindow.show(message: L10n.clipboardImagePinNoImage)
+            return false
         }
 
-        ToastWindow.show(message: L10n.pinNoImage)
-        return false
+        pin(image: image, source: .clipboard)
+        ToastWindow.show(message: L10n.pinFromClipboardHint)
+        return true
     }
 
     /// Creates a floating pinned window for `image`. When `origin` is nil the

@@ -30,11 +30,14 @@
 "shortcutCancel" = "Annuler";
 "shortcutWaiting" = "Appuyez sur des touches…";
 "shortcutRestore" = "Réinitialiser";
-"pinShortcutHeader" = "Épingler une image";
-"pinShortcutHint" = "Épingle l'image sélectionnée dans le Finder, ou l'image du presse-papiers si aucune image Finder n'est disponible. Quand l'image épinglée a le focus, appuyez sur X pour effacer la sélection Finder ou le presse-papiers.";
-"pinShortcutDefaultDisplay" = "Non défini";
-"pinShortcutClear" = "Effacer le raccourci d'épinglage";
-"pinNoImage" = "Aucune image à épingler";
+"selectedImagePinShortcutHeader" = "Épingler l'image sélectionnée";
+"selectedImagePinShortcutDefaultDisplay" = "Non défini";
+"selectedImagePinShortcutClear" = "Effacer le raccourci d'épinglage de l'image sélectionnée";
+"clipboardImagePinShortcutHeader" = "Épingler l'image du presse-papiers";
+"clipboardImagePinShortcutDefaultDisplay" = "Non défini";
+"clipboardImagePinShortcutClear" = "Effacer le raccourci d'épinglage du presse-papiers";
+"selectedImagePinNoImage" = "Aucune image Finder sélectionnée";
+"clipboardImagePinNoImage" = "Aucune image à épingler dans le presse-papiers";
 "pinFromFinderHint" = "Image Finder épinglée, appuyez sur X pour fermer";
 "pinFromClipboardHint" = "Image du presse-papiers épinglée, appuyez sur X pour fermer";
 
@@ -59,7 +62,8 @@
 "shortcutConflictTitle" = "Raccourci déjà utilisé";
 "shortcutConflictScreenshot" = "Cette combinaison de touches est déjà utilisée par le raccourci de capture d'écran. Veuillez en choisir une autre.";
 "shortcutConflictCountdown" = "Cette combinaison de touches est déjà utilisée par le raccourci de capture avec compte à rebours (raccourci de capture + ⌥). Veuillez en choisir une autre.";
-"shortcutConflictPin" = "Cette combinaison de touches est déjà utilisée par le raccourci d'épinglage d'image. Veuillez en choisir une autre.";
+"shortcutConflictSelectedImagePin" = "Cette combinaison de touches est déjà utilisée par le raccourci d'épinglage de l'image sélectionnée. Veuillez en choisir une autre.";
+"shortcutConflictClipboardImagePin" = "Cette combinaison de touches est déjà utilisée par le raccourci d'épinglage de l'image du presse-papiers. Veuillez en choisir une autre.";
 "shortcutConflictClipboard" = "Cette combinaison de touches est déjà utilisée par le raccourci de copie dans le presse-papiers. Veuillez en choisir une autre.";
 "shortcutConflictFileSave" = "Cette combinaison de touches est déjà utilisée par le raccourci d'enregistrement dans un fichier. Veuillez en choisir une autre.";
 "shortcutConflictSelectedImageEdit" = "Cette combinaison de touches est déjà utilisée par le raccourci Modifier l'image sélectionnée. Veuillez en choisir une autre.";

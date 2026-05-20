@@ -30,11 +30,14 @@
 "shortcutCancel" = "Cancel";
 "shortcutWaiting" = "Press keys…";
 "shortcutRestore" = "Restore Default";
-"pinShortcutHeader" = "Pin Image";
-"pinShortcutHint" = "Press it to pin the image selected in Finder, or the clipboard image if Finder has none. When the pinned image is focused, press X to clear the Finder selection or clipboard.";
-"pinShortcutDefaultDisplay" = "Not set";
-"pinShortcutClear" = "Clear Pin Shortcut";
-"pinNoImage" = "No image selected or copied";
+"selectedImagePinShortcutHeader" = "Pin Selected Image";
+"selectedImagePinShortcutDefaultDisplay" = "Not set";
+"selectedImagePinShortcutClear" = "Clear Pin Selected Image Shortcut";
+"clipboardImagePinShortcutHeader" = "Pin Clipboard Image";
+"clipboardImagePinShortcutDefaultDisplay" = "Not set";
+"clipboardImagePinShortcutClear" = "Clear Pin Clipboard Image Shortcut";
+"selectedImagePinNoImage" = "No Finder image selected";
+"clipboardImagePinNoImage" = "No image on the clipboard";
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
 
@@ -59,7 +62,8 @@
 "shortcutConflictTitle" = "Shortcut Already in Use";
 "shortcutConflictScreenshot" = "This key combination is already used by the screenshot shortcut. Please choose a different one.";
 "shortcutConflictCountdown" = "This key combination is already used by the countdown screenshot shortcut (screenshot shortcut + ⌥). Please choose a different one.";
-"shortcutConflictPin" = "This key combination is already used by the Pin Image shortcut. Please choose a different one.";
+"shortcutConflictSelectedImagePin" = "This key combination is already used by the Pin Selected Image shortcut. Please choose a different one.";
+"shortcutConflictClipboardImagePin" = "This key combination is already used by the Pin Clipboard Image shortcut. Please choose a different one.";
 "shortcutConflictClipboard" = "This key combination is already used by the Copy to Clipboard shortcut. Please choose a different one.";
 "shortcutConflictFileSave" = "This key combination is already used by the Save to File shortcut. Please choose a different one.";
 "shortcutConflictSelectedImageEdit" = "This key combination is already used by the Edit Selected Image shortcut. Please choose a different one.";

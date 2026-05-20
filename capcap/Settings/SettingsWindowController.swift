@@ -80,7 +80,10 @@ class SettingsWindowController: NSWindowController {
 extension SettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         settingsView.cancelShortcutRecording()
-        settingsView.cancelPinShortcutRecording()
+        settingsView.cancelSelectedImagePinShortcutRecording()
+        settingsView.cancelClipboardImagePinShortcutRecording()
+        settingsView.cancelSelectedImageEditShortcutRecording()
+        settingsView.cancelClipboardImageEditShortcutRecording()
         settingsView.cancelClipboardShortcutRecording()
         settingsView.cancelFileSaveShortcutRecording()
         guard isStartup else { return }

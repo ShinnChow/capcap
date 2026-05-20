@@ -30,11 +30,14 @@
 "shortcutCancel" = "キャンセル";
 "shortcutWaiting" = "キー入力待ち…";
 "shortcutRestore" = "デフォルトに戻す";
-"pinShortcutHeader" = "画像ピン留め";
-"pinShortcutHint" = "Finder で選択中の画像をすぐにピン留めします。Finder に画像がない場合はクリップボードの画像を使います。ピン留め画像にフォーカスがあるときに X を押すと、Finder の選択またはクリップボードを消去できます。";
-"pinShortcutDefaultDisplay" = "未設定";
-"pinShortcutClear" = "ピン留めショートカットを消去";
-"pinNoImage" = "ピン留めできる画像がありません";
+"selectedImagePinShortcutHeader" = "選択画像をピン留め";
+"selectedImagePinShortcutDefaultDisplay" = "未設定";
+"selectedImagePinShortcutClear" = "選択画像ピン留めショートカットを消去";
+"clipboardImagePinShortcutHeader" = "クリップボード画像をピン留め";
+"clipboardImagePinShortcutDefaultDisplay" = "未設定";
+"clipboardImagePinShortcutClear" = "クリップボード画像ピン留めショートカットを消去";
+"selectedImagePinNoImage" = "Finder で選択中の画像がありません";
+"clipboardImagePinNoImage" = "クリップボードにピン留めできる画像がありません";
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 
@@ -59,7 +62,8 @@
 "shortcutConflictTitle" = "ショートカットは既に使用中です";
 "shortcutConflictScreenshot" = "このキーの組み合わせはスクリーンショットのショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictCountdown" = "このキーの組み合わせはカウントダウン撮影のショートカット（スクリーンショットのショートカット + ⌥）で既に使用されています。別の組み合わせを選んでください。";
-"shortcutConflictPin" = "このキーの組み合わせは画像ピン留めのショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictSelectedImagePin" = "このキーの組み合わせは選択画像をピン留めのショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictClipboardImagePin" = "このキーの組み合わせはクリップボード画像をピン留めのショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictClipboard" = "このキーの組み合わせはクリップボードへコピーのショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictFileSave" = "このキーの組み合わせはファイルへ保存のショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictSelectedImageEdit" = "このキーの組み合わせは選択画像を編集のショートカットで既に使用されています。別の組み合わせを選んでください。";

@@ -95,11 +95,14 @@ enum L10n {
     static var shortcutRestore: String { s("shortcutRestore") }
 
     // Pin-image shortcut
-    static var pinShortcutHeader: String { s("pinShortcutHeader") }
-    static var pinShortcutHint: String { s("pinShortcutHint") }
-    static var pinShortcutDefaultDisplay: String { s("pinShortcutDefaultDisplay") }
-    static var pinShortcutClear: String { s("pinShortcutClear") }
-    static var pinNoImage: String { s("pinNoImage") }
+    static var selectedImagePinShortcutHeader: String { s("selectedImagePinShortcutHeader") }
+    static var selectedImagePinShortcutDefaultDisplay: String { s("selectedImagePinShortcutDefaultDisplay") }
+    static var selectedImagePinShortcutClear: String { s("selectedImagePinShortcutClear") }
+    static var clipboardImagePinShortcutHeader: String { s("clipboardImagePinShortcutHeader") }
+    static var clipboardImagePinShortcutDefaultDisplay: String { s("clipboardImagePinShortcutDefaultDisplay") }
+    static var clipboardImagePinShortcutClear: String { s("clipboardImagePinShortcutClear") }
+    static var selectedImagePinNoImage: String { s("selectedImagePinNoImage") }
+    static var clipboardImagePinNoImage: String { s("clipboardImagePinNoImage") }
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
 
@@ -124,7 +127,8 @@ enum L10n {
     static var shortcutConflictTitle: String { s("shortcutConflictTitle") }
     static var shortcutConflictScreenshot: String { s("shortcutConflictScreenshot") }
     static var shortcutConflictCountdown: String { s("shortcutConflictCountdown") }
-    static var shortcutConflictPin: String { s("shortcutConflictPin") }
+    static var shortcutConflictSelectedImagePin: String { s("shortcutConflictSelectedImagePin") }
+    static var shortcutConflictClipboardImagePin: String { s("shortcutConflictClipboardImagePin") }
     static var shortcutConflictClipboard: String { s("shortcutConflictClipboard") }
     static var shortcutConflictFileSave: String { s("shortcutConflictFileSave") }
     static var shortcutConflictSelectedImageEdit: String { s("shortcutConflictSelectedImageEdit") }
@@ -453,29 +457,63 @@ struct Defaults {
         defaults.removeObject(forKey: "screenshotHotkeyModifiers")
     }
 
-    // Custom pin-image hotkey. Pressing it pins the image selected in Finder or
-    // held on the clipboard onto the screen. It has no default — when the key
-    // is absent the hotkey is simply unregistered. Presence must be checked via
-    // `hasCustomPinHotkey` since key code 0 (`A`) is a valid value.
-    // Modifiers are stored using Carbon flags, same as the screenshot hotkey.
-
-    static var pinHotkeyKeyCode: Int {
-        get { defaults.integer(forKey: "pinHotkeyKeyCode") }
-        set { defaults.set(newValue, forKey: "pinHotkeyKeyCode") }
-    }
-
-    static var pinHotkeyModifiers: Int {
-        get { defaults.integer(forKey: "pinHotkeyModifiers") }
-        set { defaults.set(newValue, forKey: "pinHotkeyModifiers") }
-    }
-
-    static var hasCustomPinHotkey: Bool {
-        defaults.object(forKey: "pinHotkeyKeyCode") != nil
-    }
-
-    static func clearPinHotkey() {
+    private static func clearLegacyPinHotkey() {
         defaults.removeObject(forKey: "pinHotkeyKeyCode")
         defaults.removeObject(forKey: "pinHotkeyModifiers")
+    }
+
+    // Custom pin-image hotkeys. They are global Carbon hotkeys with no
+    // defaults: users opt in from Settings. The selected-image shortcut reads
+    // images selected in Finder; the clipboard-image shortcut reads only the
+    // clipboard image.
+
+    static var selectedImagePinHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "selectedImagePinHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "selectedImagePinHotkeyKeyCode") }
+    }
+
+    static var selectedImagePinHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "selectedImagePinHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "selectedImagePinHotkeyModifiers") }
+    }
+
+    static var hasCustomSelectedImagePinHotkey: Bool {
+        defaults.object(forKey: "selectedImagePinHotkeyKeyCode") != nil
+    }
+
+    static func clearSelectedImagePinHotkey() {
+        defaults.removeObject(forKey: "selectedImagePinHotkeyKeyCode")
+        defaults.removeObject(forKey: "selectedImagePinHotkeyModifiers")
+    }
+
+    static var clipboardImagePinHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "clipboardImagePinHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "clipboardImagePinHotkeyKeyCode") }
+    }
+
+    static var clipboardImagePinHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "clipboardImagePinHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "clipboardImagePinHotkeyModifiers") }
+    }
+
+    static var hasCustomClipboardImagePinHotkey: Bool {
+        defaults.object(forKey: "clipboardImagePinHotkeyKeyCode") != nil
+    }
+
+    static func clearClipboardImagePinHotkey() {
+        defaults.removeObject(forKey: "clipboardImagePinHotkeyKeyCode")
+        defaults.removeObject(forKey: "clipboardImagePinHotkeyModifiers")
+    }
+
+    static func resetShortcutHotkeysToDefaults() {
+        clearScreenshotHotkey()
+        clearLegacyPinHotkey()
+        clearSelectedImagePinHotkey()
+        clearClipboardImagePinHotkey()
+        clearSelectedImageEditHotkey()
+        clearClipboardImageEditHotkey()
+        clearClipboardHotkey()
+        clearFileSaveHotkey()
     }
 
     // Custom image-edit hotkeys. They are global Carbon hotkeys with no
