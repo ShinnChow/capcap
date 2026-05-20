@@ -11,7 +11,8 @@ enum ToolbarSection {
 /// the editor with the current layout, plus three drag-and-drop grids for
 /// assigning tools to the main toolbar, the side toolbar, or hiding them.
 final class ToolbarSettingsPane: NSView {
-    /// Edited-but-not-yet-applied layout. Committed to `Defaults` on "Apply".
+    /// Layout currently shown in the grids and preview. Drag edits persist
+    /// immediately, so the settings page has no separate apply step.
     private var workingLayout: ToolbarLayout = Defaults.toolbarLayout.normalized()
 
     private let preview = ToolbarLayoutPreviewView()
@@ -28,8 +29,6 @@ final class ToolbarSettingsPane: NSView {
     private let hiddenHint = ToolbarSettingsPane.hintLabel()
     private let footnote = ToolbarSettingsPane.hintLabel()
     private let resetButton = NSButton()
-    private let cancelButton = NSButton()
-    private let applyButton = NSButton()
 
     init() {
         super.init(frame: .zero)
@@ -115,7 +114,7 @@ final class ToolbarSettingsPane: NSView {
         stack.addArrangedSubview(sectionsCard)
         sectionsCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Footer: reset on the left, cancel + apply on the right.
+        // Footer: reset lives at the lower-right. Drag changes apply instantly.
         let footer = NSStackView()
         footer.orientation = .horizontal
         footer.alignment = .centerY
@@ -126,21 +125,10 @@ final class ToolbarSettingsPane: NSView {
         resetButton.target = self
         resetButton.action = #selector(resetTapped)
 
-        Self.styleButton(cancelButton, title: "", prominent: false)
-        cancelButton.target = self
-        cancelButton.action = #selector(cancelTapped)
-
-        Self.styleButton(applyButton, title: "", prominent: true)
-        applyButton.keyEquivalent = "\r"
-        applyButton.target = self
-        applyButton.action = #selector(applyTapped)
-
-        footer.addArrangedSubview(resetButton)
         let spacer = NSView()
         spacer.translatesAutoresizingMaskIntoConstraints = false
         footer.addArrangedSubview(spacer)
-        footer.addArrangedSubview(cancelButton)
-        footer.addArrangedSubview(applyButton)
+        footer.addArrangedSubview(resetButton)
 
         stack.addArrangedSubview(footer)
         footer.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -193,6 +181,7 @@ final class ToolbarSettingsPane: NSView {
         ).normalized()
         preview.layout = workingLayout
         updatePreviewHeight()
+        Defaults.toolbarLayout = workingLayout
     }
 
     private func updatePreviewHeight() {
@@ -201,19 +190,10 @@ final class ToolbarSettingsPane: NSView {
 
     // MARK: - Actions
 
-    @objc private func applyTapped() {
-        collectWorkingLayout()
-        Defaults.toolbarLayout = workingLayout
-    }
-
-    @objc private func cancelTapped() {
-        workingLayout = Defaults.toolbarLayout.normalized()
-        syncFromWorkingLayout()
-    }
-
     @objc private func resetTapped() {
         workingLayout = .default
         syncFromWorkingLayout()
+        Defaults.toolbarLayout = workingLayout
     }
 
     @objc private func onLanguageChanged() {
@@ -229,8 +209,6 @@ final class ToolbarSettingsPane: NSView {
         hiddenHint.stringValue = L10n.toolbarSettingsHiddenHint
         footnote.stringValue = L10n.toolbarSettingsFootnote
         resetButton.title = L10n.toolbarSettingsReset
-        cancelButton.title = L10n.toolbarSettingsCancel
-        applyButton.title = L10n.toolbarSettingsApply
     }
 
     // MARK: - Shared builders
