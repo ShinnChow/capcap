@@ -35,6 +35,12 @@ class OverlayWindowController {
     /// In image-edit mode, where `presetImage` came from. nil otherwise.
     private let presetSource: PresetSource?
 
+    /// Route the default copy-to-clipboard hotkey (double-tap ⌘) into the
+    /// editor while the overlay is active. No-op when the editor isn't up yet.
+    func confirmFromKeyboard() {
+        editController?.confirmFromKeyboard()
+    }
+
     init(onComplete: @escaping (NSImage?) -> Void) {
         self.presetImage = nil
         self.presetSource = nil
@@ -132,8 +138,12 @@ class OverlayWindowController {
                 self?.cancel()
                 return nil
             }
-            if HotkeyManager.eventMatchesSaveHotkey(event) {
+            if HotkeyManager.eventMatchesClipboardHotkey(event) {
                 self?.editController?.confirmFromKeyboard()
+                return nil
+            }
+            if HotkeyManager.eventMatchesFileSaveHotkey(event) {
+                self?.editController?.saveFromKeyboard()
                 return nil
             }
             // Image-edit mode only: X bails out of an editor that opened by

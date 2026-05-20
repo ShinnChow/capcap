@@ -1041,9 +1041,9 @@ class EditWindowController {
     }
 
     func confirmFromKeyboard() {
-        // Enter during auto-scroll stops scrolling and moves to crop mode;
-        // during crop mode it confirms the crop. It must not copy to the
-        // clipboard until the user is actually in the editor.
+        // The clipboard hotkey during auto-scroll stops scrolling and moves to
+        // crop mode; during crop mode it confirms the crop. It must not copy to
+        // the clipboard until the user is actually in the editor.
         if isScrollCapturing {
             stopScrollCapture()
             return
@@ -1053,6 +1053,20 @@ class EditWindowController {
             return
         }
         confirm()
+    }
+
+    /// Save-to-file (⌘S) entry point — mirrors `confirmFromKeyboard`'s phased
+    /// behavior so the hotkey works regardless of which stage the editor is in.
+    func saveFromKeyboard() {
+        if isScrollCapturing {
+            stopScrollCapture()
+            return
+        }
+        if isCropping {
+            confirmCrop()
+            return
+        }
+        save()
     }
 
     private func confirm() {
@@ -1171,13 +1185,16 @@ class EditWindowController {
     }
 
     /// While auto-scroll runs capcap is deactivated, so a local key monitor
-    /// would not fire. This global monitor lets the save hotkey (default
-    /// Return) stop scrolling.
+    /// would not fire. This global monitor lets the clipboard hotkey (when
+    /// customized) or the file-save hotkey (⌘S by default) stop scrolling.
+    /// The default clipboard hotkey is double-tap ⌘, routed separately via
+    /// `KeyMonitor` in `AppDelegate`.
     private func installScrollCaptureKeyMonitor() {
         removeScrollCaptureKeyMonitor()
         scrollCaptureKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.isScrollCapturing else { return }
-            if HotkeyManager.eventMatchesSaveHotkey(event) {
+            if HotkeyManager.eventMatchesClipboardHotkey(event)
+                || HotkeyManager.eventMatchesFileSaveHotkey(event) {
                 self.stopScrollCapture()
             }
         }

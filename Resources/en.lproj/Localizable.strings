@@ -23,14 +23,14 @@
 "windowShadowSizeHint" = "Larger values blur softer and spread wider, so the window appears to float higher";
 
 /* Screenshot shortcut */
-"shortcutHeader" = "Screenshot Shortcut";
+"shortcutHeader" = "Screenshot";
 "shortcutHint" = "Default: double-tap ⌘. Setting a custom shortcut disables double-tap.";
 "shortcutDefaultDisplay" = "Double-tap ⌘";
 "shortcutSet" = "Set";
 "shortcutCancel" = "Cancel";
 "shortcutWaiting" = "Press keys…";
 "shortcutRestore" = "Restore Default";
-"pinShortcutHeader" = "Pin Image Shortcut";
+"pinShortcutHeader" = "Pin Image";
 "pinShortcutHint" = "Press it to pin the image selected in Finder, or the clipboard image if Finder has none. When the pinned image is focused, press X to clear the Finder selection or clipboard.";
 "pinShortcutDefaultDisplay" = "Not set";
 "pinShortcutClear" = "Clear Pin Shortcut";
@@ -38,17 +38,22 @@
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
 
-/* Save shortcut (editor confirm) */
-"saveShortcutHeader" = "Save Shortcut";
-"saveShortcutHint" = "Pressed inside the editor to confirm and copy the screenshot. Defaults to Return when not set.";
-"saveShortcutDefaultDisplay" = "Return";
+/* Copy-to-clipboard shortcut (editor confirm) */
+"clipboardShortcutHeader" = "Copy to Clipboard";
+"clipboardShortcutHint" = "Pressed inside the editor to commit the edit and copy the screenshot to the clipboard. Defaults to double-tap ⌘ when not set.";
+"clipboardShortcutDefaultDisplay" = "Double-tap ⌘";
+
+/* Save-to-file shortcut (editor save) */
+"fileSaveShortcutHeader" = "Save to File";
+"fileSaveShortcutHint" = "Pressed inside the editor to open the save dialog and save the screenshot as a PNG file. Defaults to ⌘S.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Shortcut Already in Use";
 "shortcutConflictScreenshot" = "This key combination is already used by the screenshot shortcut. Please choose a different one.";
 "shortcutConflictCountdown" = "This key combination is already used by the countdown screenshot shortcut (screenshot shortcut + ⌥). Please choose a different one.";
 "shortcutConflictPin" = "This key combination is already used by the Pin Image shortcut. Please choose a different one.";
-"shortcutConflictSave" = "This key combination is already used by the Save shortcut. Please choose a different one.";
+"shortcutConflictClipboard" = "This key combination is already used by the Copy to Clipboard shortcut. Please choose a different one.";
+"shortcutConflictFileSave" = "This key combination is already used by the Save to File shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";
@@ -88,10 +93,10 @@
 "tipScrollCapture" = "Scroll Capture";
 "tipBeautify" = "Beautify";
 "tipOCR" = "OCR & Translate";
-"tipSave" = "Save";
+"tipSave" = "Save to File";
 "tipPin" = "Pin to Screen";
 "tipCancel" = "Cancel";
-"tipConfirm" = "Confirm";
+"tipConfirm" = "Copy to Clipboard";
 
 /* Beautify */
 "beautify" = "Beautify";

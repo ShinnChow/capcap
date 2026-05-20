@@ -23,14 +23,14 @@
 "windowShadowSizeHint" = "数值越大投影越柔和、扩散越远，窗口看起来悬浮得越高";
 
 /* Screenshot shortcut */
-"shortcutHeader" = "截图快捷键";
+"shortcutHeader" = "截图";
 "shortcutHint" = "默认双击 ⌘ 触发；自定义后双击 ⌘ 失效，可点恢复回到默认";
 "shortcutDefaultDisplay" = "双击 ⌘";
 "shortcutSet" = "录制";
 "shortcutCancel" = "取消";
 "shortcutWaiting" = "等待按键…";
 "shortcutRestore" = "恢复默认";
-"pinShortcutHeader" = "钉图快捷键";
+"pinShortcutHeader" = "钉图";
 "pinShortcutHint" = "按下后直接钉起 Finder 选中的图片；没有 Finder 图片时会使用剪贴板图片。钉图窗口聚焦时按 X 可取消 Finder 选中或清空剪贴板。";
 "pinShortcutDefaultDisplay" = "未设置";
 "pinShortcutClear" = "清除钉图快捷键";
@@ -38,17 +38,22 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 
-/* Save shortcut (editor confirm) */
-"saveShortcutHeader" = "保存快捷键";
-"saveShortcutHint" = "在编辑器内按下以确认并复制截图。未设置时默认使用回车。";
-"saveShortcutDefaultDisplay" = "回车";
+/* Copy-to-clipboard shortcut (editor confirm) */
+"clipboardShortcutHeader" = "复制到剪贴板";
+"clipboardShortcutHint" = "在编辑器内按下以确认编辑并把截图复制到剪贴板。未设置时默认双击 ⌘。";
+"clipboardShortcutDefaultDisplay" = "双击 ⌘";
+
+/* Save-to-file shortcut (editor save) */
+"fileSaveShortcutHeader" = "保存到文件";
+"fileSaveShortcutHint" = "在编辑器内按下以打开保存对话框，把截图保存为 PNG 文件。默认 ⌘S。";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "快捷键已被占用";
 "shortcutConflictScreenshot" = "该按键组合已被截图快捷键占用，请换一个。";
 "shortcutConflictCountdown" = "该按键组合已被倒计时截图快捷键（截图快捷键 + ⌥）占用，请换一个。";
 "shortcutConflictPin" = "该按键组合已被钉图快捷键占用，请换一个。";
-"shortcutConflictSave" = "该按键组合已被保存快捷键占用，请换一个。";
+"shortcutConflictClipboard" = "该按键组合已被复制到剪贴板快捷键占用，请换一个。";
+"shortcutConflictFileSave" = "该按键组合已被保存到文件快捷键占用，请换一个。";
 
 /* Menu bar */
 "takeScreenshot" = "截图";
@@ -88,10 +93,10 @@
 "tipScrollCapture" = "长截图";
 "tipBeautify" = "美化";
 "tipOCR" = "文字识别";
-"tipSave" = "保存";
+"tipSave" = "保存到文件";
 "tipPin" = "钉在屏幕";
 "tipCancel" = "取消";
-"tipConfirm" = "确认";
+"tipConfirm" = "复制到剪贴板";
 
 /* Beautify */
 "beautify" = "美化";

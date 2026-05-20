@@ -23,14 +23,14 @@
 "windowShadowSizeHint" = "값이 클수록 그림자가 부드럽고 넓게 퍼져 창이 더 높이 떠 보입니다";
 
 /* Screenshot shortcut */
-"shortcutHeader" = "스크린샷 단축키";
+"shortcutHeader" = "스크린샷";
 "shortcutHint" = "기본값은 ⌘ 두 번 누르기입니다. 사용자 단축키를 설정하면 두 번 누르기는 비활성화됩니다.";
 "shortcutDefaultDisplay" = "⌘ 두 번 누르기";
 "shortcutSet" = "기록";
 "shortcutCancel" = "취소";
 "shortcutWaiting" = "키 입력 대기 중…";
 "shortcutRestore" = "기본값 복원";
-"pinShortcutHeader" = "이미지 고정 단축키";
+"pinShortcutHeader" = "이미지 고정";
 "pinShortcutHint" = "Finder에서 선택한 이미지를 바로 고정합니다. Finder에 이미지가 없으면 클립보드 이미지를 사용합니다. 고정된 이미지에 포커스가 있을 때 X를 누르면 Finder 선택 또는 클립보드를 지울 수 있습니다.";
 "pinShortcutDefaultDisplay" = "설정 안 됨";
 "pinShortcutClear" = "고정 단축키 지우기";
@@ -38,17 +38,22 @@
 "pinFromFinderHint" = "Finder 이미지를 고정했습니다. X 키를 눌러 닫기";
 "pinFromClipboardHint" = "클립보드 이미지를 고정했습니다. X 키를 눌러 닫기";
 
-/* Save shortcut (editor confirm) */
-"saveShortcutHeader" = "저장 단축키";
-"saveShortcutHint" = "편집기에서 눌러 스크린샷을 확정하고 복사합니다. 설정하지 않으면 Return 키를 사용합니다.";
-"saveShortcutDefaultDisplay" = "Return";
+/* Copy-to-clipboard shortcut (editor confirm) */
+"clipboardShortcutHeader" = "클립보드에 복사";
+"clipboardShortcutHint" = "편집기에서 누르면 편집을 확정하고 스크린샷을 클립보드에 복사합니다. 설정하지 않으면 ⌘ 더블탭이 기본값입니다.";
+"clipboardShortcutDefaultDisplay" = "⌘ 더블탭";
+
+/* Save-to-file shortcut (editor save) */
+"fileSaveShortcutHeader" = "파일로 저장";
+"fileSaveShortcutHint" = "편집기에서 누르면 저장 대화상자를 열어 스크린샷을 PNG로 저장합니다. 기본값은 ⌘S입니다.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "단축키가 이미 사용 중입니다";
 "shortcutConflictScreenshot" = "이 키 조합은 이미 스크린샷 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictCountdown" = "이 키 조합은 이미 카운트다운 스크린샷 단축키(스크린샷 단축키 + ⌥)에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictPin" = "이 키 조합은 이미 이미지 고정 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
-"shortcutConflictSave" = "이 키 조합은 이미 저장 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
+"shortcutConflictClipboard" = "이 키 조합은 이미 클립보드에 복사 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
+"shortcutConflictFileSave" = "이 키 조합은 이미 파일로 저장 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 
 /* Menu bar */
 "takeScreenshot" = "스크린샷";
@@ -88,10 +93,10 @@
 "tipScrollCapture" = "긴 스크린샷";
 "tipBeautify" = "꾸미기";
 "tipOCR" = "OCR 및 번역";
-"tipSave" = "저장";
+"tipSave" = "파일로 저장";
 "tipPin" = "화면에 고정";
 "tipCancel" = "취소";
-"tipConfirm" = "확인";
+"tipConfirm" = "클립보드에 복사";
 
 /* Beautify */
 "beautify" = "꾸미기";

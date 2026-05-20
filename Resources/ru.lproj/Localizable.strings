@@ -23,14 +23,14 @@
 "windowShadowSizeHint" = "Чем больше значение, тем мягче и шире тень — окно словно приподнято выше";
 
 /* Screenshot shortcut */
-"shortcutHeader" = "Сочетание для снимка";
+"shortcutHeader" = "Снимок экрана";
 "shortcutHint" = "По умолчанию: двойное нажатие ⌘. Назначение своего сочетания отключает двойное нажатие.";
 "shortcutDefaultDisplay" = "Двойное нажатие ⌘";
 "shortcutSet" = "Задать";
 "shortcutCancel" = "Отмена";
 "shortcutWaiting" = "Нажмите клавиши…";
 "shortcutRestore" = "Сбросить";
-"pinShortcutHeader" = "Сочетание для закрепления";
+"pinShortcutHeader" = "Закрепление изображения";
 "pinShortcutHint" = "Закрепляет изображение, выбранное в Finder, или изображение из буфера обмена, если в Finder ничего нет. Когда закреплённое изображение в фокусе, нажмите X, чтобы очистить выбор Finder или буфер обмена.";
 "pinShortcutDefaultDisplay" = "Не задано";
 "pinShortcutClear" = "Очистить сочетание закрепления";
@@ -38,17 +38,22 @@
 "pinFromFinderHint" = "Изображение Finder закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardHint" = "Изображение из буфера закреплено, нажмите X, чтобы закрыть";
 
-/* Save shortcut (editor confirm) */
-"saveShortcutHeader" = "Сочетание для сохранения";
-"saveShortcutHint" = "Нажмите его в редакторе, чтобы подтвердить и скопировать снимок. По умолчанию используется клавиша Return.";
-"saveShortcutDefaultDisplay" = "Return";
+/* Copy-to-clipboard shortcut (editor confirm) */
+"clipboardShortcutHeader" = "Копировать в буфер обмена";
+"clipboardShortcutHint" = "Нажмите в редакторе, чтобы подтвердить правку и скопировать снимок в буфер обмена. По умолчанию — двойное нажатие ⌘.";
+"clipboardShortcutDefaultDisplay" = "Двойное нажатие ⌘";
+
+/* Save-to-file shortcut (editor save) */
+"fileSaveShortcutHeader" = "Сохранить в файл";
+"fileSaveShortcutHint" = "Нажмите в редакторе, чтобы открыть диалог сохранения и записать снимок в PNG-файл. По умолчанию — ⌘S.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Сочетание уже используется";
 "shortcutConflictScreenshot" = "Это сочетание клавиш уже назначено для снимка экрана. Выберите другое.";
 "shortcutConflictCountdown" = "Это сочетание клавиш уже назначено для снимка экрана с обратным отсчётом (сочетание для снимка + ⌥). Выберите другое.";
 "shortcutConflictPin" = "Это сочетание клавиш уже назначено для закрепления изображения. Выберите другое.";
-"shortcutConflictSave" = "Это сочетание клавиш уже назначено для сохранения. Выберите другое.";
+"shortcutConflictClipboard" = "Это сочетание клавиш уже назначено для копирования в буфер обмена. Выберите другое.";
+"shortcutConflictFileSave" = "Это сочетание клавиш уже назначено для сохранения в файл. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";
@@ -88,10 +93,10 @@
 "tipScrollCapture" = "Длинный снимок";
 "tipBeautify" = "Оформление";
 "tipOCR" = "OCR и перевод";
-"tipSave" = "Сохранить";
+"tipSave" = "Сохранить в файл";
 "tipPin" = "Закрепить на экране";
 "tipCancel" = "Отмена";
-"tipConfirm" = "Подтвердить";
+"tipConfirm" = "Копировать в буфер";
 
 /* Beautify */
 "beautify" = "Оформление";

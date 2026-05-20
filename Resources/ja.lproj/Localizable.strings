@@ -23,14 +23,14 @@
 "windowShadowSizeHint" = "値を大きくするほど影が柔らかく広がり、ウインドウが高く浮いて見えます";
 
 /* Screenshot shortcut */
-"shortcutHeader" = "スクリーンショットのショートカット";
+"shortcutHeader" = "スクリーンショット";
 "shortcutHint" = "デフォルトは ⌘ のダブルタップ。カスタムショートカットを設定するとダブルタップは無効になります。";
 "shortcutDefaultDisplay" = "⌘ をダブルタップ";
 "shortcutSet" = "記録";
 "shortcutCancel" = "キャンセル";
 "shortcutWaiting" = "キー入力待ち…";
 "shortcutRestore" = "デフォルトに戻す";
-"pinShortcutHeader" = "ピン留めショートカット";
+"pinShortcutHeader" = "画像ピン留め";
 "pinShortcutHint" = "Finder で選択中の画像をすぐにピン留めします。Finder に画像がない場合はクリップボードの画像を使います。ピン留め画像にフォーカスがあるときに X を押すと、Finder の選択またはクリップボードを消去できます。";
 "pinShortcutDefaultDisplay" = "未設定";
 "pinShortcutClear" = "ピン留めショートカットを消去";
@@ -38,17 +38,22 @@
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 
-/* Save shortcut (editor confirm) */
-"saveShortcutHeader" = "保存ショートカット";
-"saveShortcutHint" = "エディター内で押すとスクリーンショットを確定してコピーします。未設定の場合は Return キーになります。";
-"saveShortcutDefaultDisplay" = "Return";
+/* Copy-to-clipboard shortcut (editor confirm) */
+"clipboardShortcutHeader" = "クリップボードへコピー";
+"clipboardShortcutHint" = "エディター内で押すと編集を確定し、スクリーンショットをクリップボードへコピーします。未設定の場合は ⌘ をダブルタップします。";
+"clipboardShortcutDefaultDisplay" = "⌘ をダブルタップ";
+
+/* Save-to-file shortcut (editor save) */
+"fileSaveShortcutHeader" = "ファイルへ保存";
+"fileSaveShortcutHint" = "エディター内で押すと保存ダイアログを開き、スクリーンショットを PNG として保存します。既定は ⌘S。";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "ショートカットは既に使用中です";
 "shortcutConflictScreenshot" = "このキーの組み合わせはスクリーンショットのショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictCountdown" = "このキーの組み合わせはカウントダウン撮影のショートカット（スクリーンショットのショートカット + ⌥）で既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictPin" = "このキーの組み合わせは画像ピン留めのショートカットで既に使用されています。別の組み合わせを選んでください。";
-"shortcutConflictSave" = "このキーの組み合わせは保存ショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictClipboard" = "このキーの組み合わせはクリップボードへコピーのショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictFileSave" = "このキーの組み合わせはファイルへ保存のショートカットで既に使用されています。別の組み合わせを選んでください。";
 
 /* Menu bar */
 "takeScreenshot" = "スクリーンショット";
@@ -88,10 +93,10 @@
 "tipScrollCapture" = "長いスクリーンショット";
 "tipBeautify" = "装飾";
 "tipOCR" = "OCR・翻訳";
-"tipSave" = "保存";
+"tipSave" = "ファイルへ保存";
 "tipPin" = "画面に固定";
 "tipCancel" = "キャンセル";
-"tipConfirm" = "確定";
+"tipConfirm" = "クリップボードへコピー";
 
 /* Beautify */
 "beautify" = "装飾";

@@ -23,14 +23,14 @@
 "windowShadowSizeHint" = "Des valeurs élevées adoucissent et élargissent l'ombre : la fenêtre semble flotter plus haut";
 
 /* Screenshot shortcut */
-"shortcutHeader" = "Raccourci de capture";
+"shortcutHeader" = "Capture d'écran";
 "shortcutHint" = "Par défaut : double appui sur ⌘. Définir un raccourci personnalisé désactive le double appui.";
 "shortcutDefaultDisplay" = "Double appui sur ⌘";
 "shortcutSet" = "Définir";
 "shortcutCancel" = "Annuler";
 "shortcutWaiting" = "Appuyez sur des touches…";
 "shortcutRestore" = "Réinitialiser";
-"pinShortcutHeader" = "Raccourci d'épinglage";
+"pinShortcutHeader" = "Épingler une image";
 "pinShortcutHint" = "Épingle l'image sélectionnée dans le Finder, ou l'image du presse-papiers si aucune image Finder n'est disponible. Quand l'image épinglée a le focus, appuyez sur X pour effacer la sélection Finder ou le presse-papiers.";
 "pinShortcutDefaultDisplay" = "Non défini";
 "pinShortcutClear" = "Effacer le raccourci d'épinglage";
@@ -38,17 +38,22 @@
 "pinFromFinderHint" = "Image Finder épinglée, appuyez sur X pour fermer";
 "pinFromClipboardHint" = "Image du presse-papiers épinglée, appuyez sur X pour fermer";
 
-/* Save shortcut (editor confirm) */
-"saveShortcutHeader" = "Raccourci d'enregistrement";
-"saveShortcutHint" = "Appuyez dessus dans l'éditeur pour valider et copier la capture. Utilise Entrée par défaut si non défini.";
-"saveShortcutDefaultDisplay" = "Entrée";
+/* Copy-to-clipboard shortcut (editor confirm) */
+"clipboardShortcutHeader" = "Copier dans le presse-papiers";
+"clipboardShortcutHint" = "Appuyez dessus dans l'éditeur pour valider l'édition et copier la capture dans le presse-papiers. Double-appui sur ⌘ par défaut si non défini.";
+"clipboardShortcutDefaultDisplay" = "Double-appui ⌘";
+
+/* Save-to-file shortcut (editor save) */
+"fileSaveShortcutHeader" = "Enregistrer dans un fichier";
+"fileSaveShortcutHint" = "Appuyez dessus dans l'éditeur pour ouvrir la fenêtre d'enregistrement et sauvegarder la capture en PNG. ⌘S par défaut.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Raccourci déjà utilisé";
 "shortcutConflictScreenshot" = "Cette combinaison de touches est déjà utilisée par le raccourci de capture d'écran. Veuillez en choisir une autre.";
 "shortcutConflictCountdown" = "Cette combinaison de touches est déjà utilisée par le raccourci de capture avec compte à rebours (raccourci de capture + ⌥). Veuillez en choisir une autre.";
 "shortcutConflictPin" = "Cette combinaison de touches est déjà utilisée par le raccourci d'épinglage d'image. Veuillez en choisir une autre.";
-"shortcutConflictSave" = "Cette combinaison de touches est déjà utilisée par le raccourci d'enregistrement. Veuillez en choisir une autre.";
+"shortcutConflictClipboard" = "Cette combinaison de touches est déjà utilisée par le raccourci de copie dans le presse-papiers. Veuillez en choisir une autre.";
+"shortcutConflictFileSave" = "Cette combinaison de touches est déjà utilisée par le raccourci d'enregistrement dans un fichier. Veuillez en choisir une autre.";
 
 /* Menu bar */
 "takeScreenshot" = "Capturer l'écran";
@@ -88,10 +93,10 @@
 "tipScrollCapture" = "Capture longue";
 "tipBeautify" = "Embellir";
 "tipOCR" = "OCR et traduction";
-"tipSave" = "Enregistrer";
+"tipSave" = "Enregistrer dans un fichier";
 "tipPin" = "Épingler à l'écran";
 "tipCancel" = "Annuler";
-"tipConfirm" = "Confirmer";
+"tipConfirm" = "Copier dans le presse-papiers";
 
 /* Beautify */
 "beautify" = "Embellir";

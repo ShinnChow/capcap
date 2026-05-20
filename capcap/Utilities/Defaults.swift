@@ -103,17 +103,22 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
 
-    // Save shortcut (editor confirm)
-    static var saveShortcutHeader: String { s("saveShortcutHeader") }
-    static var saveShortcutHint: String { s("saveShortcutHint") }
-    static var saveShortcutDefaultDisplay: String { s("saveShortcutDefaultDisplay") }
+    // Copy-to-clipboard shortcut (editor confirm)
+    static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
+    static var clipboardShortcutHint: String { s("clipboardShortcutHint") }
+    static var clipboardShortcutDefaultDisplay: String { s("clipboardShortcutDefaultDisplay") }
+
+    // Save-to-file shortcut (editor save)
+    static var fileSaveShortcutHeader: String { s("fileSaveShortcutHeader") }
+    static var fileSaveShortcutHint: String { s("fileSaveShortcutHint") }
 
     // Shortcut conflict
     static var shortcutConflictTitle: String { s("shortcutConflictTitle") }
     static var shortcutConflictScreenshot: String { s("shortcutConflictScreenshot") }
     static var shortcutConflictCountdown: String { s("shortcutConflictCountdown") }
     static var shortcutConflictPin: String { s("shortcutConflictPin") }
-    static var shortcutConflictSave: String { s("shortcutConflictSave") }
+    static var shortcutConflictClipboard: String { s("shortcutConflictClipboard") }
+    static var shortcutConflictFileSave: String { s("shortcutConflictFileSave") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
@@ -461,30 +466,76 @@ struct Defaults {
         defaults.removeObject(forKey: "pinHotkeyModifiers")
     }
 
-    // Custom save hotkey used inside the editor overlay to confirm the
-    // screenshot. When absent, falls back to Return. Unlike the screenshot and
-    // pin hotkeys this is matched locally against keyDown events instead of
-    // registered as a Carbon global hotkey, so it may be bare (no modifiers).
-    // Presence must be checked via `hasCustomSaveHotkey` since key code 0
-    // (`A`) is a valid value.
+    // Custom copy-to-clipboard hotkey used inside the editor overlay to
+    // confirm the screenshot. When absent, the default is "double-tap ⌘",
+    // detected via the global flag monitor (KeyMonitor) — see AppDelegate.
+    // Unlike the screenshot and pin hotkeys this is matched locally against
+    // keyDown events instead of registered as a Carbon global hotkey, so it
+    // may be bare (no modifiers). Presence must be checked via
+    // `hasCustomClipboardHotkey` since key code 0 (`A`) is a valid value.
 
-    static var saveHotkeyKeyCode: Int {
-        get { defaults.integer(forKey: "saveHotkeyKeyCode") }
-        set { defaults.set(newValue, forKey: "saveHotkeyKeyCode") }
-    }
-
-    static var saveHotkeyModifiers: Int {
-        get { defaults.integer(forKey: "saveHotkeyModifiers") }
-        set { defaults.set(newValue, forKey: "saveHotkeyModifiers") }
-    }
-
-    static var hasCustomSaveHotkey: Bool {
-        defaults.object(forKey: "saveHotkeyKeyCode") != nil
-    }
-
-    static func clearSaveHotkey() {
+    private static func migrateLegacySaveHotkeyIfNeeded() {
+        // capcap ≤ 1.x stored this same hotkey under "saveHotkey*". Migrate
+        // once on first read so existing users don't lose their binding.
+        let migratedKey = "clipboardHotkeyMigrated"
+        guard !defaults.bool(forKey: migratedKey) else { return }
+        defaults.set(true, forKey: migratedKey)
+        guard defaults.object(forKey: "saveHotkeyKeyCode") != nil,
+              defaults.object(forKey: "clipboardHotkeyKeyCode") == nil
+        else { return }
+        defaults.set(defaults.integer(forKey: "saveHotkeyKeyCode"), forKey: "clipboardHotkeyKeyCode")
+        defaults.set(defaults.integer(forKey: "saveHotkeyModifiers"), forKey: "clipboardHotkeyModifiers")
         defaults.removeObject(forKey: "saveHotkeyKeyCode")
         defaults.removeObject(forKey: "saveHotkeyModifiers")
+    }
+
+    static var clipboardHotkeyKeyCode: Int {
+        get {
+            migrateLegacySaveHotkeyIfNeeded()
+            return defaults.integer(forKey: "clipboardHotkeyKeyCode")
+        }
+        set { defaults.set(newValue, forKey: "clipboardHotkeyKeyCode") }
+    }
+
+    static var clipboardHotkeyModifiers: Int {
+        get {
+            migrateLegacySaveHotkeyIfNeeded()
+            return defaults.integer(forKey: "clipboardHotkeyModifiers")
+        }
+        set { defaults.set(newValue, forKey: "clipboardHotkeyModifiers") }
+    }
+
+    static var hasCustomClipboardHotkey: Bool {
+        migrateLegacySaveHotkeyIfNeeded()
+        return defaults.object(forKey: "clipboardHotkeyKeyCode") != nil
+    }
+
+    static func clearClipboardHotkey() {
+        defaults.removeObject(forKey: "clipboardHotkeyKeyCode")
+        defaults.removeObject(forKey: "clipboardHotkeyModifiers")
+    }
+
+    // Custom save-to-file hotkey used inside the editor overlay to invoke
+    // the NSSavePanel-backed file save. When absent, defaults to ⌘S.
+    // Matched locally against keyDown events, same as the clipboard hotkey.
+
+    static var fileSaveHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "fileSaveHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "fileSaveHotkeyKeyCode") }
+    }
+
+    static var fileSaveHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "fileSaveHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "fileSaveHotkeyModifiers") }
+    }
+
+    static var hasCustomFileSaveHotkey: Bool {
+        defaults.object(forKey: "fileSaveHotkeyKeyCode") != nil
+    }
+
+    static func clearFileSaveHotkey() {
+        defaults.removeObject(forKey: "fileSaveHotkeyKeyCode")
+        defaults.removeObject(forKey: "fileSaveHotkeyModifiers")
     }
 
     static var penColor: Int {

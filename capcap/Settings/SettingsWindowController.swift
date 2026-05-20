@@ -81,7 +81,8 @@ extension SettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         settingsView.cancelShortcutRecording()
         settingsView.cancelPinShortcutRecording()
-        settingsView.cancelSaveShortcutRecording()
+        settingsView.cancelClipboardShortcutRecording()
+        settingsView.cancelFileSaveShortcutRecording()
         guard isStartup else { return }
         // The startup dialog is a gate. Closing it without pressing Launch
         // means the app was never initialized — no menu bar, no key monitor,
