@@ -619,6 +619,32 @@ class SettingsView: NSView {
         stack.addArrangedSubview(shortcut.card)
         shortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        // Copy-to-clipboard (editor confirm) shortcut card
+        let clipboardShortcut = buildShortcutCard(
+            title: L10n.clipboardShortcutHeader,
+            setAction: #selector(clipboardShortcutSetClicked),
+            restoreAction: #selector(clipboardShortcutRestoreClicked)
+        )
+        clipboardShortcutTitleLabel = clipboardShortcut.title
+        clipboardShortcutField = clipboardShortcut.field
+        clipboardShortcutSetButton = clipboardShortcut.setButton
+        clipboardShortcutRestoreButton = clipboardShortcut.restoreButton
+        stack.addArrangedSubview(clipboardShortcut.card)
+        clipboardShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Save-to-file shortcut card (default ⌘S)
+        let fileSaveShortcut = buildShortcutCard(
+            title: L10n.fileSaveShortcutHeader,
+            setAction: #selector(fileSaveShortcutSetClicked),
+            restoreAction: #selector(fileSaveShortcutRestoreClicked)
+        )
+        fileSaveShortcutTitleLabel = fileSaveShortcut.title
+        fileSaveShortcutField = fileSaveShortcut.field
+        fileSaveShortcutSetButton = fileSaveShortcut.setButton
+        fileSaveShortcutRestoreButton = fileSaveShortcut.restoreButton
+        stack.addArrangedSubview(fileSaveShortcut.card)
+        fileSaveShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
         // Edit selected image shortcut card
         let selectedImageEditShortcut = buildShortcutCard(
             title: L10n.selectedImageEditShortcutHeader,
@@ -673,32 +699,6 @@ class SettingsView: NSView {
         stack.addArrangedSubview(clipboardImagePinShortcut.card)
         clipboardImagePinShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Copy-to-clipboard (editor confirm) shortcut card
-        let clipboardShortcut = buildShortcutCard(
-            title: L10n.clipboardShortcutHeader,
-            setAction: #selector(clipboardShortcutSetClicked),
-            restoreAction: #selector(clipboardShortcutRestoreClicked)
-        )
-        clipboardShortcutTitleLabel = clipboardShortcut.title
-        clipboardShortcutField = clipboardShortcut.field
-        clipboardShortcutSetButton = clipboardShortcut.setButton
-        clipboardShortcutRestoreButton = clipboardShortcut.restoreButton
-        stack.addArrangedSubview(clipboardShortcut.card)
-        clipboardShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
-        // Save-to-file shortcut card (default ⌘S)
-        let fileSaveShortcut = buildShortcutCard(
-            title: L10n.fileSaveShortcutHeader,
-            setAction: #selector(fileSaveShortcutSetClicked),
-            restoreAction: #selector(fileSaveShortcutRestoreClicked)
-        )
-        fileSaveShortcutTitleLabel = fileSaveShortcut.title
-        fileSaveShortcutField = fileSaveShortcut.field
-        fileSaveShortcutSetButton = fileSaveShortcut.setButton
-        fileSaveShortcutRestoreButton = fileSaveShortcut.restoreButton
-        stack.addArrangedSubview(fileSaveShortcut.card)
-        fileSaveShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
         let footer = NSStackView()
         footer.orientation = .horizontal
         footer.alignment = .centerY
@@ -714,8 +714,8 @@ class SettingsView: NSView {
         resetButton.setContentHuggingPriority(.required, for: .horizontal)
         shortcutResetButton = resetButton
 
-        footer.addArrangedSubview(resetButton)
         footer.addArrangedSubview(flexSpacer())
+        footer.addArrangedSubview(resetButton)
         stack.addArrangedSubview(footer)
         footer.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
