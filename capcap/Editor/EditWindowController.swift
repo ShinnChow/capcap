@@ -2440,6 +2440,209 @@ private class ColorSwatchView: NSView {
     }
 }
 
+// MARK: - HUD Slider
+
+private final class HUDSlider: NSControl {
+    var minValue: Double
+    var maxValue: Double
+
+    override var doubleValue: Double {
+        get { value }
+        set { setValue(newValue, notify: false) }
+    }
+
+    private var value: Double
+    private var isDragging = false {
+        didSet { needsDisplay = true }
+    }
+
+    private let knobDiameter: CGFloat = 18
+    private let trackHeight: CGFloat = 5
+
+    init(
+        frame: NSRect = .zero,
+        value: Double,
+        minValue: Double,
+        maxValue: Double,
+        target: AnyObject?,
+        action: Selector?
+    ) {
+        self.minValue = minValue
+        self.maxValue = maxValue
+        self.value = min(max(value, minValue), maxValue)
+        super.init(frame: frame)
+        self.target = target
+        self.action = action
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var acceptsFirstResponder: Bool { true }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let enabledAlpha: CGFloat = isEnabled ? 1 : 0.35
+        let trackRect = NSRect(
+            x: knobDiameter / 2,
+            y: floor(bounds.midY - trackHeight / 2),
+            width: max(1, bounds.width - knobDiameter),
+            height: trackHeight
+        )
+        let trackPath = NSBezierPath(roundedRect: trackRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
+        NSColor.white.withAlphaComponent(0.14 * enabledAlpha).setFill()
+        trackPath.fill()
+
+        let knobCenterX = trackRect.minX + normalizedValue * trackRect.width
+        let fillRect = NSRect(
+            x: trackRect.minX,
+            y: trackRect.minY,
+            width: max(0, knobCenterX - trackRect.minX),
+            height: trackRect.height
+        )
+        if fillRect.width > 0 {
+            let fillPath = NSBezierPath(roundedRect: fillRect, xRadius: trackHeight / 2, yRadius: trackHeight / 2)
+            NSColor.controlAccentColor.withAlphaComponent(enabledAlpha).setFill()
+            fillPath.fill()
+        }
+
+        let knobRect = NSRect(
+            x: knobCenterX - knobDiameter / 2,
+            y: bounds.midY - knobDiameter / 2,
+            width: knobDiameter,
+            height: knobDiameter
+        )
+        let knobPath = NSBezierPath(ovalIn: knobRect)
+        NSGraphicsContext.saveGraphicsState()
+        let shadow = NSShadow()
+        shadow.shadowColor = NSColor.black.withAlphaComponent(0.18 * enabledAlpha)
+        shadow.shadowBlurRadius = 2
+        shadow.shadowOffset = NSSize(width: 0, height: -1)
+        shadow.set()
+        NSColor(white: isDragging ? 0.92 : 0.86, alpha: enabledAlpha).setFill()
+        knobPath.fill()
+        NSGraphicsContext.restoreGraphicsState()
+
+        NSColor.black.withAlphaComponent(0.08 * enabledAlpha).setStroke()
+        knobPath.lineWidth = 1
+        knobPath.stroke()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        isDragging = true
+        updateValue(with: event, notify: true)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        updateValue(with: event, notify: isContinuous)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        updateValue(with: event, notify: true)
+        isDragging = false
+    }
+
+    private var normalizedValue: CGFloat {
+        guard maxValue > minValue else { return 0 }
+        return CGFloat((value - minValue) / (maxValue - minValue))
+    }
+
+    private func updateValue(with event: NSEvent, notify: Bool) {
+        let point = convert(event.locationInWindow, from: nil)
+        let trackMinX = knobDiameter / 2
+        let trackWidth = max(1, bounds.width - knobDiameter)
+        let normalized = max(0, min(1, (point.x - trackMinX) / trackWidth))
+        setValue(minValue + Double(normalized) * (maxValue - minValue), notify: notify)
+    }
+
+    private func setValue(_ newValue: Double, notify: Bool) {
+        value = min(max(newValue, minValue), maxValue)
+        needsDisplay = true
+        if notify, let action {
+            sendAction(action, to: target)
+        }
+    }
+}
+
+// MARK: - HUD Checkbox
+
+private final class HUDCheckboxButton: NSButton {
+    private let label: String
+    private let labelFont = NSFont.systemFont(ofSize: 12, weight: .medium)
+    private let boxSize: CGFloat = 16
+
+    init(frame: NSRect, title: String, target: AnyObject?, action: Selector?) {
+        self.label = title
+        super.init(frame: frame)
+        self.title = ""
+        self.target = target
+        self.action = action
+        setButtonType(.toggle)
+        bezelStyle = .regularSquare
+        isBordered = false
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let enabledAlpha: CGFloat = isEnabled ? 1 : 0.35
+        let boxRect = NSRect(
+            x: 0,
+            y: floor(bounds.midY - boxSize / 2),
+            width: boxSize,
+            height: boxSize
+        )
+        let boxPath = NSBezierPath(roundedRect: boxRect, xRadius: 4, yRadius: 4)
+
+        if state == .on {
+            accentGreen.withAlphaComponent(enabledAlpha).setFill()
+        } else {
+            NSColor.white.withAlphaComponent((isHighlighted ? 0.24 : 0.16) * enabledAlpha).setFill()
+        }
+        boxPath.fill()
+
+        NSColor.white.withAlphaComponent(0.18 * enabledAlpha).setStroke()
+        boxPath.lineWidth = 1
+        boxPath.stroke()
+
+        if state == .on {
+            let check = NSBezierPath()
+            check.move(to: NSPoint(x: boxRect.minX + 4.0, y: boxRect.midY + 0.5))
+            check.line(to: NSPoint(x: boxRect.minX + 7.0, y: boxRect.midY + 3.5))
+            check.line(to: NSPoint(x: boxRect.maxX - 3.5, y: boxRect.midY - 4.0))
+            check.lineWidth = 2
+            check.lineCapStyle = .round
+            check.lineJoinStyle = .round
+            NSColor(white: 0.08, alpha: enabledAlpha).setStroke()
+            check.stroke()
+        }
+
+        let attributed = NSAttributedString(
+            string: label,
+            attributes: [
+                .font: labelFont,
+                .foregroundColor: NSColor.white.withAlphaComponent(0.9 * enabledAlpha),
+            ]
+        )
+        let textSize = attributed.size()
+        let textRect = NSRect(
+            x: boxRect.maxX + 8,
+            y: floor(bounds.midY - textSize.height / 2),
+            width: max(0, bounds.width - boxRect.maxX - 8),
+            height: ceil(textSize.height)
+        )
+        attributed.draw(in: textRect)
+    }
+}
+
 // MARK: - Beautify Sub-toolbar
 
 private class BeautifySubToolbar: NSView {
@@ -2456,14 +2659,14 @@ private class BeautifySubToolbar: NSView {
     private let initialPadding: CGFloat
     private let initialShadowEnabled: Bool
     private let screen: NSScreen
-    private var paddingSlider: NSSlider?
-    private var shadowCheckbox: NSButton?
+    private var paddingSlider: HUDSlider?
+    private var shadowCheckbox: HUDCheckboxButton?
     private let swatchDiameter: CGFloat = 24
     private let swatchSpacing: CGFloat = 8
     private let innerPadding: CGFloat = 12
     private let sliderWidth: CGFloat = 120
     private let sliderHeight: CGFloat = 20
-    private let checkboxWidth: CGFloat = 104
+    private let checkboxWidth: CGFloat = BeautifySubToolbar.preferredCheckboxWidth()
     private let checkboxHeight: CGFloat = 20
 
     init(
@@ -2493,10 +2696,16 @@ private class BeautifySubToolbar: NSView {
         let innerPad: CGFloat = 12
         let separatorGap: CGFloat = 10
         let sliderWidth: CGFloat = 120
-        let checkboxWidth: CGFloat = 104
+        let checkboxWidth: CGFloat = preferredCheckboxWidth()
         let trailingPad: CGFloat = 12
         let swatches = CGFloat(presetCount) * diameter + CGFloat(max(presetCount - 1, 0)) * spacing
         return innerPad + swatches + separatorGap + sliderWidth + separatorGap + checkboxWidth + trailingPad
+    }
+
+    private static func preferredCheckboxWidth() -> CGFloat {
+        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        let textWidth = ceil((L10n.beautifyShadowEffect as NSString).size(withAttributes: [.font: font]).width)
+        return max(104, 16 + 8 + textWidth)
     }
 
     private func setup() {
@@ -2537,7 +2746,7 @@ private class BeautifySubToolbar: NSView {
 
         // Horizontal padding slider, 5 px to the right of the separator.
         let sliderX = sepX + 1 + 5
-        let slider = NSSlider(
+        let slider = HUDSlider(
             value: Double(initialPadding),
             minValue: Double(BeautifyRenderer.paddingSliderMin),
             maxValue: Double(BeautifyRenderer.paddingSliderMax),
@@ -2560,27 +2769,18 @@ private class BeautifySubToolbar: NSView {
         shadowSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
         addSubview(shadowSep)
 
-        let checkbox = NSButton(
-            checkboxWithTitle: L10n.beautifyShadowEffect,
+        let checkbox = HUDCheckboxButton(
+            frame: NSRect(
+                x: shadowSepX + 1 + 6,
+                y: midY - checkboxHeight / 2,
+                width: checkboxWidth,
+                height: checkboxHeight
+            ),
+            title: L10n.beautifyShadowEffect,
             target: self,
             action: #selector(shadowCheckboxChanged(_:))
         )
         checkbox.state = initialShadowEnabled ? .on : .off
-        checkbox.font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        checkbox.contentTintColor = NSColor.white.withAlphaComponent(0.9)
-        checkbox.attributedTitle = NSAttributedString(
-            string: L10n.beautifyShadowEffect,
-            attributes: [
-                .font: NSFont.systemFont(ofSize: 12, weight: .medium),
-                .foregroundColor: NSColor.white.withAlphaComponent(0.9),
-            ]
-        )
-        checkbox.frame = NSRect(
-            x: shadowSepX + 1 + 6,
-            y: midY - checkboxHeight / 2,
-            width: checkboxWidth,
-            height: checkboxHeight
-        )
         addSubview(checkbox)
         shadowCheckbox = checkbox
     }
@@ -2594,7 +2794,7 @@ private class BeautifySubToolbar: NSView {
         onPresetSelected?(preset)
     }
 
-    @objc private func paddingSliderChanged(_ sender: NSSlider) {
+    @objc private func paddingSliderChanged(_ sender: HUDSlider) {
         let clamped = max(
             BeautifyRenderer.paddingSliderMin,
             min(BeautifyRenderer.paddingSliderMax, CGFloat(sender.doubleValue))
