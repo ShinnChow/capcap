@@ -10,6 +10,12 @@ enum WindowEffects {
     /// instead, because macOS varies the actual corner shape by OS/window style.
     static let cornerRadiusPoints: CGFloat = 16
 
+    private struct ShadowLayer {
+        let blur: CGFloat
+        let opacity: CGFloat
+        let offset: CGSize
+    }
+
     /// Pixels-per-point of the image's backing bitmap (2 on Retina displays).
     private static func scale(of image: NSImage) -> CGFloat {
         guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
@@ -193,14 +199,13 @@ enum WindowEffects {
         guard size > 0 else { return image }
 
         let pxScale = scale(of: image)
-        let blur = size
-        let drop = size * 0.4                       // downward offset magnitude
-        let margin = (blur * 1.8 + 6).rounded()     // room for the blur fringe
+        let shadowLayers = layers(forShadowSize: size)
+        let outsets = shadowOutsets(for: shadowLayers)
 
-        let padLeft = margin
-        let padRight = margin
-        let padTop = margin
-        let padBottom = (margin + drop).rounded()
+        let padLeft = ceil(outsets.left)
+        let padRight = ceil(outsets.right)
+        let padTop = ceil(outsets.top)
+        let padBottom = ceil(outsets.bottom)
 
         let canvasSize = NSSize(
             width: image.size.width + padLeft + padRight,
@@ -232,19 +237,29 @@ enum WindowEffects {
         NSGraphicsContext.current = context
         context.imageInterpolation = .high
 
-        let shadow = NSShadow()
-        shadow.shadowColor = NSColor.black.withAlphaComponent(0.32)
-        shadow.shadowBlurRadius = blur
-        // Non-flipped context: negative y casts the shadow downward.
-        shadow.shadowOffset = NSSize(width: 0, height: -drop)
-        shadow.set()
-
         let drawRect = NSRect(
             x: padLeft,
             y: padBottom,
             width: image.size.width,
             height: image.size.height
         )
+        let radius = min(cornerRadiusPoints, min(drawRect.width, drawRect.height) / 2)
+        let shadowPath = CGPath(
+            roundedRect: drawRect,
+            cornerWidth: radius,
+            cornerHeight: radius,
+            transform: nil
+        )
+
+        for layer in shadowLayers {
+            drawShadowOnly(
+                path: shadowPath,
+                sourceRect: drawRect,
+                layer: layer,
+                context: context.cgContext
+            )
+        }
+
         image.draw(in: drawRect, from: .zero, operation: .sourceOver, fraction: 1.0)
 
         NSGraphicsContext.restoreGraphicsState()
@@ -252,5 +267,81 @@ enum WindowEffects {
         let out = NSImage(size: canvasSize)
         out.addRepresentation(rep)
         return out
+    }
+
+    private static func layers(forShadowSize size: CGFloat) -> [ShadowLayer] {
+        let s = max(size, 0)
+        guard s > 0 else { return [] }
+
+        return [
+            // Tight ambient bloom keeps depth visible without forcing a large
+            // transparent border around the exported screenshot.
+            ShadowLayer(
+                blur: s * 0.45,
+                opacity: 0.20,
+                offset: .zero
+            ),
+            // Concentrated key shadow: stronger than the preview, but with
+            // less blur so the required output padding stays small.
+            ShadowLayer(
+                blur: s * 0.52,
+                opacity: 0.56,
+                offset: CGSize(width: 0, height: -s * 0.24)
+            ),
+            // A crisp contact layer gives the edge weight after the wider
+            // shadow fringe has been trimmed aggressively.
+            ShadowLayer(
+                blur: max(s * 0.12, 2),
+                opacity: 0.24,
+                offset: CGSize(width: 0, height: -max(s * 0.07, 1))
+            ),
+        ]
+    }
+
+    private static func shadowOutsets(
+        for layers: [ShadowLayer]
+    ) -> (left: CGFloat, right: CGFloat, top: CGFloat, bottom: CGFloat) {
+        var left: CGFloat = 0
+        var right: CGFloat = 0
+        var top: CGFloat = 0
+        var bottom: CGFloat = 0
+
+        for layer in layers {
+            let fringe = shadowFringe(forBlur: layer.blur)
+            left = max(left, fringe + max(-layer.offset.width, 0))
+            right = max(right, fringe + max(layer.offset.width, 0))
+            top = max(top, fringe + max(layer.offset.height, 0))
+            bottom = max(bottom, fringe + max(-layer.offset.height, 0))
+        }
+
+        return (left, right, top, bottom)
+    }
+
+    private static func shadowFringe(forBlur blur: CGFloat) -> CGFloat {
+        blur * 1.2 + 5
+    }
+
+    private static func drawShadowOnly(
+        path: CGPath,
+        sourceRect: CGRect,
+        layer: ShadowLayer,
+        context: CGContext
+    ) {
+        let clipOutset = shadowFringe(forBlur: layer.blur)
+            + max(abs(layer.offset.width), abs(layer.offset.height))
+
+        context.saveGState()
+        context.addRect(sourceRect.insetBy(dx: -clipOutset, dy: -clipOutset))
+        context.addPath(path)
+        context.clip(using: .evenOdd)
+        context.setShadow(
+            offset: layer.offset,
+            blur: layer.blur,
+            color: NSColor.black.withAlphaComponent(layer.opacity).cgColor
+        )
+        context.addPath(path)
+        context.setFillColor(NSColor.black.cgColor)
+        context.fillPath()
+        context.restoreGState()
     }
 }
