@@ -74,6 +74,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregister()
             HotkeyManager.shared.unregisterCountdown()
             HotkeyManager.shared.unregisterPin()
+            HotkeyManager.shared.unregisterSelectedImageEdit()
+            HotkeyManager.shared.unregisterClipboardImageEdit()
             keyMonitor?.isEnabled = false
             return
         }
@@ -106,6 +108,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             HotkeyManager.shared.unregisterPin()
         }
+
+        if Defaults.hasCustomSelectedImageEditHotkey {
+            HotkeyManager.shared.registerSelectedImageEdit { [weak self] in
+                self?.handleSelectedImageEditTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterSelectedImageEdit()
+        }
+
+        if Defaults.hasCustomClipboardImageEditHotkey {
+            HotkeyManager.shared.registerClipboardImageEdit { [weak self] in
+                self?.handleClipboardImageEditTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterClipboardImageEdit()
+        }
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
@@ -123,23 +141,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func handleTrigger() {
         guard overlayController == nil else { return }
-
-        // Image-edit shortcut: edit an image directly instead of capturing.
-        // Any failure (no permission, load error, nothing there) falls through
-        // to the next source, and finally to the normal screenshot flow.
-        if let controller = launchImageEdit() {
-            overlayController = controller
-            applyHotkeyState()
-            return
-        }
-
         startCapture()
     }
 
-    /// Tries the image-edit sources in priority order: a single image selected
-    /// in Finder first, then an image already on the clipboard. Returns nil
-    /// when neither has an editable image.
-    private func launchImageEdit() -> OverlayWindowController? {
+    /// Opens the single image currently selected in Finder directly in the
+    /// editor. Returns nil when Finder has no exactly-one editable image.
+    private func launchSelectedImageEdit() -> OverlayWindowController? {
         let onComplete: (NSImage?) -> Void = { [weak self] finalImage in
             self?.handleEditCompletion(finalImage)
         }
@@ -158,6 +165,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return controller
         }
 
+        return nil
+    }
+
+    /// Opens the current clipboard image directly in the editor. Returns nil
+    /// when the clipboard has no editable image.
+    private func launchClipboardImageEdit() -> OverlayWindowController? {
+        let onComplete: (NSImage?) -> Void = { [weak self] finalImage in
+            self?.handleEditCompletion(finalImage)
+        }
+        let onSwitchToCapture: () -> Void = { [weak self] in
+            self?.overlayController = nil
+            self?.startCapture()
+        }
+
         if let image = ClipboardImageSource.currentImage(),
            let controller = ImageEditLauncher.launch(
                clipboardImage: image,
@@ -170,8 +191,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return nil
     }
 
-    /// Countdown-triggered capture. Skips the Finder image-edit shortcut on
-    /// purpose — the user explicitly asked for a delayed screen capture.
+    /// Countdown-triggered capture. It never checks image-edit sources; the
+    /// user explicitly asked for a delayed screen capture.
     func handleCountdownTrigger() {
         guard overlayController == nil, !countdownActive else { return }
         countdownActive = true
@@ -192,6 +213,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func handlePinTrigger() {
         guard overlayController == nil else { return }
         PinLauncher.pinFromSourcesIfAvailable()
+    }
+
+    func handleSelectedImageEditTrigger() {
+        guard overlayController == nil, !countdownActive else { return }
+        guard let controller = launchSelectedImageEdit() else {
+            ToastWindow.show(message: L10n.selectedImageEditNoImage)
+            return
+        }
+        overlayController = controller
+        applyHotkeyState()
+    }
+
+    func handleClipboardImageEditTrigger() {
+        guard overlayController == nil, !countdownActive else { return }
+        guard let controller = launchClipboardImageEdit() else {
+            ToastWindow.show(message: L10n.clipboardImageEditNoImage)
+            return
+        }
+        overlayController = controller
+        applyHotkeyState()
     }
 
     func startCapture() {

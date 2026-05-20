@@ -38,6 +38,14 @@
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 
+/* Image-edit shortcuts */
+"selectedImageEditShortcutHeader" = "選択画像を編集";
+"selectedImageEditShortcutHint" = "Finder で選択中の 1 枚の画像を直接編集します。デフォルトでは未設定です。";
+"selectedImageEditShortcutDefaultDisplay" = "未設定";
+"clipboardImageEditShortcutHeader" = "クリップボード画像を編集";
+"clipboardImageEditShortcutHint" = "現在クリップボードにある画像を直接編集します。デフォルトでは未設定です。";
+"clipboardImageEditShortcutDefaultDisplay" = "未設定";
+
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "クリップボードへコピー";
 "clipboardShortcutHint" = "エディター内で押すと編集を確定し、スクリーンショットをクリップボードへコピーします。未設定の場合は ⌘ をダブルタップします。";
@@ -54,6 +62,8 @@
 "shortcutConflictPin" = "このキーの組み合わせは画像ピン留めのショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictClipboard" = "このキーの組み合わせはクリップボードへコピーのショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictFileSave" = "このキーの組み合わせはファイルへ保存のショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictSelectedImageEdit" = "このキーの組み合わせは選択画像を編集のショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictClipboardImageEdit" = "このキーの組み合わせはクリップボード画像を編集のショートカットで既に使用されています。別の組み合わせを選んでください。";
 
 /* Menu bar */
 "takeScreenshot" = "スクリーンショット";
@@ -74,6 +84,8 @@
 "scrollCaptureHint" = "Enter キーで長いスクリーンショットを終了";
 "finderEditSwitchHint" = "Finder から編集中。X キーでスクリーンショットを続行";
 "clipboardEditSwitchHint" = "クリップボードから編集中。X キーでスクリーンショットを続行";
+"selectedImageEditNoImage" = "Finder で画像が 1 枚選択されていません";
+"clipboardImageEditNoImage" = "クリップボードに編集できる画像がありません";
 "colorCopied" = "カラー %@ をコピーしました";
 
 /* Toolbar tooltips */

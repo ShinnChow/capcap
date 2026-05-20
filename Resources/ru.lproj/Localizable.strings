@@ -38,6 +38,14 @@
 "pinFromFinderHint" = "Изображение Finder закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardHint" = "Изображение из буфера закреплено, нажмите X, чтобы закрыть";
 
+/* Image-edit shortcuts */
+"selectedImageEditShortcutHeader" = "Редактировать выбранное изображение";
+"selectedImageEditShortcutHint" = "Нажмите, чтобы сразу редактировать одно изображение, выбранное в Finder. По умолчанию не задано.";
+"selectedImageEditShortcutDefaultDisplay" = "Не задано";
+"clipboardImageEditShortcutHeader" = "Редактировать изображение из буфера";
+"clipboardImageEditShortcutHint" = "Нажмите, чтобы сразу редактировать текущее изображение в буфере обмена. По умолчанию не задано.";
+"clipboardImageEditShortcutDefaultDisplay" = "Не задано";
+
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Копировать в буфер обмена";
 "clipboardShortcutHint" = "Нажмите в редакторе, чтобы подтвердить правку и скопировать снимок в буфер обмена. По умолчанию — двойное нажатие ⌘.";
@@ -54,6 +62,8 @@
 "shortcutConflictPin" = "Это сочетание клавиш уже назначено для закрепления изображения. Выберите другое.";
 "shortcutConflictClipboard" = "Это сочетание клавиш уже назначено для копирования в буфер обмена. Выберите другое.";
 "shortcutConflictFileSave" = "Это сочетание клавиш уже назначено для сохранения в файл. Выберите другое.";
+"shortcutConflictSelectedImageEdit" = "Это сочетание клавиш уже назначено для редактирования выбранного изображения. Выберите другое.";
+"shortcutConflictClipboardImageEdit" = "Это сочетание клавиш уже назначено для редактирования изображения из буфера. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";
@@ -74,6 +84,8 @@
 "scrollCaptureHint" = "Нажмите Enter, чтобы завершить длинный снимок";
 "finderEditSwitchHint" = "Редактирование из Finder. Нажмите X, чтобы продолжить снимок экрана";
 "clipboardEditSwitchHint" = "Редактирование из буфера обмена. Нажмите X, чтобы продолжить снимок экрана";
+"selectedImageEditNoImage" = "В Finder не выбрано одно изображение";
+"clipboardImageEditNoImage" = "В буфере обмена нет изображения для редактирования";
 "colorCopied" = "Цвет %@ скопирован";
 
 /* Toolbar tooltips */

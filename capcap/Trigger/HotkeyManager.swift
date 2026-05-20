@@ -10,15 +10,21 @@ final class HotkeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var countdownHotKeyRef: EventHotKeyRef?
     private var pinHotKeyRef: EventHotKeyRef?
+    private var selectedImageEditHotKeyRef: EventHotKeyRef?
+    private var clipboardImageEditHotKeyRef: EventHotKeyRef?
     private var callback: (() -> Void)?
     private var countdownCallback: (() -> Void)?
     private var pinCallback: (() -> Void)?
+    private var selectedImageEditCallback: (() -> Void)?
+    private var clipboardImageEditCallback: (() -> Void)?
     private var eventHandlerRef: EventHandlerRef?
 
     private static let regularHotKeySignature: OSType = OSType(0x4341_5043) // 'CAPC'
     private static let regularHotKeyID: UInt32 = 1
     private static let countdownHotKeyID: UInt32 = 2
     private static let pinHotKeyID: UInt32 = 3
+    private static let selectedImageEditHotKeyID: UInt32 = 4
+    private static let clipboardImageEditHotKeyID: UInt32 = 5
 
     private init() {}
 
@@ -26,6 +32,8 @@ final class HotkeyManager {
         unregister()
         unregisterCountdown()
         unregisterPin()
+        unregisterSelectedImageEdit()
+        unregisterClipboardImageEdit()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -116,6 +124,60 @@ final class HotkeyManager {
         }
     }
 
+    /// Register the saved selected-image edit hotkey, if any. No-ops when no
+    /// selected-image edit hotkey is saved.
+    func registerSelectedImageEdit(callback: @escaping () -> Void) {
+        self.selectedImageEditCallback = callback
+        unregisterSelectedImageEdit()
+
+        guard let (keyCode, modifiers) = currentSelectedImageEditHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.selectedImageEditHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            selectedImageEditHotKeyRef = ref
+        }
+    }
+
+    func unregisterSelectedImageEdit() {
+        if let ref = selectedImageEditHotKeyRef {
+            UnregisterEventHotKey(ref)
+            selectedImageEditHotKeyRef = nil
+        }
+    }
+
+    /// Register the saved clipboard-image edit hotkey, if any. No-ops when no
+    /// clipboard-image edit hotkey is saved.
+    func registerClipboardImageEdit(callback: @escaping () -> Void) {
+        self.clipboardImageEditCallback = callback
+        unregisterClipboardImageEdit()
+
+        guard let (keyCode, modifiers) = currentClipboardImageEditHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.clipboardImageEditHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            clipboardImageEditHotKeyRef = ref
+        }
+    }
+
+    func unregisterClipboardImageEdit() {
+        if let ref = clipboardImageEditHotKeyRef {
+            UnregisterEventHotKey(ref)
+            clipboardImageEditHotKeyRef = nil
+        }
+    }
+
     /// Returns the (keyCode, modifiers) for the countdown variant — user hotkey + ⌥.
     /// Returns nil if no custom hotkey is set or the saved hotkey already contains ⌥.
     func currentCountdownHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
@@ -131,6 +193,10 @@ final class HotkeyManager {
     func beginRecording() {
         isRecording = true
         unregister()
+        unregisterCountdown()
+        unregisterPin()
+        unregisterSelectedImageEdit()
+        unregisterClipboardImageEdit()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
     }
 
@@ -171,6 +237,38 @@ final class HotkeyManager {
     /// Display string like "⌘⇧P" for the saved pin hotkey, or nil if not set.
     static func currentPinDisplayString() -> String? {
         guard let (kc, mods) = HotkeyManager.shared.currentPinHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    /// Returns (keyCode, carbonModifiers) for the saved selected-image edit
+    /// hotkey, or nil when the user hasn't bound one.
+    func currentSelectedImageEditHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomSelectedImageEditHotkey else { return nil }
+        let kc = UInt32(Defaults.selectedImageEditHotkeyKeyCode)
+        let mods = UInt32(Defaults.selectedImageEditHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the selected-image edit hotkey, or nil if not set.
+    static func currentSelectedImageEditDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentSelectedImageEditHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    /// Returns (keyCode, carbonModifiers) for the saved clipboard-image edit
+    /// hotkey, or nil when the user hasn't bound one.
+    func currentClipboardImageEditHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomClipboardImageEditHotkey else { return nil }
+        let kc = UInt32(Defaults.clipboardImageEditHotkeyKeyCode)
+        let mods = UInt32(Defaults.clipboardImageEditHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the clipboard-image edit hotkey, or nil if not set.
+    static func currentClipboardImageEditDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentClipboardImageEditHotkey() else { return nil }
         return modifierString(mods) + keyString(kc)
     }
 
@@ -241,6 +339,8 @@ final class HotkeyManager {
     enum HotkeySlot {
         case screenshot
         case pin
+        case selectedImageEdit
+        case clipboardImageEdit
         case clipboard
         case fileSave
     }
@@ -252,7 +352,7 @@ final class HotkeyManager {
     ///
     /// Assigning the screenshot hotkey also redefines the derived countdown
     /// hotkey (screenshot + ⌥), so for that slot the ⌥ variant is checked
-    /// against the pin hotkey as well.
+    /// against other global hotkeys as well.
     func hotkeyConflictMessage(forKeyCode keyCode: UInt32,
                                modifiers: UInt32,
                                assigningTo slot: HotkeySlot) -> String? {
@@ -273,6 +373,28 @@ final class HotkeyManager {
             if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
                kc == keyCode, m == modifiers | UInt32(optionKey) {
                 return L10n.shortcutConflictPin
+            }
+        }
+        if slot != .selectedImageEdit,
+           let (kc, m) = currentSelectedImageEditHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictSelectedImageEdit
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictSelectedImageEdit
+            }
+        }
+        if slot != .clipboardImageEdit,
+           let (kc, m) = currentClipboardImageEditHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictClipboardImageEdit
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictClipboardImageEdit
             }
         }
         if slot != .clipboard, let (kc, m) = currentClipboardHotkey(), kc == keyCode, m == modifiers {
@@ -318,6 +440,10 @@ final class HotkeyManager {
                 if hkID.id == HotkeyManager.countdownHotKeyID, let cb = mgr.countdownCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.pinHotKeyID, let cb = mgr.pinCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.selectedImageEditHotKeyID, let cb = mgr.selectedImageEditCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.clipboardImageEditHotKeyID, let cb = mgr.clipboardImageEditCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.regularHotKeyID, let cb = mgr.callback {
                     DispatchQueue.main.async { cb() }

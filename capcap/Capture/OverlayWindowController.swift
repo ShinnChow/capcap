@@ -146,10 +146,8 @@ class OverlayWindowController {
                 self?.editController?.saveFromKeyboard()
                 return nil
             }
-            // Image-edit mode only: X bails out of an editor that opened by
-            // mistake. Clear the source it came from — the stale Finder
-            // selection or the clipboard image — so it isn't re-opened, then
-            // switch straight into the normal drag-to-select screenshot flow.
+            // Image-edit mode only: X clears the source and switches straight
+            // into the normal drag-to-select screenshot flow.
             if let source = self?.presetSource, event.keyCode == 7 {
                 switch source {
                 case .finder:
@@ -213,8 +211,8 @@ class OverlayWindowController {
         // pass a sensible value derived from the selection rect.
         selectionDidComplete(rect: viewRect, inView: selectionView, isWindowSelection: false, windowID: nil)
 
-        // Pin a hint to the center of the loaded image: if this editor
-        // opened by mistake, X bails out of it.
+        // Pin a hint to the center of the loaded image: X bails out of the
+        // preset image and continues with a normal screenshot.
         let anchorRect = convertToScreenRect(viewRect, view: selectionView)
         let hint = presetSource == .clipboard
             ? L10n.clipboardEditSwitchHint

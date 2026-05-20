@@ -4,8 +4,7 @@ import UniformTypeIdentifiers
 enum FinderSelection {
     /// Returns the URL when Finder has exactly one image file selected,
     /// otherwise nil. Triggers the Apple Events permission prompt on first
-    /// use; on permission denial or any failure, returns nil so the caller
-    /// can fall back to normal screenshot flow.
+    /// use; on permission denial or any failure, returns nil.
     static func currentImageFileURL() -> URL? {
         let urls = currentSelectionURLs()
         guard urls.count == 1, let url = urls.first else { return nil }
@@ -19,9 +18,9 @@ enum FinderSelection {
         currentSelectionURLs().filter(isImage)
     }
 
-    /// Clears Finder's current selection. Used after the image-edit shortcut
-    /// fires by mistake, so the next screenshot trigger runs the normal flow
-    /// instead of re-opening the same image. Silently no-ops on any failure.
+    /// Clears Finder's current selection. Used when bailing out of image-edit
+    /// or pin mode so the same source is not reopened. Silently no-ops on any
+    /// failure.
     static func clearSelection() {
         let source = """
         tell application "Finder"

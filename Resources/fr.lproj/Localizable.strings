@@ -38,6 +38,14 @@
 "pinFromFinderHint" = "Image Finder épinglée, appuyez sur X pour fermer";
 "pinFromClipboardHint" = "Image du presse-papiers épinglée, appuyez sur X pour fermer";
 
+/* Image-edit shortcuts */
+"selectedImageEditShortcutHeader" = "Modifier l'image sélectionnée";
+"selectedImageEditShortcutHint" = "Appuyez dessus pour modifier l'unique image sélectionnée dans le Finder. Non défini par défaut.";
+"selectedImageEditShortcutDefaultDisplay" = "Non défini";
+"clipboardImageEditShortcutHeader" = "Modifier l'image du presse-papiers";
+"clipboardImageEditShortcutHint" = "Appuyez dessus pour modifier l'image actuellement dans le presse-papiers. Non défini par défaut.";
+"clipboardImageEditShortcutDefaultDisplay" = "Non défini";
+
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copier dans le presse-papiers";
 "clipboardShortcutHint" = "Appuyez dessus dans l'éditeur pour valider l'édition et copier la capture dans le presse-papiers. Double-appui sur ⌘ par défaut si non défini.";
@@ -54,6 +62,8 @@
 "shortcutConflictPin" = "Cette combinaison de touches est déjà utilisée par le raccourci d'épinglage d'image. Veuillez en choisir une autre.";
 "shortcutConflictClipboard" = "Cette combinaison de touches est déjà utilisée par le raccourci de copie dans le presse-papiers. Veuillez en choisir une autre.";
 "shortcutConflictFileSave" = "Cette combinaison de touches est déjà utilisée par le raccourci d'enregistrement dans un fichier. Veuillez en choisir une autre.";
+"shortcutConflictSelectedImageEdit" = "Cette combinaison de touches est déjà utilisée par le raccourci Modifier l'image sélectionnée. Veuillez en choisir une autre.";
+"shortcutConflictClipboardImageEdit" = "Cette combinaison de touches est déjà utilisée par le raccourci Modifier l'image du presse-papiers. Veuillez en choisir une autre.";
 
 /* Menu bar */
 "takeScreenshot" = "Capturer l'écran";
@@ -74,6 +84,8 @@
 "scrollCaptureHint" = "Appuyez sur Entrée pour terminer la capture longue";
 "finderEditSwitchHint" = "Édition depuis le Finder. Appuyez sur X pour continuer la capture";
 "clipboardEditSwitchHint" = "Édition depuis le presse-papiers. Appuyez sur X pour continuer la capture";
+"selectedImageEditNoImage" = "Aucune image unique sélectionnée dans le Finder";
+"clipboardImageEditNoImage" = "Aucune image modifiable dans le presse-papiers";
 "colorCopied" = "Couleur %@ copiée";
 
 /* Toolbar tooltips */

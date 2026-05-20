@@ -34,7 +34,7 @@
 	<key>LSUIElement</key>
 	<true/>
 	<key>NSAppleEventsUsageDescription</key>
-	<string>capcap reads the current Finder selection so a double-tap can edit the selected image directly.</string>
+	<string>capcap reads the current Finder selection when you use image edit or pin shortcuts.</string>
 	<key>NSMainNibFile</key>
 	<string></string>
 	<key>NSPrincipalClass</key>

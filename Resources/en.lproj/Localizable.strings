@@ -38,6 +38,14 @@
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
 
+/* Image-edit shortcuts */
+"selectedImageEditShortcutHeader" = "Edit Selected Image";
+"selectedImageEditShortcutHint" = "Press it to edit the single image selected in Finder. Not set by default.";
+"selectedImageEditShortcutDefaultDisplay" = "Not set";
+"clipboardImageEditShortcutHeader" = "Edit Clipboard Image";
+"clipboardImageEditShortcutHint" = "Press it to edit the current image on the clipboard. Not set by default.";
+"clipboardImageEditShortcutDefaultDisplay" = "Not set";
+
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copy to Clipboard";
 "clipboardShortcutHint" = "Pressed inside the editor to commit the edit and copy the screenshot to the clipboard. Defaults to double-tap ⌘ when not set.";
@@ -54,6 +62,8 @@
 "shortcutConflictPin" = "This key combination is already used by the Pin Image shortcut. Please choose a different one.";
 "shortcutConflictClipboard" = "This key combination is already used by the Copy to Clipboard shortcut. Please choose a different one.";
 "shortcutConflictFileSave" = "This key combination is already used by the Save to File shortcut. Please choose a different one.";
+"shortcutConflictSelectedImageEdit" = "This key combination is already used by the Edit Selected Image shortcut. Please choose a different one.";
+"shortcutConflictClipboardImageEdit" = "This key combination is already used by the Edit Clipboard Image shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";
@@ -74,6 +84,8 @@
 "scrollCaptureHint" = "Press Enter to finish long screenshot";
 "finderEditSwitchHint" = "Editing from Finder. Press X to continue screenshot";
 "clipboardEditSwitchHint" = "Editing from clipboard. Press X to continue screenshot";
+"selectedImageEditNoImage" = "No single Finder image selected";
+"clipboardImageEditNoImage" = "No editable image on the clipboard";
 "colorCopied" = "Copied color %@";
 
 /* Toolbar tooltips */

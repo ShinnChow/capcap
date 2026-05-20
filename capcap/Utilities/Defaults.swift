@@ -103,6 +103,14 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
 
+    // Image-edit shortcuts
+    static var selectedImageEditShortcutHeader: String { s("selectedImageEditShortcutHeader") }
+    static var selectedImageEditShortcutHint: String { s("selectedImageEditShortcutHint") }
+    static var selectedImageEditShortcutDefaultDisplay: String { s("selectedImageEditShortcutDefaultDisplay") }
+    static var clipboardImageEditShortcutHeader: String { s("clipboardImageEditShortcutHeader") }
+    static var clipboardImageEditShortcutHint: String { s("clipboardImageEditShortcutHint") }
+    static var clipboardImageEditShortcutDefaultDisplay: String { s("clipboardImageEditShortcutDefaultDisplay") }
+
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
     static var clipboardShortcutHint: String { s("clipboardShortcutHint") }
@@ -119,6 +127,8 @@ enum L10n {
     static var shortcutConflictPin: String { s("shortcutConflictPin") }
     static var shortcutConflictClipboard: String { s("shortcutConflictClipboard") }
     static var shortcutConflictFileSave: String { s("shortcutConflictFileSave") }
+    static var shortcutConflictSelectedImageEdit: String { s("shortcutConflictSelectedImageEdit") }
+    static var shortcutConflictClipboardImageEdit: String { s("shortcutConflictClipboardImageEdit") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
@@ -139,6 +149,8 @@ enum L10n {
     static var scrollCaptureHint: String { s("scrollCaptureHint") }
     static var finderEditSwitchHint: String { s("finderEditSwitchHint") }
     static var clipboardEditSwitchHint: String { s("clipboardEditSwitchHint") }
+    static var selectedImageEditNoImage: String { s("selectedImageEditNoImage") }
+    static var clipboardImageEditNoImage: String { s("clipboardImageEditNoImage") }
     static func colorCopied(_ hex: String) -> String {
         String(format: s("colorCopied"), hex)
     }
@@ -464,6 +476,49 @@ struct Defaults {
     static func clearPinHotkey() {
         defaults.removeObject(forKey: "pinHotkeyKeyCode")
         defaults.removeObject(forKey: "pinHotkeyModifiers")
+    }
+
+    // Custom image-edit hotkeys. They are global Carbon hotkeys with no
+    // defaults: users opt in from Settings. The selected-image shortcut reads
+    // one image selected in Finder; the clipboard-image shortcut reads only
+    // the clipboard image.
+
+    static var selectedImageEditHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "selectedImageEditHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "selectedImageEditHotkeyKeyCode") }
+    }
+
+    static var selectedImageEditHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "selectedImageEditHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "selectedImageEditHotkeyModifiers") }
+    }
+
+    static var hasCustomSelectedImageEditHotkey: Bool {
+        defaults.object(forKey: "selectedImageEditHotkeyKeyCode") != nil
+    }
+
+    static func clearSelectedImageEditHotkey() {
+        defaults.removeObject(forKey: "selectedImageEditHotkeyKeyCode")
+        defaults.removeObject(forKey: "selectedImageEditHotkeyModifiers")
+    }
+
+    static var clipboardImageEditHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "clipboardImageEditHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "clipboardImageEditHotkeyKeyCode") }
+    }
+
+    static var clipboardImageEditHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "clipboardImageEditHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "clipboardImageEditHotkeyModifiers") }
+    }
+
+    static var hasCustomClipboardImageEditHotkey: Bool {
+        defaults.object(forKey: "clipboardImageEditHotkeyKeyCode") != nil
+    }
+
+    static func clearClipboardImageEditHotkey() {
+        defaults.removeObject(forKey: "clipboardImageEditHotkeyKeyCode")
+        defaults.removeObject(forKey: "clipboardImageEditHotkeyModifiers")
     }
 
     // Custom copy-to-clipboard hotkey used inside the editor overlay to

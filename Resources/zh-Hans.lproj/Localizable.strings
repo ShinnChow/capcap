@@ -38,6 +38,14 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 
+/* Image-edit shortcuts */
+"selectedImageEditShortcutHeader" = "编辑选中图片";
+"selectedImageEditShortcutHint" = "按下后直接编辑 Finder 中选中的单张图片。默认未设置。";
+"selectedImageEditShortcutDefaultDisplay" = "未设置";
+"clipboardImageEditShortcutHeader" = "编辑剪贴板图片";
+"clipboardImageEditShortcutHint" = "按下后直接编辑当前剪贴板里的图片。默认未设置。";
+"clipboardImageEditShortcutDefaultDisplay" = "未设置";
+
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "复制到剪贴板";
 "clipboardShortcutHint" = "在编辑器内按下以确认编辑并把截图复制到剪贴板。未设置时默认双击 ⌘。";
@@ -54,6 +62,8 @@
 "shortcutConflictPin" = "该按键组合已被钉图快捷键占用，请换一个。";
 "shortcutConflictClipboard" = "该按键组合已被复制到剪贴板快捷键占用，请换一个。";
 "shortcutConflictFileSave" = "该按键组合已被保存到文件快捷键占用，请换一个。";
+"shortcutConflictSelectedImageEdit" = "该按键组合已被编辑选中图片快捷键占用，请换一个。";
+"shortcutConflictClipboardImageEdit" = "该按键组合已被编辑剪贴板图片快捷键占用，请换一个。";
 
 /* Menu bar */
 "takeScreenshot" = "截图";
@@ -74,6 +84,8 @@
 "scrollCaptureHint" = "按回车结束长截图";
 "finderEditSwitchHint" = "从访达编辑，按 X 继续截图";
 "clipboardEditSwitchHint" = "从剪贴板编辑，按 X 继续截图";
+"selectedImageEditNoImage" = "未找到 Finder 中选中的单张图片";
+"clipboardImageEditNoImage" = "剪贴板里没有可编辑的图片";
 "colorCopied" = "已复制颜色 %@";
 
 /* Toolbar tooltips */

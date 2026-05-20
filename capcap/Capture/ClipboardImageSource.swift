@@ -1,13 +1,12 @@
 import AppKit
 import UniformTypeIdentifiers
 
-/// Pulls an editable image out of the system clipboard. Acts as the second
-/// source for the image-edit shortcut, alongside `FinderSelection`.
+/// Pulls an editable image out of the system clipboard for explicit edit and
+/// pin shortcuts.
 enum ClipboardImageSource {
     /// Returns an image when the clipboard holds one — either raw bitmap data
     /// (a copied screenshot, an image dragged from a browser, etc.) or a
-    /// single copied image file. Returns nil when the clipboard has no image,
-    /// so the caller can fall through to the normal screenshot flow.
+    /// single copied image file. Returns nil when the clipboard has no image.
     static func currentImage() -> NSImage? {
         let pasteboard = NSPasteboard.general
 
@@ -39,9 +38,8 @@ enum ClipboardImageSource {
         return nil
     }
 
-    /// Empties the clipboard. Used after the image-edit shortcut fires by
-    /// mistake, so the next screenshot trigger runs the normal flow instead of
-    /// re-opening the same clipboard image.
+    /// Empties the clipboard. Used when bailing out of image-edit or pin mode
+    /// so the same source is not reopened.
     static func clear() {
         NSPasteboard.general.clearContents()
     }
