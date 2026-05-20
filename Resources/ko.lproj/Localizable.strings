@@ -38,11 +38,17 @@
 "pinFromFinderHint" = "Finder 이미지를 고정했습니다. X 키를 눌러 닫기";
 "pinFromClipboardHint" = "클립보드 이미지를 고정했습니다. X 키를 눌러 닫기";
 
+/* Save shortcut (editor confirm) */
+"saveShortcutHeader" = "저장 단축키";
+"saveShortcutHint" = "편집기에서 눌러 스크린샷을 확정하고 복사합니다. 설정하지 않으면 Return 키를 사용합니다.";
+"saveShortcutDefaultDisplay" = "Return";
+
 /* Shortcut conflict */
 "shortcutConflictTitle" = "단축키가 이미 사용 중입니다";
 "shortcutConflictScreenshot" = "이 키 조합은 이미 스크린샷 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictCountdown" = "이 키 조합은 이미 카운트다운 스크린샷 단축키(스크린샷 단축키 + ⌥)에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictPin" = "이 키 조합은 이미 이미지 고정 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
+"shortcutConflictSave" = "이 키 조합은 이미 저장 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 
 /* Menu bar */
 "takeScreenshot" = "스크린샷";

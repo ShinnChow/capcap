@@ -38,11 +38,17 @@
 "pinFromFinderHint" = "Изображение Finder закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardHint" = "Изображение из буфера закреплено, нажмите X, чтобы закрыть";
 
+/* Save shortcut (editor confirm) */
+"saveShortcutHeader" = "Сочетание для сохранения";
+"saveShortcutHint" = "Нажмите его в редакторе, чтобы подтвердить и скопировать снимок. По умолчанию используется клавиша Return.";
+"saveShortcutDefaultDisplay" = "Return";
+
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Сочетание уже используется";
 "shortcutConflictScreenshot" = "Это сочетание клавиш уже назначено для снимка экрана. Выберите другое.";
 "shortcutConflictCountdown" = "Это сочетание клавиш уже назначено для снимка экрана с обратным отсчётом (сочетание для снимка + ⌥). Выберите другое.";
 "shortcutConflictPin" = "Это сочетание клавиш уже назначено для закрепления изображения. Выберите другое.";
+"shortcutConflictSave" = "Это сочетание клавиш уже назначено для сохранения. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";

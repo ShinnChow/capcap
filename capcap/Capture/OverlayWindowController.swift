@@ -132,7 +132,7 @@ class OverlayWindowController {
                 self?.cancel()
                 return nil
             }
-            if event.keyCode == 36 { // Enter — confirm screenshot
+            if HotkeyManager.eventMatchesSaveHotkey(event) {
                 self?.editController?.confirmFromKeyboard()
                 return nil
             }

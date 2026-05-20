@@ -95,6 +95,14 @@ class SettingsView: NSView {
     private var pinShortcutRestoreButton: NSButton!
     private var pinShortcutRecordingMonitor: Any?
 
+    // Save (editor-confirm) shortcut card
+    private var saveShortcutTitleLabel: NSTextField!
+    private var saveShortcutHintLabel: NSTextField!
+    private var saveShortcutField: NSTextField!
+    private var saveShortcutSetButton: NSButton!
+    private var saveShortcutRestoreButton: NSButton!
+    private var saveShortcutRecordingMonitor: Any?
+
     // Permission badges
     private var accessibilityBadge: StatusBadge!
     private var screenRecordingBadge: StatusBadge!
@@ -179,6 +187,7 @@ class SettingsView: NSView {
         refreshTimer?.invalidate()
         cancelShortcutRecording()
         cancelPinShortcutRecording()
+        cancelSaveShortcutRecording()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -240,6 +249,7 @@ class SettingsView: NSView {
         refreshPermissionStatus()
         refreshShortcutDisplay()
         refreshPinShortcutDisplay()
+        refreshSaveShortcutDisplay()
     }
 
     // MARK: - Sidebar
@@ -590,6 +600,21 @@ class SettingsView: NSView {
         pinShortcutHintLabel = pinShortcut.hint
         stack.addArrangedSubview(pinShortcut.card)
         pinShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Save (editor-confirm) shortcut card
+        let saveShortcut = buildShortcutCard(
+            title: L10n.saveShortcutHeader,
+            hint: L10n.saveShortcutHint,
+            setAction: #selector(saveShortcutSetClicked),
+            restoreAction: #selector(saveShortcutRestoreClicked)
+        )
+        saveShortcutTitleLabel = saveShortcut.title
+        saveShortcutField = saveShortcut.field
+        saveShortcutSetButton = saveShortcut.setButton
+        saveShortcutRestoreButton = saveShortcut.restoreButton
+        saveShortcutHintLabel = saveShortcut.hint
+        stack.addArrangedSubview(saveShortcut.card)
+        saveShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         return wrapPane(stack)
     }
@@ -1984,6 +2009,97 @@ class SettingsView: NSView {
         }
     }
 
+    @objc private func saveShortcutSetClicked() {
+        if saveShortcutRecordingMonitor != nil {
+            cancelSaveShortcutRecording()
+            return
+        }
+        if shortcutRecordingMonitor != nil {
+            cancelShortcutRecording()
+        }
+        if pinShortcutRecordingMonitor != nil {
+            cancelPinShortcutRecording()
+        }
+        HotkeyManager.shared.beginRecording()
+        saveShortcutSetButton.title = L10n.shortcutCancel
+        saveShortcutField.stringValue = L10n.shortcutWaiting
+        saveShortcutRestoreButton.isHidden = true
+
+        saveShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelSaveShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            // Unlike the screenshot/pin hotkeys, the save hotkey is allowed to
+            // be bare — it only fires inside the editor overlay, where typing
+            // is restricted to text-annotation editing (already guarded).
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .save) {
+                self.cancelSaveShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.saveHotkeyKeyCode = Int(keyCode)
+            Defaults.saveHotkeyModifiers = Int(carbonMods)
+            self.finishSaveShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func saveShortcutRestoreClicked() {
+        if saveShortcutRecordingMonitor != nil {
+            cancelSaveShortcutRecording()
+        }
+        Defaults.clearSaveHotkey()
+        refreshSaveShortcutDisplay()
+    }
+
+    private func finishSaveShortcutRecording() {
+        if let m = saveShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            saveShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshSaveShortcutDisplay()
+    }
+
+    func cancelSaveShortcutRecording() {
+        guard saveShortcutRecordingMonitor != nil else { return }
+        if let m = saveShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            saveShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshSaveShortcutDisplay()
+    }
+
+    private func refreshSaveShortcutDisplay() {
+        saveShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentSaveDisplayString() {
+            saveShortcutField?.stringValue = display
+            saveShortcutRestoreButton?.isHidden = false
+        } else {
+            saveShortcutField?.stringValue = L10n.saveShortcutDefaultDisplay
+            saveShortcutRestoreButton?.isHidden = true
+        }
+    }
+
     @objc private func updateLocalization() {
         menuBarTitleLabel?.stringValue = L10n.showMenuBarIcon
         launchAtLoginTitleLabel?.stringValue = L10n.launchAtLogin
@@ -2009,6 +2125,9 @@ class SettingsView: NSView {
         pinShortcutTitleLabel?.stringValue = L10n.pinShortcutHeader
         pinShortcutHintLabel?.stringValue = L10n.pinShortcutHint
         pinShortcutRestoreButton?.toolTip = L10n.pinShortcutClear
+        saveShortcutTitleLabel?.stringValue = L10n.saveShortcutHeader
+        saveShortcutHintLabel?.stringValue = L10n.saveShortcutHint
+        saveShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         aboutTaglineLabel?.stringValue = L10n.aboutTagline
         aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
         aboutSourceTitleLabel?.stringValue = L10n.aboutSourceCode
@@ -2025,6 +2144,7 @@ class SettingsView: NSView {
         refreshUpdateRow()
         refreshShortcutDisplay()
         refreshPinShortcutDisplay()
+        refreshSaveShortcutDisplay()
         refreshBottomAction()
         accessibilityBadge?.refreshTitle()
         screenRecordingBadge?.refreshTitle()

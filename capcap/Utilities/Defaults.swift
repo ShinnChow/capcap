@@ -103,11 +103,17 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
 
+    // Save shortcut (editor confirm)
+    static var saveShortcutHeader: String { s("saveShortcutHeader") }
+    static var saveShortcutHint: String { s("saveShortcutHint") }
+    static var saveShortcutDefaultDisplay: String { s("saveShortcutDefaultDisplay") }
+
     // Shortcut conflict
     static var shortcutConflictTitle: String { s("shortcutConflictTitle") }
     static var shortcutConflictScreenshot: String { s("shortcutConflictScreenshot") }
     static var shortcutConflictCountdown: String { s("shortcutConflictCountdown") }
     static var shortcutConflictPin: String { s("shortcutConflictPin") }
+    static var shortcutConflictSave: String { s("shortcutConflictSave") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
@@ -452,6 +458,32 @@ struct Defaults {
     static func clearPinHotkey() {
         defaults.removeObject(forKey: "pinHotkeyKeyCode")
         defaults.removeObject(forKey: "pinHotkeyModifiers")
+    }
+
+    // Custom save hotkey used inside the editor overlay to confirm the
+    // screenshot. When absent, falls back to Return. Unlike the screenshot and
+    // pin hotkeys this is matched locally against keyDown events instead of
+    // registered as a Carbon global hotkey, so it may be bare (no modifiers).
+    // Presence must be checked via `hasCustomSaveHotkey` since key code 0
+    // (`A`) is a valid value.
+
+    static var saveHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "saveHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "saveHotkeyKeyCode") }
+    }
+
+    static var saveHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "saveHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "saveHotkeyModifiers") }
+    }
+
+    static var hasCustomSaveHotkey: Bool {
+        defaults.object(forKey: "saveHotkeyKeyCode") != nil
+    }
+
+    static func clearSaveHotkey() {
+        defaults.removeObject(forKey: "saveHotkeyKeyCode")
+        defaults.removeObject(forKey: "saveHotkeyModifiers")
     }
 
     static var penColor: Int {

@@ -1171,12 +1171,13 @@ class EditWindowController {
     }
 
     /// While auto-scroll runs capcap is deactivated, so a local key monitor
-    /// would not fire. This global monitor lets Enter stop scrolling.
+    /// would not fire. This global monitor lets the save hotkey (default
+    /// Return) stop scrolling.
     private func installScrollCaptureKeyMonitor() {
         removeScrollCaptureKeyMonitor()
         scrollCaptureKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, self.isScrollCapturing else { return }
-            if event.keyCode == 36 { // Return
+            if HotkeyManager.eventMatchesSaveHotkey(event) {
                 self.stopScrollCapture()
             }
         }

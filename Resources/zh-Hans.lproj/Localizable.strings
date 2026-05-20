@@ -38,11 +38,17 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 
+/* Save shortcut (editor confirm) */
+"saveShortcutHeader" = "保存快捷键";
+"saveShortcutHint" = "在编辑器内按下以确认并复制截图。未设置时默认使用回车。";
+"saveShortcutDefaultDisplay" = "回车";
+
 /* Shortcut conflict */
 "shortcutConflictTitle" = "快捷键已被占用";
 "shortcutConflictScreenshot" = "该按键组合已被截图快捷键占用，请换一个。";
 "shortcutConflictCountdown" = "该按键组合已被倒计时截图快捷键（截图快捷键 + ⌥）占用，请换一个。";
 "shortcutConflictPin" = "该按键组合已被钉图快捷键占用，请换一个。";
+"shortcutConflictSave" = "该按键组合已被保存快捷键占用，请换一个。";
 
 /* Menu bar */
 "takeScreenshot" = "截图";

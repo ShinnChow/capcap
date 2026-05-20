@@ -38,11 +38,17 @@
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
 
+/* Save shortcut (editor confirm) */
+"saveShortcutHeader" = "Save Shortcut";
+"saveShortcutHint" = "Pressed inside the editor to confirm and copy the screenshot. Defaults to Return when not set.";
+"saveShortcutDefaultDisplay" = "Return";
+
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Shortcut Already in Use";
 "shortcutConflictScreenshot" = "This key combination is already used by the screenshot shortcut. Please choose a different one.";
 "shortcutConflictCountdown" = "This key combination is already used by the countdown screenshot shortcut (screenshot shortcut + ⌥). Please choose a different one.";
 "shortcutConflictPin" = "This key combination is already used by the Pin Image shortcut. Please choose a different one.";
+"shortcutConflictSave" = "This key combination is already used by the Save shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";

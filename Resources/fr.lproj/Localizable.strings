@@ -38,11 +38,17 @@
 "pinFromFinderHint" = "Image Finder épinglée, appuyez sur X pour fermer";
 "pinFromClipboardHint" = "Image du presse-papiers épinglée, appuyez sur X pour fermer";
 
+/* Save shortcut (editor confirm) */
+"saveShortcutHeader" = "Raccourci d'enregistrement";
+"saveShortcutHint" = "Appuyez dessus dans l'éditeur pour valider et copier la capture. Utilise Entrée par défaut si non défini.";
+"saveShortcutDefaultDisplay" = "Entrée";
+
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Raccourci déjà utilisé";
 "shortcutConflictScreenshot" = "Cette combinaison de touches est déjà utilisée par le raccourci de capture d'écran. Veuillez en choisir une autre.";
 "shortcutConflictCountdown" = "Cette combinaison de touches est déjà utilisée par le raccourci de capture avec compte à rebours (raccourci de capture + ⌥). Veuillez en choisir une autre.";
 "shortcutConflictPin" = "Cette combinaison de touches est déjà utilisée par le raccourci d'épinglage d'image. Veuillez en choisir une autre.";
+"shortcutConflictSave" = "Cette combinaison de touches est déjà utilisée par le raccourci d'enregistrement. Veuillez en choisir une autre.";
 
 /* Menu bar */
 "takeScreenshot" = "Capturer l'écran";

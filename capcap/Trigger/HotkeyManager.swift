@@ -174,12 +174,49 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    /// Returns (keyCode, carbonModifiers) for the saved editor-save hotkey, or
+    /// nil when the user hasn't bound one (fall back to Return).
+    /// Bare (no-modifier) values are allowed here — the save hotkey is matched
+    /// locally against keyDown events inside the editor, not registered as a
+    /// global Carbon hotkey, so it won't intercept ordinary typing.
+    func currentSaveHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomSaveHotkey else { return nil }
+        let kc = UInt32(Defaults.saveHotkeyKeyCode)
+        let mods = UInt32(Defaults.saveHotkeyModifiers)
+        return (kc, mods)
+    }
+
+    /// Display string for the saved save hotkey, or nil if not set.
+    static func currentSaveDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentSaveHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    /// Returns true when the given keyDown event matches the user's save
+    /// hotkey, or — if none is configured — when it is a bare Return press.
+    static func eventMatchesSaveHotkey(_ event: NSEvent) -> Bool {
+        let activeMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        let mods = event.modifierFlags.intersection(activeMask)
+        var carbonMods: UInt32 = 0
+        if mods.contains(.command) { carbonMods |= UInt32(cmdKey) }
+        if mods.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+        if mods.contains(.option)  { carbonMods |= UInt32(optionKey) }
+        if mods.contains(.control) { carbonMods |= UInt32(controlKey) }
+        let keyCode = UInt32(event.keyCode)
+
+        if let (kc, m) = HotkeyManager.shared.currentSaveHotkey() {
+            return kc == keyCode && m == carbonMods
+        }
+        return keyCode == UInt32(kVK_Return) && carbonMods == 0
+    }
+
     // MARK: - Conflict detection
 
     /// A user-configurable hotkey slot in Settings.
     enum HotkeySlot {
         case screenshot
         case pin
+        case save
     }
 
     /// Returns a localized message describing the existing binding a candidate
@@ -211,6 +248,9 @@ final class HotkeyManager {
                kc == keyCode, m == modifiers | UInt32(optionKey) {
                 return L10n.shortcutConflictPin
             }
+        }
+        if slot != .save, let (kc, m) = currentSaveHotkey(), kc == keyCode, m == modifiers {
+            return L10n.shortcutConflictSave
         }
         return nil
     }
