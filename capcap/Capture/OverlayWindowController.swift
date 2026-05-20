@@ -8,7 +8,7 @@ struct CaptureResult {
 }
 
 class OverlayWindowController {
-    /// Where a preset image came from — drives the X-key bail-out behavior.
+    /// Where a preset image came from — drives the source-specific edit hint.
     enum PresetSource {
         case finder
         case clipboard
@@ -23,10 +23,6 @@ class OverlayWindowController {
     private let windowDetector = WindowDetector()
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
     private let onComplete: (NSImage?) -> Void
-
-    /// Image-edit mode only: called when the user presses X to abandon the
-    /// preset editor and start the normal drag-to-select screenshot flow.
-    private let onSwitchToCapture: (() -> Void)?
 
     /// Image-edit mode: when set, `activate()` skips the user's drag-to-select
     /// step and immediately opens the editor on the supplied image, sized to
@@ -44,19 +40,16 @@ class OverlayWindowController {
     init(onComplete: @escaping (NSImage?) -> Void) {
         self.presetImage = nil
         self.presetSource = nil
-        self.onSwitchToCapture = nil
         self.onComplete = onComplete
     }
 
     init(
         presetImage: NSImage,
         presetSource: PresetSource,
-        onComplete: @escaping (NSImage?) -> Void,
-        onSwitchToCapture: @escaping () -> Void
+        onComplete: @escaping (NSImage?) -> Void
     ) {
         self.presetImage = presetImage
         self.presetSource = presetSource
-        self.onSwitchToCapture = onSwitchToCapture
         self.onComplete = onComplete
     }
 
@@ -146,16 +139,10 @@ class OverlayWindowController {
                 self?.editController?.saveFromKeyboard()
                 return nil
             }
-            // Image-edit mode only: X clears the source and switches straight
-            // into the normal drag-to-select screenshot flow.
-            if let source = self?.presetSource, event.keyCode == 7 {
-                switch source {
-                case .finder:
-                    FinderSelection.clearSelection()
-                case .clipboard:
-                    ClipboardImageSource.clear()
-                }
-                self?.switchToCaptureMode()
+            // Image-edit mode only: X exits the preset editor, matching the
+            // toolbar close button.
+            if self?.presetSource != nil, event.keyCode == 7 {
+                self?.cancel()
                 return nil
             }
             return event
@@ -211,12 +198,11 @@ class OverlayWindowController {
         // pass a sensible value derived from the selection rect.
         selectionDidComplete(rect: viewRect, inView: selectionView, isWindowSelection: false, windowID: nil)
 
-        // Pin a hint to the center of the loaded image: X bails out of the
-        // preset image and continues with a normal screenshot.
+        // Pin a hint to the center of the loaded image: X exits editing.
         let anchorRect = convertToScreenRect(viewRect, view: selectionView)
         let hint = presetSource == .clipboard
-            ? L10n.clipboardEditSwitchHint
-            : L10n.finderEditSwitchHint
+            ? L10n.clipboardEditExitHint
+            : L10n.finderEditExitHint
         ToastWindow.show(
             message: hint,
             centerAnchor: NSPoint(x: anchorRect.midX, y: anchorRect.midY),
@@ -229,23 +215,6 @@ class OverlayWindowController {
         editController = nil
         tearDown()
         onComplete(nil)
-    }
-
-    /// Image-edit mode: tear down the preset editor and overlays, then hand
-    /// back to the caller so it can start a fresh normal screenshot capture.
-    private func switchToCaptureMode() {
-        editController?.tearDown()
-        editController = nil
-        tearDown() // also dismisses the "press X" hint toast
-
-        // Hand off on the next runloop turn: `tearDown()` orders the hint
-        // toast out, but the window server hasn't recomposited the screen
-        // yet. Starting capture synchronously would snapshot the display
-        // with the toast still on it, baking it into the screenshot.
-        let switchHandler = onSwitchToCapture
-        DispatchQueue.main.async {
-            switchHandler?()
-        }
     }
 
     private var cursorPopped = false

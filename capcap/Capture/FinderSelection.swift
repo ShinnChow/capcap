@@ -18,9 +18,8 @@ enum FinderSelection {
         currentSelectionURLs().filter(isImage)
     }
 
-    /// Clears Finder's current selection. Used when bailing out of image-edit
-    /// or pin mode so the same source is not reopened. Silently no-ops on any
-    /// failure.
+    /// Clears Finder's current selection. Used by pin mode so the same source
+    /// is not re-pinned. Silently no-ops on any failure.
     static func clearSelection() {
         let source = """
         tell application "Finder"

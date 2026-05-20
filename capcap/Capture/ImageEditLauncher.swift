@@ -8,8 +8,7 @@ enum ImageEditLauncher {
     /// reading directly from the user's library.
     static func launch(
         sourceURL: URL,
-        onComplete: @escaping (NSImage?) -> Void,
-        onSwitchToCapture: @escaping () -> Void
+        onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         guard let copyURL = copyToTemp(sourceURL),
               let original = NSImage(contentsOf: copyURL),
@@ -19,8 +18,7 @@ enum ImageEditLauncher {
         return present(
             original,
             source: .finder,
-            onComplete: onComplete,
-            onSwitchToCapture: onSwitchToCapture
+            onComplete: onComplete
         )
     }
 
@@ -29,23 +27,20 @@ enum ImageEditLauncher {
     /// normal screenshot flow.
     static func launch(
         clipboardImage image: NSImage,
-        onComplete: @escaping (NSImage?) -> Void,
-        onSwitchToCapture: @escaping () -> Void
+        onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         guard image.size.width > 0, image.size.height > 0 else { return nil }
         return present(
             image,
             source: .clipboard,
-            onComplete: onComplete,
-            onSwitchToCapture: onSwitchToCapture
+            onComplete: onComplete
         )
     }
 
     private static func present(
         _ image: NSImage,
         source: OverlayWindowController.PresetSource,
-        onComplete: @escaping (NSImage?) -> Void,
-        onSwitchToCapture: @escaping () -> Void
+        onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         let screen = activeScreen()
         let displayImage = fitForDisplay(image, on: screen)
@@ -53,8 +48,7 @@ enum ImageEditLauncher {
         let controller = OverlayWindowController(
             presetImage: displayImage,
             presetSource: source,
-            onComplete: onComplete,
-            onSwitchToCapture: onSwitchToCapture
+            onComplete: onComplete
         )
         controller.activate()
         return controller

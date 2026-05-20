@@ -38,8 +38,8 @@ enum ClipboardImageSource {
         return nil
     }
 
-    /// Empties the clipboard. Used when bailing out of image-edit or pin mode
-    /// so the same source is not reopened.
+    /// Empties the clipboard. Used by pin mode so the same source is not
+    /// re-pinned.
     static func clear() {
         NSPasteboard.general.clearContents()
     }
