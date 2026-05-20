@@ -22,7 +22,7 @@ jobs:
       artifact_sha256: ${{ steps.package.outputs.artifact_sha256 }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -211,7 +211,7 @@ jobs:
       #     ditto -c -k --sequesterRsrc --keepParent "notarized/capcap.app" "$ARTIFACT"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: capcap-${{ steps.version.outputs.version }}
           path: |
@@ -227,10 +227,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout (for CHANGELOG)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: capcap-${{ needs.build.outputs.version }}
           path: dist
@@ -268,7 +268,7 @@ jobs:
           echo "notes_file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.ref_name }}
           name: v${{ needs.build.outputs.version }}
