@@ -94,6 +94,13 @@ jobs:
           fi
           cp "Resources/AppIcon.icns" "$RESOURCES/AppIcon.icns"
 
+          # Copy the status bar icon. StatusBarController loads this bundled
+          # SVG at runtime and falls back to the old SF Symbol when it is absent.
+          if [ ! -f "design/menuBarIcon.svg" ]; then
+            echo "error: design/menuBarIcon.svg missing" >&2; exit 1
+          fi
+          cp "design/menuBarIcon.svg" "$RESOURCES/MenuBarIcon.svg"
+
           # Copy localization bundles (.lproj). The app loads these directly
           # for its in-app language picker — see Localizer.swift. Without them
           # every UI string falls back to its raw key.
