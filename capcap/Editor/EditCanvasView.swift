@@ -51,6 +51,10 @@ class EditCanvasView: NSView {
     var currentColor: NSColor = .red {
         didSet { activeTextField?.textColor = currentColor }
     }
+    /// Whether new text annotations get a contrast outline.
+    var currentTextStroke: Bool = Defaults.lastTextStroke {
+        didSet { activeTextField?.hasStroke = currentTextStroke }
+    }
     var currentLineWidth: CGFloat = 3.0
     /// Base width for the marker brush. Drawn at `× MarkerAnnotation.brushScale`.
     var currentMarkerLineWidth: CGFloat = 4.0
@@ -193,6 +197,8 @@ class EditCanvasView: NSView {
     private static let endpointHandleSize: CGFloat = 12
     private static let resizeHandleSize: CGFloat = 10
     private static let actionButtonSize: CGFloat = 22
+    /// Small +/- stepper buttons shown under a selected numbered badge.
+    private static let numberStepButtonSize: CGFloat = 20
     private static let selectionBoxPad: CGFloat = 6
 
     private var trackingArea: NSTrackingArea?
@@ -257,6 +263,7 @@ class EditCanvasView: NSView {
                 bottomLeft: annotation.origin,
                 fontSize: annotation.fontSize,
                 color: annotation.color,
+                hasStroke: annotation.hasStroke,
                 initialText: annotation.text,
                 replacingIndex: index
             )
@@ -391,7 +398,7 @@ class EditCanvasView: NSView {
         if let a = a as? TextAnnotation, let b = b as? TextAnnotation {
             return a.text == b.text && a.origin == b.origin
                 && a.fontSize == b.fontSize && a.rotation == b.rotation
-                && a.color == b.color
+                && a.color == b.color && a.hasStroke == b.hasStroke
         }
         if let a = a as? PenAnnotation, let b = b as? PenAnnotation {
             return a.path === b.path && a.lineWidth == b.lineWidth
@@ -444,6 +451,17 @@ class EditCanvasView: NSView {
             case .edit:
                 if let textAnnotation = annotations[idx] as? TextAnnotation {
                     reEditTextAnnotation(at: idx, annotation: textAnnotation)
+                }
+            case .incrementNumber:
+                mutateSelectedAnnotationAtomic { annotation in
+                    guard let n = annotation as? NumberAnnotation else { return annotation }
+                    return n.withNumber(n.number + 1)
+                }
+            case .decrementNumber:
+                // Sequence badges start at 1 — clamp so "−" can't go lower.
+                mutateSelectedAnnotationAtomic { annotation in
+                    guard let n = annotation as? NumberAnnotation else { return annotation }
+                    return n.withNumber(max(1, n.number - 1))
                 }
             }
             return
@@ -645,7 +663,8 @@ class EditCanvasView: NSView {
                 beginTextEditing(
                     bottomLeft: newTextOrigin(forClickAt: pending.point, fontSize: currentFontSize),
                     fontSize: currentFontSize,
-                    color: currentColor
+                    color: currentColor,
+                    hasStroke: currentTextStroke
                 )
             }
             return
@@ -1067,6 +1086,7 @@ class EditCanvasView: NSView {
         bottomLeft: NSPoint,
         fontSize: CGFloat,
         color: NSColor,
+        hasStroke: Bool,
         initialText: String = "",
         replacingIndex: Int? = nil
     ) {
@@ -1102,6 +1122,7 @@ class EditCanvasView: NSView {
         let field = EditableTextField(frame: fieldRect)
         field.font = font
         field.textColor = color
+        field.hasStroke = hasStroke
         field.stringValue = initialText
         field.onCommit = { [weak self, weak field] text in
             self?.handleTextCommit(text: text, field: field)
@@ -1145,7 +1166,8 @@ class EditCanvasView: NSView {
                 text: text,
                 origin: NSPoint(x: field.frame.minX, y: field.frame.minY),
                 color: field.textColor ?? currentColor,
-                fontSize: font.pointSize
+                fontSize: font.pointSize,
+                hasStroke: field.hasStroke
             )
             if let idx = editingOriginalIndex {
                 let safeIdx = min(idx, annotations.count)
@@ -1325,6 +1347,22 @@ class EditCanvasView: NSView {
         )
     }
 
+    /// One of the two +/- stepper buttons under a numbered badge.
+    /// `.decrement` is the left button, `.increment` the right. They are
+    /// anchored to the badge circle (not the bounding box) so they hug the
+    /// glyph regardless of any arrow. nil for non-number annotations.
+    private func numberStepButtonRect(for annotation: Annotation, increment: Bool) -> NSRect? {
+        guard let number = annotation as? NumberAnnotation else { return nil }
+        let s = EditCanvasView.numberStepButtonSize
+        let gap: CGFloat = 4          // spacing between the two buttons
+        let dropBelow: CGFloat = 7    // clearance under the badge circle
+        let centerY = number.center.y - NumberAnnotation.radius - dropBelow - s / 2
+        let centerX = increment
+            ? number.center.x + gap / 2 + s / 2
+            : number.center.x - gap / 2 - s / 2
+        return NSRect(x: centerX - s / 2, y: centerY - s / 2, width: s, height: s)
+    }
+
     private func drawSelectionHandles(for annotation: Annotation, in context: CGContext) {
         // 1. Dashed selection box — rotated with the annotation so it stays
         // wrapped around the visible content at any angle.
@@ -1446,6 +1484,26 @@ class EditCanvasView: NSView {
                 in: context
             )
         }
+
+        // 7. Number stepper — small +/- buttons under the badge so the
+        // user can re-number a sequence badge without re-creating it.
+        if let number = annotation as? NumberAnnotation,
+           let decRect = numberStepButtonRect(for: annotation, increment: false),
+           let incRect = numberStepButtonRect(for: annotation, increment: true) {
+            drawActionButton(
+                in: decRect,
+                symbolName: "minus",
+                symbolPointSize: 9,
+                enabled: number.number > 1,
+                in: context
+            )
+            drawActionButton(
+                in: incRect,
+                symbolName: "plus",
+                symbolPointSize: 9,
+                in: context
+            )
+        }
     }
 
     private func drawHandleDot(
@@ -1469,11 +1527,13 @@ class EditCanvasView: NSView {
     }
 
     /// Draw an SF Symbol tinted white, centered at `center`. Used for the
-    /// rotate / delete / edit glyphs on the action buttons.
+    /// rotate / delete / edit glyphs on the action buttons. `alpha` dims the
+    /// glyph for disabled buttons (e.g. "−" when the badge is already at 1).
     private func drawSymbolGlyph(
         _ symbolName: String,
         at center: NSPoint,
         pointSize: CGFloat,
+        alpha: CGFloat = 1,
         in context: CGContext
     ) {
         let cfg = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .bold)
@@ -1496,34 +1556,38 @@ class EditCanvasView: NSView {
             height: tinted.size.height
         )
         NSGraphicsContext.saveGraphicsState()
-        tinted.draw(in: drawRect)
+        tinted.draw(in: drawRect, from: .zero, operation: .sourceOver, fraction: alpha)
         NSGraphicsContext.restoreGraphicsState()
     }
 
     /// Round dark button with an accent ring and a centered SF symbol —
-    /// used for delete / edit actions in adjust mode.
+    /// used for delete / edit / number-stepper actions in adjust mode.
+    /// `enabled: false` dims the whole button for a no-op state.
     private func drawActionButton(
         in rect: NSRect,
         symbolName: String,
         symbolPointSize: CGFloat,
+        enabled: Bool = true,
         in context: CGContext
     ) {
+        let alpha: CGFloat = enabled ? 1 : 0.4
         drawHandleDot(
             at: NSPoint(x: rect.midX, y: rect.midY),
             size: rect.width,
-            fill: NSColor(white: 0.12, alpha: 0.94),
-            stroke: accentGreen,
+            fill: NSColor(white: 0.12, alpha: 0.94 * alpha),
+            stroke: accentGreen.withAlphaComponent(alpha),
             in: context
         )
         drawSymbolGlyph(
             symbolName,
             at: NSPoint(x: rect.midX, y: rect.midY),
             pointSize: symbolPointSize,
+            alpha: alpha,
             in: context
         )
     }
 
-    enum SelectionAction { case delete, edit }
+    enum SelectionAction { case delete, edit, incrementNumber, decrementNumber }
 
     /// Top-right action buttons (delete, edit) — clicked, not dragged.
     private func hitTestSelectionAction(at point: NSPoint) -> SelectionAction? {
@@ -1538,6 +1602,14 @@ class EditCanvasView: NSView {
         }
         if let editRect = editButtonRect(for: annotation), editRect.contains(point) {
             return .edit
+        }
+        if let decRect = numberStepButtonRect(for: annotation, increment: false),
+           decRect.contains(point) {
+            return .decrementNumber
+        }
+        if let incRect = numberStepButtonRect(for: annotation, increment: true),
+           incRect.contains(point) {
+            return .incrementNumber
         }
         return nil
     }
@@ -1798,6 +1870,12 @@ class EditCanvasView: NSView {
 final class EditableTextField: NSTextField, NSTextFieldDelegate {
     var onCommit: ((String) -> Void)?
     var onCancel: (() -> Void)?
+
+    /// Outline flag for the text being edited. Carried through the edit
+    /// session and read back when the annotation is committed. The live field
+    /// shows plain text; the outline is rendered on the committed
+    /// `TextAnnotation`, which adds it without shifting the glyphs.
+    var hasStroke: Bool = false
 
     private var didFinish = false
     private var wasCanceled = false

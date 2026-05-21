@@ -126,6 +126,7 @@
 "beautifyPresetNeutralGray" = "Neutral Gray";
 "beautifyPresetWallpaper" = "Wallpaper";
 "beautifyShadowEffect" = "Shadow Effect";
+"textStrokeEffect" = "Stroke";
 
 /* Language */
 "languageHeader" = "Language";

@@ -68,6 +68,8 @@ class EditWindowController {
     private var currentLineWidth: CGFloat = 3.0
     private var currentMosaicBlockSize: CGFloat = 12.0
     private var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
+    /// Whether new text annotations get a contrast outline.
+    private var currentTextStroke: Bool = Defaults.lastTextStroke
     /// Marker keeps its own color/size slot so toggling between pen and
     /// marker preserves each tool's last-used choice.
     private var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
@@ -330,6 +332,7 @@ class EditWindowController {
         case let t as TextAnnotation:
             currentColor = t.color
             currentFontSize = t.fontSize
+            currentTextStroke = t.hasStroke
         case let p as PenAnnotation:
             currentColor = p.color
             currentLineWidth = p.lineWidth
@@ -459,12 +462,23 @@ class EditWindowController {
         let view = TextSubToolbar(
             frame: subRect,
             currentColor: currentColor,
-            currentFontSize: currentFontSize
+            currentFontSize: currentFontSize,
+            strokeEnabled: currentTextStroke
         )
         view.onColorChanged = { [weak self] color in
             self?.currentColor = color
             self?.canvasView?.currentColor = color
             self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withColor(color) }
+        }
+        view.onStrokeChanged = { [weak self] enabled in
+            self?.currentTextStroke = enabled
+            self?.canvasView?.currentTextStroke = enabled
+            Defaults.lastTextStroke = enabled
+            // Apply to the selected text annotation, if any. Other annotation
+            // types carry no outline, so the transform leaves them untouched.
+            self?.canvasView?.mutateSelectedAnnotationAtomic { annotation in
+                (annotation as? TextAnnotation)?.withStroke(enabled) ?? annotation
+            }
         }
         view.onFontSizeBegan = { [weak self] in
             self?.canvasView?.beginSelectionAdjustment()
@@ -2222,6 +2236,7 @@ private class ColorSizeSubToolbar: NSView {
 private class TextSubToolbar: NSView {
     var currentColor: NSColor = .red
     var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
+    var strokeEnabled: Bool = false
     var onColorChanged: ((NSColor) -> Void)?
     /// Fired when the user grabs the slider thumb (mouseDown phase).
     var onFontSizeBegan: (() -> Void)?
@@ -2229,10 +2244,13 @@ private class TextSubToolbar: NSView {
     var onFontSizeChanged: ((CGFloat) -> Void)?
     /// Fired when the user releases the slider (mouseUp phase).
     var onFontSizeEnded: (() -> Void)?
+    /// Fired when the outline checkbox is toggled.
+    var onStrokeChanged: ((Bool) -> Void)?
 
     private var colorButtons: [NSView] = []
     private var slider: NSSlider!
     private var sizeLabel: NSTextField!
+    private var strokeCheckbox: HUDCheckboxButton!
 
     private let colors: [NSColor] = [
         NSColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0),   // Red
@@ -2245,11 +2263,37 @@ private class TextSubToolbar: NSView {
         .black,
     ]
 
-    static let preferredWidth: CGFloat = 396
+    // Layout metrics, shared between `setup()` and `preferredWidth` so the
+    // view is always wide enough for everything it lays out.
+    private static let leadingPad: CGFloat = 12
+    private static let labelWidth: CGFloat = 28
+    private static let sliderWidth: CGFloat = 130
+    private static let swatchSize: CGFloat = 18
+    private static let swatchGap: CGFloat = 5
+    private static let separatorGap: CGFloat = 6
+    private static let checkboxGap: CGFloat = 8
+    private static let trailingPad: CGFloat = 12
 
-    init(frame: NSRect, currentColor: NSColor, currentFontSize: CGFloat) {
+    /// Right edge of the last color swatch — the swatch row's extent.
+    private static var swatchRowEnd: CGFloat {
+        leadingPad + labelWidth + 6 + sliderWidth + 8 + 1 + 9
+            + 8 * swatchSize + 7 * swatchGap
+    }
+
+    private static func checkboxWidth() -> CGFloat {
+        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        let textWidth = ceil((L10n.textStrokeEffect as NSString).size(withAttributes: [.font: font]).width)
+        return 16 + 8 + textWidth
+    }
+
+    static var preferredWidth: CGFloat {
+        swatchRowEnd + separatorGap + 1 + checkboxGap + checkboxWidth() + trailingPad
+    }
+
+    init(frame: NSRect, currentColor: NSColor, currentFontSize: CGFloat, strokeEnabled: Bool) {
         self.currentColor = currentColor
         self.currentFontSize = currentFontSize
+        self.strokeEnabled = strokeEnabled
         super.init(frame: frame)
         setup()
     }
@@ -2299,7 +2343,7 @@ private class TextSubToolbar: NSView {
         x += 1 + 9
 
         // Color swatches.
-        let swatchSize: CGFloat = 18
+        let swatchSize: CGFloat = TextSubToolbar.swatchSize
         for (i, color) in colors.enumerated() {
             let swatch = ColorSwatchView(
                 frame: NSRect(x: x, y: midY - swatchSize / 2, width: swatchSize, height: swatchSize),
@@ -2311,10 +2355,40 @@ private class TextSubToolbar: NSView {
             swatch.addGestureRecognizer(click)
             addSubview(swatch)
             colorButtons.append(swatch)
-            x += swatchSize + 5
+            x += swatchSize + TextSubToolbar.swatchGap
         }
 
+        // Vertical separator between color swatches and the outline checkbox.
+        let lastSwatchRightEdge = x - TextSubToolbar.swatchGap
+        let strokeSepX = lastSwatchRightEdge + TextSubToolbar.separatorGap
+        let strokeSep = NSView(frame: NSRect(x: strokeSepX, y: 6, width: 1, height: bounds.height - 12))
+        strokeSep.wantsLayer = true
+        strokeSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        addSubview(strokeSep)
+
+        // Outline checkbox.
+        let checkboxHeight: CGFloat = 20
+        let checkbox = HUDCheckboxButton(
+            frame: NSRect(
+                x: strokeSepX + 1 + TextSubToolbar.checkboxGap,
+                y: midY - checkboxHeight / 2,
+                width: TextSubToolbar.checkboxWidth(),
+                height: checkboxHeight
+            ),
+            title: L10n.textStrokeEffect,
+            target: self,
+            action: #selector(strokeCheckboxChanged(_:))
+        )
+        checkbox.state = strokeEnabled ? .on : .off
+        addSubview(checkbox)
+        strokeCheckbox = checkbox
+
         updateSizeLabel()
+    }
+
+    @objc private func strokeCheckboxChanged(_ sender: HUDCheckboxButton) {
+        strokeEnabled = sender.state == .on
+        onStrokeChanged?(strokeEnabled)
     }
 
     @objc private func sliderChanged(_ sender: NSSlider) {

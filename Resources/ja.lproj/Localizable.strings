@@ -126,6 +126,7 @@
 "beautifyPresetNeutralGray" = "ニュートラルグレー";
 "beautifyPresetWallpaper" = "壁紙";
 "beautifyShadowEffect" = "影効果";
+"textStrokeEffect" = "縁取り";
 
 /* Language */
 "languageHeader" = "言語";

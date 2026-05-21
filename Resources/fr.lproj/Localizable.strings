@@ -126,6 +126,7 @@
 "beautifyPresetNeutralGray" = "Gris neutre";
 "beautifyPresetWallpaper" = "Fond d'écran";
 "beautifyShadowEffect" = "Ombre";
+"textStrokeEffect" = "Contour";
 
 /* Language */
 "languageHeader" = "Langue";

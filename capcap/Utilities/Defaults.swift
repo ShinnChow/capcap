@@ -194,6 +194,9 @@ enum L10n {
     static var beautifyPresetWallpaper: String { s("beautifyPresetWallpaper") }
     static var beautifyShadowEffect: String { s("beautifyShadowEffect") }
 
+    // Text tool
+    static var textStrokeEffect: String { s("textStrokeEffect") }
+
     // Language
     static var languageHeader: String { s("languageHeader") }
 
@@ -675,6 +678,12 @@ struct Defaults {
         set {
             defaults.set(min(max(newValue, textFontSizeMin), textFontSizeMax), forKey: "lastTextFontSize")
         }
+    }
+
+    /// Whether the text tool's outline checkbox was last left on.
+    static var lastTextStroke: Bool {
+        get { defaults.bool(forKey: "lastTextStroke") }
+        set { defaults.set(newValue, forKey: "lastTextStroke") }
     }
 
     static var lastBeautifyPresetID: String? {

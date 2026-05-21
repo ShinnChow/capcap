@@ -126,6 +126,7 @@
 "beautifyPresetNeutralGray" = "中性灰";
 "beautifyPresetWallpaper" = "壁纸";
 "beautifyShadowEffect" = "阴影效果";
+"textStrokeEffect" = "描边";
 
 /* Language */
 "languageHeader" = "语言";

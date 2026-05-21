@@ -126,6 +126,7 @@
 "beautifyPresetNeutralGray" = "Нейтральный серый";
 "beautifyPresetWallpaper" = "Обои";
 "beautifyShadowEffect" = "Тень";
+"textStrokeEffect" = "Обводка";
 
 /* Language */
 "languageHeader" = "Язык";

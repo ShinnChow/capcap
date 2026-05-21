@@ -693,12 +693,35 @@ struct TextAnnotation: Annotation {
     let color: NSColor
     let fontSize: CGFloat
     var rotation: CGFloat = 0
+    /// When true the glyphs get a black-or-white outline picked for maximum
+    /// contrast against `color`, so the text reads against any background.
+    var hasStroke: Bool = false
 
     static let trailingCaretPadding: CGFloat = 12
     static let minimumEditorWidth: CGFloat = 32
 
+    /// Outline pen width for the silhouette pass, as the percentage-of-font
+    /// unit `NSAttributedString.Key.strokeWidth` expects. The fill pass on top
+    /// covers the inner half, so the visible outline is roughly half of this.
+    static let strokeWidthPercent: CGFloat = 6.0
+
     static func font(forSize size: CGFloat) -> NSFont {
         NSFont.systemFont(ofSize: size, weight: .bold)
+    }
+
+    /// Light fills (white / yellow / green) get a black outline; every other
+    /// fill color gets a white one.
+    static func strokeColor(for fill: NSColor) -> NSColor {
+        guard let rgb = fill.usingColorSpace(.sRGB) else { return .white }
+        func matches(_ r: CGFloat, _ g: CGFloat, _ b: CGFloat) -> Bool {
+            abs(rgb.redComponent - r) < 0.04
+                && abs(rgb.greenComponent - g) < 0.04
+                && abs(rgb.blueComponent - b) < 0.04
+        }
+        let blackStroke = matches(1.0, 1.0, 1.0)   // White
+            || matches(1.0, 0.8, 0.0)              // Yellow
+            || matches(0.0, 0.83, 0.42)            // Green
+        return blackStroke ? .black : .white
     }
 
     static func lineHeight(for font: NSFont) -> CGFloat {
@@ -750,12 +773,25 @@ struct TextAnnotation: Annotation {
     var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
-        let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: color,
-            .font: TextAnnotation.font(forSize: fontSize)
-        ]
+        let font = TextAnnotation.font(forSize: fontSize)
         NSGraphicsContext.saveGraphicsState()
-        text.draw(at: origin, withAttributes: attrs)
+        if hasStroke {
+            // Outline pass: a solid silhouette in the stroke color, drawn
+            // first and fattened by the stroke pen. The fill pass below then
+            // covers the inner half, leaving a clean outline on the outside
+            // that never eats into the glyph (a single centered stroke would).
+            let stroke = TextAnnotation.strokeColor(for: color)
+            text.draw(at: origin, withAttributes: [
+                .foregroundColor: stroke,
+                .strokeColor: stroke,
+                .strokeWidth: -TextAnnotation.strokeWidthPercent,
+                .font: font
+            ])
+        }
+        text.draw(at: origin, withAttributes: [
+            .foregroundColor: color,
+            .font: font
+        ])
         NSGraphicsContext.restoreGraphicsState()
     }
 
@@ -770,7 +806,8 @@ struct TextAnnotation: Annotation {
             origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
             color: color,
             fontSize: fontSize,
-            rotation: rotation
+            rotation: rotation,
+            hasStroke: hasStroke
         )
     }
 
@@ -781,7 +818,21 @@ struct TextAnnotation: Annotation {
     }
 
     func withColor(_ color: NSColor) -> Annotation {
-        TextAnnotation(text: text, origin: origin, color: color, fontSize: fontSize, rotation: rotation)
+        TextAnnotation(
+            text: text,
+            origin: origin,
+            color: color,
+            fontSize: fontSize,
+            rotation: rotation,
+            hasStroke: hasStroke
+        )
+    }
+
+    /// Returns a copy with the outline toggled on or off.
+    func withStroke(_ hasStroke: Bool) -> TextAnnotation {
+        var copy = self
+        copy.hasStroke = hasStroke
+        return copy
     }
 
     /// Resize the text in place. The visual top-left stays anchored — fonts
@@ -798,7 +849,8 @@ struct TextAnnotation: Annotation {
             origin: newOrigin,
             color: color,
             fontSize: fontSize,
-            rotation: rotation
+            rotation: rotation,
+            hasStroke: hasStroke
         )
     }
 }
@@ -1004,6 +1056,18 @@ struct NumberAnnotation: Annotation {
         var copy = self
         copy.controlPoint = cp
         return copy
+    }
+
+    /// Adjust-mode helper: replace the displayed badge number. Driven by
+    /// the +/- stepper buttons on the selection chrome.
+    func withNumber(_ number: Int) -> NumberAnnotation {
+        NumberAnnotation(
+            center: center,
+            tip: tip,
+            controlPoint: controlPoint,
+            number: number,
+            color: color
+        )
     }
 
     func withColor(_ color: NSColor) -> Annotation {
