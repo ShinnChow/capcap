@@ -377,10 +377,12 @@ class EditCanvasView: NSView {
     /// where there's no drag to batch.
     func mutateSelectedAnnotationAtomic(_ transform: (Annotation) -> Annotation) {
         guard let idx = selectedIndex, idx < annotations.count else { return }
-        let updated = transform(annotations[idx])
-        guard !annotationsEqualEnough(updated, annotations[idx]) else { return }
+        let original = annotations[idx]
+        let updated = transform(original)
+        guard !annotationsEqualEnough(updated, original) else { return }
         recordUndo()
         annotations[idx] = updated
+        syncNumberCounterAfterMutation(from: original, to: updated)
         needsDisplay = true
     }
 
@@ -388,11 +390,28 @@ class EditCanvasView: NSView {
     /// `beginSelectionAdjustment` / `commitSelectionAdjustment` bookending.
     func mutateSelectedAnnotationLive(_ transform: (Annotation) -> Annotation) {
         guard let idx = selectedIndex, idx < annotations.count else { return }
-        let updated = transform(annotations[idx])
-        guard !annotationsEqualEnough(updated, annotations[idx]) else { return }
+        let original = annotations[idx]
+        let updated = transform(original)
+        guard !annotationsEqualEnough(updated, original) else { return }
         annotations[idx] = updated
+        syncNumberCounterAfterMutation(from: original, to: updated)
         selectionAdjustmentDirty = true
         needsDisplay = true
+    }
+
+    private func syncNumberCounterAfterMutation(from original: Annotation, to updated: Annotation) {
+        guard
+            let oldNumber = original as? NumberAnnotation,
+            let newNumber = updated as? NumberAnnotation,
+            oldNumber.number != newNumber.number
+        else { return }
+        numberCounter = max(1, newNumber.number + 1)
+    }
+
+    private func resetNumberCounterIfNumberAnnotationsAreGone() {
+        if !annotations.contains(where: { $0 is NumberAnnotation }) {
+            numberCounter = 1
+        }
     }
 
     /// Cheap identity check — guards atomic mutations from registering a
@@ -450,6 +469,7 @@ class EditCanvasView: NSView {
             case .delete:
                 recordUndo()
                 annotations.remove(at: idx)
+                resetNumberCounterIfNumberAnnotationsAreGone()
                 selectedIndex = nil
                 needsDisplay = true
                 refreshCursorAtCurrentLocation()
