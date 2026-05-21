@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.6] - 2026-05-21
+
+### Fixed
+- Ship menu bar icon in release bundle (58904c7)
+
+### Changed
+- Tighten window capture shadow padding (5068756)
+- Refresh image assets (198e63f)
+
+### Chore
+- Update release actions to node24 (1d79d56)
+
 ## [1.3.5] - 2026-05-20
 
 ### Fixed
