@@ -5,6 +5,7 @@ enum EditTool {
     case pen
     case marker
     case mosaic
+    case eraser
     case magnifier
     case rectangle
     case ellipse
@@ -28,6 +29,15 @@ class EditCanvasView: NSView {
         didSet {
             if oldValue == .text, activeTool != .text {
                 activeTextField?.commit()
+            }
+            if oldValue == .eraser, activeTool != .eraser {
+                if eraserSelection?.didDelete != true {
+                    discardPendingUndo()
+                }
+                eraserSelection = nil
+            }
+            if activeTool == .eraser {
+                selectedIndex = nil
             }
             // Tool change can affect what counts as "interactive area" — refresh
             // cursor immediately under the current mouse position.
@@ -107,6 +117,9 @@ class EditCanvasView: NSView {
     /// so a click that just committed an in-progress field doesn't pop a new
     /// one.
     private var pendingTextCreate: PendingTextCreate?
+    /// Active eraser drag rectangle. Matching annotations are removed as
+    /// soon as they intersect the rectangle.
+    private var eraserSelection: EraserSelection?
     private let dragThreshold: CGFloat = 4
     /// Index of the annotation showing selection chrome (rotate / curve
     /// handles). nil when no annotation is selected. Cleared whenever a
@@ -158,6 +171,12 @@ class EditCanvasView: NSView {
     private struct PendingNumberCreate {
         let start: NSPoint
         var current: NSPoint
+    }
+
+    private struct EraserSelection {
+        let start: NSPoint
+        var current: NSPoint
+        var didDelete: Bool
     }
 
     /// One of the eight resize grips around a resizable annotation — four
@@ -506,6 +525,16 @@ class EditCanvasView: NSView {
             return
         }
 
+        if activeTool == .eraser {
+            activeTextField?.commit()
+            selectedIndex = nil
+            eraserSelection = EraserSelection(start: point, current: point, didDelete: false)
+            captureUndoForPending()
+            EditCanvasView.eraserCursor.set()
+            needsDisplay = true
+            return
+        }
+
         // Selection handles (rotate / curve / tip) take priority over body
         // drags so the user can grab a handle that visually overlaps the
         // annotation it controls.
@@ -556,7 +585,7 @@ class EditCanvasView: NSView {
         guard activeTool != .none else { return }
 
         switch activeTool {
-        case .none, .scrollCapture:
+        case .none, .scrollCapture, .eraser:
             return
 
         case .pen:
@@ -616,6 +645,11 @@ class EditCanvasView: NSView {
             return
         }
 
+        if eraserSelection != nil {
+            updateEraserSelection(to: point)
+            return
+        }
+
         // Number tool: drag pulls an arrow tip out of the badge — preview
         // it live and commit on mouseUp.
         if var pending = pendingNumberCreate {
@@ -635,7 +669,7 @@ class EditCanvasView: NSView {
         guard activeTool != .none else { return }
 
         switch activeTool {
-        case .none, .scrollCapture, .numbered, .text:
+        case .none, .scrollCapture, .numbered, .text, .eraser:
             return
 
         case .pen:
@@ -673,6 +707,16 @@ class EditCanvasView: NSView {
             selectedIndex = state.index
             // Click without drag → no mutation happened; drop the stash.
             discardPendingUndo()
+            refreshCursorAtCurrentLocation()
+            return
+        }
+
+        if let selection = eraserSelection {
+            eraserSelection = nil
+            if !selection.didDelete {
+                discardPendingUndo()
+            }
+            needsDisplay = true
             refreshCursorAtCurrentLocation()
             return
         }
@@ -719,7 +763,7 @@ class EditCanvasView: NSView {
         guard activeTool != .none else { return }
 
         switch activeTool {
-        case .none, .scrollCapture, .numbered, .text:
+        case .none, .scrollCapture, .numbered, .text, .eraser:
             return
 
         case .pen:
@@ -979,6 +1023,13 @@ class EditCanvasView: NSView {
             }
         }
 
+        if let eraserSelection {
+            drawEraserSelection(
+                rectFromTwoPoints(eraserSelection.start, eraserSelection.current),
+                in: context
+            )
+        }
+
         // Draw number-tool preview while dragging — committed lazily on
         // mouseUp, but the user expects to see the badge + arrow track the
         // cursor live like the arrow tool does.
@@ -996,6 +1047,22 @@ class EditCanvasView: NSView {
         if didClip {
             context.restoreGState()
         }
+    }
+
+    private func drawEraserSelection(_ rect: NSRect, in context: CGContext) {
+        guard rect.width > 0 || rect.height > 0 else { return }
+        context.saveGState()
+        context.setFillColor(NSColor.systemRed.withAlphaComponent(0.13).cgColor)
+        context.fill(rect)
+        context.setStrokeColor(NSColor.white.withAlphaComponent(0.85).cgColor)
+        context.setLineWidth(3)
+        context.setLineDash(phase: 0, lengths: [6, 4])
+        context.stroke(rect.insetBy(dx: 1.5, dy: 1.5))
+        context.setStrokeColor(NSColor.systemRed.withAlphaComponent(0.9).cgColor)
+        context.setLineWidth(1.5)
+        context.setLineDash(phase: 0, lengths: [6, 4])
+        context.stroke(rect.insetBy(dx: 0.75, dy: 0.75))
+        context.restoreGState()
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -1145,6 +1212,10 @@ class EditCanvasView: NSView {
         handleDragState = nil
         pendingNumberCreate = nil
         pendingTextCreate = nil
+        if eraserSelection?.didDelete != true {
+            discardPendingUndo()
+        }
+        eraserSelection = nil
         selectedIndex = nil
         activeTextField?.cancel()
     }
@@ -1168,6 +1239,54 @@ class EditCanvasView: NSView {
             }
         }
         return nil
+    }
+
+    private func updateEraserSelection(to point: NSPoint) {
+        guard var selection = eraserSelection else { return }
+        selection.current = point
+        eraseAnnotations(in: rectFromTwoPoints(selection.start, point), selection: &selection)
+        eraserSelection = selection
+        needsDisplay = true
+    }
+
+    private func eraseAnnotations(in rect: NSRect, selection: inout EraserSelection) {
+        guard rect.width >= 1 || rect.height >= 1 else { return }
+        let kept = annotations.filter { !annotationSelectionBounds($0).intersects(rect) }
+        guard kept.count != annotations.count else { return }
+
+        if !selection.didDelete {
+            commitPendingUndo()
+            selection.didDelete = true
+        }
+        annotations = kept
+        selectedIndex = nil
+        resetNumberCounterIfNumberAnnotationsAreGone()
+        refreshCursorAtCurrentLocation()
+    }
+
+    private func annotationSelectionBounds(_ annotation: Annotation) -> NSRect {
+        let rect = annotation.boundingRect
+        guard annotation.supportsRotation, annotation.rotation != 0 else { return rect }
+
+        let corners = [
+            NSPoint(x: rect.minX, y: rect.minY),
+            NSPoint(x: rect.minX, y: rect.maxY),
+            NSPoint(x: rect.maxX, y: rect.minY),
+            NSPoint(x: rect.maxX, y: rect.maxY),
+        ].map { rotated($0, for: annotation) }
+
+        guard let first = corners.first else { return rect }
+        var minX = first.x
+        var maxX = first.x
+        var minY = first.y
+        var maxY = first.y
+        for point in corners.dropFirst() {
+            minX = min(minX, point.x)
+            maxX = max(maxX, point.x)
+            minY = min(minY, point.y)
+            maxY = max(maxY, point.y)
+        }
+        return NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
     }
 
     /// Force-commit any in-progress text. Called by the controller when
@@ -1968,6 +2087,49 @@ class EditCanvasView: NSView {
         )
     }()
 
+    private static let eraserCursor: NSCursor = {
+        let size: CGFloat = 28
+        let center = NSPoint(x: 14, y: 14)
+
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            let transform = NSAffineTransform()
+            transform.translateX(by: center.x, yBy: center.y)
+            transform.rotate(byDegrees: -35)
+            transform.translateX(by: -center.x, yBy: -center.y)
+
+            NSGraphicsContext.saveGraphicsState()
+            transform.concat()
+
+            let bodyRect = NSRect(x: 7, y: 9, width: 16, height: 10)
+            let body = NSBezierPath(roundedRect: bodyRect, xRadius: 3, yRadius: 3)
+
+            NSColor.black.withAlphaComponent(0.55).setStroke()
+            body.lineWidth = 5
+            body.stroke()
+
+            NSColor.white.setFill()
+            body.fill()
+
+            NSColor.systemRed.withAlphaComponent(0.95).setFill()
+            NSBezierPath(roundedRect: NSRect(x: 7, y: 9, width: 7, height: 10), xRadius: 3, yRadius: 3).fill()
+
+            let divider = NSBezierPath()
+            divider.move(to: NSPoint(x: 14, y: 10))
+            divider.line(to: NSPoint(x: 14, y: 18))
+            NSColor.black.withAlphaComponent(0.28).setStroke()
+            divider.lineWidth = 1
+            divider.stroke()
+
+            NSColor.white.withAlphaComponent(0.95).setStroke()
+            body.lineWidth = 1.5
+            body.stroke()
+
+            NSGraphicsContext.restoreGraphicsState()
+            return true
+        }
+        return NSCursor(image: image, hotSpot: NSPoint(x: center.x, y: size - center.y))
+    }()
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let trackingArea {
@@ -2001,6 +2163,10 @@ class EditCanvasView: NSView {
     private func updateCursor(at point: NSPoint) {
         // Don't fight the text field's I-beam while editing.
         if activeTextField != nil { return }
+        if activeTool == .eraser {
+            EditCanvasView.eraserCursor.set()
+            return
+        }
         // Action buttons on the selection chrome: pointing finger.
         if hitTestSelectionAction(at: point) != nil {
             NSCursor.pointingHand.set()

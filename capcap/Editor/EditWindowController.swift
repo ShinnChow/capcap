@@ -394,8 +394,8 @@ class EditWindowController {
                 currentSize: 0,
                 width: 200
             )
-        case .mosaic:
-            // Mosaic has no sub-toolbar — drag a rectangle to pixelate.
+        case .mosaic, .eraser:
+            // These tools have no sub-toolbar — drag a rectangle on canvas.
             break
         default:
             break
@@ -1673,7 +1673,7 @@ class ToolbarView: NSView {
         guard sender.tag >= 0, sender.tag < items.count else { return }
         let id = items[sender.tag]
         switch id {
-        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .magnifier, .numbered, .text:
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text:
             guard let tool = id.editTool else { return }
             // Click an already-selected tool to deselect it and enter adjust
             // mode (no tool, but existing marks remain draggable).
