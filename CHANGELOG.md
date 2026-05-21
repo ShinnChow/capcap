@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.7] - 2026-05-21
+
+### Changed
+- Add persistent beautify diagnostics (1209f0a)
+- Add magnifier lens annotation tool to the editor (1a29b27)
+- Add text outline option to the text tool sub-toolbar (77ed2be)
+
 ## [1.3.6] - 2026-05-21
 
 ### Fixed
