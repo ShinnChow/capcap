@@ -1188,6 +1188,11 @@ class EditWindowController {
         save()
     }
 
+    func deleteSelectedAnnotationFromKeyboard(for event: NSEvent) -> Bool {
+        guard !isScrollCapturing, !isCropping else { return false }
+        return canvasView?.deleteSelectedAnnotationFromKeyboard(for: event) ?? false
+    }
+
     private func confirm() {
         canvasView?.commitActiveTextEditing()
         guard let finalImage = currentCompositeImage() else {

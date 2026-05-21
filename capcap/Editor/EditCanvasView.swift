@@ -346,6 +346,25 @@ class EditCanvasView: NSView {
         refreshCursorAtCurrentLocation()
     }
 
+    @discardableResult
+    func deleteSelectedAnnotation() -> Bool {
+        guard activeTextField == nil, let idx = selectedIndex, idx < annotations.count else {
+            return false
+        }
+        recordUndo()
+        annotations.remove(at: idx)
+        resetNumberCounterIfNumberAnnotationsAreGone()
+        selectedIndex = nil
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+        return true
+    }
+
+    func deleteSelectedAnnotationFromKeyboard(for event: NSEvent) -> Bool {
+        guard EditCanvasView.isSelectionDeleteKey(event) else { return false }
+        return deleteSelectedAnnotation()
+    }
+
     // MARK: - Selection adjustment (sub-toolbar driven)
 
     /// True between `beginSelectionAdjustment()` and `commitSelectionAdjustment()`
@@ -467,12 +486,7 @@ class EditCanvasView: NSView {
             activeTextField?.commit()
             switch action {
             case .delete:
-                recordUndo()
-                annotations.remove(at: idx)
-                resetNumberCounterIfNumberAnnotationsAreGone()
-                selectedIndex = nil
-                needsDisplay = true
-                refreshCursorAtCurrentLocation()
+                _ = deleteSelectedAnnotation()
             case .edit:
                 if let textAnnotation = annotations[idx] as? TextAnnotation {
                     reEditTextAnnotation(at: idx, annotation: textAnnotation)
@@ -2031,6 +2045,20 @@ class EditCanvasView: NSView {
         let local = convert(mouseInWindow, from: nil)
         guard bounds.contains(local) else { return }
         updateCursor(at: local)
+    }
+
+    override func keyDown(with event: NSEvent) {
+        if deleteSelectedAnnotationFromKeyboard(for: event) {
+            return
+        }
+        super.keyDown(with: event)
+    }
+
+    private static func isSelectionDeleteKey(_ event: NSEvent) -> Bool {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifiers.intersection(blockedModifiers).isEmpty else { return false }
+        return event.keyCode == 51 || event.keyCode == 117
     }
 }
 

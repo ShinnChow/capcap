@@ -127,6 +127,9 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
+            if self?.editController?.deleteSelectedAnnotationFromKeyboard(for: event) == true {
+                return nil
+            }
             if event.keyCode == 53 { // Escape
                 self?.cancel()
                 return nil
