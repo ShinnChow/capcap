@@ -13,12 +13,16 @@ final class HotkeyManager {
     private var clipboardImagePinHotKeyRef: EventHotKeyRef?
     private var selectedImageEditHotKeyRef: EventHotKeyRef?
     private var clipboardImageEditHotKeyRef: EventHotKeyRef?
+    private var textRecognitionHotKeyRef: EventHotKeyRef?
+    private var screenshotTranslationHotKeyRef: EventHotKeyRef?
     private var callback: (() -> Void)?
     private var countdownCallback: (() -> Void)?
     private var selectedImagePinCallback: (() -> Void)?
     private var clipboardImagePinCallback: (() -> Void)?
     private var selectedImageEditCallback: (() -> Void)?
     private var clipboardImageEditCallback: (() -> Void)?
+    private var textRecognitionCallback: (() -> Void)?
+    private var screenshotTranslationCallback: (() -> Void)?
     private var eventHandlerRef: EventHandlerRef?
 
     private static let regularHotKeySignature: OSType = OSType(0x4341_5043) // 'CAPC'
@@ -28,6 +32,8 @@ final class HotkeyManager {
     private static let selectedImageEditHotKeyID: UInt32 = 4
     private static let clipboardImageEditHotKeyID: UInt32 = 5
     private static let clipboardImagePinHotKeyID: UInt32 = 6
+    private static let textRecognitionHotKeyID: UInt32 = 7
+    private static let screenshotTranslationHotKeyID: UInt32 = 8
 
     private init() {}
 
@@ -38,6 +44,8 @@ final class HotkeyManager {
         unregisterClipboardImagePin()
         unregisterSelectedImageEdit()
         unregisterClipboardImageEdit()
+        unregisterTextRecognition()
+        unregisterScreenshotTranslation()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -209,6 +217,58 @@ final class HotkeyManager {
         }
     }
 
+    /// Register the saved text-recognition hotkey, if any.
+    func registerTextRecognition(callback: @escaping () -> Void) {
+        self.textRecognitionCallback = callback
+        unregisterTextRecognition()
+
+        guard let (keyCode, modifiers) = currentTextRecognitionHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.textRecognitionHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            textRecognitionHotKeyRef = ref
+        }
+    }
+
+    func unregisterTextRecognition() {
+        if let ref = textRecognitionHotKeyRef {
+            UnregisterEventHotKey(ref)
+            textRecognitionHotKeyRef = nil
+        }
+    }
+
+    /// Register the saved screenshot-translation hotkey, if any.
+    func registerScreenshotTranslation(callback: @escaping () -> Void) {
+        self.screenshotTranslationCallback = callback
+        unregisterScreenshotTranslation()
+
+        guard let (keyCode, modifiers) = currentScreenshotTranslationHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.screenshotTranslationHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            screenshotTranslationHotKeyRef = ref
+        }
+    }
+
+    func unregisterScreenshotTranslation() {
+        if let ref = screenshotTranslationHotKeyRef {
+            UnregisterEventHotKey(ref)
+            screenshotTranslationHotKeyRef = nil
+        }
+    }
+
     /// Returns the (keyCode, modifiers) for the countdown variant — user hotkey + ⌥.
     /// Returns nil if no custom hotkey is set or the saved hotkey already contains ⌥.
     func currentCountdownHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
@@ -229,6 +289,8 @@ final class HotkeyManager {
         unregisterClipboardImagePin()
         unregisterSelectedImageEdit()
         unregisterClipboardImageEdit()
+        unregisterTextRecognition()
+        unregisterScreenshotTranslation()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
     }
 
@@ -324,6 +386,38 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    /// Returns (keyCode, carbonModifiers) for the saved text-recognition
+    /// hotkey, or nil when the user hasn't bound one.
+    func currentTextRecognitionHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomTextRecognitionHotkey else { return nil }
+        let kc = UInt32(Defaults.textRecognitionHotkeyKeyCode)
+        let mods = UInt32(Defaults.textRecognitionHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the text-recognition hotkey, or nil if not set.
+    static func currentTextRecognitionDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentTextRecognitionHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    /// Returns (keyCode, carbonModifiers) for the saved screenshot-translation
+    /// hotkey, or nil when the user hasn't bound one.
+    func currentScreenshotTranslationHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomScreenshotTranslationHotkey else { return nil }
+        let kc = UInt32(Defaults.screenshotTranslationHotkeyKeyCode)
+        let mods = UInt32(Defaults.screenshotTranslationHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the screenshot-translation hotkey, or nil if not set.
+    static func currentScreenshotTranslationDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentScreenshotTranslationHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
     /// Returns (keyCode, carbonModifiers) for the saved copy-to-clipboard
     /// hotkey, or nil when the user hasn't bound one (the default is
     /// "double-tap ⌘", handled separately by `KeyMonitor`).
@@ -394,6 +488,8 @@ final class HotkeyManager {
         case clipboardImagePin
         case selectedImageEdit
         case clipboardImageEdit
+        case textRecognition
+        case screenshotTranslation
         case clipboard
         case fileSave
     }
@@ -461,6 +557,28 @@ final class HotkeyManager {
                 return L10n.shortcutConflictClipboardImageEdit
             }
         }
+        if slot != .textRecognition,
+           let (kc, m) = currentTextRecognitionHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictTextRecognition
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictTextRecognition
+            }
+        }
+        if slot != .screenshotTranslation,
+           let (kc, m) = currentScreenshotTranslationHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictScreenshotTranslation
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictScreenshotTranslation
+            }
+        }
         if slot != .clipboard, let (kc, m) = currentClipboardHotkey(), kc == keyCode, m == modifiers {
             return L10n.shortcutConflictClipboard
         }
@@ -510,6 +628,10 @@ final class HotkeyManager {
                 } else if hkID.id == HotkeyManager.selectedImageEditHotKeyID, let cb = mgr.selectedImageEditCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.clipboardImageEditHotKeyID, let cb = mgr.clipboardImageEditCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.textRecognitionHotKeyID, let cb = mgr.textRecognitionCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.screenshotTranslationHotKeyID, let cb = mgr.screenshotTranslationCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.regularHotKeyID, let cb = mgr.callback {
                     DispatchQueue.main.async { cb() }

@@ -1,12 +1,9 @@
 import AppKit
 
-/// Content of the Settings "翻译" tab: a target-language picker plus one
-/// editable config card per AI translation provider.
+/// Content of the Settings "翻译" tab: one editable config card per AI
+/// translation provider. The target language follows the app language.
 final class TranslationSettingsPane: NSView {
     private var providerCards: [TranslationProviderCard] = []
-    private var langTitleLabel: NSTextField!
-    private var langHintLabel: NSTextField!
-    private var langPicker: NSPopUpButton!
     private var providersHeaderLabel: NSTextField!
 
     init() {
@@ -31,44 +28,6 @@ final class TranslationSettingsPane: NSView {
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
 
-        // Target language card.
-        let langCard = makeCard()
-        let langInner = NSStackView()
-        langInner.orientation = .vertical
-        langInner.alignment = .leading
-        langInner.spacing = 8
-        langInner.translatesAutoresizingMaskIntoConstraints = false
-        langCard.addSubview(langInner)
-        pin(langInner, to: langCard, inset: 14)
-
-        langTitleLabel = makeLabel(L10n.translationTargetLanguage, size: 13, weight: .semibold, alpha: 0.94)
-        langPicker = NSPopUpButton(frame: .zero, pullsDown: false)
-        langPicker.controlSize = .small
-        langPicker.font = NSFont.systemFont(ofSize: 12)
-        langPicker.translatesAutoresizingMaskIntoConstraints = false
-        langPicker.addItems(withTitles: TranslationLanguage.allCases.map { $0.displayName })
-        if let idx = TranslationLanguage.allCases.firstIndex(of: Defaults.translationTargetLanguage) {
-            langPicker.selectItem(at: idx)
-        }
-        langPicker.target = self
-        langPicker.action = #selector(languageChanged)
-
-        let langRow = NSStackView(views: [langTitleLabel, flexSpacer(), langPicker])
-        langRow.orientation = .horizontal
-        langRow.alignment = .centerY
-        langRow.translatesAutoresizingMaskIntoConstraints = false
-        langInner.addArrangedSubview(langRow)
-        langRow.widthAnchor.constraint(equalTo: langInner.widthAnchor).isActive = true
-
-        langHintLabel = makeLabel(L10n.translationTargetHint, size: 11, weight: .regular, alpha: 0.55)
-        langHintLabel.lineBreakMode = .byWordWrapping
-        langHintLabel.usesSingleLineMode = false
-        langHintLabel.preferredMaxLayoutWidth = 420
-        langInner.addArrangedSubview(langHintLabel)
-
-        stack.addArrangedSubview(langCard)
-        langCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
         // Providers header.
         providersHeaderLabel = makeLabel(L10n.translationProvidersHeader, size: 12, weight: .semibold, alpha: 0.62)
         stack.addArrangedSubview(providersHeaderLabel)
@@ -90,34 +49,8 @@ final class TranslationSettingsPane: NSView {
         ])
     }
 
-    private func makeCard() -> NSView {
-        let v = NSView()
-        v.translatesAutoresizingMaskIntoConstraints = false
-        v.wantsLayer = true
-        v.layer?.cornerRadius = 12
-        v.layer?.cornerCurve = .continuous
-        v.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
-        v.layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
-        v.layer?.borderWidth = 1
-        return v
-    }
-
-    @objc private func languageChanged() {
-        let idx = langPicker.indexOfSelectedItem
-        guard TranslationLanguage.allCases.indices.contains(idx) else { return }
-        Defaults.translationTargetLanguage = TranslationLanguage.allCases[idx]
-    }
-
     @objc private func onLanguageChanged() {
-        langTitleLabel.stringValue = L10n.translationTargetLanguage
-        langHintLabel.stringValue = L10n.translationTargetHint
         providersHeaderLabel.stringValue = L10n.translationProvidersHeader
-        let selected = langPicker.indexOfSelectedItem
-        langPicker.removeAllItems()
-        langPicker.addItems(withTitles: TranslationLanguage.allCases.map { $0.displayName })
-        if TranslationLanguage.allCases.indices.contains(selected) {
-            langPicker.selectItem(at: selected)
-        }
         for card in providerCards { card.refreshLocalization() }
     }
 }

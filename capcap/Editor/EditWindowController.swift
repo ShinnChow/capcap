@@ -198,6 +198,7 @@ class EditWindowController {
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
         tv.onOCR = { [weak self] in self?.performOCR() }
+        tv.onScreenshotTranslate = { [weak self] in self?.performScreenshotTranslation() }
         tv.onSave = { [weak self] in self?.save() }
         tv.onUpload = { [weak self] in self?.upload() }
         tv.onPin = { [weak self] in self?.pin() }
@@ -1107,7 +1108,7 @@ class EditWindowController {
         UploadManager.shared.upload(image: finalImage, on: targetScreen)
     }
 
-    /// OCR action: exits the selection/editor, then opens the OCR + translation
+    /// Text-recognition action: exits the selection/editor, then opens the OCR
     /// panel anchored to the original selection. Uses the raw capture (no
     /// annotations) so recognition is not polluted by drawn marks.
     private func performOCR() {
@@ -1118,7 +1119,20 @@ class EditWindowController {
         tearDown()
         onComplete(nil)
         guard let baseImage else { return }
-        OCRTranslatePanel.present(image: baseImage, anchorRect: anchorRect, screen: targetScreen)
+        OCRTranslatePanel.presentTextRecognition(image: baseImage, anchorRect: anchorRect, screen: targetScreen)
+    }
+
+    /// Screenshot-translation action: uses OCR internally, but only shows the
+    /// translated result to the user.
+    private func performScreenshotTranslation() {
+        canvasView?.commitActiveTextEditing()
+        let baseImage = canvasView?.resolveBaseImageForEditing() ?? currentCompositeImage()
+        let anchorRect = selectionRect
+        let targetScreen = screen
+        tearDown()
+        onComplete(nil)
+        guard let baseImage else { return }
+        OCRTranslatePanel.presentScreenshotTranslation(image: baseImage, anchorRect: anchorRect, screen: targetScreen)
     }
 
     private func pin() {
@@ -1546,6 +1560,7 @@ class ToolbarView: NSView {
     var onScrollCapture: (() -> Void)?
     var onBeautify: (() -> Void)?
     var onOCR: (() -> Void)?
+    var onScreenshotTranslate: (() -> Void)?
     var onSave: (() -> Void)?
     var onUpload: (() -> Void)?
     var onPin: (() -> Void)?
@@ -1684,6 +1699,7 @@ class ToolbarView: NSView {
         case .scrollCapture: onScrollCapture?()
         case .beautify:      onBeautify?()
         case .ocr:           onOCR?()
+        case .screenshotTranslate: onScreenshotTranslate?()
         case .save:          onSave?()
         case .upload:        onUpload?()
         case .pin:           onPin?()

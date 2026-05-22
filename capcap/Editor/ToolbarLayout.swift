@@ -24,6 +24,7 @@ enum ToolbarItemID: String, Codable, CaseIterable {
     case scrollCapture
     case beautify
     case ocr
+    case screenshotTranslate
     // Output actions
     case save
     case upload
@@ -54,7 +55,7 @@ extension ToolbarItemID {
             return .toggleAction
         case .moveSelection:
             return .dragHandle
-        case .colorPicker, .undo, .redo, .ocr, .save, .upload, .pin, .close, .confirm:
+        case .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .save, .upload, .pin, .close, .confirm:
             return .momentary
         }
     }
@@ -97,6 +98,7 @@ extension ToolbarItemID {
         case .scrollCapture: return "arrow.up.and.down.text.horizontal"
         case .beautify:      return "sparkles"
         case .ocr:           return "text.viewfinder"
+        case .screenshotTranslate: return "character.bubble"
         case .save:          return "square.and.arrow.down"
         case .upload:        return "icloud.and.arrow.up"
         case .pin:           return "pin"
@@ -126,6 +128,7 @@ extension ToolbarItemID {
         case .scrollCapture: return L10n.tipScrollCapture
         case .beautify:      return L10n.tipBeautify
         case .ocr:           return L10n.tipOCR
+        case .screenshotTranslate: return L10n.tipScreenshotTranslate
         case .save:          return L10n.tipSave
         case .upload:        return L10n.tipUpload
         case .pin:           return L10n.tipPin
@@ -172,6 +175,7 @@ struct ToolbarLayout: Equatable {
     static let canonicalOrder: [ToolbarItemID] = [
         .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text,
         .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .ocr,
+        .screenshotTranslate,
         .save, .upload, .pin, .close, .confirm,
     ]
 
@@ -182,7 +186,7 @@ struct ToolbarLayout: Equatable {
         ToolbarLayout(
             primary: [
                 .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text,
-                .colorPicker, .magnifier, .beautify, .ocr, .undo, .redo, .moveSelection,
+                .colorPicker, .magnifier, .beautify, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection,
             ],
             side: [.scrollCapture, .upload, .save, .pin, .close, .confirm],
             hidden: []

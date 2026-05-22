@@ -32,57 +32,196 @@ private final class FlippedView: NSView {
     override var isFlipped: Bool { true }
 }
 
-/// A view whose entire surface is a click target.
-private final class ClickableRow: NSView {
-    var onClick: (() -> Void)?
-    override func mouseDown(with event: NSEvent) { onClick?() }
+// MARK: - OCR image preview
+
+private final class OCRPreviewView: NSView {
+    private let image: NSImage
+    var showsLineBoxes = false {
+        didSet { needsDisplay = true }
+    }
+    var lines: [RecognizedTextLine] = [] {
+        didSet { needsDisplay = true }
+    }
+    var onCopyText: ((String) -> Void)?
+
+    private var copiedLineIndex: Int?
+
+    init(image: NSImage) {
+        self.image = image
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        layer?.cornerRadius = 8
+        layer?.cornerCurve = .continuous
+        layer?.masksToBounds = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+
+        let imageRect = fittedImageRect()
+        let clipPath = NSBezierPath(roundedRect: bounds, xRadius: 8, yRadius: 8)
+        NSGraphicsContext.saveGraphicsState()
+        clipPath.addClip()
+        NSColor.black.withAlphaComponent(0.26).setFill()
+        bounds.fill()
+        image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1)
+
+        if showsLineBoxes {
+            for (index, line) in lines.enumerated() {
+                let rect = displayRect(for: line.boundingBox, in: imageRect)
+                    .insetBy(dx: -2, dy: -1)
+                guard rect.width > 2, rect.height > 2 else { continue }
+                let path = NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3)
+                let isCopied = index == copiedLineIndex
+                (isCopied
+                    ? NSColor.systemGreen.withAlphaComponent(0.24)
+                    : NSColor.systemTeal.withAlphaComponent(0.12)
+                ).setFill()
+                path.fill()
+                (isCopied
+                    ? NSColor.systemGreen.withAlphaComponent(0.95)
+                    : NSColor.systemTeal.withAlphaComponent(0.88)
+                ).setStroke()
+                path.lineWidth = isCopied ? 2 : 1.2
+                path.stroke()
+            }
+        }
+
+        NSGraphicsContext.restoreGraphicsState()
+
+        let border = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5), xRadius: 8, yRadius: 8)
+        NSColor.white.withAlphaComponent(0.08).setStroke()
+        border.lineWidth = 1
+        border.stroke()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard showsLineBoxes else { return super.mouseDown(with: event) }
+        let point = convert(event.locationInWindow, from: nil)
+        let imageRect = fittedImageRect()
+        for (index, line) in lines.enumerated().reversed() {
+            let rect = displayRect(for: line.boundingBox, in: imageRect).insetBy(dx: -4, dy: -3)
+            guard rect.contains(point) else { continue }
+            copiedLineIndex = index
+            onCopyText?(line.text)
+            needsDisplay = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { [weak self] in
+                guard self?.copiedLineIndex == index else { return }
+                self?.copiedLineIndex = nil
+                self?.needsDisplay = true
+            }
+            return
+        }
+        super.mouseDown(with: event)
+    }
+
+    private func fittedImageRect() -> NSRect {
+        guard image.size.width > 0, image.size.height > 0,
+              bounds.width > 0, bounds.height > 0 else {
+            return bounds
+        }
+        let scale = min(bounds.width / image.size.width, bounds.height / image.size.height)
+        let size = NSSize(width: image.size.width * scale, height: image.size.height * scale)
+        return NSRect(
+            x: bounds.midX - size.width / 2,
+            y: bounds.midY - size.height / 2,
+            width: size.width,
+            height: size.height
+        )
+    }
+
+    private func displayRect(for normalizedRect: CGRect, in imageRect: NSRect) -> NSRect {
+        NSRect(
+            x: imageRect.minX + normalizedRect.minX * imageRect.width,
+            y: imageRect.minY + normalizedRect.minY * imageRect.height,
+            width: normalizedRect.width * imageRect.width,
+            height: normalizedRect.height * imageRect.height
+        )
+    }
 }
 
-// MARK: - OCR + Translation panel
+// MARK: - OCR / screenshot translation panel
 
-/// Floating dialog shown after the OCR toolbar action. Top-left aligns with
-/// the original selection: screenshot thumbnail, recognized text, then a
-/// collapsible translation section per configured AI provider.
+/// Floating dialog shown after text recognition or screenshot translation.
+/// It stays centered near the top of the target screen.
 final class OCRTranslatePanel: NSPanel {
 
+    private enum Mode {
+        case textRecognition
+        case screenshotTranslation
+    }
+
     private static var current: OCRTranslatePanel?
+    private static let topMargin: CGFloat = 24
 
     private let screenshot: NSImage
-    /// Screen-space top-left of the original selection rect.
-    private let anchorTopLeft: NSPoint
     private let anchorScreen: NSScreen
     private let panelWidth: CGFloat
+    private let mode: Mode
 
     private let padding: CGFloat = 14
     private var contentStack: NSStackView!
     private var docView: FlippedView!
     private var clipView: NSClipView!
-    private var ocrTextView: PanelTextView!
-    private var ocrCopyButton: NSButton!
-    private var sections: [TranslationSectionView] = []
+    private var previewView: OCRPreviewView!
+
+    private var ocrTextView: PanelTextView?
+    private var ocrCopyButton: NSButton?
+    private var translationTextView: PanelTextView?
+    private var translationStatusLabel: NSTextField?
+    private var translationProviderLabel: NSTextField?
+    private var translationCopyButton: NSButton?
+    private var translationRetryButton: NSButton?
+    private var translationLanguageButton: NSButton?
+
     private var keyMonitor: Any?
+    private var languagePopover: NSPopover?
+    private var translationTask: Task<Void, Never>?
+    private var recognizedText = ""
     private var ocrReady = false
+    private var selectedTarget = TranslationLanguage.appDefault
 
     // MARK: Presentation
 
     static func present(image: NSImage, anchorRect: NSRect, screen: NSScreen) {
+        presentTextRecognition(image: image, anchorRect: anchorRect, screen: screen)
+    }
+
+    static func presentTextRecognition(image: NSImage, anchorRect: NSRect, screen: NSScreen) {
+        present(image: image, anchorRect: anchorRect, screen: screen, mode: .textRecognition)
+    }
+
+    static func presentScreenshotTranslation(image: NSImage, anchorRect: NSRect, screen: NSScreen) {
+        present(image: image, anchorRect: anchorRect, screen: screen, mode: .screenshotTranslation)
+    }
+
+    private static func present(image: NSImage, anchorRect: NSRect, screen: NSScreen, mode: Mode) {
         current?.dismiss()
-        let panel = OCRTranslatePanel(image: image, anchorRect: anchorRect, screen: screen)
+        let panel = OCRTranslatePanel(image: image, anchorRect: anchorRect, screen: screen, mode: mode)
         current = panel
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         panel.runOCR()
     }
 
-    private init(image: NSImage, anchorRect: NSRect, screen: NSScreen) {
+    private init(image: NSImage, anchorRect: NSRect, screen: NSScreen, mode: Mode) {
+        let panelWidth = min(max(anchorRect.width, 360), 500)
         self.screenshot = image
         self.anchorScreen = screen
-        self.anchorTopLeft = NSPoint(x: anchorRect.minX, y: anchorRect.maxY)
-        self.panelWidth = min(max(anchorRect.width, 360), 460)
+        self.panelWidth = panelWidth
+        self.mode = mode
+        let initialHeight: CGFloat = 320
+        let initialFrame = Self.topCenteredFrame(
+            width: panelWidth,
+            height: initialHeight,
+            on: screen
+        )
 
         super.init(
-            contentRect: NSRect(x: anchorRect.minX, y: anchorRect.maxY - 320,
-                                width: panelWidth, height: 320),
+            contentRect: initialFrame,
             styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered,
             defer: false
@@ -116,7 +255,6 @@ final class OCRTranslatePanel: NSPanel {
         root.layer?.borderWidth = 1
         contentView = root
 
-        // Scrollable content.
         let scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.drawsBackground = false
@@ -138,7 +276,6 @@ final class OCRTranslatePanel: NSPanel {
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         docView.addSubview(contentStack)
 
-        // Close button floats over the top-right corner.
         let closeButton = NSButton()
         closeButton.translatesAutoresizingMaskIntoConstraints = false
         closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill",
@@ -172,8 +309,12 @@ final class OCRTranslatePanel: NSPanel {
         ])
 
         buildScreenshotCard()
-        buildOCRCard()
-        buildProviderSections()
+        switch mode {
+        case .textRecognition:
+            buildOCRCard()
+        case .screenshotTranslation:
+            buildTranslationCard()
+        }
     }
 
     private func addStackRow(_ view: NSView) {
@@ -182,24 +323,24 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     private func buildScreenshotCard() {
-        let imageView = NSImageView()
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-        imageView.image = screenshot
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.wantsLayer = true
-        imageView.layer?.cornerRadius = 8
-        imageView.layer?.cornerCurve = .continuous
-        imageView.layer?.masksToBounds = true
-        imageView.layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
-        imageView.layer?.borderWidth = 1
+        previewView = OCRPreviewView(image: screenshot)
+        previewView.showsLineBoxes = mode == .textRecognition
+        previewView.onCopyText = { [weak self] text in
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            ToastWindow.show(message: L10n.ocrLineCopied, duration: 0.9)
+            if let button = self?.ocrCopyButton {
+                flashButton(button, to: L10n.ocrCopied, restore: L10n.ocrCopy)
+            }
+        }
 
         let size = screenshot.size
         let aspect = size.width > 0 ? size.height / size.width : 0.5
         let contentWidth = panelWidth - padding * 2
-        let height = min(max(contentWidth * aspect, 56), 240)
-        imageView.heightAnchor.constraint(equalToConstant: height).isActive = true
+        let height = min(max(contentWidth * aspect, 64), 260)
+        previewView.heightAnchor.constraint(equalToConstant: height).isActive = true
 
-        addStackRow(imageView)
+        addStackRow(previewView)
     }
 
     private func buildOCRCard() {
@@ -208,47 +349,81 @@ final class OCRTranslatePanel: NSPanel {
         card.addSubview(inner)
         pin(inner, to: card, inset: 12)
 
-        // Header: title + copy button.
-        let title = makeLabel(L10n.ocrTextHeader, size: 12, weight: .semibold,
-                              alpha: 0.92)
-        ocrCopyButton = makeSmallButton(L10n.ocrCopy, action: #selector(copyOCRTapped))
-        ocrCopyButton.target = self
-        ocrCopyButton.isEnabled = false
-        let header = NSStackView(views: [title, flexSpacer(), ocrCopyButton])
+        let title = makeLabel(L10n.ocrTextHeader, size: 12, weight: .semibold, alpha: 0.92)
+        let copyButton = makeSmallButton(L10n.ocrCopy, action: #selector(copyOCRTapped))
+        copyButton.target = self
+        copyButton.isEnabled = false
+        ocrCopyButton = copyButton
+
+        let header = NSStackView(views: [title, flexSpacer(), copyButton])
         header.orientation = .horizontal
         header.alignment = .centerY
         header.translatesAutoresizingMaskIntoConstraints = false
         inner.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
-        // Recognized text — editable so the user can correct OCR before translating.
-        let (scroll, textView) = makeTextScroll(editable: true, height: 104)
+        let (scroll, textView) = makeTextScroll(editable: true, height: 116)
+        textView.string = L10n.ocrRecognizing
+        textView.textColor = NSColor.white.withAlphaComponent(0.4)
         ocrTextView = textView
-        ocrTextView.string = L10n.ocrRecognizing
-        ocrTextView.textColor = NSColor.white.withAlphaComponent(0.4)
         inner.addArrangedSubview(scroll)
         scroll.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
         addStackRow(card)
     }
 
-    private func buildProviderSections() {
-        let usable = TranslationConfigStore.usableKinds()
-        guard !usable.isEmpty else {
-            addStackRow(makeNoProviderCard())
-            return
-        }
-        for kind in usable {
-            let section = TranslationSectionView(kind: kind)
-            section.translatesAutoresizingMaskIntoConstraints = false
-            section.ocrTextProvider = { [weak self] in
-                self?.ocrTextView.string ?? ""
-            }
-            section.onToggle = { [weak self] in self?.refreshHeight() }
-            section.setEnabled(false) // unlocked once OCR finishes with text
-            sections.append(section)
-            addStackRow(section)
-        }
+    private func buildTranslationCard() {
+        let card = makeCard()
+        let inner = makeCardStack()
+        card.addSubview(inner)
+        pin(inner, to: card, inset: 12)
+
+        let title = makeLabel(L10n.screenshotTranslationHeader, size: 12, weight: .semibold, alpha: 0.92)
+
+        let provider = makeLabel("", size: 10, weight: .medium, alpha: 0.48)
+        translationProviderLabel = provider
+
+        let languageButton = makeSmallButton(languageButtonTitle(), action: #selector(languageTapped))
+        languageButton.target = self
+        translationLanguageButton = languageButton
+
+        let header = NSStackView(views: [title, provider, flexSpacer(), languageButton])
+        header.orientation = .horizontal
+        header.alignment = .centerY
+        header.spacing = 8
+        header.translatesAutoresizingMaskIntoConstraints = false
+        inner.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let status = makeLabel(L10n.ocrRecognizing, size: 11, weight: .medium, alpha: 0.52)
+        translationStatusLabel = status
+        inner.addArrangedSubview(status)
+
+        let (scroll, textView) = makeTextScroll(editable: false, height: 156)
+        textView.string = ""
+        translationTextView = textView
+        inner.addArrangedSubview(scroll)
+        scroll.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let retryButton = makeSmallButton(L10n.ocrRetry, action: #selector(translationRetryTapped))
+        retryButton.target = self
+        retryButton.isHidden = true
+        translationRetryButton = retryButton
+
+        let copyButton = makeSmallButton(L10n.ocrCopy, action: #selector(copyTranslationTapped))
+        copyButton.target = self
+        copyButton.isEnabled = false
+        translationCopyButton = copyButton
+
+        let footer = NSStackView(views: [flexSpacer(), retryButton, copyButton])
+        footer.orientation = .horizontal
+        footer.alignment = .centerY
+        footer.spacing = 8
+        footer.translatesAutoresizingMaskIntoConstraints = false
+        inner.addArrangedSubview(footer)
+        footer.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        addStackRow(card)
     }
 
     private func makeNoProviderCard() -> NSView {
@@ -271,47 +446,117 @@ final class OCRTranslatePanel: NSPanel {
         return card
     }
 
-    // MARK: OCR
+    // MARK: OCR / Translation
 
     private func runOCR() {
         Task { @MainActor in
-            let text = await OCRService.recognize(image: screenshot)
+            let lines = await OCRService.recognizeLines(image: screenshot)
+            self.previewView.lines = lines
+            self.recognizedText = lines.map(\.text).joined(separator: "\n")
+                .trimmingCharacters(in: .whitespacesAndNewlines)
             self.ocrReady = true
-            if text.isEmpty {
-                self.ocrTextView.string = L10n.ocrNoText
-                self.ocrTextView.textColor = NSColor.white.withAlphaComponent(0.4)
-                self.ocrCopyButton.isEnabled = false
-            } else {
-                self.ocrTextView.string = text
-                self.ocrTextView.textColor = NSColor.white.withAlphaComponent(0.9)
-                self.ocrCopyButton.isEnabled = true
-                for section in self.sections { section.setEnabled(true) }
+
+            switch self.mode {
+            case .textRecognition:
+                self.finishTextRecognition()
+            case .screenshotTranslation:
+                self.finishOCRAndStartTranslation()
             }
             self.refreshHeight()
         }
     }
 
+    private func finishTextRecognition() {
+        guard let textView = ocrTextView, let copyButton = ocrCopyButton else { return }
+        if recognizedText.isEmpty {
+            textView.string = L10n.ocrNoText
+            textView.textColor = NSColor.white.withAlphaComponent(0.4)
+            copyButton.isEnabled = false
+        } else {
+            textView.string = recognizedText
+            textView.textColor = NSColor.white.withAlphaComponent(0.9)
+            copyButton.isEnabled = true
+        }
+    }
+
+    private func finishOCRAndStartTranslation() {
+        guard !recognizedText.isEmpty else {
+            translationStatusLabel?.stringValue = L10n.ocrNoText
+            translationTextView?.string = ""
+            translationCopyButton?.isEnabled = false
+            return
+        }
+        runTranslation(target: selectedTarget)
+    }
+
+    private func runTranslation(target: TranslationLanguage) {
+        translationTask?.cancel()
+        translationRetryButton?.isHidden = true
+        translationCopyButton?.isEnabled = false
+        translationTextView?.string = ""
+        translationStatusLabel?.stringValue = L10n.ocrTranslating
+        translationStatusLabel?.textColor = NSColor.white.withAlphaComponent(0.52)
+
+        guard let kind = TranslationConfigStore.usableKinds().first else {
+            translationStatusLabel?.stringValue = L10n.ocrNoProviderTitle
+            translationTextView?.string = L10n.ocrNoProviderHint
+            translationProviderLabel?.stringValue = ""
+            translationRetryButton?.isHidden = true
+            return
+        }
+
+        translationProviderLabel?.stringValue = kind.displayName
+        let config = TranslationConfigStore.load(kind)
+        let text = recognizedText
+
+        translationTask = Task { @MainActor [weak self] in
+            do {
+                let stream = TranslationService.stream(
+                    text: text, target: target, kind: kind, config: config
+                )
+                for try await delta in stream {
+                    guard let self else { return }
+                    self.translationTextView?.string += delta
+                    if let textView = self.translationTextView {
+                        textView.scrollRangeToVisible(NSRange(location: textView.string.count, length: 0))
+                    }
+                }
+                guard let self else { return }
+                self.translationStatusLabel?.stringValue = ""
+                self.translationCopyButton?.isEnabled = self.translationTextView?.string.isEmpty == false
+            } catch is CancellationError {
+                // Panel closed, retried, or target language changed.
+            } catch {
+                guard let self else { return }
+                self.translationStatusLabel?.stringValue = L10n.ocrTranslateFailedPrefix
+                    + error.localizedDescription
+                self.translationStatusLabel?.textColor = NSColor.systemOrange
+                self.translationRetryButton?.isHidden = false
+            }
+        }
+    }
+
     // MARK: Sizing
 
-    /// Resizes the panel to fit its content while keeping the top-left corner
-    /// pinned to the original selection.
+    /// Resizes the panel to fit its content while keeping it centered near the
+    /// top of the target screen.
     private func refreshHeight() {
         contentView?.layoutSubtreeIfNeeded()
         let contentHeight = contentStack.fittingSize.height
         let desired = contentHeight + padding * 2
         let visible = anchorScreen.visibleFrame
-        let maxHeight = min(660, visible.height - 32)
+        let maxHeight = min(700, visible.height - Self.topMargin - 16)
         let height = max(180, min(desired, maxHeight))
 
-        var originX = anchorTopLeft.x
-        var originY = anchorTopLeft.y - height
-        if originX + panelWidth > visible.maxX { originX = visible.maxX - panelWidth }
-        if originX < visible.minX { originX = visible.minX }
-        if originY < visible.minY { originY = visible.minY }
-        if originY + height > visible.maxY { originY = visible.maxY - height }
-
-        setFrame(NSRect(x: originX, y: originY, width: panelWidth, height: height),
+        setFrame(Self.topCenteredFrame(width: panelWidth, height: height, on: anchorScreen),
                  display: true, animate: false)
+    }
+
+    private static func topCenteredFrame(width: CGFloat, height: CGFloat, on screen: NSScreen) -> NSRect {
+        let visible = screen.visibleFrame
+        let originX = min(max(visible.midX - width / 2, visible.minX), visible.maxX - width)
+        let originY = visible.maxY - topMargin - height
+        return NSRect(x: originX, y: max(originY, visible.minY), width: width, height: height)
     }
 
     // MARK: Actions
@@ -324,11 +569,58 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     @objc private func copyOCRTapped() {
-        guard ocrReady else { return }
-        let text = ocrTextView.string
+        guard ocrReady, !recognizedText.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(recognizedText, forType: .string)
+        if let button = ocrCopyButton {
+            flashButton(button, to: L10n.ocrCopied, restore: L10n.ocrCopy)
+        }
+    }
+
+    @objc private func copyTranslationTapped() {
+        guard let text = translationTextView?.string, !text.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
-        flashButton(ocrCopyButton, to: L10n.ocrCopied, restore: L10n.ocrCopy)
+        if let button = translationCopyButton {
+            flashButton(button, to: L10n.ocrCopied, restore: L10n.ocrCopy)
+        }
+    }
+
+    @objc private func translationRetryTapped() {
+        guard !recognizedText.isEmpty else { return }
+        runTranslation(target: selectedTarget)
+    }
+
+    @objc private func languageTapped() {
+        languagePopover?.performClose(nil)
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        let controller = NSViewController()
+        controller.view = LanguagePickerView(selected: selectedTarget) { [weak self, weak popover] language in
+            popover?.performClose(nil)
+            self?.selectTargetLanguage(language)
+        }
+        popover.contentViewController = controller
+        languagePopover = popover
+
+        if let button = translationLanguageButton {
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .maxY)
+        }
+    }
+
+    private func selectTargetLanguage(_ language: TranslationLanguage) {
+        guard selectedTarget != language else { return }
+        selectedTarget = language
+        translationLanguageButton?.title = languageButtonTitle()
+        if !recognizedText.isEmpty {
+            runTranslation(target: language)
+        }
+    }
+
+    private func languageButtonTitle() -> String {
+        L10n.screenshotTranslationLanguageButton(selectedTarget.displayName)
     }
 
     private func installKeyMonitor() {
@@ -344,7 +636,9 @@ final class OCRTranslatePanel: NSPanel {
 
     func dismiss() {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor); self.keyMonitor = nil }
-        for section in sections { section.cancelTranslation() }
+        translationTask?.cancel()
+        translationTask = nil
+        languagePopover?.performClose(nil)
         orderOut(nil)
         if OCRTranslatePanel.current === self { OCRTranslatePanel.current = nil }
     }
@@ -375,6 +669,62 @@ final class OCRTranslatePanel: NSPanel {
         s.translatesAutoresizingMaskIntoConstraints = false
         return s
     }
+}
+
+private final class LanguagePickerView: NSView {
+    private var sleeves: [ClosureSleeve] = []
+
+    init(selected: TranslationLanguage, onSelect: @escaping (TranslationLanguage) -> Void) {
+        super.init(frame: NSRect(x: 0, y: 0, width: 220, height: 1))
+        wantsLayer = true
+        layer?.backgroundColor = NSColor(calibratedRed: 0.12, green: 0.13, blue: 0.15, alpha: 1.0).cgColor
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.alignment = .leading
+        stack.spacing = 2
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(stack)
+
+        for language in TranslationLanguage.allCases {
+            let title = language == selected ? "✓ \(language.displayName)" : language.displayName
+            let button = NSButton(title: title, target: nil, action: nil)
+            button.bezelStyle = .inline
+            button.isBordered = false
+            button.alignment = .left
+            button.font = NSFont.systemFont(ofSize: 12, weight: language == selected ? .semibold : .regular)
+            button.contentTintColor = NSColor.white.withAlphaComponent(language == selected ? 0.95 : 0.78)
+            button.translatesAutoresizingMaskIntoConstraints = false
+            let sleeve = ClosureSleeve { onSelect(language) }
+            sleeves.append(sleeve)
+            button.target = sleeve
+            button.action = #selector(ClosureSleeve.invoke)
+            stack.addArrangedSubview(button)
+            button.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+            button.heightAnchor.constraint(equalToConstant: 24).isActive = true
+        }
+
+        NSLayoutConstraint.activate([
+            stack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
+            stack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 10),
+            stack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -10),
+            stack.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -8),
+            widthAnchor.constraint(equalToConstant: 220),
+        ])
+
+        let height = CGFloat(TranslationLanguage.allCases.count) * 26 + 16
+        frame.size = NSSize(width: 220, height: height)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+}
+
+private final class ClosureSleeve: NSObject {
+    private let closure: () -> Void
+    init(_ closure: @escaping () -> Void) {
+        self.closure = closure
+    }
+    @objc func invoke() { closure() }
 }
 
 // MARK: - Free-standing builders
@@ -450,205 +800,5 @@ func flashButton(_ button: NSButton, to confirm: String, restore: String) {
     button.title = confirm
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak button] in
         button?.title = restore
-    }
-}
-
-// MARK: - Translation section
-
-/// One collapsible AI-provider translation block. Translation starts the
-/// first time the section is expanded.
-final class TranslationSectionView: NSView {
-    let kind: TranslationProviderKind
-
-    var ocrTextProvider: (() -> String)?
-    /// Called after expand/collapse so the panel can resize.
-    var onToggle: (() -> Void)?
-
-    private let chevron = NSImageView()
-    private let statusLabel = NSTextField(labelWithString: "")
-    private let bodyContainer = NSView()
-    private var bodyTextView: PanelTextView!
-    private var copyButton: NSButton!
-    private var retryButton: NSButton!
-    private var sectionStack: NSStackView!
-
-    private var expanded = false
-    private var didStart = false
-    private var enabled = false
-    private var task: Task<Void, Never>?
-
-    init(kind: TranslationProviderKind) {
-        self.kind = kind
-        super.init(frame: .zero)
-        OCRTranslatePanel.styleCard(self)
-        buildUI()
-    }
-
-    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-
-    deinit { task?.cancel() }
-
-    private func buildUI() {
-        sectionStack = NSStackView()
-        sectionStack.orientation = .vertical
-        sectionStack.alignment = .leading
-        sectionStack.spacing = 8
-        sectionStack.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(sectionStack)
-        pin(sectionStack, to: self, inset: 10)
-
-        // Header row — clicking anywhere toggles.
-        chevron.image = NSImage(systemSymbolName: "chevron.right", accessibilityDescription: nil)
-        chevron.contentTintColor = NSColor.white.withAlphaComponent(0.6)
-        chevron.translatesAutoresizingMaskIntoConstraints = false
-        chevron.widthAnchor.constraint(equalToConstant: 12).isActive = true
-
-        let title = makeLabel(kind.displayName, size: 12, weight: .semibold, alpha: 0.92)
-
-        statusLabel.font = NSFont.systemFont(ofSize: 10, weight: .medium)
-        statusLabel.textColor = NSColor.white.withAlphaComponent(0.5)
-        statusLabel.isEditable = false
-        statusLabel.isBordered = false
-        statusLabel.drawsBackground = false
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        statusLabel.lineBreakMode = .byTruncatingTail
-
-        let headerStack = NSStackView(views: [chevron, title, flexSpacer(), statusLabel])
-        headerStack.orientation = .horizontal
-        headerStack.alignment = .centerY
-        headerStack.spacing = 8
-        headerStack.translatesAutoresizingMaskIntoConstraints = false
-
-        let header = ClickableRow()
-        header.translatesAutoresizingMaskIntoConstraints = false
-        header.onClick = { [weak self] in self?.toggle() }
-        header.addSubview(headerStack)
-        NSLayoutConstraint.activate([
-            headerStack.topAnchor.constraint(equalTo: header.topAnchor, constant: 4),
-            headerStack.bottomAnchor.constraint(equalTo: header.bottomAnchor, constant: -4),
-            headerStack.leadingAnchor.constraint(equalTo: header.leadingAnchor),
-            headerStack.trailingAnchor.constraint(equalTo: header.trailingAnchor),
-        ])
-        sectionStack.addArrangedSubview(header)
-        header.widthAnchor.constraint(equalTo: sectionStack.widthAnchor).isActive = true
-
-        // Body — translated text + actions.
-        let bodyStack = NSStackView()
-        bodyStack.orientation = .vertical
-        bodyStack.alignment = .leading
-        bodyStack.spacing = 8
-        bodyStack.translatesAutoresizingMaskIntoConstraints = false
-        bodyContainer.translatesAutoresizingMaskIntoConstraints = false
-        bodyContainer.addSubview(bodyStack)
-        NSLayoutConstraint.activate([
-            bodyStack.topAnchor.constraint(equalTo: bodyContainer.topAnchor),
-            bodyStack.leadingAnchor.constraint(equalTo: bodyContainer.leadingAnchor),
-            bodyStack.trailingAnchor.constraint(equalTo: bodyContainer.trailingAnchor),
-            bodyStack.bottomAnchor.constraint(equalTo: bodyContainer.bottomAnchor),
-        ])
-
-        let (scroll, textView) = makeTextScroll(editable: false, height: 120)
-        bodyTextView = textView
-        bodyStack.addArrangedSubview(scroll)
-        scroll.widthAnchor.constraint(equalTo: bodyStack.widthAnchor).isActive = true
-
-        retryButton = makeSmallButton(L10n.ocrRetry, action: #selector(retryTapped))
-        retryButton.target = self
-        retryButton.isHidden = true
-        copyButton = makeSmallButton(L10n.ocrCopy, action: #selector(copyTapped))
-        copyButton.target = self
-
-        let footer = NSStackView(views: [flexSpacer(), retryButton, copyButton])
-        footer.orientation = .horizontal
-        footer.alignment = .centerY
-        footer.spacing = 8
-        footer.translatesAutoresizingMaskIntoConstraints = false
-        bodyStack.addArrangedSubview(footer)
-        footer.widthAnchor.constraint(equalTo: bodyStack.widthAnchor).isActive = true
-
-        sectionStack.addArrangedSubview(bodyContainer)
-        bodyContainer.widthAnchor.constraint(equalTo: sectionStack.widthAnchor).isActive = true
-        bodyContainer.isHidden = true
-    }
-
-    /// OCR-not-ready sections are dimmed and ignore clicks.
-    func setEnabled(_ on: Bool) {
-        enabled = on
-        alphaValue = on ? 1.0 : 0.45
-    }
-
-    private func toggle() {
-        guard enabled else { return }
-        expanded.toggle()
-        bodyContainer.isHidden = !expanded
-        chevron.image = NSImage(
-            systemSymbolName: expanded ? "chevron.down" : "chevron.right",
-            accessibilityDescription: nil
-        )
-        if expanded { startTranslationIfNeeded() }
-        onToggle?()
-    }
-
-    private func startTranslationIfNeeded() {
-        guard !didStart else { return }
-        runTranslation()
-    }
-
-    @objc private func retryTapped() { runTranslation() }
-
-    private func runTranslation() {
-        didStart = true
-        task?.cancel()
-        retryButton.isHidden = true
-
-        let text = (ocrTextProvider?() ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
-            statusLabel.stringValue = L10n.ocrNoText
-            bodyTextView.string = ""
-            return
-        }
-
-        statusLabel.stringValue = L10n.ocrTranslating
-        statusLabel.textColor = NSColor.white.withAlphaComponent(0.5)
-        bodyTextView.string = ""
-
-        let config = TranslationConfigStore.load(kind)
-        let target = Defaults.translationTargetLanguage
-        let kind = self.kind
-
-        task = Task { @MainActor [weak self] in
-            do {
-                let stream = TranslationService.stream(
-                    text: text, target: target, kind: kind, config: config
-                )
-                for try await delta in stream {
-                    guard let self else { return }
-                    self.bodyTextView.string += delta
-                    self.bodyTextView.scrollRangeToVisible(
-                        NSRange(location: self.bodyTextView.string.count, length: 0)
-                    )
-                }
-                self?.statusLabel.stringValue = ""
-            } catch is CancellationError {
-                // Panel closed or retried — nothing to show.
-            } catch {
-                guard let self else { return }
-                self.statusLabel.stringValue = L10n.ocrTranslateFailedPrefix
-                    + error.localizedDescription
-                self.statusLabel.textColor = NSColor.systemOrange
-                self.retryButton.isHidden = false
-            }
-        }
-    }
-
-    @objc private func copyTapped() {
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(bodyTextView.string, forType: .string)
-        flashButton(copyButton, to: L10n.ocrCopied, restore: L10n.ocrCopy)
-    }
-
-    func cancelTranslation() {
-        task?.cancel()
-        task = nil
     }
 }

@@ -114,6 +114,20 @@ class SettingsView: NSView {
     private var clipboardImageEditShortcutRestoreButton: NSButton!
     private var clipboardImageEditShortcutRecordingMonitor: Any?
 
+    // Text recognition shortcut card
+    private var textRecognitionShortcutTitleLabel: NSTextField!
+    private var textRecognitionShortcutField: NSTextField!
+    private var textRecognitionShortcutSetButton: NSButton!
+    private var textRecognitionShortcutRestoreButton: NSButton!
+    private var textRecognitionShortcutRecordingMonitor: Any?
+
+    // Screenshot translation shortcut card
+    private var screenshotTranslationShortcutTitleLabel: NSTextField!
+    private var screenshotTranslationShortcutField: NSTextField!
+    private var screenshotTranslationShortcutSetButton: NSButton!
+    private var screenshotTranslationShortcutRestoreButton: NSButton!
+    private var screenshotTranslationShortcutRecordingMonitor: Any?
+
     // Copy-to-clipboard (editor confirm) shortcut card
     private var clipboardShortcutTitleLabel: NSTextField!
     private var clipboardShortcutField: NSTextField!
@@ -220,6 +234,8 @@ class SettingsView: NSView {
         cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
         cancelClipboardImageEditShortcutRecording()
+        cancelTextRecognitionShortcutRecording()
+        cancelScreenshotTranslationShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
         NotificationCenter.default.removeObserver(self)
@@ -286,6 +302,8 @@ class SettingsView: NSView {
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
         refreshClipboardImageEditShortcutDisplay()
+        refreshTextRecognitionShortcutDisplay()
+        refreshScreenshotTranslationShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
     }
@@ -620,6 +638,32 @@ class SettingsView: NSView {
         shortcutRestoreButton = shortcut.restoreButton
         stack.addArrangedSubview(shortcut.card)
         shortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Text recognition shortcut card
+        let textRecognitionShortcut = buildShortcutCard(
+            title: L10n.textRecognitionShortcutHeader,
+            setAction: #selector(textRecognitionShortcutSetClicked),
+            restoreAction: #selector(textRecognitionShortcutRestoreClicked)
+        )
+        textRecognitionShortcutTitleLabel = textRecognitionShortcut.title
+        textRecognitionShortcutField = textRecognitionShortcut.field
+        textRecognitionShortcutSetButton = textRecognitionShortcut.setButton
+        textRecognitionShortcutRestoreButton = textRecognitionShortcut.restoreButton
+        stack.addArrangedSubview(textRecognitionShortcut.card)
+        textRecognitionShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Screenshot translation shortcut card
+        let screenshotTranslationShortcut = buildShortcutCard(
+            title: L10n.screenshotTranslationShortcutHeader,
+            setAction: #selector(screenshotTranslationShortcutSetClicked),
+            restoreAction: #selector(screenshotTranslationShortcutRestoreClicked)
+        )
+        screenshotTranslationShortcutTitleLabel = screenshotTranslationShortcut.title
+        screenshotTranslationShortcutField = screenshotTranslationShortcut.field
+        screenshotTranslationShortcutSetButton = screenshotTranslationShortcut.setButton
+        screenshotTranslationShortcutRestoreButton = screenshotTranslationShortcut.restoreButton
+        stack.addArrangedSubview(screenshotTranslationShortcut.card)
+        screenshotTranslationShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Copy-to-clipboard (editor confirm) shortcut card
         let clipboardShortcut = buildShortcutCard(
@@ -2003,6 +2047,12 @@ class SettingsView: NSView {
         if slot != .clipboardImageEdit, clipboardImageEditShortcutRecordingMonitor != nil {
             cancelClipboardImageEditShortcutRecording()
         }
+        if slot != .textRecognition, textRecognitionShortcutRecordingMonitor != nil {
+            cancelTextRecognitionShortcutRecording()
+        }
+        if slot != .screenshotTranslation, screenshotTranslationShortcutRecordingMonitor != nil {
+            cancelScreenshotTranslationShortcutRecording()
+        }
         if slot != .clipboard, clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
         }
@@ -2452,6 +2502,180 @@ class SettingsView: NSView {
         }
     }
 
+    @objc private func textRecognitionShortcutSetClicked() {
+        if textRecognitionShortcutRecordingMonitor != nil {
+            cancelTextRecognitionShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .textRecognition)
+        HotkeyManager.shared.beginRecording()
+        textRecognitionShortcutSetButton.title = L10n.shortcutCancel
+        textRecognitionShortcutField.stringValue = L10n.shortcutWaiting
+        textRecognitionShortcutRestoreButton.isHidden = true
+
+        textRecognitionShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelTextRecognitionShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .textRecognition) {
+                self.cancelTextRecognitionShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.textRecognitionHotkeyKeyCode = Int(keyCode)
+            Defaults.textRecognitionHotkeyModifiers = Int(carbonMods)
+            self.finishTextRecognitionShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func textRecognitionShortcutRestoreClicked() {
+        if textRecognitionShortcutRecordingMonitor != nil {
+            cancelTextRecognitionShortcutRecording()
+        }
+        Defaults.clearTextRecognitionHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshTextRecognitionShortcutDisplay()
+    }
+
+    private func finishTextRecognitionShortcutRecording() {
+        if let m = textRecognitionShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            textRecognitionShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshTextRecognitionShortcutDisplay()
+    }
+
+    func cancelTextRecognitionShortcutRecording() {
+        guard textRecognitionShortcutRecordingMonitor != nil else { return }
+        if let m = textRecognitionShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            textRecognitionShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshTextRecognitionShortcutDisplay()
+    }
+
+    private func refreshTextRecognitionShortcutDisplay() {
+        textRecognitionShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentTextRecognitionDisplayString() {
+            textRecognitionShortcutField?.stringValue = display
+            textRecognitionShortcutRestoreButton?.isHidden = false
+        } else {
+            textRecognitionShortcutField?.stringValue = L10n.textRecognitionShortcutDefaultDisplay
+            textRecognitionShortcutRestoreButton?.isHidden = true
+        }
+    }
+
+    @objc private func screenshotTranslationShortcutSetClicked() {
+        if screenshotTranslationShortcutRecordingMonitor != nil {
+            cancelScreenshotTranslationShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .screenshotTranslation)
+        HotkeyManager.shared.beginRecording()
+        screenshotTranslationShortcutSetButton.title = L10n.shortcutCancel
+        screenshotTranslationShortcutField.stringValue = L10n.shortcutWaiting
+        screenshotTranslationShortcutRestoreButton.isHidden = true
+
+        screenshotTranslationShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelScreenshotTranslationShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .screenshotTranslation) {
+                self.cancelScreenshotTranslationShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.screenshotTranslationHotkeyKeyCode = Int(keyCode)
+            Defaults.screenshotTranslationHotkeyModifiers = Int(carbonMods)
+            self.finishScreenshotTranslationShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func screenshotTranslationShortcutRestoreClicked() {
+        if screenshotTranslationShortcutRecordingMonitor != nil {
+            cancelScreenshotTranslationShortcutRecording()
+        }
+        Defaults.clearScreenshotTranslationHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshScreenshotTranslationShortcutDisplay()
+    }
+
+    private func finishScreenshotTranslationShortcutRecording() {
+        if let m = screenshotTranslationShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            screenshotTranslationShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshScreenshotTranslationShortcutDisplay()
+    }
+
+    func cancelScreenshotTranslationShortcutRecording() {
+        guard screenshotTranslationShortcutRecordingMonitor != nil else { return }
+        if let m = screenshotTranslationShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            screenshotTranslationShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshScreenshotTranslationShortcutDisplay()
+    }
+
+    private func refreshScreenshotTranslationShortcutDisplay() {
+        screenshotTranslationShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentScreenshotTranslationDisplayString() {
+            screenshotTranslationShortcutField?.stringValue = display
+            screenshotTranslationShortcutRestoreButton?.isHidden = false
+        } else {
+            screenshotTranslationShortcutField?.stringValue = L10n.screenshotTranslationShortcutDefaultDisplay
+            screenshotTranslationShortcutRestoreButton?.isHidden = true
+        }
+    }
+
     @objc private func clipboardShortcutSetClicked() {
         if clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
@@ -2624,6 +2848,8 @@ class SettingsView: NSView {
         cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
         cancelClipboardImageEditShortcutRecording()
+        cancelTextRecognitionShortcutRecording()
+        cancelScreenshotTranslationShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
 
@@ -2634,6 +2860,8 @@ class SettingsView: NSView {
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
         refreshClipboardImageEditShortcutDisplay()
+        refreshTextRecognitionShortcutDisplay()
+        refreshScreenshotTranslationShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
     }
@@ -2667,6 +2895,10 @@ class SettingsView: NSView {
         selectedImageEditShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardImageEditShortcutTitleLabel?.stringValue = L10n.clipboardImageEditShortcutHeader
         clipboardImageEditShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        textRecognitionShortcutTitleLabel?.stringValue = L10n.textRecognitionShortcutHeader
+        textRecognitionShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        screenshotTranslationShortcutTitleLabel?.stringValue = L10n.screenshotTranslationShortcutHeader
+        screenshotTranslationShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardShortcutTitleLabel?.stringValue = L10n.clipboardShortcutHeader
         clipboardShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         fileSaveShortcutTitleLabel?.stringValue = L10n.fileSaveShortcutHeader
@@ -2694,6 +2926,8 @@ class SettingsView: NSView {
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
         refreshClipboardImageEditShortcutDisplay()
+        refreshTextRecognitionShortcutDisplay()
+        refreshScreenshotTranslationShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshBottomAction()

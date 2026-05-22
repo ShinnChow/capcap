@@ -77,6 +77,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregisterClipboardImagePin()
             HotkeyManager.shared.unregisterSelectedImageEdit()
             HotkeyManager.shared.unregisterClipboardImageEdit()
+            HotkeyManager.shared.unregisterTextRecognition()
+            HotkeyManager.shared.unregisterScreenshotTranslation()
             keyMonitor?.isEnabled = false
             return
         }
@@ -132,6 +134,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         } else {
             HotkeyManager.shared.unregisterClipboardImageEdit()
+        }
+
+        if Defaults.hasCustomTextRecognitionHotkey {
+            HotkeyManager.shared.registerTextRecognition { [weak self] in
+                self?.handleTextRecognitionTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterTextRecognition()
+        }
+
+        if Defaults.hasCustomScreenshotTranslationHotkey {
+            HotkeyManager.shared.registerScreenshotTranslation { [weak self] in
+                self?.handleScreenshotTranslationTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterScreenshotTranslation()
         }
     }
 
@@ -240,9 +258,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         applyHotkeyState()
     }
 
-    func startCapture() {
+    func handleTextRecognitionTrigger() {
+        guard overlayController == nil, !countdownActive else { return }
+        startCapture(postCaptureAction: .textRecognition)
+    }
+
+    func handleScreenshotTranslationTrigger() {
+        guard overlayController == nil, !countdownActive else { return }
+        startCapture(postCaptureAction: .screenshotTranslation)
+    }
+
+    func startCapture(postCaptureAction: OverlayWindowController.PostCaptureAction = .edit) {
         guard overlayController == nil else { return }
-        overlayController = OverlayWindowController { [weak self] finalImage in
+        overlayController = OverlayWindowController(postCaptureAction: postCaptureAction) { [weak self] finalImage in
             self?.handleEditCompletion(finalImage)
         }
         overlayController?.activate()

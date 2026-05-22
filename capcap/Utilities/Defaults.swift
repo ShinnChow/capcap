@@ -113,6 +113,10 @@ enum L10n {
     static var clipboardImageEditShortcutHeader: String { s("clipboardImageEditShortcutHeader") }
     static var clipboardImageEditShortcutHint: String { s("clipboardImageEditShortcutHint") }
     static var clipboardImageEditShortcutDefaultDisplay: String { s("clipboardImageEditShortcutDefaultDisplay") }
+    static var textRecognitionShortcutHeader: String { s("textRecognitionShortcutHeader") }
+    static var textRecognitionShortcutDefaultDisplay: String { s("textRecognitionShortcutDefaultDisplay") }
+    static var screenshotTranslationShortcutHeader: String { s("screenshotTranslationShortcutHeader") }
+    static var screenshotTranslationShortcutDefaultDisplay: String { s("screenshotTranslationShortcutDefaultDisplay") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -133,6 +137,8 @@ enum L10n {
     static var shortcutConflictFileSave: String { s("shortcutConflictFileSave") }
     static var shortcutConflictSelectedImageEdit: String { s("shortcutConflictSelectedImageEdit") }
     static var shortcutConflictClipboardImageEdit: String { s("shortcutConflictClipboardImageEdit") }
+    static var shortcutConflictTextRecognition: String { s("shortcutConflictTextRecognition") }
+    static var shortcutConflictScreenshotTranslation: String { s("shortcutConflictScreenshotTranslation") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
@@ -178,6 +184,7 @@ enum L10n {
     static var tipScrollCapture: String { s("tipScrollCapture") }
     static var tipBeautify: String { s("tipBeautify") }
     static var tipOCR: String { s("tipOCR") }
+    static var tipScreenshotTranslate: String { s("tipScreenshotTranslate") }
     static var tipSave: String { s("tipSave") }
     static var tipPin: String { s("tipPin") }
     static var tipCancel: String { s("tipCancel") }
@@ -394,6 +401,11 @@ enum L10n {
     static var ocrNoProviderTitle: String { s("ocrNoProviderTitle") }
     static var ocrNoProviderHint: String { s("ocrNoProviderHint") }
     static var ocrOpenSettings: String { s("ocrOpenSettings") }
+    static var ocrLineCopied: String { s("ocrLineCopied") }
+    static var screenshotTranslationHeader: String { s("screenshotTranslationHeader") }
+    static func screenshotTranslationLanguageButton(_ language: String) -> String {
+        String(format: s("screenshotTranslationLanguageButton"), language)
+    }
 
     // Translation — settings tab
     static var translationTargetLanguage: String { s("translationTargetLanguage") }
@@ -519,6 +531,8 @@ struct Defaults {
         clearClipboardImagePinHotkey()
         clearSelectedImageEditHotkey()
         clearClipboardImageEditHotkey()
+        clearTextRecognitionHotkey()
+        clearScreenshotTranslationHotkey()
         clearClipboardHotkey()
         clearFileSaveHotkey()
     }
@@ -564,6 +578,48 @@ struct Defaults {
     static func clearClipboardImageEditHotkey() {
         defaults.removeObject(forKey: "clipboardImageEditHotkeyKeyCode")
         defaults.removeObject(forKey: "clipboardImageEditHotkeyModifiers")
+    }
+
+    // Custom OCR/translation hotkeys. They are global Carbon hotkeys with no
+    // defaults: users opt in from Settings, then select a region that is sent
+    // straight to the corresponding result panel.
+
+    static var textRecognitionHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "textRecognitionHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "textRecognitionHotkeyKeyCode") }
+    }
+
+    static var textRecognitionHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "textRecognitionHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "textRecognitionHotkeyModifiers") }
+    }
+
+    static var hasCustomTextRecognitionHotkey: Bool {
+        defaults.object(forKey: "textRecognitionHotkeyKeyCode") != nil
+    }
+
+    static func clearTextRecognitionHotkey() {
+        defaults.removeObject(forKey: "textRecognitionHotkeyKeyCode")
+        defaults.removeObject(forKey: "textRecognitionHotkeyModifiers")
+    }
+
+    static var screenshotTranslationHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "screenshotTranslationHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "screenshotTranslationHotkeyKeyCode") }
+    }
+
+    static var screenshotTranslationHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "screenshotTranslationHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "screenshotTranslationHotkeyModifiers") }
+    }
+
+    static var hasCustomScreenshotTranslationHotkey: Bool {
+        defaults.object(forKey: "screenshotTranslationHotkeyKeyCode") != nil
+    }
+
+    static func clearScreenshotTranslationHotkey() {
+        defaults.removeObject(forKey: "screenshotTranslationHotkeyKeyCode")
+        defaults.removeObject(forKey: "screenshotTranslationHotkeyModifiers")
     }
 
     // Custom copy-to-clipboard hotkey used inside the editor overlay to

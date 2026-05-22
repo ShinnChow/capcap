@@ -14,6 +14,12 @@ class OverlayWindowController {
         case clipboard
     }
 
+    enum PostCaptureAction {
+        case edit
+        case textRecognition
+        case screenshotTranslation
+    }
+
     private var windows: [NSWindow] = []
     private var chipWindow: CursorChipWindow?
     private var escLocalMonitor: Any?
@@ -23,6 +29,7 @@ class OverlayWindowController {
     private let windowDetector = WindowDetector()
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
     private let onComplete: (NSImage?) -> Void
+    private let postCaptureAction: PostCaptureAction
 
     /// Image-edit mode: when set, `activate()` skips the user's drag-to-select
     /// step and immediately opens the editor on the supplied image, sized to
@@ -37,9 +44,13 @@ class OverlayWindowController {
         editController?.confirmFromKeyboard()
     }
 
-    init(onComplete: @escaping (NSImage?) -> Void) {
+    init(
+        postCaptureAction: PostCaptureAction = .edit,
+        onComplete: @escaping (NSImage?) -> Void
+    ) {
         self.presetImage = nil
         self.presetSource = nil
+        self.postCaptureAction = postCaptureAction
         self.onComplete = onComplete
     }
 
@@ -50,6 +61,7 @@ class OverlayWindowController {
     ) {
         self.presetImage = presetImage
         self.presetSource = presetSource
+        self.postCaptureAction = .edit
         self.onComplete = onComplete
     }
 
@@ -310,6 +322,31 @@ extension OverlayWindowController: SelectionViewDelegate {
                 ? windowID.flatMap { ScreenCapturer.capture(windowID: $0, pointSize: rect.size) }
                 : nil
 
+            if postCaptureAction != .edit {
+                let baseImage = imageForImmediateAction(
+                    captureRect: cgRect,
+                    screen: screen,
+                    preSnapshot: preSnapshot,
+                    windowBaseImage: windowBaseImage
+                )
+                tearDown()
+                onComplete(nil)
+                guard let baseImage else { return }
+                switch postCaptureAction {
+                case .edit:
+                    break
+                case .textRecognition:
+                    OCRTranslatePanel.presentTextRecognition(
+                        image: baseImage, anchorRect: screenRect, screen: screen
+                    )
+                case .screenshotTranslation:
+                    OCRTranslatePanel.presentScreenshotTranslation(
+                        image: baseImage, anchorRect: screenRect, screen: screen
+                    )
+                }
+                return
+            }
+
             editController = EditWindowController(
                 captureRect: cgRect,
                 screen: screen,
@@ -347,6 +384,26 @@ extension OverlayWindowController: SelectionViewDelegate {
             selectionRect: screenRect,
             selectionViewRect: rect,
             captureRect: cgRect
+        )
+    }
+
+    private func imageForImmediateAction(
+        captureRect: CGRect,
+        screen: NSScreen,
+        preSnapshot: CGImage?,
+        windowBaseImage: NSImage?
+    ) -> NSImage? {
+        if let windowBaseImage {
+            return windowBaseImage
+        }
+        if let preSnapshot {
+            return ScreenCapturer.crop(from: preSnapshot, captureRect: captureRect, screen: screen)
+        }
+        let overlayWindowIDs = windows.map { CGWindowID($0.windowNumber) }
+        return ScreenCapturer.capture(
+            rect: captureRect,
+            screen: screen,
+            excludingWindowNumbers: overlayWindowIDs
         )
     }
 }

@@ -7,25 +7,69 @@ import Foundation
 enum TranslationLanguage: String, CaseIterable {
     case chinese = "zh"
     case english = "en"
+    case hindi = "hi"
+    case spanish = "es"
+    case french = "fr"
+    case arabic = "ar"
+    case bengali = "bn"
+    case portuguese = "pt"
+    case russian = "ru"
+    case urdu = "ur"
+    case indonesian = "id"
+    case german = "de"
     case japanese = "ja"
     case korean = "ko"
+    case turkish = "tr"
+
+    static var appDefault: TranslationLanguage {
+        switch Defaults.language {
+        case .zh: return .chinese
+        case .en: return .english
+        case .ja: return .japanese
+        case .ko: return .korean
+        case .fr: return .french
+        case .ru: return .russian
+        }
+    }
 
     var displayName: String {
         switch self {
-        case .chinese:  return L10n.transLangChinese
-        case .english:  return L10n.transLangEnglish
-        case .japanese: return L10n.transLangJapanese
-        case .korean:   return L10n.transLangKorean
+        case .chinese:    return "中文"
+        case .english:    return "English"
+        case .hindi:      return "हिन्दी"
+        case .spanish:    return "Español"
+        case .french:     return "Français"
+        case .arabic:     return "العربية"
+        case .bengali:    return "বাংলা"
+        case .portuguese: return "Português"
+        case .russian:    return "Русский"
+        case .urdu:       return "اردو"
+        case .indonesian: return "Indonesia"
+        case .german:     return "Deutsch"
+        case .japanese:   return "日本語"
+        case .korean:     return "한국어"
+        case .turkish:    return "Türkçe"
         }
     }
 
     /// English name fed into the translation prompt.
     var promptName: String {
         switch self {
-        case .chinese:  return "Simplified Chinese"
-        case .english:  return "English"
-        case .japanese: return "Japanese"
-        case .korean:   return "Korean"
+        case .chinese:    return "Simplified Chinese"
+        case .english:    return "English"
+        case .hindi:      return "Hindi"
+        case .spanish:    return "Spanish"
+        case .french:     return "French"
+        case .arabic:     return "Arabic"
+        case .bengali:    return "Bengali"
+        case .portuguese: return "Portuguese"
+        case .russian:    return "Russian"
+        case .urdu:       return "Urdu"
+        case .indonesian: return "Indonesian"
+        case .german:     return "German"
+        case .japanese:   return "Japanese"
+        case .korean:     return "Korean"
+        case .turkish:    return "Turkish"
         }
     }
 }

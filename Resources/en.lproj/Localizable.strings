@@ -48,6 +48,10 @@
 "clipboardImageEditShortcutHeader" = "Edit Clipboard Image";
 "clipboardImageEditShortcutHint" = "Press it to edit the current image on the clipboard. Not set by default.";
 "clipboardImageEditShortcutDefaultDisplay" = "Not set";
+"textRecognitionShortcutHeader" = "Text Recognition";
+"textRecognitionShortcutDefaultDisplay" = "Not set";
+"screenshotTranslationShortcutHeader" = "Screenshot Translation";
+"screenshotTranslationShortcutDefaultDisplay" = "Not set";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copy to Clipboard";
@@ -68,6 +72,8 @@
 "shortcutConflictFileSave" = "This key combination is already used by the Save to File shortcut. Please choose a different one.";
 "shortcutConflictSelectedImageEdit" = "This key combination is already used by the Edit Selected Image shortcut. Please choose a different one.";
 "shortcutConflictClipboardImageEdit" = "This key combination is already used by the Edit Clipboard Image shortcut. Please choose a different one.";
+"shortcutConflictTextRecognition" = "This key combination is already used by the Text Recognition shortcut. Please choose a different one.";
+"shortcutConflictScreenshotTranslation" = "This key combination is already used by the Screenshot Translation shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";
@@ -110,7 +116,8 @@
 "tipMoveSelection" = "Move Selection";
 "tipScrollCapture" = "Scroll Capture";
 "tipBeautify" = "Beautify";
-"tipOCR" = "OCR & Translate";
+"tipOCR" = "Text Recognition";
+"tipScreenshotTranslate" = "Screenshot Translation";
 "tipSave" = "Save to File";
 "tipPin" = "Pin to Screen";
 "tipCancel" = "Cancel";
@@ -296,6 +303,9 @@
 "ocrNoProviderTitle" = "No translation service configured";
 "ocrNoProviderHint" = "Add an AI service in Settings → Translation";
 "ocrOpenSettings" = "Open Settings";
+"ocrLineCopied" = "Line copied";
+"screenshotTranslationHeader" = "Translation";
+"screenshotTranslationLanguageButton" = "To %@";
 
 /* Translation — settings tab */
 "translationTargetLanguage" = "Target Language";

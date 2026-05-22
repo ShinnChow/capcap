@@ -48,6 +48,10 @@
 "clipboardImageEditShortcutHeader" = "Редактировать изображение из буфера";
 "clipboardImageEditShortcutHint" = "Нажмите, чтобы сразу редактировать текущее изображение в буфере обмена. По умолчанию не задано.";
 "clipboardImageEditShortcutDefaultDisplay" = "Не задано";
+"textRecognitionShortcutHeader" = "Распознавание текста";
+"textRecognitionShortcutDefaultDisplay" = "Не задано";
+"screenshotTranslationShortcutHeader" = "Перевод снимка";
+"screenshotTranslationShortcutDefaultDisplay" = "Не задано";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Копировать в буфер обмена";
@@ -68,6 +72,8 @@
 "shortcutConflictFileSave" = "Это сочетание клавиш уже назначено для сохранения в файл. Выберите другое.";
 "shortcutConflictSelectedImageEdit" = "Это сочетание клавиш уже назначено для редактирования выбранного изображения. Выберите другое.";
 "shortcutConflictClipboardImageEdit" = "Это сочетание клавиш уже назначено для редактирования изображения из буфера. Выберите другое.";
+"shortcutConflictTextRecognition" = "Это сочетание клавиш уже назначено для распознавания текста. Выберите другое.";
+"shortcutConflictScreenshotTranslation" = "Это сочетание клавиш уже назначено для перевода снимка. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";
@@ -110,7 +116,8 @@
 "tipMoveSelection" = "Переместить выделение";
 "tipScrollCapture" = "Длинный снимок";
 "tipBeautify" = "Оформление";
-"tipOCR" = "OCR и перевод";
+"tipOCR" = "Распознавание текста";
+"tipScreenshotTranslate" = "Перевод снимка";
 "tipSave" = "Сохранить в файл";
 "tipPin" = "Закрепить на экране";
 "tipCancel" = "Отмена";
@@ -296,6 +303,9 @@
 "ocrNoProviderTitle" = "Служба перевода не настроена";
 "ocrNoProviderHint" = "Добавьте ИИ-службу в Настройки → Перевод";
 "ocrOpenSettings" = "Открыть настройки";
+"ocrLineCopied" = "Строка скопирована";
+"screenshotTranslationHeader" = "Перевод";
+"screenshotTranslationLanguageButton" = "На %@";
 
 /* Translation — settings tab */
 "translationTargetLanguage" = "Язык перевода";
