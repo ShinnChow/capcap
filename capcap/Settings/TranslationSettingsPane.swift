@@ -214,7 +214,10 @@ private final class TranslationProviderCard: NSView {
     // MARK: Field metadata
 
     private func modelPlaceholder() -> String {
-        kind.defaultModel.isEmpty ? "e.g. gpt-4o-mini" : kind.defaultModel
+        if kind.isDeepL {
+            return "quality_optimized / prefer_quality_optimized / latency_optimized"
+        }
+        return kind.defaultModel.isEmpty ? "e.g. gpt-4o-mini" : kind.defaultModel
     }
 
     private func endpointLabelText() -> String {

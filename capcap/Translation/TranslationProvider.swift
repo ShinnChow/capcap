@@ -76,11 +76,12 @@ enum TranslationLanguage: String, CaseIterable {
 
 // MARK: - Provider kinds
 
-/// AI translation providers. OpenAI / DeepSeek / Custom all speak the OpenAI
-/// chat-completions wire format; Claude uses the Anthropic Messages API.
+/// Translation providers. OpenAI / DeepSeek / Custom all speak the OpenAI
+/// chat-completions wire format; Claude and DeepL use their own APIs.
 enum TranslationProviderKind: String, CaseIterable {
     case openai
     case deepseek
+    case deepl
     case custom
     case claude
 
@@ -88,6 +89,7 @@ enum TranslationProviderKind: String, CaseIterable {
         switch self {
         case .openai:   return "OpenAI"
         case .deepseek: return "DeepSeek"
+        case .deepl:    return "DeepL"
         case .custom:   return L10n.translationProviderCustom
         case .claude:   return "Claude"
         }
@@ -96,10 +98,14 @@ enum TranslationProviderKind: String, CaseIterable {
     /// Claude needs a different request shape and SSE parser.
     var isClaude: Bool { self == .claude }
 
+    /// DeepL uses a non-SSE JSON response instead of chat completions.
+    var isDeepL: Bool { self == .deepl }
+
     var defaultEndpoint: String {
         switch self {
         case .openai:   return "https://api.openai.com/v1/chat/completions"
         case .deepseek: return "https://api.deepseek.com/v1/chat/completions"
+        case .deepl:    return "https://api.deepl.com/v2/translate"
         case .custom:   return ""
         case .claude:   return "https://api.anthropic.com/v1/messages"
         }
@@ -109,6 +115,7 @@ enum TranslationProviderKind: String, CaseIterable {
         switch self {
         case .openai:   return "gpt-4o-mini"
         case .deepseek: return "deepseek-v4-flash"
+        case .deepl:    return ""
         case .custom:   return ""
         case .claude:   return "claude-3-5-haiku-latest"
         }
@@ -117,6 +124,30 @@ enum TranslationProviderKind: String, CaseIterable {
     /// Custom must supply its own endpoint; the rest ship a sensible default
     /// but still allow an override (e.g. a proxy).
     var endpointRequired: Bool { self == .custom }
+}
+
+extension TranslationLanguage {
+    /// DeepL target language code. Generic variants are used where possible;
+    /// Chinese prefers the explicit simplified variant.
+    var deepLTargetCode: String {
+        switch self {
+        case .chinese:    return "ZH-HANS"
+        case .english:    return "EN"
+        case .hindi:      return "HI"
+        case .spanish:    return "ES"
+        case .french:     return "FR"
+        case .arabic:     return "AR"
+        case .bengali:    return "BN"
+        case .portuguese: return "PT"
+        case .russian:    return "RU"
+        case .urdu:       return "UR"
+        case .indonesian: return "ID"
+        case .german:     return "DE"
+        case .japanese:   return "JA"
+        case .korean:     return "KO"
+        case .turkish:    return "TR"
+        }
+    }
 }
 
 // MARK: - Config model

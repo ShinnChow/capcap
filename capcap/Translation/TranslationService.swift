@@ -21,8 +21,9 @@ enum TranslationError: LocalizedError {
     }
 }
 
-/// Streams AI translations. OpenAI / DeepSeek / Custom share the OpenAI
-/// chat-completions SSE format; Claude uses the Anthropic Messages SSE format.
+/// Streams translations. OpenAI / DeepSeek / Custom share the OpenAI
+/// chat-completions SSE format; Claude uses Anthropic Messages SSE; DeepL
+/// returns a single JSON payload that is yielded as one chunk.
 enum TranslationService {
 
     /// Yields translated text deltas as they arrive. Cancelling the consuming
@@ -36,6 +37,15 @@ enum TranslationService {
         AsyncThrowingStream { continuation in
             let work = Task {
                 do {
+                    if kind.isDeepL {
+                        let translated = try await translateWithDeepL(text: text, target: target, config: config)
+                        if !translated.isEmpty {
+                            continuation.yield(translated)
+                        }
+                        continuation.finish()
+                        return
+                    }
+
                     let request = try buildRequest(text: text, target: target, kind: kind, config: config)
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
                     guard let http = response as? HTTPURLResponse else {
@@ -146,6 +156,101 @@ enum TranslationService {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    // MARK: - DeepL
+
+    private struct DeepLTranslationResult {
+        let text: String
+        let detectedSourceLanguage: String?
+    }
+
+    private static func translateWithDeepL(
+        text: String,
+        target: TranslationLanguage,
+        config: TranslationConfig
+    ) async throws -> String {
+        let result = try await requestDeepLTranslation(text: text, target: target, config: config)
+        if target != .english,
+           deepLSourceMatchesTarget(result.detectedSourceLanguage, target: target) {
+            let fallback = try await requestDeepLTranslation(text: text, target: .english, config: config)
+            return fallback.text
+        }
+        return result.text
+    }
+
+    private static func requestDeepLTranslation(
+        text: String,
+        target: TranslationLanguage,
+        config: TranslationConfig
+    ) async throws -> DeepLTranslationResult {
+        let request = try buildDeepLRequest(text: text, target: target, config: config)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw TranslationError.badResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw TranslationError.http(http.statusCode, String(body.prefix(600)))
+        }
+        return try parseDeepLResponse(data)
+    }
+
+    private static func buildDeepLRequest(
+        text: String,
+        target: TranslationLanguage,
+        config: TranslationConfig
+    ) throws -> URLRequest {
+        let apiKey = config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !apiKey.isEmpty else { throw TranslationError.missingAPIKey }
+        guard let url = URL(string: config.resolvedEndpoint(for: .deepl)),
+              url.scheme != nil else {
+            throw TranslationError.badEndpoint
+        }
+
+        var request = URLRequest(url: url, timeoutInterval: 60)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("DeepL-Auth-Key \(apiKey)", forHTTPHeaderField: "Authorization")
+
+        var body: [String: Any] = [
+            "text": [text],
+            "target_lang": target.deepLTargetCode,
+            "preserve_formatting": true,
+        ]
+
+        let model = config.resolvedModel(for: .deepl)
+        if !model.isEmpty {
+            body["model_type"] = model
+        }
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    private static func parseDeepLResponse(_ data: Data) throws -> DeepLTranslationResult {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let translations = json["translations"] as? [[String: Any]],
+              let first = translations.first,
+              let text = first["text"] as? String else {
+            throw TranslationError.badResponse
+        }
+        return DeepLTranslationResult(
+            text: text,
+            detectedSourceLanguage: first["detected_source_language"] as? String
+        )
+    }
+
+    private static func deepLSourceMatchesTarget(
+        _ sourceLanguage: String?,
+        target: TranslationLanguage
+    ) -> Bool {
+        guard let sourceLanguage else { return false }
+        return deepLBaseLanguage(sourceLanguage) == deepLBaseLanguage(target.deepLTargetCode)
+    }
+
+    private static func deepLBaseLanguage(_ code: String) -> String {
+        code.uppercased().split(separator: "-").first.map(String.init) ?? code.uppercased()
     }
 
     // MARK: - SSE parsing
