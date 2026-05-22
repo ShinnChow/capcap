@@ -201,24 +201,51 @@ private final class PanelPinButton: NSButton {
     }
 }
 
+private final class TranslationHeaderView: NSView {
+    var onToggle: (() -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        translatesAutoresizingMaskIntoConstraints = false
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func mouseDown(with event: NSEvent) {
+        onToggle?()
+    }
+}
+
 private final class TranslationResultView: NSView {
     let kind: TranslationProviderKind
 
     private let statusLabel = NSTextField(labelWithString: "")
+    private let contentStack = NSStackView()
+    private let textContainer = NSView()
     private let textView: PanelTextView
+    private let textHeightConstraint: NSLayoutConstraint
     private let retryButton: NSButton
     private let copyButton: NSButton
+    private let chevronView = NSImageView()
     private var retrySleeve: ClosureSleeve?
+    private var isCollapsed = false
+    private let onLayoutChange: () -> Void
 
-    init(kind: TranslationProviderKind, onRetry: @escaping () -> Void) {
+    init(
+        kind: TranslationProviderKind,
+        onRetry: @escaping () -> Void,
+        onLayoutChange: @escaping () -> Void
+    ) {
         self.kind = kind
+        self.onLayoutChange = onLayoutChange
 
         let retryButton = makeSmallButton(L10n.ocrRetry, action: #selector(ClosureSleeve.invoke))
-        let copyButton = makeSmallButton(L10n.ocrCopy, action: #selector(copyTapped))
-        let (scroll, textView) = makeTextScroll(editable: false, height: 128)
+        let copyButton = NSButton(title: "", target: nil, action: #selector(copyTapped))
+        let textView = PanelTextView()
         self.retryButton = retryButton
         self.copyButton = copyButton
         self.textView = textView
+        self.textHeightConstraint = textContainer.heightAnchor.constraint(equalToConstant: 34)
 
         super.init(frame: .zero)
 
@@ -227,7 +254,7 @@ private final class TranslationResultView: NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
-        stack.spacing = 7
+        stack.spacing = 8
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         pin(stack, to: self, inset: 0)
@@ -239,25 +266,64 @@ private final class TranslationResultView: NSView {
 
         copyButton.target = self
         copyButton.isEnabled = false
+        configureIconButton(copyButton, symbolName: "doc.on.doc", label: L10n.ocrCopy)
 
-        let header = NSStackView(views: [title, flexSpacer(), retryButton, copyButton])
-        header.orientation = .horizontal
-        header.alignment = .centerY
-        header.spacing = 8
-        header.translatesAutoresizingMaskIntoConstraints = false
+        chevronView.translatesAutoresizingMaskIntoConstraints = false
+        chevronView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        chevronView.contentTintColor = NSColor.white.withAlphaComponent(0.72)
+        updateChevron()
+
+        let header = TranslationHeaderView()
+        header.onToggle = { [weak self] in self?.toggleCollapsed() }
+        let headerStack = NSStackView(views: [title, flexSpacer(), retryButton, chevronView])
+        headerStack.orientation = .horizontal
+        headerStack.alignment = .centerY
+        headerStack.spacing = 8
+        headerStack.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(headerStack)
+        pin(headerStack, to: header, inset: 0)
         stack.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        header.heightAnchor.constraint(greaterThanOrEqualToConstant: 24).isActive = true
+        chevronView.widthAnchor.constraint(equalToConstant: 14).isActive = true
+        chevronView.heightAnchor.constraint(equalToConstant: 14).isActive = true
+
+        contentStack.orientation = .vertical
+        contentStack.alignment = .leading
+        contentStack.spacing = 7
+        contentStack.translatesAutoresizingMaskIntoConstraints = false
+        stack.addArrangedSubview(contentStack)
+        contentStack.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         statusLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
         statusLabel.textColor = NSColor.white.withAlphaComponent(0.52)
         statusLabel.lineBreakMode = .byWordWrapping
         statusLabel.usesSingleLineMode = false
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        stack.addArrangedSubview(statusLabel)
-        statusLabel.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        contentStack.addArrangedSubview(statusLabel)
+        statusLabel.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
 
-        stack.addArrangedSubview(scroll)
-        scroll.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        textContainer.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.addArrangedSubview(textContainer)
+        textContainer.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
+        textHeightConstraint.isActive = true
+
+        configureExpandingTextView(textView)
+        textContainer.addSubview(textView)
+        NSLayoutConstraint.activate([
+            textView.topAnchor.constraint(equalTo: textContainer.topAnchor),
+            textView.leadingAnchor.constraint(equalTo: textContainer.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: textContainer.trailingAnchor),
+            textView.bottomAnchor.constraint(equalTo: textContainer.bottomAnchor),
+        ])
+
+        let footer = NSStackView(views: [copyButton, flexSpacer()])
+        footer.orientation = .horizontal
+        footer.alignment = .centerY
+        footer.spacing = 8
+        footer.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.addArrangedSubview(footer)
+        footer.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
 
         reset()
     }
@@ -271,17 +337,20 @@ private final class TranslationResultView: NSView {
         statusLabel.isHidden = false
         retryButton.isHidden = true
         copyButton.isEnabled = false
+        updateTextHeight()
     }
 
     func append(_ delta: String) {
         textView.string += delta
-        textView.scrollRangeToVisible(NSRange(location: textView.string.count, length: 0))
+        updateTextHeight()
+        onLayoutChange()
     }
 
     func markSuccess() {
         statusLabel.stringValue = ""
         statusLabel.isHidden = true
         copyButton.isEnabled = !textView.string.isEmpty
+        onLayoutChange()
     }
 
     func markFailure(_ error: Error) {
@@ -290,13 +359,41 @@ private final class TranslationResultView: NSView {
         statusLabel.isHidden = false
         retryButton.isHidden = false
         copyButton.isEnabled = !textView.string.isEmpty
+        onLayoutChange()
     }
 
     @objc private func copyTapped() {
         guard !textView.string.isEmpty else { return }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(textView.string, forType: .string)
-        flashButton(copyButton, to: L10n.ocrCopied, restore: L10n.ocrCopy)
+        flashIconButton(copyButton, symbolName: "checkmark", restoreSymbolName: "doc.on.doc")
+    }
+
+    private func toggleCollapsed() {
+        isCollapsed.toggle()
+        contentStack.isHidden = isCollapsed
+        updateChevron()
+        onLayoutChange()
+    }
+
+    private func updateChevron() {
+        let symbolName = isCollapsed ? "chevron.right" : "chevron.down"
+        chevronView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)
+    }
+
+    private func updateTextHeight() {
+        guard !textContainer.isHidden,
+              let layoutContainer = textView.textContainer,
+              let layoutManager = textView.layoutManager else { return }
+        textContainer.layoutSubtreeIfNeeded()
+        let width = max(self.textContainer.bounds.width, 220)
+        layoutContainer.containerSize = NSSize(
+            width: max(width - textView.textContainerInset.width * 2, 1),
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        layoutManager.ensureLayout(for: layoutContainer)
+        let used = layoutManager.usedRect(for: layoutContainer).height
+        textHeightConstraint.constant = max(34, ceil(used + textView.textContainerInset.height * 2))
     }
 }
 
@@ -648,9 +745,11 @@ final class OCRTranslatePanel: NSPanel {
         let text = recognizedText
 
         for kind in kinds {
-            let resultView = TranslationResultView(kind: kind) { [weak self] in
-                self?.retryTranslation(kind: kind)
-            }
+            let resultView = TranslationResultView(
+                kind: kind,
+                onRetry: { [weak self] in self?.retryTranslation(kind: kind) },
+                onLayoutChange: { [weak self] in self?.refreshHeight() }
+            )
             translationResultViews[kind] = resultView
             translationResultsStack?.addArrangedSubview(resultView)
             if let stack = translationResultsStack {
@@ -969,6 +1068,22 @@ func makeSmallButton(_ title: String, action: Selector) -> NSButton {
     return b
 }
 
+func configureIconButton(_ button: NSButton, symbolName: String, label: String) {
+    button.title = ""
+    button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: label)
+    button.imagePosition = .imageOnly
+    button.imageScaling = .scaleProportionallyDown
+    button.isBordered = false
+    button.bezelStyle = .regularSquare
+    button.controlSize = .small
+    button.contentTintColor = NSColor.white.withAlphaComponent(0.78)
+    button.toolTip = label
+    button.setAccessibilityLabel(label)
+    button.translatesAutoresizingMaskIntoConstraints = false
+    button.widthAnchor.constraint(equalToConstant: 24).isActive = true
+    button.heightAnchor.constraint(equalToConstant: 24).isActive = true
+}
+
 func pin(_ child: NSView, to parent: NSView, inset: CGFloat) {
     NSLayoutConstraint.activate([
         child.topAnchor.constraint(equalTo: parent.topAnchor, constant: inset),
@@ -976,6 +1091,22 @@ func pin(_ child: NSView, to parent: NSView, inset: CGFloat) {
         child.trailingAnchor.constraint(equalTo: parent.trailingAnchor, constant: -inset),
         child.bottomAnchor.constraint(equalTo: parent.bottomAnchor, constant: -inset),
     ])
+}
+
+func configureExpandingTextView(_ textView: PanelTextView) {
+    textView.translatesAutoresizingMaskIntoConstraints = false
+    textView.isEditable = false
+    textView.isSelectable = true
+    textView.isRichText = false
+    textView.drawsBackground = false
+    textView.font = NSFont.systemFont(ofSize: 12)
+    textView.textColor = NSColor.white.withAlphaComponent(0.9)
+    textView.textContainerInset = NSSize(width: 6, height: 6)
+    textView.isVerticallyResizable = false
+    textView.isHorizontallyResizable = false
+    textView.textContainer?.widthTracksTextView = true
+    textView.textContainer?.heightTracksTextView = false
+    textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
 }
 
 /// A bordered scroll view wrapping a `PanelTextView` of fixed height.
@@ -1015,5 +1146,14 @@ func flashButton(_ button: NSButton, to confirm: String, restore: String) {
     button.title = confirm
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak button] in
         button?.title = restore
+    }
+}
+
+func flashIconButton(_ button: NSButton, symbolName: String, restoreSymbolName: String) {
+    button.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: L10n.ocrCopied)
+    button.contentTintColor = NSColor.systemGreen
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak button] in
+        button?.image = NSImage(systemSymbolName: restoreSymbolName, accessibilityDescription: L10n.ocrCopy)
+        button?.contentTintColor = NSColor.white.withAlphaComponent(0.78)
     }
 }

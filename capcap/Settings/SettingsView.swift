@@ -805,7 +805,7 @@ class SettingsView: NSView {
             action: #selector(historyCacheSliderChanged(_:))
         )
         slider.allowsTickMarkValuesOnly = true
-        slider.numberOfTickMarks = Defaults.historyCacheMax - Defaults.historyCacheMin + 1
+        slider.numberOfTickMarks = (Defaults.historyCacheMax - Defaults.historyCacheMin) / Defaults.historyCacheStep + 1
         slider.controlSize = .small
         slider.translatesAutoresizingMaskIntoConstraints = false
         historyCacheSlider = slider
@@ -1929,7 +1929,9 @@ class SettingsView: NSView {
     @objc private func historyCacheSliderChanged(_ sender: NSSlider) {
         let value = Int(sender.doubleValue.rounded())
         Defaults.historyCacheLimit = value
-        historyCacheValueLabel?.stringValue = "\(Defaults.historyCacheLimit)"
+        let normalizedValue = Defaults.historyCacheLimit
+        sender.doubleValue = Double(normalizedValue)
+        historyCacheValueLabel?.stringValue = "\(normalizedValue)"
     }
 
     @objc private func countdownSliderChanged(_ sender: NSSlider) {

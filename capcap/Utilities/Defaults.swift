@@ -776,8 +776,9 @@ struct Defaults {
         }
     }
 
-    static let historyCacheMin: Int = 5
-    static let historyCacheMax: Int = 20
+    static let historyCacheMin: Int = 10
+    static let historyCacheMax: Int = 100
+    static let historyCacheStep: Int = 10
 
     static let countdownSecondsMin: Int = 3
     static let countdownSecondsMax: Int = 10
@@ -802,13 +803,19 @@ struct Defaults {
                 return 10
             }
             let val = defaults.integer(forKey: "historyCacheLimit")
-            return min(max(val, historyCacheMin), historyCacheMax)
+            return normalizedHistoryCacheLimit(val)
         }
         set {
-            let clamped = min(max(newValue, historyCacheMin), historyCacheMax)
-            defaults.set(clamped, forKey: "historyCacheLimit")
+            defaults.set(normalizedHistoryCacheLimit(newValue), forKey: "historyCacheLimit")
             NotificationCenter.default.post(name: .historyCacheLimitDidChange, object: nil)
         }
+    }
+
+    private static func normalizedHistoryCacheLimit(_ value: Int) -> Int {
+        let clamped = min(max(value, historyCacheMin), historyCacheMax)
+        let offset = clamped - historyCacheMin
+        let snapped = historyCacheMin + ((offset + historyCacheStep / 2) / historyCacheStep) * historyCacheStep
+        return min(max(snapped, historyCacheMin), historyCacheMax)
     }
 
     static var demoMode: Bool {
