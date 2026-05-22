@@ -69,6 +69,15 @@ private final class OCRPreviewView: NSView {
         bounds.fill()
         image.draw(in: imageRect, from: .zero, operation: .sourceOver, fraction: 1)
 
+        let imageBorder = NSBezierPath(
+            roundedRect: imageRect.insetBy(dx: 0.5, dy: 0.5),
+            xRadius: min(8, imageRect.width / 2),
+            yRadius: min(8, imageRect.height / 2)
+        )
+        NSColor.black.withAlphaComponent(0.46).setStroke()
+        imageBorder.lineWidth = 1
+        imageBorder.stroke()
+
         if showsLineBoxes {
             for (index, line) in lines.enumerated() {
                 let rect = displayRect(for: line.boundingBox, in: imageRect)
@@ -143,6 +152,55 @@ private final class OCRPreviewView: NSView {
     }
 }
 
+private final class PanelPinButton: NSButton {
+    private var pinned = false
+    private let pinSymbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        title = ""
+        imagePosition = .imageOnly
+        imageScaling = .scaleProportionallyDown
+        isBordered = false
+        bezelStyle = .regularSquare
+        focusRingType = .none
+        wantsLayer = true
+        layer?.masksToBounds = false
+        layer?.borderWidth = 1.2
+        layer?.shadowColor = NSColor.black.cgColor
+        layer?.shadowOpacity = 0.28
+        layer?.shadowRadius = 3
+        layer?.shadowOffset = NSSize(width: 0, height: -1)
+        setPinned(false)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var acceptsFirstResponder: Bool { false }
+
+    override func layout() {
+        super.layout()
+        layer?.cornerRadius = min(bounds.width, bounds.height) / 2
+        layer?.shadowPath = CGPath(ellipseIn: bounds, transform: nil)
+    }
+
+    func setPinned(_ pinned: Bool) {
+        self.pinned = pinned
+        let label = pinned ? "Unpin dialog" : "Pin dialog"
+        let symbolName = pinned ? "pin.fill" : "pin"
+        image = NSImage(systemSymbolName: symbolName, accessibilityDescription: label)?
+            .withSymbolConfiguration(pinSymbolConfiguration)
+        contentTintColor = pinned ? .white : NSColor.black.withAlphaComponent(0.82)
+        layer?.backgroundColor = (pinned
+            ? NSColor.systemTeal.withAlphaComponent(0.96)
+            : NSColor.white.withAlphaComponent(0.90)
+        ).cgColor
+        layer?.borderColor = NSColor.black.withAlphaComponent(0.48).cgColor
+        toolTip = label
+        setAccessibilityLabel(label)
+    }
+}
+
 // MARK: - OCR / screenshot translation panel
 
 /// Floating dialog shown after text recognition or screenshot translation.
@@ -176,13 +234,19 @@ final class OCRTranslatePanel: NSPanel {
     private var translationCopyButton: NSButton?
     private var translationRetryButton: NSButton?
     private var translationLanguageButton: NSButton?
+    private var pinButton: PanelPinButton?
 
     private var keyMonitor: Any?
+    private var outsideClickLocalMonitor: Any?
+    private var outsideClickGlobalMonitor: Any?
     private var languagePopover: NSPopover?
     private var translationTask: Task<Void, Never>?
     private var recognizedText = ""
     private var ocrReady = false
     private var selectedTarget = TranslationLanguage.appDefault
+    private var isPinned = false {
+        didSet { pinButton?.setPinned(isPinned) }
+    }
 
     // MARK: Presentation
 
@@ -236,7 +300,7 @@ final class OCRTranslatePanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         buildUI()
-        installKeyMonitor()
+        installEventMonitors()
         refreshHeight()
     }
 
@@ -276,17 +340,12 @@ final class OCRTranslatePanel: NSPanel {
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         docView.addSubview(contentStack)
 
-        let closeButton = NSButton()
-        closeButton.translatesAutoresizingMaskIntoConstraints = false
-        closeButton.image = NSImage(systemSymbolName: "xmark.circle.fill",
-                                    accessibilityDescription: "Close")
-        closeButton.imagePosition = .imageOnly
-        closeButton.isBordered = false
-        closeButton.bezelStyle = .accessoryBarAction
-        closeButton.contentTintColor = NSColor.white.withAlphaComponent(0.55)
-        closeButton.target = self
-        closeButton.action = #selector(closeTapped)
-        root.addSubview(closeButton)
+        let pinButton = PanelPinButton()
+        pinButton.translatesAutoresizingMaskIntoConstraints = false
+        pinButton.target = self
+        pinButton.action = #selector(pinTapped)
+        self.pinButton = pinButton
+        root.addSubview(pinButton)
 
         NSLayoutConstraint.activate([
             scrollView.topAnchor.constraint(equalTo: root.topAnchor, constant: padding),
@@ -302,10 +361,10 @@ final class OCRTranslatePanel: NSPanel {
             contentStack.leadingAnchor.constraint(equalTo: docView.leadingAnchor),
             contentStack.trailingAnchor.constraint(equalTo: docView.trailingAnchor),
 
-            closeButton.topAnchor.constraint(equalTo: root.topAnchor, constant: 8),
-            closeButton.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -8),
-            closeButton.widthAnchor.constraint(equalToConstant: 20),
-            closeButton.heightAnchor.constraint(equalToConstant: 20),
+            pinButton.topAnchor.constraint(equalTo: root.topAnchor, constant: 8),
+            pinButton.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -8),
+            pinButton.widthAnchor.constraint(equalToConstant: 24),
+            pinButton.heightAnchor.constraint(equalToConstant: 24),
         ])
 
         buildScreenshotCard()
@@ -561,7 +620,9 @@ final class OCRTranslatePanel: NSPanel {
 
     // MARK: Actions
 
-    @objc private func closeTapped() { dismiss() }
+    @objc private func pinTapped() {
+        isPinned.toggle()
+    }
 
     @objc private func openSettingsTapped() {
         SettingsWindowController.shared.showAsSettings()
@@ -623,7 +684,7 @@ final class OCRTranslatePanel: NSPanel {
         L10n.screenshotTranslationLanguageButton(selectedTarget.displayName)
     }
 
-    private func installKeyMonitor() {
+    private func installEventMonitors() {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, event.window === self else { return event }
             if event.keyCode == 53 { // Escape
@@ -632,10 +693,43 @@ final class OCRTranslatePanel: NSPanel {
             }
             return event
         }
+
+        let mouseDownMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        outsideClickLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseDownMask) { [weak self] event in
+            self?.dismissForOutsideClickIfNeeded(event)
+            return event
+        }
+        outsideClickGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseDownMask) { [weak self] event in
+            self?.dismissForOutsideClickIfNeeded(event)
+        }
+    }
+
+    private func dismissForOutsideClickIfNeeded(_ event: NSEvent) {
+        guard !isPinned, isVisible, !eventBelongsToPanel(event) else { return }
+        dismiss()
+    }
+
+    private func eventBelongsToPanel(_ event: NSEvent) -> Bool {
+        if event.window === self || event.windowNumber == windowNumber {
+            return true
+        }
+        if let popoverWindow = languagePopover?.contentViewController?.view.window,
+           (event.window === popoverWindow || event.windowNumber == popoverWindow.windowNumber) {
+            return true
+        }
+        return false
     }
 
     func dismiss() {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor); self.keyMonitor = nil }
+        if let outsideClickLocalMonitor {
+            NSEvent.removeMonitor(outsideClickLocalMonitor)
+            self.outsideClickLocalMonitor = nil
+        }
+        if let outsideClickGlobalMonitor {
+            NSEvent.removeMonitor(outsideClickGlobalMonitor)
+            self.outsideClickGlobalMonitor = nil
+        }
         translationTask?.cancel()
         translationTask = nil
         languagePopover?.performClose(nil)
