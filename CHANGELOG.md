@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.9] - 2026-05-22
+
+### Changed
+- Add translation provider reordering and collapse controls (6dfcfa3)
+- Increase history cache range to 100 (e05d02f)
+- Support DeepL (94a1bb8)
+- Support DeepL (6a0a0fe)
+- Add pin behavior to OCR panels (de6f441)
+- Move OCR and screenshot translation shortcuts to the end (692781b)
+- Split OCR into text recognition and screenshot translation (22ec3e0)
+
+### Chore
+- Bump cask to 1.3.8 (e3b5323)
+
 ## [1.3.8] - 2026-05-21
 
 ### Changed
