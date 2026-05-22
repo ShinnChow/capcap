@@ -154,9 +154,11 @@ private final class TranslationProviderCard: NSView {
         body.addArrangedSubview(makeFieldRow(apiKeyLabel, apiKeyField,
                                              label: L10n.translationApiKey,
                                              placeholder: "sk-…", width: body))
-        body.addArrangedSubview(makeFieldRow(modelLabel, modelField,
-                                             label: L10n.translationModel,
-                                             placeholder: modelPlaceholder(), width: body))
+        if !kind.isDeepL {
+            body.addArrangedSubview(makeFieldRow(modelLabel, modelField,
+                                                 label: L10n.translationModel,
+                                                 placeholder: modelPlaceholder(), width: body))
+        }
         body.addArrangedSubview(makeFieldRow(endpointLabel, endpointField,
                                              label: endpointLabelText(),
                                              placeholder: endpointPlaceholder(), width: body))
@@ -214,9 +216,6 @@ private final class TranslationProviderCard: NSView {
     // MARK: Field metadata
 
     private func modelPlaceholder() -> String {
-        if kind.isDeepL {
-            return "quality_optimized / prefer_quality_optimized / latency_optimized"
-        }
         return kind.defaultModel.isEmpty ? "e.g. gpt-4o-mini" : kind.defaultModel
     }
 
@@ -225,7 +224,10 @@ private final class TranslationProviderCard: NSView {
     }
 
     private func endpointPlaceholder() -> String {
-        kind.defaultEndpoint.isEmpty
+        if kind.isDeepL {
+            return "Auto: api-free.deepl.com for :fx keys"
+        }
+        return kind.defaultEndpoint.isEmpty
             ? "https://api.example.com/v1/chat/completions"
             : kind.defaultEndpoint
     }
@@ -242,7 +244,7 @@ private final class TranslationProviderCard: NSView {
     private func currentConfig() -> TranslationConfig {
         TranslationConfig(
             apiKey: apiKeyField.stringValue,
-            model: modelField.stringValue,
+            model: kind.isDeepL ? "" : modelField.stringValue,
             endpoint: endpointField.stringValue
         )
     }

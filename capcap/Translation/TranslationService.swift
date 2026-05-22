@@ -35,7 +35,7 @@ enum TranslationService {
         config: TranslationConfig
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
-            let work = Task {
+            let work = Task.detached(priority: .userInitiated) {
                 do {
                     if kind.isDeepL {
                         let translated = try await translateWithDeepL(text: text, target: target, config: config)
@@ -165,6 +165,9 @@ enum TranslationService {
         let detectedSourceLanguage: String?
     }
 
+    private static let deepLProEndpoint = "https://api.deepl.com/v2/translate"
+    private static let deepLFreeEndpoint = "https://api-free.deepl.com/v2/translate"
+
     private static func translateWithDeepL(
         text: String,
         target: TranslationLanguage,
@@ -203,7 +206,7 @@ enum TranslationService {
     ) throws -> URLRequest {
         let apiKey = config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !apiKey.isEmpty else { throw TranslationError.missingAPIKey }
-        guard let url = URL(string: config.resolvedEndpoint(for: .deepl)),
+        guard let url = URL(string: resolvedDeepLEndpoint(config: config, apiKey: apiKey)),
               url.scheme != nil else {
             throw TranslationError.badEndpoint
         }
@@ -213,19 +216,37 @@ enum TranslationService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("DeepL-Auth-Key \(apiKey)", forHTTPHeaderField: "Authorization")
 
-        var body: [String: Any] = [
+        let body: [String: Any] = [
             "text": [text],
             "target_lang": target.deepLTargetCode,
             "preserve_formatting": true,
         ]
 
-        let model = config.resolvedModel(for: .deepl)
-        if !model.isEmpty {
-            body["model_type"] = model
-        }
-
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    private static func resolvedDeepLEndpoint(config: TranslationConfig, apiKey: String) -> String {
+        let endpoint = config.endpoint.trimmingCharacters(in: .whitespacesAndNewlines)
+        let usesFreeEndpoint = isDeepLFreeAPIKey(apiKey)
+        guard !endpoint.isEmpty else {
+            return usesFreeEndpoint ? deepLFreeEndpoint : deepLProEndpoint
+        }
+        guard var components = URLComponents(string: endpoint),
+              let host = components.host?.lowercased(),
+              host == "api.deepl.com" || host == "api-free.deepl.com" else {
+            return endpoint
+        }
+
+        components.host = usesFreeEndpoint ? "api-free.deepl.com" : "api.deepl.com"
+        if components.path.isEmpty || components.path == "/" {
+            components.path = "/v2/translate"
+        }
+        return components.url?.absoluteString ?? deepLFreeEndpoint
+    }
+
+    private static func isDeepLFreeAPIKey(_ apiKey: String) -> Bool {
+        apiKey.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().hasSuffix(":fx")
     }
 
     private static func parseDeepLResponse(_ data: Data) throws -> DeepLTranslationResult {
