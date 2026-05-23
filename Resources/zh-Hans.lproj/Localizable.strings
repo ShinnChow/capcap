@@ -52,10 +52,8 @@
 "textRecognitionShortcutDefaultDisplay" = "未设置";
 "screenshotTranslationShortcutHeader" = "截图翻译";
 "screenshotTranslationShortcutDefaultDisplay" = "未设置";
-"recordGIFShortcutHeader" = "录制 GIF";
-"recordGIFShortcutDefaultDisplay" = "未设置";
-"recordMP4ShortcutHeader" = "录制视频";
-"recordMP4ShortcutDefaultDisplay" = "未设置";
+"recordShortcutHeader" = "录制";
+"recordShortcutDefaultDisplay" = "未设置";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "复制到剪贴板";
@@ -78,13 +76,11 @@
 "shortcutConflictClipboardImageEdit" = "该按键组合已被编辑剪贴板图片快捷键占用，请换一个。";
 "shortcutConflictTextRecognition" = "该按键组合已被文字识别快捷键占用，请换一个。";
 "shortcutConflictScreenshotTranslation" = "该按键组合已被截图翻译快捷键占用，请换一个。";
-"shortcutConflictRecordGIF" = "该按键组合已被录制 GIF 快捷键占用，请换一个。";
-"shortcutConflictRecordMP4" = "该按键组合已被录制视频快捷键占用，请换一个。";
+"shortcutConflictRecord" = "该按键组合已被录制快捷键占用，请换一个。";
 
 /* Menu bar */
 "takeScreenshot" = "截图";
-"recordMP4" = "录制视频";
-"recordGIF" = "录制 GIF";
+"record" = "录制";
 "settings" = "设置...";
 "quitApp" = "退出 capcap";
 "historyMenu" = "历史";
@@ -106,9 +102,14 @@
 "selectedImageEditNoImage" = "未找到 Finder 中选中的单张图片";
 "clipboardImageEditNoImage" = "剪贴板里没有可编辑的图片";
 "recordingSaved" = "录制已保存";
+"recordingCancelled" = "录制已取消";
+"recordingExportingGIF" = "正在生成 GIF…";
 "recordingFailed" = "录制失败: %@";
 "saveRecording" = "保存录制";
 "saveRecordingPrompt" = "保存";
+"recordingFormatLabel" = "格式：";
+"recordingFormatMP4" = "视频 MP4";
+"recordingFormatGIF" = "GIF";
 "recordingStop" = "停止录制";
 "recordingPause" = "暂停";
 "recordingResume" = "继续";
@@ -136,8 +137,7 @@
 "tipScreenshotTranslate" = "截图翻译";
 "tipSave" = "保存到文件";
 "tipPin" = "钉在屏幕";
-"tipRecordGIF" = "录制 GIF";
-"tipRecordMP4" = "录制视频";
+"tipRecord" = "录制";
 "tipCancel" = "取消";
 "tipConfirm" = "复制到剪贴板";
 

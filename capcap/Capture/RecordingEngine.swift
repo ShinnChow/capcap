@@ -5,7 +5,7 @@ import CoreVideo
 import Foundation
 import ScreenCaptureKit
 
-enum ScreenRecordingFormat: String {
+enum ScreenRecordingFormat: String, CaseIterable {
     case mp4
     case gif
 
@@ -13,14 +13,14 @@ enum ScreenRecordingFormat: String {
 
     var displayName: String {
         switch self {
-        case .mp4: return "MP4"
-        case .gif: return "GIF"
+        case .mp4: return L10n.recordingFormatMP4
+        case .gif: return L10n.recordingFormatGIF
         }
     }
 }
 
 typealias RecordingProgressCallback = (_ seconds: Int) -> Void
-typealias RecordingCompletionCallback = (_ url: URL?, _ format: ScreenRecordingFormat, _ error: Error?) -> Void
+typealias RecordingCompletionCallback = (_ url: URL?, _ error: Error?) -> Void
 
 final class RecordingEngine: NSObject {
     enum State {
@@ -32,7 +32,6 @@ final class RecordingEngine: NSObject {
 
     private(set) var state: State = .idle
 
-    private let format: ScreenRecordingFormat
     private let fps: Int
     private let recordingQueue = DispatchQueue(label: "capcap.recording")
 
@@ -47,7 +46,6 @@ final class RecordingEngine: NSObject {
     private var adaptor: AVAssetWriterInputPixelBufferAdaptor?
     private var sessionStarted = false
 
-    private var gifEncoder: GIFEncoder?
     private var hasWrittenFrame = false
 
     private var progressTimer: Timer?
@@ -59,8 +57,7 @@ final class RecordingEngine: NSObject {
     var onCompletion: RecordingCompletionCallback?
     var onPauseChanged: ((Bool) -> Void)?
 
-    init(format: ScreenRecordingFormat, fps: Int = 30) {
-        self.format = format
+    init(fps: Int = 30) {
         self.fps = fps
     }
 
@@ -125,9 +122,23 @@ final class RecordingEngine: NSObject {
         }
     }
 
+    func cancelRecording() {
+        guard state == .recording || state == .paused else { return }
+        state = .stopping
+        DispatchQueue.main.async { [weak self] in
+            self?.progressTimer?.invalidate()
+            self?.progressTimer = nil
+        }
+        Task {
+            await cancelCapture()
+        }
+    }
+
     private func beginCapture(screen: NSScreen, excludeWindowNumbers: [CGWindowID]) async {
         do {
             let content = try await SCShareableContent.excludingDesktopWindows(false, onScreenWindowsOnly: true)
+            guard state == .recording else { return }
+
             let screenID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             guard let display = content.displays.first(where: { $0.displayID == screenID }) ?? content.displays.first else {
                 fail(RecordingError.noDisplay)
@@ -140,18 +151,10 @@ final class RecordingEngine: NSObject {
             let filter = SCContentFilter(display: display, excludingWindows: excludedWindows)
 
             let scale = max(screen.backingScaleFactor, 1)
-            let pixelWidth: Int
-            let pixelHeight: Int
-            switch format {
-            case .mp4:
-                (pixelWidth, pixelHeight) = VideoEncodingSettings.evenDimensions(
-                    width: sourceRect.width * scale,
-                    height: sourceRect.height * scale
-                )
-            case .gif:
-                pixelWidth = max(Int(ceil(sourceRect.width * scale)), 1)
-                pixelHeight = max(Int(ceil(sourceRect.height * scale)), 1)
-            }
+            let (pixelWidth, pixelHeight) = VideoEncodingSettings.evenDimensions(
+                width: sourceRect.width * scale,
+                height: sourceRect.height * scale
+            )
 
             let config = SCStreamConfiguration()
             config.sourceRect = sourceRect
@@ -166,9 +169,13 @@ final class RecordingEngine: NSObject {
                 config.colorSpaceName = CGColorSpace.sRGB
             }
 
-            let outputURL = Self.makeOutputURL(format: format)
+            let outputURL = Self.makeOutputURL()
             self.outputURL = outputURL
             try prepareWriter(url: outputURL, width: pixelWidth, height: pixelHeight)
+            guard state == .recording else {
+                cleanupTemporaryOutput()
+                return
+            }
 
             let output = RecordingStreamOutput()
             output.onFrame = { [weak self] pixelBuffer, presentationTime in
@@ -181,6 +188,10 @@ final class RecordingEngine: NSObject {
 
             let stream = SCStream(filter: filter, configuration: config, delegate: output)
             try stream.addStreamOutput(output, type: .screen, sampleHandlerQueue: recordingQueue)
+            guard state == .recording else {
+                cleanupTemporaryOutput()
+                return
+            }
             try await stream.startCapture()
             self.stream = stream
 
@@ -195,48 +206,36 @@ final class RecordingEngine: NSObject {
     }
 
     private func prepareWriter(url: URL, width: Int, height: Int) throws {
-        switch format {
-        case .mp4:
-            let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
-            let input = AVAssetWriterInput(
-                mediaType: .video,
-                outputSettings: VideoEncodingSettings.outputSettings(width: width, height: height, fps: fps)
-            )
-            input.expectsMediaDataInRealTime = true
+        let writer = try AVAssetWriter(outputURL: url, fileType: .mp4)
+        let input = AVAssetWriterInput(
+            mediaType: .video,
+            outputSettings: VideoEncodingSettings.outputSettings(width: width, height: height, fps: fps)
+        )
+        input.expectsMediaDataInRealTime = true
 
-            let sourceAttributes: [String: Any] = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-                kCVPixelBufferWidthKey as String: width,
-                kCVPixelBufferHeightKey as String: height,
-            ]
-            let adaptor = AVAssetWriterInputPixelBufferAdaptor(
-                assetWriterInput: input,
-                sourcePixelBufferAttributes: sourceAttributes
-            )
+        let sourceAttributes: [String: Any] = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
+            kCVPixelBufferWidthKey as String: width,
+            kCVPixelBufferHeightKey as String: height,
+        ]
+        let adaptor = AVAssetWriterInputPixelBufferAdaptor(
+            assetWriterInput: input,
+            sourcePixelBufferAttributes: sourceAttributes
+        )
 
-            guard writer.canAdd(input) else { throw RecordingError.writerSetupFailed }
-            writer.add(input)
-            writer.startWriting()
+        guard writer.canAdd(input) else { throw RecordingError.writerSetupFailed }
+        writer.add(input)
+        writer.startWriting()
 
-            self.assetWriter = writer
-            self.videoInput = input
-            self.adaptor = adaptor
-            self.sessionStarted = false
-        case .gif:
-            gifEncoder = GIFEncoder(url: url, fps: fps, sourceFPS: fps)
-        }
+        self.assetWriter = writer
+        self.videoInput = input
+        self.adaptor = adaptor
+        self.sessionStarted = false
     }
 
     private func handleFrame(pixelBuffer: CVPixelBuffer, presentationTime: CMTime) {
         guard state == .recording else { return }
-
-        switch format {
-        case .mp4:
-            writeMP4Frame(pixelBuffer: pixelBuffer, presentationTime: adjustedTime(presentationTime))
-        case .gif:
-            gifEncoder?.addFrame(pixelBuffer)
-            hasWrittenFrame = true
-        }
+        writeMP4Frame(pixelBuffer: pixelBuffer, presentationTime: adjustedTime(presentationTime))
     }
 
     private func writeMP4Frame(pixelBuffer: CVPixelBuffer, presentationTime: CMTime) {
@@ -271,11 +270,21 @@ final class RecordingEngine: NSObject {
         }
         streamOutput = nil
 
-        switch format {
-        case .mp4:
-            await finalizeMP4()
-        case .gif:
-            finalizeGIF()
+        await finalizeMP4()
+    }
+
+    private func cancelCapture() async {
+        if let stream {
+            try? await stream.stopCapture()
+            self.stream = nil
+        }
+        streamOutput = nil
+        cleanupTemporaryOutput()
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.state = .idle
+            self.onCompletion?(nil, nil)
         }
     }
 
@@ -301,17 +310,6 @@ final class RecordingEngine: NSObject {
         }
     }
 
-    private func finalizeGIF() {
-        let ok = gifEncoder?.finish() ?? false
-        gifEncoder = nil
-
-        if ok && hasWrittenFrame {
-            succeed()
-        } else {
-            fail(RecordingError.noFrames)
-        }
-    }
-
     private func startProgressTimer() {
         progressTimer?.invalidate()
         progressTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -326,30 +324,34 @@ final class RecordingEngine: NSObject {
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.state = .idle
-            self.onCompletion?(url, self.format, nil)
+            self.onCompletion?(url, nil)
         }
     }
 
     private func fail(_ error: Error) {
-        let url = outputURL
-        assetWriter?.cancelWriting()
-        assetWriter = nil
-        videoInput = nil
-        adaptor = nil
-        gifEncoder = nil
-        if let url {
-            try? FileManager.default.removeItem(at: url)
-        }
+        cleanupTemporaryOutput()
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             self.progressTimer?.invalidate()
             self.progressTimer = nil
             self.state = .idle
-            self.onCompletion?(nil, self.format, error)
+            self.onCompletion?(nil, error)
         }
     }
 
-    private static func makeOutputURL(format: ScreenRecordingFormat) -> URL {
+    private func cleanupTemporaryOutput() {
+        let url = outputURL
+        assetWriter?.cancelWriting()
+        assetWriter = nil
+        videoInput = nil
+        adaptor = nil
+        outputURL = nil
+        if let url {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
+
+    private static func makeOutputURL() -> URL {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -357,7 +359,7 @@ final class RecordingEngine: NSObject {
         let token = ProcessInfo.processInfo.globallyUniqueString
             .replacingOccurrences(of: "/", with: "-")
         return FileManager.default.temporaryDirectory
-            .appendingPathComponent("capcap-recording-\(date)-\(token).\(format.fileExtension)")
+            .appendingPathComponent("capcap-recording-\(date)-\(token).mp4")
     }
 
     enum RecordingError: LocalizedError {

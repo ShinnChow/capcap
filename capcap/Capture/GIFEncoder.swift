@@ -50,7 +50,7 @@ final class GIFEncoder {
 
         inputFrameCount += 1
         let keepEvery = max(1, sourceEstimatedFPS / targetFPS)
-        guard inputFrameCount % keepEvery == 0 else { return }
+        guard (inputFrameCount - 1) % keepEvery == 0 else { return }
         guard let destination else { return }
 
         CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)

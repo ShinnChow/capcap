@@ -52,10 +52,8 @@
 "textRecognitionShortcutDefaultDisplay" = "Non défini";
 "screenshotTranslationShortcutHeader" = "Traduction de capture";
 "screenshotTranslationShortcutDefaultDisplay" = "Non défini";
-"recordGIFShortcutHeader" = "Enregistrer en GIF";
-"recordGIFShortcutDefaultDisplay" = "Non défini";
-"recordMP4ShortcutHeader" = "Enregistrer une vidéo";
-"recordMP4ShortcutDefaultDisplay" = "Non défini";
+"recordShortcutHeader" = "Enregistrer";
+"recordShortcutDefaultDisplay" = "Non défini";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copier dans le presse-papiers";
@@ -78,13 +76,11 @@
 "shortcutConflictClipboardImageEdit" = "Cette combinaison de touches est déjà utilisée par le raccourci Modifier l'image du presse-papiers. Veuillez en choisir une autre.";
 "shortcutConflictTextRecognition" = "Cette combinaison de touches est déjà utilisée par le raccourci Reconnaissance de texte. Veuillez en choisir une autre.";
 "shortcutConflictScreenshotTranslation" = "Cette combinaison de touches est déjà utilisée par le raccourci Traduction de capture. Veuillez en choisir une autre.";
-"shortcutConflictRecordGIF" = "Cette combinaison de touches est déjà utilisée par le raccourci Enregistrer en GIF. Veuillez en choisir une autre.";
-"shortcutConflictRecordMP4" = "Cette combinaison de touches est déjà utilisée par le raccourci Enregistrer une vidéo. Veuillez en choisir une autre.";
+"shortcutConflictRecord" = "Cette combinaison de touches est déjà utilisée par le raccourci Enregistrer. Veuillez en choisir une autre.";
 
 /* Menu bar */
 "takeScreenshot" = "Capturer l'écran";
-"recordMP4" = "Enregistrer une vidéo";
-"recordGIF" = "Enregistrer en GIF";
+"record" = "Enregistrer";
 "settings" = "Réglages...";
 "quitApp" = "Quitter capcap";
 "historyMenu" = "Historique";
@@ -106,9 +102,14 @@
 "selectedImageEditNoImage" = "Aucune image unique sélectionnée dans le Finder";
 "clipboardImageEditNoImage" = "Aucune image modifiable dans le presse-papiers";
 "recordingSaved" = "Enregistrement sauvegardé";
+"recordingCancelled" = "Enregistrement annulé";
+"recordingExportingGIF" = "Création du GIF…";
 "recordingFailed" = "Échec de l'enregistrement : %@";
 "saveRecording" = "Sauvegarder l'enregistrement";
 "saveRecordingPrompt" = "Sauvegarder";
+"recordingFormatLabel" = "Format :";
+"recordingFormatMP4" = "Vidéo MP4";
+"recordingFormatGIF" = "GIF";
 "recordingStop" = "Arrêter l'enregistrement";
 "recordingPause" = "Pause";
 "recordingResume" = "Reprendre";
@@ -136,8 +137,7 @@
 "tipScreenshotTranslate" = "Traduction de capture";
 "tipSave" = "Enregistrer dans un fichier";
 "tipPin" = "Épingler à l'écran";
-"tipRecordGIF" = "Enregistrer en GIF";
-"tipRecordMP4" = "Enregistrer une vidéo";
+"tipRecord" = "Enregistrer";
 "tipCancel" = "Annuler";
 "tipConfirm" = "Copier dans le presse-papiers";
 

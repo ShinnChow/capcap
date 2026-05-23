@@ -129,17 +129,12 @@ class SettingsView: NSView {
     private var screenshotTranslationShortcutRestoreButton: NSButton!
     private var screenshotTranslationShortcutRecordingMonitor: Any?
 
-    // Recording shortcut cards
-    private var recordGIFShortcutTitleLabel: NSTextField!
-    private var recordGIFShortcutField: NSTextField!
-    private var recordGIFShortcutSetButton: NSButton!
-    private var recordGIFShortcutRestoreButton: NSButton!
-    private var recordGIFShortcutRecordingMonitor: Any?
-    private var recordMP4ShortcutTitleLabel: NSTextField!
-    private var recordMP4ShortcutField: NSTextField!
-    private var recordMP4ShortcutSetButton: NSButton!
-    private var recordMP4ShortcutRestoreButton: NSButton!
-    private var recordMP4ShortcutRecordingMonitor: Any?
+    // Recording shortcut card
+    private var recordShortcutTitleLabel: NSTextField!
+    private var recordShortcutField: NSTextField!
+    private var recordShortcutSetButton: NSButton!
+    private var recordShortcutRestoreButton: NSButton!
+    private var recordShortcutRecordingMonitor: Any?
 
     // Copy-to-clipboard (editor confirm) shortcut card
     private var clipboardShortcutTitleLabel: NSTextField!
@@ -255,8 +250,7 @@ class SettingsView: NSView {
         cancelClipboardImageEditShortcutRecording()
         cancelTextRecognitionShortcutRecording()
         cancelScreenshotTranslationShortcutRecording()
-        cancelRecordGIFShortcutRecording()
-        cancelRecordMP4ShortcutRecording()
+        cancelRecordShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
         NotificationCenter.default.removeObserver(self)
@@ -325,8 +319,7 @@ class SettingsView: NSView {
         refreshClipboardImageEditShortcutDisplay()
         refreshTextRecognitionShortcutDisplay()
         refreshScreenshotTranslationShortcutDisplay()
-        refreshRecordGIFShortcutDisplay()
-        refreshRecordMP4ShortcutDisplay()
+        refreshRecordShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
     }
@@ -768,30 +761,18 @@ class SettingsView: NSView {
         stack.addArrangedSubview(screenshotTranslationShortcut.card)
         screenshotTranslationShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        // Recording shortcut cards
-        let recordGIFShortcut = buildShortcutCard(
-            title: L10n.recordGIFShortcutHeader,
-            setAction: #selector(recordGIFShortcutSetClicked),
-            restoreAction: #selector(recordGIFShortcutRestoreClicked)
+        // Recording shortcut card
+        let recordShortcut = buildShortcutCard(
+            title: L10n.recordShortcutHeader,
+            setAction: #selector(recordShortcutSetClicked),
+            restoreAction: #selector(recordShortcutRestoreClicked)
         )
-        recordGIFShortcutTitleLabel = recordGIFShortcut.title
-        recordGIFShortcutField = recordGIFShortcut.field
-        recordGIFShortcutSetButton = recordGIFShortcut.setButton
-        recordGIFShortcutRestoreButton = recordGIFShortcut.restoreButton
-        stack.addArrangedSubview(recordGIFShortcut.card)
-        recordGIFShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
-
-        let recordMP4Shortcut = buildShortcutCard(
-            title: L10n.recordMP4ShortcutHeader,
-            setAction: #selector(recordMP4ShortcutSetClicked),
-            restoreAction: #selector(recordMP4ShortcutRestoreClicked)
-        )
-        recordMP4ShortcutTitleLabel = recordMP4Shortcut.title
-        recordMP4ShortcutField = recordMP4Shortcut.field
-        recordMP4ShortcutSetButton = recordMP4Shortcut.setButton
-        recordMP4ShortcutRestoreButton = recordMP4Shortcut.restoreButton
-        stack.addArrangedSubview(recordMP4Shortcut.card)
-        recordMP4Shortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+        recordShortcutTitleLabel = recordShortcut.title
+        recordShortcutField = recordShortcut.field
+        recordShortcutSetButton = recordShortcut.setButton
+        recordShortcutRestoreButton = recordShortcut.restoreButton
+        stack.addArrangedSubview(recordShortcut.card)
+        recordShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         let footer = NSStackView()
         footer.orientation = .horizontal
@@ -2122,11 +2103,8 @@ class SettingsView: NSView {
         if slot != .screenshotTranslation, screenshotTranslationShortcutRecordingMonitor != nil {
             cancelScreenshotTranslationShortcutRecording()
         }
-        if slot != .recordGIF, recordGIFShortcutRecordingMonitor != nil {
-            cancelRecordGIFShortcutRecording()
-        }
-        if slot != .recordMP4, recordMP4ShortcutRecordingMonitor != nil {
-            cancelRecordMP4ShortcutRecording()
+        if slot != .record, recordShortcutRecordingMonitor != nil {
+            cancelRecordShortcutRecording()
         }
         if slot != .clipboard, clipboardShortcutRecordingMonitor != nil {
             cancelClipboardShortcutRecording()
@@ -2751,18 +2729,18 @@ class SettingsView: NSView {
         }
     }
 
-    @objc private func recordGIFShortcutSetClicked() {
-        if recordGIFShortcutRecordingMonitor != nil {
-            cancelRecordGIFShortcutRecording()
+    @objc private func recordShortcutSetClicked() {
+        if recordShortcutRecordingMonitor != nil {
+            cancelRecordShortcutRecording()
             return
         }
-        cancelShortcutRecordings(except: .recordGIF)
+        cancelShortcutRecordings(except: .record)
         HotkeyManager.shared.beginRecording()
-        recordGIFShortcutSetButton.title = L10n.shortcutCancel
-        recordGIFShortcutField.stringValue = L10n.shortcutWaiting
-        recordGIFShortcutRestoreButton.isHidden = true
+        recordShortcutSetButton.title = L10n.shortcutCancel
+        recordShortcutField.stringValue = L10n.shortcutWaiting
+        recordShortcutRestoreButton.isHidden = true
 
-        recordGIFShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        recordShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self = self else { return event }
             let modifiers = event.modifierFlags
             let isEscape = event.keyCode == UInt16(kVK_Escape)
@@ -2770,7 +2748,7 @@ class SettingsView: NSView {
             let pressedModifiers = modifiers.intersection(activeModifierMask)
 
             if isEscape && pressedModifiers.isEmpty {
-                self.cancelRecordGIFShortcutRecording()
+                self.cancelRecordShortcutRecording()
                 return nil
             }
 
@@ -2786,142 +2764,55 @@ class SettingsView: NSView {
             }
 
             if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
-                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .recordGIF) {
-                self.cancelRecordGIFShortcutRecording()
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .record) {
+                self.cancelRecordShortcutRecording()
                 self.presentHotkeyConflictAlert(conflict)
                 return nil
             }
 
-            Defaults.recordGIFHotkeyKeyCode = Int(keyCode)
-            Defaults.recordGIFHotkeyModifiers = Int(carbonMods)
-            self.finishRecordGIFShortcutRecording()
+            Defaults.recordHotkeyKeyCode = Int(keyCode)
+            Defaults.recordHotkeyModifiers = Int(carbonMods)
+            self.finishRecordShortcutRecording()
             return nil
         }
     }
 
-    @objc private func recordGIFShortcutRestoreClicked() {
-        if recordGIFShortcutRecordingMonitor != nil {
-            cancelRecordGIFShortcutRecording()
+    @objc private func recordShortcutRestoreClicked() {
+        if recordShortcutRecordingMonitor != nil {
+            cancelRecordShortcutRecording()
         }
-        Defaults.clearRecordGIFHotkey()
+        Defaults.clearRecordHotkey()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
-        refreshRecordGIFShortcutDisplay()
+        refreshRecordShortcutDisplay()
     }
 
-    private func finishRecordGIFShortcutRecording() {
-        if let m = recordGIFShortcutRecordingMonitor {
+    private func finishRecordShortcutRecording() {
+        if let m = recordShortcutRecordingMonitor {
             NSEvent.removeMonitor(m)
-            recordGIFShortcutRecordingMonitor = nil
+            recordShortcutRecordingMonitor = nil
         }
         HotkeyManager.shared.endRecording()
-        refreshRecordGIFShortcutDisplay()
+        refreshRecordShortcutDisplay()
     }
 
-    func cancelRecordGIFShortcutRecording() {
-        guard recordGIFShortcutRecordingMonitor != nil else { return }
-        if let m = recordGIFShortcutRecordingMonitor {
+    func cancelRecordShortcutRecording() {
+        guard recordShortcutRecordingMonitor != nil else { return }
+        if let m = recordShortcutRecordingMonitor {
             NSEvent.removeMonitor(m)
-            recordGIFShortcutRecordingMonitor = nil
+            recordShortcutRecordingMonitor = nil
         }
         HotkeyManager.shared.endRecording()
-        refreshRecordGIFShortcutDisplay()
+        refreshRecordShortcutDisplay()
     }
 
-    private func refreshRecordGIFShortcutDisplay() {
-        recordGIFShortcutSetButton?.title = L10n.shortcutSet
-        if let display = HotkeyManager.currentRecordGIFDisplayString() {
-            recordGIFShortcutField?.stringValue = display
-            recordGIFShortcutRestoreButton?.isHidden = false
+    private func refreshRecordShortcutDisplay() {
+        recordShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentRecordDisplayString() {
+            recordShortcutField?.stringValue = display
+            recordShortcutRestoreButton?.isHidden = false
         } else {
-            recordGIFShortcutField?.stringValue = L10n.recordGIFShortcutDefaultDisplay
-            recordGIFShortcutRestoreButton?.isHidden = true
-        }
-    }
-
-    @objc private func recordMP4ShortcutSetClicked() {
-        if recordMP4ShortcutRecordingMonitor != nil {
-            cancelRecordMP4ShortcutRecording()
-            return
-        }
-        cancelShortcutRecordings(except: .recordMP4)
-        HotkeyManager.shared.beginRecording()
-        recordMP4ShortcutSetButton.title = L10n.shortcutCancel
-        recordMP4ShortcutField.stringValue = L10n.shortcutWaiting
-        recordMP4ShortcutRestoreButton.isHidden = true
-
-        recordMP4ShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            guard let self = self else { return event }
-            let modifiers = event.modifierFlags
-            let isEscape = event.keyCode == UInt16(kVK_Escape)
-            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
-            let pressedModifiers = modifiers.intersection(activeModifierMask)
-
-            if isEscape && pressedModifiers.isEmpty {
-                self.cancelRecordMP4ShortcutRecording()
-                return nil
-            }
-
-            var carbonMods: UInt32 = 0
-            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
-            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
-            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
-            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
-            let keyCode = UInt32(event.keyCode)
-
-            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                return nil
-            }
-
-            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
-                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .recordMP4) {
-                self.cancelRecordMP4ShortcutRecording()
-                self.presentHotkeyConflictAlert(conflict)
-                return nil
-            }
-
-            Defaults.recordMP4HotkeyKeyCode = Int(keyCode)
-            Defaults.recordMP4HotkeyModifiers = Int(carbonMods)
-            self.finishRecordMP4ShortcutRecording()
-            return nil
-        }
-    }
-
-    @objc private func recordMP4ShortcutRestoreClicked() {
-        if recordMP4ShortcutRecordingMonitor != nil {
-            cancelRecordMP4ShortcutRecording()
-        }
-        Defaults.clearRecordMP4Hotkey()
-        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
-        refreshRecordMP4ShortcutDisplay()
-    }
-
-    private func finishRecordMP4ShortcutRecording() {
-        if let m = recordMP4ShortcutRecordingMonitor {
-            NSEvent.removeMonitor(m)
-            recordMP4ShortcutRecordingMonitor = nil
-        }
-        HotkeyManager.shared.endRecording()
-        refreshRecordMP4ShortcutDisplay()
-    }
-
-    func cancelRecordMP4ShortcutRecording() {
-        guard recordMP4ShortcutRecordingMonitor != nil else { return }
-        if let m = recordMP4ShortcutRecordingMonitor {
-            NSEvent.removeMonitor(m)
-            recordMP4ShortcutRecordingMonitor = nil
-        }
-        HotkeyManager.shared.endRecording()
-        refreshRecordMP4ShortcutDisplay()
-    }
-
-    private func refreshRecordMP4ShortcutDisplay() {
-        recordMP4ShortcutSetButton?.title = L10n.shortcutSet
-        if let display = HotkeyManager.currentRecordMP4DisplayString() {
-            recordMP4ShortcutField?.stringValue = display
-            recordMP4ShortcutRestoreButton?.isHidden = false
-        } else {
-            recordMP4ShortcutField?.stringValue = L10n.recordMP4ShortcutDefaultDisplay
-            recordMP4ShortcutRestoreButton?.isHidden = true
+            recordShortcutField?.stringValue = L10n.recordShortcutDefaultDisplay
+            recordShortcutRestoreButton?.isHidden = true
         }
     }
 
@@ -3099,8 +2990,7 @@ class SettingsView: NSView {
         cancelClipboardImageEditShortcutRecording()
         cancelTextRecognitionShortcutRecording()
         cancelScreenshotTranslationShortcutRecording()
-        cancelRecordGIFShortcutRecording()
-        cancelRecordMP4ShortcutRecording()
+        cancelRecordShortcutRecording()
         cancelClipboardShortcutRecording()
         cancelFileSaveShortcutRecording()
 
@@ -3113,8 +3003,7 @@ class SettingsView: NSView {
         refreshClipboardImageEditShortcutDisplay()
         refreshTextRecognitionShortcutDisplay()
         refreshScreenshotTranslationShortcutDisplay()
-        refreshRecordGIFShortcutDisplay()
-        refreshRecordMP4ShortcutDisplay()
+        refreshRecordShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
     }
@@ -3153,10 +3042,8 @@ class SettingsView: NSView {
         textRecognitionShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         screenshotTranslationShortcutTitleLabel?.stringValue = L10n.screenshotTranslationShortcutHeader
         screenshotTranslationShortcutRestoreButton?.toolTip = L10n.shortcutRestore
-        recordGIFShortcutTitleLabel?.stringValue = L10n.recordGIFShortcutHeader
-        recordGIFShortcutRestoreButton?.toolTip = L10n.shortcutRestore
-        recordMP4ShortcutTitleLabel?.stringValue = L10n.recordMP4ShortcutHeader
-        recordMP4ShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        recordShortcutTitleLabel?.stringValue = L10n.recordShortcutHeader
+        recordShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         clipboardShortcutTitleLabel?.stringValue = L10n.clipboardShortcutHeader
         clipboardShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         fileSaveShortcutTitleLabel?.stringValue = L10n.fileSaveShortcutHeader
@@ -3186,8 +3073,7 @@ class SettingsView: NSView {
         refreshClipboardImageEditShortcutDisplay()
         refreshTextRecognitionShortcutDisplay()
         refreshScreenshotTranslationShortcutDisplay()
-        refreshRecordGIFShortcutDisplay()
-        refreshRecordMP4ShortcutDisplay()
+        refreshRecordShortcutDisplay()
         refreshClipboardShortcutDisplay()
         refreshFileSaveShortcutDisplay()
         refreshBottomAction()

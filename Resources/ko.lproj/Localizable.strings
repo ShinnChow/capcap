@@ -52,10 +52,8 @@
 "textRecognitionShortcutDefaultDisplay" = "설정 안 됨";
 "screenshotTranslationShortcutHeader" = "스크린샷 번역";
 "screenshotTranslationShortcutDefaultDisplay" = "설정 안 됨";
-"recordGIFShortcutHeader" = "GIF 녹화";
-"recordGIFShortcutDefaultDisplay" = "설정 안 됨";
-"recordMP4ShortcutHeader" = "동영상 녹화";
-"recordMP4ShortcutDefaultDisplay" = "설정 안 됨";
+"recordShortcutHeader" = "녹화";
+"recordShortcutDefaultDisplay" = "설정 안 됨";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "클립보드에 복사";
@@ -78,13 +76,11 @@
 "shortcutConflictClipboardImageEdit" = "이 키 조합은 이미 클립보드 이미지 편집 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictTextRecognition" = "이 키 조합은 이미 문자 인식 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictScreenshotTranslation" = "이 키 조합은 이미 스크린샷 번역 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
-"shortcutConflictRecordGIF" = "이 키 조합은 이미 GIF 녹화 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
-"shortcutConflictRecordMP4" = "이 키 조합은 이미 동영상 녹화 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
+"shortcutConflictRecord" = "이 키 조합은 이미 녹화 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 
 /* Menu bar */
 "takeScreenshot" = "스크린샷";
-"recordMP4" = "동영상 녹화";
-"recordGIF" = "GIF 녹화";
+"record" = "녹화";
 "settings" = "설정...";
 "quitApp" = "capcap 종료";
 "historyMenu" = "기록";
@@ -106,9 +102,14 @@
 "selectedImageEditNoImage" = "Finder에서 단일 이미지가 선택되지 않았습니다";
 "clipboardImageEditNoImage" = "클립보드에 편집할 이미지가 없습니다";
 "recordingSaved" = "녹화가 저장되었습니다";
+"recordingCancelled" = "녹화가 취소되었습니다";
+"recordingExportingGIF" = "GIF 생성 중…";
 "recordingFailed" = "녹화 실패: %@";
 "saveRecording" = "녹화 저장";
 "saveRecordingPrompt" = "저장";
+"recordingFormatLabel" = "형식:";
+"recordingFormatMP4" = "동영상 MP4";
+"recordingFormatGIF" = "GIF";
 "recordingStop" = "녹화 중지";
 "recordingPause" = "일시 정지";
 "recordingResume" = "재개";
@@ -136,8 +137,7 @@
 "tipScreenshotTranslate" = "스크린샷 번역";
 "tipSave" = "파일로 저장";
 "tipPin" = "화면에 고정";
-"tipRecordGIF" = "GIF 녹화";
-"tipRecordMP4" = "동영상 녹화";
+"tipRecord" = "녹화";
 "tipCancel" = "취소";
 "tipConfirm" = "클립보드에 복사";
 

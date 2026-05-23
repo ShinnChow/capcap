@@ -3,21 +3,18 @@ import AppKit
 class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
     private let onTakeScreenshot: () -> Void
-    private let onRecordMP4: () -> Void
-    private let onRecordGIF: () -> Void
+    private let onRecord: () -> Void
     private let onOpenSettings: () -> Void
     private var historyMenu: NSMenu?
     private var historyItem: NSMenuItem?
 
     init(
         onTakeScreenshot: @escaping () -> Void,
-        onRecordMP4: @escaping () -> Void,
-        onRecordGIF: @escaping () -> Void,
+        onRecord: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.onTakeScreenshot = onTakeScreenshot
-        self.onRecordMP4 = onRecordMP4
-        self.onRecordGIF = onRecordGIF
+        self.onRecord = onRecord
         self.onOpenSettings = onOpenSettings
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -57,15 +54,10 @@ class StatusBarController: NSObject {
         HotkeyManager.applyToMenuItem(screenshotItem)
         menu.addItem(screenshotItem)
 
-        let recordMP4Item = NSMenuItem(title: L10n.recordMP4, action: #selector(recordMP4), keyEquivalent: "")
-        recordMP4Item.target = self
-        recordMP4Item.image = Self.menuIcon(systemName: "record.circle")
-        menu.addItem(recordMP4Item)
-
-        let recordGIFItem = NSMenuItem(title: L10n.recordGIF, action: #selector(recordGIF), keyEquivalent: "")
-        recordGIFItem.target = self
-        recordGIFItem.image = Self.menuIcon(systemName: "repeat.circle")
-        menu.addItem(recordGIFItem)
+        let recordItem = NSMenuItem(title: L10n.record, action: #selector(record), keyEquivalent: "")
+        recordItem.target = self
+        recordItem.image = Self.menuIcon(systemName: "record.circle")
+        menu.addItem(recordItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -131,12 +123,8 @@ class StatusBarController: NSObject {
         onTakeScreenshot()
     }
 
-    @objc private func recordMP4() {
-        onRecordMP4()
-    }
-
-    @objc private func recordGIF() {
-        onRecordGIF()
+    @objc private func record() {
+        onRecord()
     }
 
     @objc private func openSettings() {

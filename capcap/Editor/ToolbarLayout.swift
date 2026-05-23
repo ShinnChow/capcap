@@ -29,8 +29,7 @@ enum ToolbarItemID: String, Codable, CaseIterable {
     case save
     case upload
     case pin
-    case recordGIF
-    case recordMP4
+    case record
     case close
     case confirm
 }
@@ -57,7 +56,7 @@ extension ToolbarItemID {
             return .toggleAction
         case .moveSelection:
             return .dragHandle
-        case .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .save, .upload, .pin, .recordGIF, .recordMP4, .close, .confirm:
+        case .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .save, .upload, .pin, .record, .close, .confirm:
             return .momentary
         }
     }
@@ -104,8 +103,7 @@ extension ToolbarItemID {
         case .save:          return "square.and.arrow.down"
         case .upload:        return "icloud.and.arrow.up"
         case .pin:           return "pin"
-        case .recordGIF:     return "repeat.circle"
-        case .recordMP4:     return "record.circle"
+        case .record:        return "record.circle"
         case .close:         return "xmark"
         case .confirm:       return "checkmark"
         }
@@ -136,8 +134,7 @@ extension ToolbarItemID {
         case .save:          return L10n.tipSave
         case .upload:        return L10n.tipUpload
         case .pin:           return L10n.tipPin
-        case .recordGIF:     return L10n.tipRecordGIF
-        case .recordMP4:     return L10n.tipRecordMP4
+        case .record:        return L10n.tipRecord
         case .close:         return L10n.tipCancel
         case .confirm:       return L10n.tipConfirm
         }
@@ -182,7 +179,7 @@ struct ToolbarLayout: Equatable {
         .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text,
         .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .ocr,
         .screenshotTranslate,
-        .save, .upload, .pin, .recordGIF, .recordMP4, .close, .confirm,
+        .save, .upload, .pin, .record, .close, .confirm,
     ]
 
     /// Default layout: annotation tools + edit actions on the primary
@@ -194,7 +191,7 @@ struct ToolbarLayout: Equatable {
                 .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text,
                 .colorPicker, .magnifier, .beautify, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection,
             ],
-            side: [.scrollCapture, .upload, .save, .pin, .recordGIF, .recordMP4, .close, .confirm],
+            side: [.scrollCapture, .upload, .save, .pin, .record, .close, .confirm],
             hidden: []
         )
     }

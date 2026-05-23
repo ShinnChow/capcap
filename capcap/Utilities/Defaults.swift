@@ -117,10 +117,8 @@ enum L10n {
     static var textRecognitionShortcutDefaultDisplay: String { s("textRecognitionShortcutDefaultDisplay") }
     static var screenshotTranslationShortcutHeader: String { s("screenshotTranslationShortcutHeader") }
     static var screenshotTranslationShortcutDefaultDisplay: String { s("screenshotTranslationShortcutDefaultDisplay") }
-    static var recordGIFShortcutHeader: String { s("recordGIFShortcutHeader") }
-    static var recordGIFShortcutDefaultDisplay: String { s("recordGIFShortcutDefaultDisplay") }
-    static var recordMP4ShortcutHeader: String { s("recordMP4ShortcutHeader") }
-    static var recordMP4ShortcutDefaultDisplay: String { s("recordMP4ShortcutDefaultDisplay") }
+    static var recordShortcutHeader: String { s("recordShortcutHeader") }
+    static var recordShortcutDefaultDisplay: String { s("recordShortcutDefaultDisplay") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -143,13 +141,11 @@ enum L10n {
     static var shortcutConflictClipboardImageEdit: String { s("shortcutConflictClipboardImageEdit") }
     static var shortcutConflictTextRecognition: String { s("shortcutConflictTextRecognition") }
     static var shortcutConflictScreenshotTranslation: String { s("shortcutConflictScreenshotTranslation") }
-    static var shortcutConflictRecordGIF: String { s("shortcutConflictRecordGIF") }
-    static var shortcutConflictRecordMP4: String { s("shortcutConflictRecordMP4") }
+    static var shortcutConflictRecord: String { s("shortcutConflictRecord") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
-    static var recordMP4: String { s("recordMP4") }
-    static var recordGIF: String { s("recordGIF") }
+    static var record: String { s("record") }
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
     static var historyMenu: String { s("historyMenu") }
@@ -171,8 +167,13 @@ enum L10n {
     static var selectedImageEditNoImage: String { s("selectedImageEditNoImage") }
     static var clipboardImageEditNoImage: String { s("clipboardImageEditNoImage") }
     static var recordingSaved: String { s("recordingSaved") }
+    static var recordingCancelled: String { s("recordingCancelled") }
+    static var recordingExportingGIF: String { s("recordingExportingGIF") }
     static var saveRecording: String { s("saveRecording") }
     static var saveRecordingPrompt: String { s("saveRecordingPrompt") }
+    static var recordingFormatLabel: String { s("recordingFormatLabel") }
+    static var recordingFormatMP4: String { s("recordingFormatMP4") }
+    static var recordingFormatGIF: String { s("recordingFormatGIF") }
     static var recordingStop: String { s("recordingStop") }
     static var recordingPause: String { s("recordingPause") }
     static var recordingResume: String { s("recordingResume") }
@@ -205,8 +206,7 @@ enum L10n {
     static var tipScreenshotTranslate: String { s("tipScreenshotTranslate") }
     static var tipSave: String { s("tipSave") }
     static var tipPin: String { s("tipPin") }
-    static var tipRecordGIF: String { s("tipRecordGIF") }
-    static var tipRecordMP4: String { s("tipRecordMP4") }
+    static var tipRecord: String { s("tipRecord") }
     static var tipCancel: String { s("tipCancel") }
     static var tipConfirm: String { s("tipConfirm") }
 
@@ -565,8 +565,7 @@ struct Defaults {
         clearClipboardImageEditHotkey()
         clearTextRecognitionHotkey()
         clearScreenshotTranslationHotkey()
-        clearRecordGIFHotkey()
-        clearRecordMP4Hotkey()
+        clearRecordHotkey()
         clearClipboardHotkey()
         clearFileSaveHotkey()
     }
@@ -656,42 +655,37 @@ struct Defaults {
         defaults.removeObject(forKey: "screenshotTranslationHotkeyModifiers")
     }
 
-    static var recordGIFHotkeyKeyCode: Int {
-        get { defaults.integer(forKey: "recordGIFHotkeyKeyCode") }
-        set { defaults.set(newValue, forKey: "recordGIFHotkeyKeyCode") }
+    static var recordHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "recordHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "recordHotkeyKeyCode") }
     }
 
-    static var recordGIFHotkeyModifiers: Int {
-        get { defaults.integer(forKey: "recordGIFHotkeyModifiers") }
-        set { defaults.set(newValue, forKey: "recordGIFHotkeyModifiers") }
+    static var recordHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "recordHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "recordHotkeyModifiers") }
     }
 
-    static var hasCustomRecordGIFHotkey: Bool {
-        defaults.object(forKey: "recordGIFHotkeyKeyCode") != nil
+    static var hasCustomRecordHotkey: Bool {
+        defaults.object(forKey: "recordHotkeyKeyCode") != nil
     }
 
-    static func clearRecordGIFHotkey() {
-        defaults.removeObject(forKey: "recordGIFHotkeyKeyCode")
-        defaults.removeObject(forKey: "recordGIFHotkeyModifiers")
+    static func clearRecordHotkey() {
+        defaults.removeObject(forKey: "recordHotkeyKeyCode")
+        defaults.removeObject(forKey: "recordHotkeyModifiers")
     }
 
-    static var recordMP4HotkeyKeyCode: Int {
-        get { defaults.integer(forKey: "recordMP4HotkeyKeyCode") }
-        set { defaults.set(newValue, forKey: "recordMP4HotkeyKeyCode") }
-    }
-
-    static var recordMP4HotkeyModifiers: Int {
-        get { defaults.integer(forKey: "recordMP4HotkeyModifiers") }
-        set { defaults.set(newValue, forKey: "recordMP4HotkeyModifiers") }
-    }
-
-    static var hasCustomRecordMP4Hotkey: Bool {
-        defaults.object(forKey: "recordMP4HotkeyKeyCode") != nil
-    }
-
-    static func clearRecordMP4Hotkey() {
-        defaults.removeObject(forKey: "recordMP4HotkeyKeyCode")
-        defaults.removeObject(forKey: "recordMP4HotkeyModifiers")
+    static var recordingSaveFormat: ScreenRecordingFormat {
+        get {
+            guard let raw = defaults.string(forKey: "recordingSaveFormat"),
+                  let format = ScreenRecordingFormat(rawValue: raw)
+            else {
+                return .mp4
+            }
+            return format
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "recordingSaveFormat")
+        }
     }
 
     // Custom copy-to-clipboard hotkey used inside the editor overlay to

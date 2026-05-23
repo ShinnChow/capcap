@@ -10,6 +10,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingBorderPanel: RecordingBorderPanel?
     private var recordingScreenRect: NSRect = .zero
     private var recordingScreen: NSScreen?
+    private var recordingCancelLocalMonitor: Any?
+    private var recordingCancelGlobalMonitor: Any?
+    private var recordingCancelRequested = false
     private var countdownActive = false
     private var appInitialized = false
 
@@ -52,8 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusBarController = StatusBarController(
             onTakeScreenshot: { [weak self] in self?.handleTrigger() },
-            onRecordMP4: { [weak self] in self?.handleRecordingTrigger(format: .mp4) },
-            onRecordGIF: { [weak self] in self?.handleRecordingTrigger(format: .gif) },
+            onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onOpenSettings: { [weak self] in self?.openSettings() }
         )
         statusBarController.setMenuBarVisible(Defaults.showMenuBar)
@@ -78,20 +80,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyHotkeyState() {
-        if HotkeyManager.shared.isRecording || recordingEngine != nil {
+        if HotkeyManager.shared.isRecording {
             HotkeyManager.shared.unregister()
             HotkeyManager.shared.unregisterCountdown()
-            HotkeyManager.shared.unregisterSelectedImagePin()
-            HotkeyManager.shared.unregisterClipboardImagePin()
-            HotkeyManager.shared.unregisterSelectedImageEdit()
-            HotkeyManager.shared.unregisterClipboardImageEdit()
-            HotkeyManager.shared.unregisterTextRecognition()
-            HotkeyManager.shared.unregisterScreenshotTranslation()
-            HotkeyManager.shared.unregisterRecordGIF()
-            HotkeyManager.shared.unregisterRecordMP4()
+            unregisterNonScreenshotHotkeys()
             keyMonitor?.isEnabled = false
             return
         }
+
+        if recordingEngine != nil {
+            unregisterNonScreenshotHotkeys()
+            keyMonitor?.isEnabled = true
+            keyMonitor?.isRegularDoubleTapEnabled = !Defaults.hasCustomScreenshotHotkey
+            if Defaults.hasCustomScreenshotHotkey {
+                HotkeyManager.shared.register { [weak self] in
+                    self?.stopRecordingAndSave()
+                }
+            } else {
+                HotkeyManager.shared.unregister()
+            }
+            HotkeyManager.shared.unregisterCountdown()
+            return
+        }
+
         keyMonitor?.isEnabled = true
         if Defaults.hasCustomScreenshotHotkey {
             HotkeyManager.shared.register { [weak self] in
@@ -162,27 +173,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregisterScreenshotTranslation()
         }
 
-        if Defaults.hasCustomRecordGIFHotkey {
-            HotkeyManager.shared.registerRecordGIF { [weak self] in
-                self?.handleRecordingTrigger(format: .gif)
+        if Defaults.hasCustomRecordHotkey {
+            HotkeyManager.shared.registerRecord { [weak self] in
+                self?.handleRecordingTrigger()
             }
         } else {
-            HotkeyManager.shared.unregisterRecordGIF()
+            HotkeyManager.shared.unregisterRecord()
         }
+    }
 
-        if Defaults.hasCustomRecordMP4Hotkey {
-            HotkeyManager.shared.registerRecordMP4 { [weak self] in
-                self?.handleRecordingTrigger(format: .mp4)
-            }
-        } else {
-            HotkeyManager.shared.unregisterRecordMP4()
-        }
+    private func unregisterNonScreenshotHotkeys() {
+        HotkeyManager.shared.unregisterSelectedImagePin()
+        HotkeyManager.shared.unregisterClipboardImagePin()
+        HotkeyManager.shared.unregisterSelectedImageEdit()
+        HotkeyManager.shared.unregisterClipboardImageEdit()
+        HotkeyManager.shared.unregisterTextRecognition()
+        HotkeyManager.shared.unregisterScreenshotTranslation()
+        HotkeyManager.shared.unregisterRecord()
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
     /// active this is the default copy-to-clipboard hotkey; otherwise it falls
     /// through to the regular screenshot trigger.
     private func handleDoubleTapCommand() {
+        if recordingEngine != nil {
+            stopRecordingAndSave()
+            return
+        }
         if let overlay = overlayController {
             if !Defaults.hasCustomClipboardHotkey {
                 overlay.confirmFromKeyboard()
@@ -193,16 +210,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func handleTrigger() {
+        if recordingEngine != nil {
+            stopRecordingAndSave()
+            return
+        }
         guard overlayController == nil, recordingEngine == nil else { return }
         startCapture()
     }
 
-    func handleRecordingTrigger(format: ScreenRecordingFormat) {
+    func handleRecordingTrigger() {
         guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         overlayController = OverlayWindowController(
-            postCaptureAction: .record(format),
-            onRecordingSelection: { [weak self] rect, screen, format in
-                self?.beginRecording(rect: rect, screen: screen, format: format)
+            postCaptureAction: .record,
+            onRecordingSelection: { [weak self] rect, screen in
+                self?.beginRecording(rect: rect, screen: screen)
             },
             onComplete: { [weak self] finalImage in
                 self?.handleEditCompletion(finalImage)
@@ -313,8 +334,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         guard overlayController == nil, recordingEngine == nil else { return }
         overlayController = OverlayWindowController(
             postCaptureAction: postCaptureAction,
-            onRecordingSelection: { [weak self] rect, screen, format in
-                self?.beginRecording(rect: rect, screen: screen, format: format)
+            onRecordingSelection: { [weak self] rect, screen in
+                self?.beginRecording(rect: rect, screen: screen)
             },
             onComplete: { [weak self] finalImage in
                 self?.handleEditCompletion(finalImage)
@@ -334,11 +355,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         applyHotkeyState()
     }
 
-    private func beginRecording(rect: NSRect, screen: NSScreen, format: ScreenRecordingFormat) {
+    private func beginRecording(rect: NSRect, screen: NSScreen) {
         guard recordingEngine == nil else { return }
 
         recordingScreenRect = rect
         recordingScreen = screen
+        recordingCancelRequested = false
 
         let borderPanel = RecordingBorderPanel(screen: screen)
         borderPanel.setSelectionRect(rect)
@@ -349,7 +371,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hudPanel.update(elapsedSeconds: 0)
         hudPanel.positionOnScreen(relativeTo: rect, screen: screen)
         hudPanel.onStopRecording = { [weak self] in
-            self?.recordingEngine?.stopRecording()
+            self?.stopRecordingAndSave()
         }
         hudPanel.onPauseRecording = { [weak self] in
             self?.recordingEngine?.pauseRecording()
@@ -360,17 +382,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         hudPanel.orderFrontRegardless()
         recordingHUDPanel = hudPanel
 
-        let engine = RecordingEngine(format: format)
+        let engine = RecordingEngine()
         engine.onProgress = { [weak self] seconds in
             self?.updateRecordingHUD(seconds: seconds)
         }
         engine.onPauseChanged = { [weak self] paused in
             self?.recordingHUDPanel?.setPaused(paused)
         }
-        engine.onCompletion = { [weak self] url, format, error in
-            self?.finishRecording(url: url, format: format, error: error)
+        engine.onCompletion = { [weak self] url, error in
+            self?.finishRecording(url: url, error: error)
         }
         recordingEngine = engine
+        installRecordingCancelMonitors()
         applyHotkeyState()
 
         let excludedWindows = [
@@ -387,8 +410,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    private func finishRecording(url: URL?, format: ScreenRecordingFormat, error: Error?) {
+    private func finishRecording(url: URL?, error: Error?) {
+        let wasCancelled = recordingCancelRequested
+        recordingCancelRequested = false
         stopRecordingUI()
+
+        if wasCancelled {
+            if let url {
+                try? FileManager.default.removeItem(at: url)
+            }
+            ToastWindow.show(message: L10n.recordingCancelled)
+            return
+        }
 
         if let error {
             ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
@@ -400,10 +433,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        promptToSaveRecording(tmpURL: url, format: format)
+        promptToSaveRecording(tmpURL: url)
     }
 
     private func stopRecordingUI() {
+        removeRecordingCancelMonitors()
         recordingHUDPanel?.close()
         recordingHUDPanel = nil
         recordingBorderPanel?.close()
@@ -414,35 +448,81 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         applyHotkeyState()
     }
 
-    private func promptToSaveRecording(tmpURL: URL, format: ScreenRecordingFormat) {
+    private func stopRecordingAndSave() {
+        guard let recordingEngine else { return }
+        recordingEngine.stopRecording()
+    }
+
+    private func cancelRecordingFromKeyboard() {
+        guard let recordingEngine, !recordingCancelRequested else { return }
+        switch recordingEngine.state {
+        case .recording, .paused:
+            break
+        case .idle, .stopping:
+            return
+        }
+        recordingCancelRequested = true
+        recordingEngine.cancelRecording()
+    }
+
+    private func installRecordingCancelMonitors() {
+        removeRecordingCancelMonitors()
+        recordingCancelLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if Self.isPlainEscape(event) {
+                self?.cancelRecordingFromKeyboard()
+                return nil
+            }
+            return event
+        }
+        recordingCancelGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if Self.isPlainEscape(event) {
+                self?.cancelRecordingFromKeyboard()
+            }
+        }
+    }
+
+    private func removeRecordingCancelMonitors() {
+        if let monitor = recordingCancelLocalMonitor {
+            NSEvent.removeMonitor(monitor)
+            recordingCancelLocalMonitor = nil
+        }
+        if let monitor = recordingCancelGlobalMonitor {
+            NSEvent.removeMonitor(monitor)
+            recordingCancelGlobalMonitor = nil
+        }
+    }
+
+    private static func isPlainEscape(_ event: NSEvent) -> Bool {
+        let activeModifiers = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        return event.keyCode == 53 && activeModifiers.isEmpty
+    }
+
+    private func promptToSaveRecording(tmpURL: URL) {
         let panel = NSSavePanel()
+        var selectedFormat = Defaults.recordingSaveFormat
         panel.title = L10n.saveRecording
         panel.prompt = L10n.saveRecordingPrompt
-        panel.nameFieldStringValue = defaultRecordingFilename(format: format)
+        panel.nameFieldStringValue = defaultRecordingFilename(format: selectedFormat)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
-        switch format {
-        case .mp4:
-            panel.allowedContentTypes = [.mpeg4Movie]
-        case .gif:
-            panel.allowedContentTypes = [.gif]
+        panel.allowedContentTypes = [selectedFormat.contentType]
+        panel.accessoryView = RecordingSaveAccessoryView(initialFormat: selectedFormat) { [weak panel] format in
+            selectedFormat = format
+            panel?.allowedContentTypes = [format.contentType]
+            if let currentName = panel?.nameFieldStringValue {
+                panel?.nameFieldStringValue = Self.recordingFilename(currentName, withFormat: format)
+            }
         }
 
         NSApp.activate(ignoringOtherApps: true)
-        panel.begin { response in
+        panel.begin { [weak self] response in
             guard response == .OK, let destination = panel.url else {
                 try? FileManager.default.removeItem(at: tmpURL)
                 return
             }
 
-            do {
-                try? FileManager.default.removeItem(at: destination)
-                try FileManager.default.moveItem(at: tmpURL, to: destination)
-                ToastWindow.show(message: L10n.recordingSaved)
-                NSWorkspace.shared.activateFileViewerSelecting([destination])
-            } catch {
-                ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
-            }
+            Defaults.recordingSaveFormat = selectedFormat
+            self?.saveRecording(tmpURL: tmpURL, destination: destination, format: selectedFormat)
         }
     }
 
@@ -453,7 +533,102 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return "capcap-recording-\(formatter.string(from: Date())).\(format.fileExtension)"
     }
 
+    private static func recordingFilename(_ currentName: String, withFormat format: ScreenRecordingFormat) -> String {
+        let base = (currentName as NSString).deletingPathExtension
+        let safeBase = base.isEmpty ? "capcap-recording" : base
+        return "\(safeBase).\(format.fileExtension)"
+    }
+
+    private func saveRecording(tmpURL: URL, destination: URL, format: ScreenRecordingFormat) {
+        switch format {
+        case .mp4:
+            do {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.moveItem(at: tmpURL, to: destination)
+                showSavedRecording(destination)
+            } catch {
+                ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
+            }
+        case .gif:
+            ToastWindow.show(message: L10n.recordingExportingGIF, duration: 600)
+            RecordingExporter.exportGIF(from: tmpURL, to: destination) { result in
+                ToastWindow.dismiss()
+                switch result {
+                case .success:
+                    try? FileManager.default.removeItem(at: tmpURL)
+                    self.showSavedRecording(destination)
+                case .failure(let error):
+                    ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
+                    NSWorkspace.shared.activateFileViewerSelecting([tmpURL])
+                }
+            }
+        }
+    }
+
+    private func showSavedRecording(_ destination: URL) {
+        ToastWindow.show(message: L10n.recordingSaved)
+        NSWorkspace.shared.activateFileViewerSelecting([destination])
+    }
+
     private func openSettings() {
         SettingsWindowController.shared.showAsSettings()
+    }
+}
+
+private final class RecordingSaveAccessoryView: NSView {
+    private static let labelTrailingInset: CGFloat = 170
+    private let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+    private let onFormatChanged: (ScreenRecordingFormat) -> Void
+
+    init(initialFormat: ScreenRecordingFormat, onFormatChanged: @escaping (ScreenRecordingFormat) -> Void) {
+        self.onFormatChanged = onFormatChanged
+        super.init(frame: NSRect(x: 0, y: 0, width: 460, height: 32))
+
+        let label = NSTextField(labelWithString: L10n.recordingFormatLabel)
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        popup.translatesAutoresizingMaskIntoConstraints = false
+        for format in ScreenRecordingFormat.allCases {
+            popup.addItem(withTitle: format.displayName)
+            popup.lastItem?.representedObject = format.rawValue
+        }
+        popup.selectItem(withTitle: initialFormat.displayName)
+        popup.target = self
+        popup.action = #selector(formatDidChange)
+
+        addSubview(label)
+        addSubview(popup)
+
+        NSLayoutConstraint.activate([
+            label.trailingAnchor.constraint(equalTo: leadingAnchor, constant: Self.labelTrailingInset),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+
+            popup.leadingAnchor.constraint(equalTo: label.trailingAnchor, constant: 8),
+            popup.trailingAnchor.constraint(lessThanOrEqualTo: trailingAnchor),
+            popup.centerYAnchor.constraint(equalTo: centerYAnchor),
+            popup.widthAnchor.constraint(greaterThanOrEqualToConstant: 140),
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func formatDidChange() {
+        guard let raw = popup.selectedItem?.representedObject as? String,
+              let format = ScreenRecordingFormat(rawValue: raw)
+        else {
+            return
+        }
+        onFormatChanged(format)
+    }
+}
+
+private extension ScreenRecordingFormat {
+    var contentType: UTType {
+        switch self {
+        case .mp4: return .mpeg4Movie
+        case .gif: return .gif
+        }
     }
 }

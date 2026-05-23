@@ -18,7 +18,7 @@ class OverlayWindowController {
         case edit
         case textRecognition
         case screenshotTranslation
-        case record(ScreenRecordingFormat)
+        case record
 
         var cursorChipText: String {
             switch self {
@@ -39,7 +39,7 @@ class OverlayWindowController {
     private let windowDetector = WindowDetector()
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
     private let onComplete: (NSImage?) -> Void
-    private let onRecordingSelection: ((NSRect, NSScreen, ScreenRecordingFormat) -> Void)?
+    private let onRecordingSelection: ((NSRect, NSScreen) -> Void)?
     private let postCaptureAction: PostCaptureAction
 
     /// Image-edit mode: when set, `activate()` skips the user's drag-to-select
@@ -57,7 +57,7 @@ class OverlayWindowController {
 
     init(
         postCaptureAction: PostCaptureAction = .edit,
-        onRecordingSelection: ((NSRect, NSScreen, ScreenRecordingFormat) -> Void)? = nil,
+        onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.presetImage = nil
@@ -364,10 +364,10 @@ extension OverlayWindowController: SelectionViewDelegate {
                     break
                 }
                 return
-            case .record(let format):
+            case .record:
                 tearDown()
                 onComplete(nil)
-                onRecordingSelection?(screenRect, screen, format)
+                onRecordingSelection?(screenRect, screen)
                 return
             }
 

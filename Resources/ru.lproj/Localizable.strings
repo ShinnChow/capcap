@@ -52,10 +52,8 @@
 "textRecognitionShortcutDefaultDisplay" = "Не задано";
 "screenshotTranslationShortcutHeader" = "Перевод снимка";
 "screenshotTranslationShortcutDefaultDisplay" = "Не задано";
-"recordGIFShortcutHeader" = "Записать GIF";
-"recordGIFShortcutDefaultDisplay" = "Не задано";
-"recordMP4ShortcutHeader" = "Записать видео";
-"recordMP4ShortcutDefaultDisplay" = "Не задано";
+"recordShortcutHeader" = "Запись";
+"recordShortcutDefaultDisplay" = "Не задано";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Копировать в буфер обмена";
@@ -78,13 +76,11 @@
 "shortcutConflictClipboardImageEdit" = "Это сочетание клавиш уже назначено для редактирования изображения из буфера. Выберите другое.";
 "shortcutConflictTextRecognition" = "Это сочетание клавиш уже назначено для распознавания текста. Выберите другое.";
 "shortcutConflictScreenshotTranslation" = "Это сочетание клавиш уже назначено для перевода снимка. Выберите другое.";
-"shortcutConflictRecordGIF" = "Это сочетание клавиш уже назначено для записи GIF. Выберите другое.";
-"shortcutConflictRecordMP4" = "Это сочетание клавиш уже назначено для записи видео. Выберите другое.";
+"shortcutConflictRecord" = "Это сочетание клавиш уже назначено для записи. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";
-"recordMP4" = "Записать видео";
-"recordGIF" = "Записать GIF";
+"record" = "Запись";
 "settings" = "Настройки...";
 "quitApp" = "Завершить capcap";
 "historyMenu" = "История";
@@ -106,9 +102,14 @@
 "selectedImageEditNoImage" = "В Finder не выбрано одно изображение";
 "clipboardImageEditNoImage" = "В буфере обмена нет изображения для редактирования";
 "recordingSaved" = "Запись сохранена";
+"recordingCancelled" = "Запись отменена";
+"recordingExportingGIF" = "Создание GIF…";
 "recordingFailed" = "Не удалось записать: %@";
 "saveRecording" = "Сохранить запись";
 "saveRecordingPrompt" = "Сохранить";
+"recordingFormatLabel" = "Формат:";
+"recordingFormatMP4" = "Видео MP4";
+"recordingFormatGIF" = "GIF";
 "recordingStop" = "Остановить запись";
 "recordingPause" = "Пауза";
 "recordingResume" = "Продолжить";
@@ -136,8 +137,7 @@
 "tipScreenshotTranslate" = "Перевод снимка";
 "tipSave" = "Сохранить в файл";
 "tipPin" = "Закрепить на экране";
-"tipRecordGIF" = "Записать GIF";
-"tipRecordMP4" = "Записать видео";
+"tipRecord" = "Запись";
 "tipCancel" = "Отмена";
 "tipConfirm" = "Копировать в буфер";
 
