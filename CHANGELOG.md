@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.14] - 2026-05-23
+
+### Added
+- Record screen captures (8b284df)
+
+### Fixed
+- Fix DeepSeek default link (908fdf8)
+
+### Changed
+- Unify recording save flow and keyboard handling (2a48494)
+- Show inferred target language in OCR button (fb5a9bf)
+- Persist picked color swatch across editor sessions (ae58b55)
+- Refine dictionary mode translation UI (f46da28)
+
+### Documentation
+- Link README license to LICENSE file (8c5f385)
+
+### Chore
+- Bump cask to 1.3.13 (767065f)
+
 ## [1.3.13] - 2026-05-23
 
 ### Changed
