@@ -2,7 +2,7 @@
 
 ![capcap](images/app-banner.png)
 
-[English](README.md)
+[English](README.md) &nbsp;·&nbsp; [简体中文](README.zh-CN.md)
 
 **macOS 上最順手的截圖工具。** 雙擊 `⌘` 即開即用——視窗一點就貼邊、選取範圍像素級精準、長截圖邊捲邊拼，再用浮動編輯器一氣呵成完成標注與美化。常駐選單列，不佔 Dock，無遙測、無訂閱、零第三方依賴；想要一鍵拿到圖片雲端連結，自己接入圖床即可。
 
