@@ -217,4 +217,4 @@ Thanks to the [Linux.do](https://linux.do) community for testing, feedback, and 
 
 ## License
 
-MIT
+[MIT](LICENSE)

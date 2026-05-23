@@ -217,4 +217,4 @@ bash scripts/rebuild-and-open.sh
 
 ## License
 
-MIT
+[MIT](LICENSE)
