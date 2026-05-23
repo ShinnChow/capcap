@@ -4,7 +4,7 @@ class CursorChipWindow: NSPanel {
     private var globalMonitor: Any?
     private var localMonitor: Any?
 
-    init() {
+    init(text: String = L10n.dragToScreenshot) {
         let chipSize = NSSize(width: 240, height: 32)
         super.init(
             contentRect: NSRect(origin: .zero, size: chipSize),
@@ -20,7 +20,7 @@ class CursorChipWindow: NSPanel {
         ignoresMouseEvents = true
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let chipView = ChipView(frame: NSRect(origin: .zero, size: chipSize))
+        let chipView = ChipView(frame: NSRect(origin: .zero, size: chipSize), text: text)
         contentView = chipView
     }
 
@@ -50,6 +50,17 @@ class CursorChipWindow: NSPanel {
 }
 
 private class ChipView: NSView {
+    private let text: String
+
+    init(frame frameRect: NSRect, text: String) {
+        self.text = text
+        super.init(frame: frameRect)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
 
@@ -60,7 +71,6 @@ private class ChipView: NSView {
         path.lineWidth = 0.5
         path.stroke()
 
-        let text = L10n.dragToScreenshot
         let attrs: [NSAttributedString.Key: Any] = [
             .foregroundColor: NSColor.white.withAlphaComponent(0.85),
             .font: NSFont.systemFont(ofSize: 12, weight: .medium)

@@ -3,12 +3,21 @@ import AppKit
 class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
     private let onTakeScreenshot: () -> Void
+    private let onRecordMP4: () -> Void
+    private let onRecordGIF: () -> Void
     private let onOpenSettings: () -> Void
     private var historyMenu: NSMenu?
     private var historyItem: NSMenuItem?
 
-    init(onTakeScreenshot: @escaping () -> Void, onOpenSettings: @escaping () -> Void) {
+    init(
+        onTakeScreenshot: @escaping () -> Void,
+        onRecordMP4: @escaping () -> Void,
+        onRecordGIF: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void
+    ) {
         self.onTakeScreenshot = onTakeScreenshot
+        self.onRecordMP4 = onRecordMP4
+        self.onRecordGIF = onRecordGIF
         self.onOpenSettings = onOpenSettings
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -47,6 +56,16 @@ class StatusBarController: NSObject {
         screenshotItem.image = Self.menuIcon(systemName: "crop")
         HotkeyManager.applyToMenuItem(screenshotItem)
         menu.addItem(screenshotItem)
+
+        let recordMP4Item = NSMenuItem(title: L10n.recordMP4, action: #selector(recordMP4), keyEquivalent: "")
+        recordMP4Item.target = self
+        recordMP4Item.image = Self.menuIcon(systemName: "record.circle")
+        menu.addItem(recordMP4Item)
+
+        let recordGIFItem = NSMenuItem(title: L10n.recordGIF, action: #selector(recordGIF), keyEquivalent: "")
+        recordGIFItem.target = self
+        recordGIFItem.image = Self.menuIcon(systemName: "repeat.circle")
+        menu.addItem(recordGIFItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -110,6 +129,14 @@ class StatusBarController: NSObject {
 
     @objc private func takeScreenshot() {
         onTakeScreenshot()
+    }
+
+    @objc private func recordMP4() {
+        onRecordMP4()
+    }
+
+    @objc private func recordGIF() {
+        onRecordGIF()
     }
 
     @objc private func openSettings() {

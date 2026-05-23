@@ -52,6 +52,10 @@
 "textRecognitionShortcutDefaultDisplay" = "Not set";
 "screenshotTranslationShortcutHeader" = "Screenshot Translation";
 "screenshotTranslationShortcutDefaultDisplay" = "Not set";
+"recordGIFShortcutHeader" = "Record GIF";
+"recordGIFShortcutDefaultDisplay" = "Not set";
+"recordMP4ShortcutHeader" = "Record Video";
+"recordMP4ShortcutDefaultDisplay" = "Not set";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copy to Clipboard";
@@ -74,9 +78,13 @@
 "shortcutConflictClipboardImageEdit" = "This key combination is already used by the Edit Clipboard Image shortcut. Please choose a different one.";
 "shortcutConflictTextRecognition" = "This key combination is already used by the Text Recognition shortcut. Please choose a different one.";
 "shortcutConflictScreenshotTranslation" = "This key combination is already used by the Screenshot Translation shortcut. Please choose a different one.";
+"shortcutConflictRecordGIF" = "This key combination is already used by the Record GIF shortcut. Please choose a different one.";
+"shortcutConflictRecordMP4" = "This key combination is already used by the Record Video shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";
+"recordMP4" = "Record Video";
+"recordGIF" = "Record GIF";
 "settings" = "Settings...";
 "quitApp" = "Quit capcap";
 "historyMenu" = "History";
@@ -85,6 +93,7 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "Click window or drag to screenshot";
+"dragToRecord" = "Click window or drag to record";
 
 /* Toast */
 "copiedToClipboard" = "Copied to clipboard";
@@ -96,6 +105,13 @@
 "clipboardEditExitHint" = "Editing from clipboard. Press X to exit editing";
 "selectedImageEditNoImage" = "No single Finder image selected";
 "clipboardImageEditNoImage" = "No editable image on the clipboard";
+"recordingSaved" = "Recording saved";
+"recordingFailed" = "Recording failed: %@";
+"saveRecording" = "Save Recording";
+"saveRecordingPrompt" = "Save";
+"recordingStop" = "Stop Recording";
+"recordingPause" = "Pause";
+"recordingResume" = "Resume";
 "colorCopied" = "Copied color %@";
 
 /* Toolbar tooltips */
@@ -120,6 +136,8 @@
 "tipScreenshotTranslate" = "Screenshot Translation";
 "tipSave" = "Save to File";
 "tipPin" = "Pin to Screen";
+"tipRecordGIF" = "Record GIF";
+"tipRecordMP4" = "Record Video";
 "tipCancel" = "Cancel";
 "tipConfirm" = "Copy to Clipboard";
 

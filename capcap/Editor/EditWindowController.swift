@@ -17,6 +17,7 @@ class EditWindowController {
     private var selectionRect: NSRect
     private var selectionViewRect: NSRect
     private let onComplete: (NSImage?) -> Void
+    private let onRecordingSelection: ((NSRect, NSScreen, ScreenRecordingFormat) -> Void)?
     private var activeTool: EditTool = .none
     private var beautifySubToolbarView: BeautifySubToolbar?
     private var isBeautifyActive: Bool = false
@@ -92,6 +93,7 @@ class EditWindowController {
         overrideBaseImage: NSImage? = nil,
         windowBaseImage: NSImage? = nil,
         isWindowCapture: Bool = false,
+        onRecordingSelection: ((NSRect, NSScreen, ScreenRecordingFormat) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.captureRect = captureRect
@@ -103,6 +105,7 @@ class EditWindowController {
         self.overrideBaseImage = overrideBaseImage
         self.windowBaseImage = windowBaseImage
         self.isWindowCapture = isWindowCapture
+        self.onRecordingSelection = onRecordingSelection
         self.onComplete = onComplete
         self.pickedColorSwatch = Self.color(fromHex: Defaults.lastPickedColorHex)
     }
@@ -186,8 +189,9 @@ class EditWindowController {
             hostSelectionView.addSubview(sv)
         }
 
-        if overrideBaseImage != nil {
+        if overrideBaseImage != nil || onRecordingSelection == nil {
             toolbars.forEach { $0.setScrollCaptureEnabled(false) }
+            toolbars.forEach { $0.setRecordingEnabled(false) }
         }
     }
 
@@ -206,6 +210,8 @@ class EditWindowController {
         tv.onSave = { [weak self] in self?.save() }
         tv.onUpload = { [weak self] in self?.upload() }
         tv.onPin = { [weak self] in self?.pin() }
+        tv.onRecordGIF = { [weak self] in self?.record(format: .gif) }
+        tv.onRecordMP4 = { [weak self] in self?.record(format: .mp4) }
         tv.onClose = { [weak self] in self?.close() }
         tv.onConfirm = { [weak self] in self?.confirm() }
         tv.onMoveSelectionStart = { [weak self] in self?.handleMoveSelectionStart() }
@@ -1170,6 +1176,16 @@ class EditWindowController {
         onComplete(nil) // Don't copy to clipboard for pin
     }
 
+    private func record(format: ScreenRecordingFormat) {
+        guard let onRecordingSelection else { return }
+        canvasView?.commitActiveTextEditing()
+        let rect = selectionRect
+        let targetScreen = screen
+        tearDown()
+        onComplete(nil)
+        onRecordingSelection(rect, targetScreen, format)
+    }
+
     private func close() {
         tearDown()
         onComplete(nil)
@@ -1622,6 +1638,8 @@ class ToolbarView: NSView {
     var onSave: (() -> Void)?
     var onUpload: (() -> Void)?
     var onPin: (() -> Void)?
+    var onRecordGIF: (() -> Void)?
+    var onRecordMP4: (() -> Void)?
     var onClose: (() -> Void)?
     var onConfirm: (() -> Void)?
     /// Press-and-drag callbacks for the "move selection" handle. The first
@@ -1684,6 +1702,10 @@ class ToolbarView: NSView {
     func setScrollCaptureActive(_ active: Bool) { setActive(active, for: .scrollCapture) }
     func setScrollCaptureEnabled(_ enabled: Bool) { setEnabled(enabled, for: .scrollCapture) }
     func setBeautifyActive(_ active: Bool) { setActive(active, for: .beautify) }
+    func setRecordingEnabled(_ enabled: Bool) {
+        setEnabled(enabled, for: .recordGIF)
+        setEnabled(enabled, for: .recordMP4)
+    }
     var scrollCaptureButtonFrame: NSRect? { frame(for: .scrollCapture) }
 
     private func setupButtons() {
@@ -1761,6 +1783,8 @@ class ToolbarView: NSView {
         case .save:          onSave?()
         case .upload:        onUpload?()
         case .pin:           onPin?()
+        case .recordGIF:     onRecordGIF?()
+        case .recordMP4:     onRecordMP4?()
         case .close:         onClose?()
         case .confirm:       onConfirm?()
         case .moveSelection: break  // handled by MoveSelectionDragHandle
