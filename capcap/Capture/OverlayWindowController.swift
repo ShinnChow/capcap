@@ -18,6 +18,16 @@ class OverlayWindowController {
         case edit
         case textRecognition
         case screenshotTranslation
+        case record(ScreenRecordingFormat)
+
+        var cursorChipText: String {
+            switch self {
+            case .record:
+                return L10n.dragToRecord
+            case .edit, .textRecognition, .screenshotTranslation:
+                return L10n.dragToScreenshot
+            }
+        }
     }
 
     private var windows: [NSWindow] = []
@@ -29,6 +39,7 @@ class OverlayWindowController {
     private let windowDetector = WindowDetector()
     private var screenSnapshots: [CGDirectDisplayID: CGImage] = [:]
     private let onComplete: (NSImage?) -> Void
+    private let onRecordingSelection: ((NSRect, NSScreen, ScreenRecordingFormat) -> Void)?
     private let postCaptureAction: PostCaptureAction
 
     /// Image-edit mode: when set, `activate()` skips the user's drag-to-select
@@ -46,11 +57,13 @@ class OverlayWindowController {
 
     init(
         postCaptureAction: PostCaptureAction = .edit,
+        onRecordingSelection: ((NSRect, NSScreen, ScreenRecordingFormat) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.presetImage = nil
         self.presetSource = nil
         self.postCaptureAction = postCaptureAction
+        self.onRecordingSelection = onRecordingSelection
         self.onComplete = onComplete
     }
 
@@ -62,6 +75,7 @@ class OverlayWindowController {
         self.presetImage = presetImage
         self.presetSource = presetSource
         self.postCaptureAction = .edit
+        self.onRecordingSelection = nil
         self.onComplete = onComplete
     }
 
@@ -132,7 +146,7 @@ class OverlayWindowController {
         windows.first?.makeKey()
         CATransaction.commit()
 
-        chipWindow = CursorChipWindow()
+        chipWindow = CursorChipWindow(text: postCaptureAction.cursorChipText)
         chipWindow?.show()
 
         escLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -322,7 +336,10 @@ extension OverlayWindowController: SelectionViewDelegate {
                 ? windowID.flatMap { ScreenCapturer.capture(windowID: $0, pointSize: rect.size) }
                 : nil
 
-            if postCaptureAction != .edit {
+            switch postCaptureAction {
+            case .edit:
+                break
+            case .textRecognition, .screenshotTranslation:
                 let baseImage = imageForImmediateAction(
                     captureRect: cgRect,
                     screen: screen,
@@ -343,7 +360,14 @@ extension OverlayWindowController: SelectionViewDelegate {
                     OCRTranslatePanel.presentScreenshotTranslation(
                         image: baseImage, anchorRect: screenRect, screen: screen
                     )
+                case .record:
+                    break
                 }
+                return
+            case .record(let format):
+                tearDown()
+                onComplete(nil)
+                onRecordingSelection?(screenRect, screen, format)
                 return
             }
 
@@ -356,7 +380,8 @@ extension OverlayWindowController: SelectionViewDelegate {
                 preSnapshot: preSnapshot,
                 overrideBaseImage: presetImage,
                 windowBaseImage: windowBaseImage,
-                isWindowCapture: isWindowSelection
+                isWindowCapture: isWindowSelection,
+                onRecordingSelection: onRecordingSelection
             ) { [weak self] finalImage in
                 self?.tearDown()
                 self?.onComplete(finalImage)

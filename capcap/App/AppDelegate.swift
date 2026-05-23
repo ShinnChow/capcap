@@ -1,9 +1,15 @@
 import AppKit
+import UniformTypeIdentifiers
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
     private var keyMonitor: KeyMonitor!
     private var overlayController: OverlayWindowController?
+    private var recordingEngine: RecordingEngine?
+    private var recordingHUDPanel: RecordingHUDPanel?
+    private var recordingBorderPanel: RecordingBorderPanel?
+    private var recordingScreenRect: NSRect = .zero
+    private var recordingScreen: NSScreen?
     private var countdownActive = false
     private var appInitialized = false
 
@@ -46,6 +52,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusBarController = StatusBarController(
             onTakeScreenshot: { [weak self] in self?.handleTrigger() },
+            onRecordMP4: { [weak self] in self?.handleRecordingTrigger(format: .mp4) },
+            onRecordGIF: { [weak self] in self?.handleRecordingTrigger(format: .gif) },
             onOpenSettings: { [weak self] in self?.openSettings() }
         )
         statusBarController.setMenuBarVisible(Defaults.showMenuBar)
@@ -70,7 +78,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func applyHotkeyState() {
-        if HotkeyManager.shared.isRecording {
+        if HotkeyManager.shared.isRecording || recordingEngine != nil {
             HotkeyManager.shared.unregister()
             HotkeyManager.shared.unregisterCountdown()
             HotkeyManager.shared.unregisterSelectedImagePin()
@@ -79,6 +87,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             HotkeyManager.shared.unregisterClipboardImageEdit()
             HotkeyManager.shared.unregisterTextRecognition()
             HotkeyManager.shared.unregisterScreenshotTranslation()
+            HotkeyManager.shared.unregisterRecordGIF()
+            HotkeyManager.shared.unregisterRecordMP4()
             keyMonitor?.isEnabled = false
             return
         }
@@ -151,6 +161,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             HotkeyManager.shared.unregisterScreenshotTranslation()
         }
+
+        if Defaults.hasCustomRecordGIFHotkey {
+            HotkeyManager.shared.registerRecordGIF { [weak self] in
+                self?.handleRecordingTrigger(format: .gif)
+            }
+        } else {
+            HotkeyManager.shared.unregisterRecordGIF()
+        }
+
+        if Defaults.hasCustomRecordMP4Hotkey {
+            HotkeyManager.shared.registerRecordMP4 { [weak self] in
+                self?.handleRecordingTrigger(format: .mp4)
+            }
+        } else {
+            HotkeyManager.shared.unregisterRecordMP4()
+        }
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
@@ -167,8 +193,23 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func handleTrigger() {
-        guard overlayController == nil else { return }
+        guard overlayController == nil, recordingEngine == nil else { return }
         startCapture()
+    }
+
+    func handleRecordingTrigger(format: ScreenRecordingFormat) {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
+        overlayController = OverlayWindowController(
+            postCaptureAction: .record(format),
+            onRecordingSelection: { [weak self] rect, screen, format in
+                self?.beginRecording(rect: rect, screen: screen, format: format)
+            },
+            onComplete: { [weak self] finalImage in
+                self?.handleEditCompletion(finalImage)
+            }
+        )
+        overlayController?.activate()
+        applyHotkeyState()
     }
 
     /// Opens the single image currently selected in Finder directly in the
@@ -210,7 +251,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Countdown-triggered capture. It never checks image-edit sources; the
     /// user explicitly asked for a delayed screen capture.
     func handleCountdownTrigger() {
-        guard overlayController == nil, !countdownActive else { return }
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         countdownActive = true
         CountdownWindow.start(
             seconds: Defaults.countdownSeconds,
@@ -227,19 +268,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Pin-hotkey trigger: pin Finder selection onto the screen. Skipped while
     /// a capture overlay is up.
     func handleSelectedImagePinTrigger() {
-        guard overlayController == nil else { return }
+        guard overlayController == nil, recordingEngine == nil else { return }
         PinLauncher.pinSelectedImagesIfAvailable()
     }
 
     /// Pin-hotkey trigger: pin the clipboard image onto the screen. Skipped
     /// while a capture overlay is up.
     func handleClipboardImagePinTrigger() {
-        guard overlayController == nil else { return }
+        guard overlayController == nil, recordingEngine == nil else { return }
         PinLauncher.pinClipboardImageIfAvailable()
     }
 
     func handleSelectedImageEditTrigger() {
-        guard overlayController == nil, !countdownActive else { return }
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         guard let controller = launchSelectedImageEdit() else {
             ToastWindow.show(message: L10n.selectedImageEditNoImage)
             return
@@ -249,7 +290,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func handleClipboardImageEditTrigger() {
-        guard overlayController == nil, !countdownActive else { return }
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         guard let controller = launchClipboardImageEdit() else {
             ToastWindow.show(message: L10n.clipboardImageEditNoImage)
             return
@@ -259,20 +300,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func handleTextRecognitionTrigger() {
-        guard overlayController == nil, !countdownActive else { return }
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         startCapture(postCaptureAction: .textRecognition)
     }
 
     func handleScreenshotTranslationTrigger() {
-        guard overlayController == nil, !countdownActive else { return }
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         startCapture(postCaptureAction: .screenshotTranslation)
     }
 
     func startCapture(postCaptureAction: OverlayWindowController.PostCaptureAction = .edit) {
-        guard overlayController == nil else { return }
-        overlayController = OverlayWindowController(postCaptureAction: postCaptureAction) { [weak self] finalImage in
-            self?.handleEditCompletion(finalImage)
-        }
+        guard overlayController == nil, recordingEngine == nil else { return }
+        overlayController = OverlayWindowController(
+            postCaptureAction: postCaptureAction,
+            onRecordingSelection: { [weak self] rect, screen, format in
+                self?.beginRecording(rect: rect, screen: screen, format: format)
+            },
+            onComplete: { [weak self] finalImage in
+                self?.handleEditCompletion(finalImage)
+            }
+        )
         overlayController?.activate()
         applyHotkeyState()
     }
@@ -285,6 +332,125 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
         overlayController = nil
         applyHotkeyState()
+    }
+
+    private func beginRecording(rect: NSRect, screen: NSScreen, format: ScreenRecordingFormat) {
+        guard recordingEngine == nil else { return }
+
+        recordingScreenRect = rect
+        recordingScreen = screen
+
+        let borderPanel = RecordingBorderPanel(screen: screen)
+        borderPanel.setSelectionRect(rect)
+        borderPanel.orderFrontRegardless()
+        recordingBorderPanel = borderPanel
+
+        let hudPanel = RecordingHUDPanel()
+        hudPanel.update(elapsedSeconds: 0)
+        hudPanel.positionOnScreen(relativeTo: rect, screen: screen)
+        hudPanel.onStopRecording = { [weak self] in
+            self?.recordingEngine?.stopRecording()
+        }
+        hudPanel.onPauseRecording = { [weak self] in
+            self?.recordingEngine?.pauseRecording()
+        }
+        hudPanel.onResumeRecording = { [weak self] in
+            self?.recordingEngine?.resumeRecording()
+        }
+        hudPanel.orderFrontRegardless()
+        recordingHUDPanel = hudPanel
+
+        let engine = RecordingEngine(format: format)
+        engine.onProgress = { [weak self] seconds in
+            self?.updateRecordingHUD(seconds: seconds)
+        }
+        engine.onPauseChanged = { [weak self] paused in
+            self?.recordingHUDPanel?.setPaused(paused)
+        }
+        engine.onCompletion = { [weak self] url, format, error in
+            self?.finishRecording(url: url, format: format, error: error)
+        }
+        recordingEngine = engine
+        applyHotkeyState()
+
+        let excludedWindows = [
+            recordingBorderPanel.map { CGWindowID($0.windowNumber) },
+            recordingHUDPanel.map { CGWindowID($0.windowNumber) },
+        ].compactMap { $0 }
+        engine.startRecording(rect: rect, screen: screen, excludeWindowNumbers: excludedWindows)
+    }
+
+    private func updateRecordingHUD(seconds: Int) {
+        recordingHUDPanel?.update(elapsedSeconds: seconds)
+        if let screen = recordingScreen, recordingHUDPanel?.userHasDragged != true {
+            recordingHUDPanel?.positionOnScreen(relativeTo: recordingScreenRect, screen: screen)
+        }
+    }
+
+    private func finishRecording(url: URL?, format: ScreenRecordingFormat, error: Error?) {
+        stopRecordingUI()
+
+        if let error {
+            ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
+            return
+        }
+
+        guard let url else {
+            ToastWindow.show(message: L10n.recordingFailed(RecordingEngine.RecordingError.noFrames.localizedDescription), duration: 3.5)
+            return
+        }
+
+        promptToSaveRecording(tmpURL: url, format: format)
+    }
+
+    private func stopRecordingUI() {
+        recordingHUDPanel?.close()
+        recordingHUDPanel = nil
+        recordingBorderPanel?.close()
+        recordingBorderPanel = nil
+        recordingEngine = nil
+        recordingScreenRect = .zero
+        recordingScreen = nil
+        applyHotkeyState()
+    }
+
+    private func promptToSaveRecording(tmpURL: URL, format: ScreenRecordingFormat) {
+        let panel = NSSavePanel()
+        panel.title = L10n.saveRecording
+        panel.prompt = L10n.saveRecordingPrompt
+        panel.nameFieldStringValue = defaultRecordingFilename(format: format)
+        panel.canCreateDirectories = true
+        panel.isExtensionHidden = false
+        switch format {
+        case .mp4:
+            panel.allowedContentTypes = [.mpeg4Movie]
+        case .gif:
+            panel.allowedContentTypes = [.gif]
+        }
+
+        NSApp.activate(ignoringOtherApps: true)
+        panel.begin { response in
+            guard response == .OK, let destination = panel.url else {
+                try? FileManager.default.removeItem(at: tmpURL)
+                return
+            }
+
+            do {
+                try? FileManager.default.removeItem(at: destination)
+                try FileManager.default.moveItem(at: tmpURL, to: destination)
+                ToastWindow.show(message: L10n.recordingSaved)
+                NSWorkspace.shared.activateFileViewerSelecting([destination])
+            } catch {
+                ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
+            }
+        }
+    }
+
+    private func defaultRecordingFilename(format: ScreenRecordingFormat) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        return "capcap-recording-\(formatter.string(from: Date())).\(format.fileExtension)"
     }
 
     private func openSettings() {

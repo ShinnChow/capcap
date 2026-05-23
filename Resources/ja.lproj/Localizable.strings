@@ -52,6 +52,10 @@
 "textRecognitionShortcutDefaultDisplay" = "未設定";
 "screenshotTranslationShortcutHeader" = "スクリーンショット翻訳";
 "screenshotTranslationShortcutDefaultDisplay" = "未設定";
+"recordGIFShortcutHeader" = "GIF を録画";
+"recordGIFShortcutDefaultDisplay" = "未設定";
+"recordMP4ShortcutHeader" = "動画を録画";
+"recordMP4ShortcutDefaultDisplay" = "未設定";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "クリップボードへコピー";
@@ -74,9 +78,13 @@
 "shortcutConflictClipboardImageEdit" = "このキーの組み合わせはクリップボード画像を編集のショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictTextRecognition" = "このキーの組み合わせは文字認識ショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictScreenshotTranslation" = "このキーの組み合わせはスクリーンショット翻訳ショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictRecordGIF" = "このキーの組み合わせは GIF 録画ショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictRecordMP4" = "このキーの組み合わせは動画録画ショートカットで既に使用されています。別の組み合わせを選んでください。";
 
 /* Menu bar */
 "takeScreenshot" = "スクリーンショット";
+"recordMP4" = "動画を録画";
+"recordGIF" = "GIF を録画";
 "settings" = "設定...";
 "quitApp" = "capcap を終了";
 "historyMenu" = "履歴";
@@ -85,6 +93,7 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";
+"dragToRecord" = "ウィンドウをクリックまたはドラッグして録画";
 
 /* Toast */
 "copiedToClipboard" = "クリップボードにコピーしました";
@@ -96,6 +105,13 @@
 "clipboardEditExitHint" = "クリップボードから編集中。X キーで編集を終了";
 "selectedImageEditNoImage" = "Finder で画像が 1 枚選択されていません";
 "clipboardImageEditNoImage" = "クリップボードに編集できる画像がありません";
+"recordingSaved" = "録画を保存しました";
+"recordingFailed" = "録画に失敗しました: %@";
+"saveRecording" = "録画を保存";
+"saveRecordingPrompt" = "保存";
+"recordingStop" = "録画を停止";
+"recordingPause" = "一時停止";
+"recordingResume" = "再開";
 "colorCopied" = "カラー %@ をコピーしました";
 
 /* Toolbar tooltips */
@@ -120,6 +136,8 @@
 "tipScreenshotTranslate" = "スクリーンショット翻訳";
 "tipSave" = "ファイルへ保存";
 "tipPin" = "画面に固定";
+"tipRecordGIF" = "GIF を録画";
+"tipRecordMP4" = "動画を録画";
 "tipCancel" = "キャンセル";
 "tipConfirm" = "クリップボードへコピー";
 

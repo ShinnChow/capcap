@@ -15,6 +15,8 @@ final class HotkeyManager {
     private var clipboardImageEditHotKeyRef: EventHotKeyRef?
     private var textRecognitionHotKeyRef: EventHotKeyRef?
     private var screenshotTranslationHotKeyRef: EventHotKeyRef?
+    private var recordGIFHotKeyRef: EventHotKeyRef?
+    private var recordMP4HotKeyRef: EventHotKeyRef?
     private var callback: (() -> Void)?
     private var countdownCallback: (() -> Void)?
     private var selectedImagePinCallback: (() -> Void)?
@@ -23,6 +25,8 @@ final class HotkeyManager {
     private var clipboardImageEditCallback: (() -> Void)?
     private var textRecognitionCallback: (() -> Void)?
     private var screenshotTranslationCallback: (() -> Void)?
+    private var recordGIFCallback: (() -> Void)?
+    private var recordMP4Callback: (() -> Void)?
     private var eventHandlerRef: EventHandlerRef?
 
     private static let regularHotKeySignature: OSType = OSType(0x4341_5043) // 'CAPC'
@@ -34,6 +38,8 @@ final class HotkeyManager {
     private static let clipboardImagePinHotKeyID: UInt32 = 6
     private static let textRecognitionHotKeyID: UInt32 = 7
     private static let screenshotTranslationHotKeyID: UInt32 = 8
+    private static let recordGIFHotKeyID: UInt32 = 9
+    private static let recordMP4HotKeyID: UInt32 = 10
 
     private init() {}
 
@@ -46,6 +52,8 @@ final class HotkeyManager {
         unregisterClipboardImageEdit()
         unregisterTextRecognition()
         unregisterScreenshotTranslation()
+        unregisterRecordGIF()
+        unregisterRecordMP4()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -269,6 +277,58 @@ final class HotkeyManager {
         }
     }
 
+    /// Register the saved GIF recording hotkey, if any.
+    func registerRecordGIF(callback: @escaping () -> Void) {
+        self.recordGIFCallback = callback
+        unregisterRecordGIF()
+
+        guard let (keyCode, modifiers) = currentRecordGIFHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.recordGIFHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            recordGIFHotKeyRef = ref
+        }
+    }
+
+    func unregisterRecordGIF() {
+        if let ref = recordGIFHotKeyRef {
+            UnregisterEventHotKey(ref)
+            recordGIFHotKeyRef = nil
+        }
+    }
+
+    /// Register the saved MP4 recording hotkey, if any.
+    func registerRecordMP4(callback: @escaping () -> Void) {
+        self.recordMP4Callback = callback
+        unregisterRecordMP4()
+
+        guard let (keyCode, modifiers) = currentRecordMP4Hotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.recordMP4HotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            recordMP4HotKeyRef = ref
+        }
+    }
+
+    func unregisterRecordMP4() {
+        if let ref = recordMP4HotKeyRef {
+            UnregisterEventHotKey(ref)
+            recordMP4HotKeyRef = nil
+        }
+    }
+
     /// Returns the (keyCode, modifiers) for the countdown variant — user hotkey + ⌥.
     /// Returns nil if no custom hotkey is set or the saved hotkey already contains ⌥.
     func currentCountdownHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
@@ -291,6 +351,8 @@ final class HotkeyManager {
         unregisterClipboardImageEdit()
         unregisterTextRecognition()
         unregisterScreenshotTranslation()
+        unregisterRecordGIF()
+        unregisterRecordMP4()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
     }
 
@@ -418,6 +480,36 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    /// Returns (keyCode, carbonModifiers) for the saved GIF recording hotkey.
+    func currentRecordGIFHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomRecordGIFHotkey else { return nil }
+        let kc = UInt32(Defaults.recordGIFHotkeyKeyCode)
+        let mods = UInt32(Defaults.recordGIFHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the GIF recording hotkey, or nil if not set.
+    static func currentRecordGIFDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentRecordGIFHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    /// Returns (keyCode, carbonModifiers) for the saved MP4 recording hotkey.
+    func currentRecordMP4Hotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomRecordMP4Hotkey else { return nil }
+        let kc = UInt32(Defaults.recordMP4HotkeyKeyCode)
+        let mods = UInt32(Defaults.recordMP4HotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the MP4 recording hotkey, or nil if not set.
+    static func currentRecordMP4DisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentRecordMP4Hotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
     /// Returns (keyCode, carbonModifiers) for the saved copy-to-clipboard
     /// hotkey, or nil when the user hasn't bound one (the default is
     /// "double-tap ⌘", handled separately by `KeyMonitor`).
@@ -490,6 +582,8 @@ final class HotkeyManager {
         case clipboardImageEdit
         case textRecognition
         case screenshotTranslation
+        case recordGIF
+        case recordMP4
         case clipboard
         case fileSave
     }
@@ -579,6 +673,28 @@ final class HotkeyManager {
                 return L10n.shortcutConflictScreenshotTranslation
             }
         }
+        if slot != .recordGIF,
+           let (kc, m) = currentRecordGIFHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictRecordGIF
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictRecordGIF
+            }
+        }
+        if slot != .recordMP4,
+           let (kc, m) = currentRecordMP4Hotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictRecordMP4
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictRecordMP4
+            }
+        }
         if slot != .clipboard, let (kc, m) = currentClipboardHotkey(), kc == keyCode, m == modifiers {
             return L10n.shortcutConflictClipboard
         }
@@ -632,6 +748,10 @@ final class HotkeyManager {
                 } else if hkID.id == HotkeyManager.textRecognitionHotKeyID, let cb = mgr.textRecognitionCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.screenshotTranslationHotKeyID, let cb = mgr.screenshotTranslationCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.recordGIFHotKeyID, let cb = mgr.recordGIFCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.recordMP4HotKeyID, let cb = mgr.recordMP4Callback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.regularHotKeyID, let cb = mgr.callback {
                     DispatchQueue.main.async { cb() }
