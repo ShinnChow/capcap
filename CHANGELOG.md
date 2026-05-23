@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.11] - 2026-05-23
+
+### Changed
+- Vendor PermissionFlow and update permission flow (0446c89)
+
+### Chore
+- Bump cask to 1.3.10 (8567220)
+
 ## [1.3.10] - 2026-05-23
 
 ### Changed
