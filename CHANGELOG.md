@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.12] - 2026-05-23
+
+### Fixed
+- Localize permission flow button title (016fc15)
+
 ## [1.3.11] - 2026-05-23
 
 ### Changed
