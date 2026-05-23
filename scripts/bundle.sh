@@ -74,6 +74,17 @@ for lproj in Resources/*.lproj; do
     cp -R "$lproj" "$RESOURCES/"
 done
 
+# Copy SwiftPM resource bundles. PermissionFlow uses Bundle.module for its
+# floating authorization panel strings; if this bundle is absent, Intel builds
+# crash with a Swift assertion the first time the panel is shown.
+BUILD_DIR="$(dirname "$BUILD_BIN")"
+PERMISSION_FLOW_BUNDLE="$BUILD_DIR/capcap_PermissionFlow.bundle"
+if [ ! -d "$PERMISSION_FLOW_BUNDLE" ]; then
+    echo "error: missing SwiftPM resource bundle: $PERMISSION_FLOW_BUNDLE" >&2
+    exit 1
+fi
+cp -R "$PERMISSION_FLOW_BUNDLE" "$RESOURCES/"
+
 # Code signing
 # -----------------------------------------------------------------------------
 # Sign with the SAME self-signed certificate CI uses ("capcap Self-Signed") so

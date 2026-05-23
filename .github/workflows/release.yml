@@ -118,6 +118,16 @@ jobs:
           fi
           echo "Copied $LPROJ_COUNT .lproj localization bundle(s)"
 
+          # Copy SwiftPM resource bundles. PermissionFlow uses Bundle.module
+          # when the authorization helper panel is rendered; shipping the
+          # binary without this bundle crashes at runtime on first access.
+          PERMISSION_FLOW_BUNDLE="$BUILD_DIR/${APP_NAME}_PermissionFlow.bundle"
+          if [ ! -d "$PERMISSION_FLOW_BUNDLE" ]; then
+            echo "error: missing SwiftPM resource bundle: $PERMISSION_FLOW_BUNDLE" >&2
+            exit 1
+          fi
+          cp -R "$PERMISSION_FLOW_BUNDLE" "$RESOURCES/"
+
           # Fail fast if the shipped binary isn't a universal (arm64 + x86_64)
           # slice — Intel Mac users can't run an arm64-only build.
           ARCHS="$(lipo -archs "$MACOS/$APP_NAME")"
