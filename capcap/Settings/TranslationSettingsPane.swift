@@ -4,6 +4,9 @@ import AppKit
 /// translation provider. The target language follows the app language.
 final class TranslationSettingsPane: NSView {
     private var providerCards: [TranslationProviderCard] = []
+    private let dictionaryModeSwitch = NSSwitch()
+    private let dictionaryModeTitleLabel = NSTextField(labelWithString: "")
+    private let dictionaryModeSubtitleLabel = NSTextField(wrappingLabelWithString: "")
     private var providersHeaderLabel: NSTextField!
     private var providersStack: NSStackView!
 
@@ -28,6 +31,10 @@ final class TranslationSettingsPane: NSView {
         stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
+
+        let dictionaryModeCard = buildDictionaryModeCard()
+        stack.addArrangedSubview(dictionaryModeCard)
+        dictionaryModeCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Providers header.
         providersHeaderLabel = makeLabel(L10n.translationProvidersHeader, size: 12, weight: .semibold, alpha: 0.62)
@@ -61,9 +68,64 @@ final class TranslationSettingsPane: NSView {
         ])
     }
 
+    private func buildDictionaryModeCard() -> NSView {
+        let card = NSView()
+        card.translatesAutoresizingMaskIntoConstraints = false
+        card.wantsLayer = true
+        card.layer?.cornerRadius = 12
+        card.layer?.cornerCurve = .continuous
+        card.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
+        card.layer?.borderColor = NSColor.white.withAlphaComponent(0.06).cgColor
+        card.layer?.borderWidth = 1
+
+        dictionaryModeTitleLabel.stringValue = L10n.translationDictionaryModeTitle
+        dictionaryModeTitleLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        dictionaryModeTitleLabel.textColor = NSColor.white.withAlphaComponent(0.94)
+
+        dictionaryModeSubtitleLabel.stringValue = L10n.translationDictionaryModeSubtitle
+        dictionaryModeSubtitleLabel.font = NSFont.systemFont(ofSize: 11)
+        dictionaryModeSubtitleLabel.textColor = NSColor.white.withAlphaComponent(0.55)
+        dictionaryModeSubtitleLabel.maximumNumberOfLines = 0
+        dictionaryModeSubtitleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        let textStack = NSStackView(views: [dictionaryModeTitleLabel, dictionaryModeSubtitleLabel])
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 3
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+
+        dictionaryModeSwitch.controlSize = .small
+        dictionaryModeSwitch.state = Defaults.translationDictionaryMode ? .on : .off
+        dictionaryModeSwitch.target = self
+        dictionaryModeSwitch.action = #selector(dictionaryModeToggled)
+        dictionaryModeSwitch.translatesAutoresizingMaskIntoConstraints = false
+
+        card.addSubview(textStack)
+        card.addSubview(dictionaryModeSwitch)
+
+        NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: card.leadingAnchor, constant: 14),
+            textStack.topAnchor.constraint(equalTo: card.topAnchor, constant: 12),
+            textStack.bottomAnchor.constraint(equalTo: card.bottomAnchor, constant: -12),
+            textStack.trailingAnchor.constraint(equalTo: dictionaryModeSwitch.leadingAnchor, constant: -12),
+
+            dictionaryModeSwitch.trailingAnchor.constraint(equalTo: card.trailingAnchor, constant: -14),
+            dictionaryModeSwitch.centerYAnchor.constraint(equalTo: textStack.centerYAnchor),
+
+            dictionaryModeSubtitleLabel.widthAnchor.constraint(equalTo: textStack.widthAnchor),
+        ])
+        return card
+    }
+
     @objc private func onLanguageChanged() {
+        dictionaryModeTitleLabel.stringValue = L10n.translationDictionaryModeTitle
+        dictionaryModeSubtitleLabel.stringValue = L10n.translationDictionaryModeSubtitle
         providersHeaderLabel.stringValue = L10n.translationProvidersHeader
         for card in providerCards { card.refreshLocalization() }
+    }
+
+    @objc private func dictionaryModeToggled() {
+        Defaults.translationDictionaryMode = dictionaryModeSwitch.state == .on
     }
 
     private func moveProvider(_ kind: TranslationProviderKind, offset: Int) {

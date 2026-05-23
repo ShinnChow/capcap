@@ -306,8 +306,18 @@
 "ocrLineCopied" = "줄 복사됨";
 "screenshotTranslationHeader" = "번역";
 "screenshotTranslationLanguageButton" = "%@(으)로";
+"dictionaryEntryLabel" = "표제어";
+"dictionaryPhoneticLabel" = "발음 기호";
+"dictionaryPartOfSpeechLabel" = "품사";
+"dictionaryDefinitionLabel" = "뜻";
+"dictionaryExampleLabel" = "예문";
+"dictionaryDifficultyLabel" = "난이도";
+"dictionaryNoProviderTitle" = "사전 모드를 지원하는 AI 서비스가 설정되지 않음";
+"dictionaryNoProviderHint" = "설정 → 번역에서 OpenAI, DeepSeek, Claude 또는 OpenAI 호환 사용자 정의 서비스를 활성화하세요.";
 
 /* Translation — settings tab */
+"translationDictionaryModeTitle" = "사전 모드";
+"translationDictionaryModeSubtitle" = "스크린샷 번역에서 영어 단어 하나만 인식되면 발음, 뜻, 예문, 번역, CEFR 수준을 표시합니다.";
 "translationTargetLanguage" = "대상 언어";
 "translationTargetHint" = "인식된 텍스트는 이 언어로 번역됩니다. 이미 해당 언어인 경우 영어로 번역됩니다.";
 "translationProvidersHeader" = "AI 번역 서비스";

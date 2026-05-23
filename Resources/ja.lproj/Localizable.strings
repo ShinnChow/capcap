@@ -306,8 +306,18 @@
 "ocrLineCopied" = "行をコピーしました";
 "screenshotTranslationHeader" = "翻訳";
 "screenshotTranslationLanguageButton" = "%@へ";
+"dictionaryEntryLabel" = "見出し語";
+"dictionaryPhoneticLabel" = "発音記号";
+"dictionaryPartOfSpeechLabel" = "品詞";
+"dictionaryDefinitionLabel" = "意味";
+"dictionaryExampleLabel" = "例文";
+"dictionaryDifficultyLabel" = "難易度";
+"dictionaryNoProviderTitle" = "辞書モード対応の AI サービスが設定されていません";
+"dictionaryNoProviderHint" = "設定 → 翻訳で OpenAI、DeepSeek、Claude、または OpenAI 互換のカスタムサービスを有効にしてください。";
 
 /* Translation — settings tab */
+"translationDictionaryModeTitle" = "辞書モード";
+"translationDictionaryModeSubtitle" = "スクリーンショット翻訳で英単語を 1 つだけ認識した場合、発音、意味、例文、翻訳、CEFR レベルを表示します。";
 "translationTargetLanguage" = "翻訳先の言語";
 "translationTargetHint" = "認識されたテキストはこの言語に翻訳されます。すでにこの言語の場合は英語に翻訳されます。";
 "translationProvidersHeader" = "AI 翻訳サービス";

@@ -306,8 +306,18 @@
 "ocrLineCopied" = "已复制该行";
 "screenshotTranslationHeader" = "翻译结果";
 "screenshotTranslationLanguageButton" = "翻译为 %@";
+"dictionaryEntryLabel" = "词条";
+"dictionaryPhoneticLabel" = "音标";
+"dictionaryPartOfSpeechLabel" = "词性";
+"dictionaryDefinitionLabel" = "释义";
+"dictionaryExampleLabel" = "例句";
+"dictionaryDifficultyLabel" = "难度";
+"dictionaryNoProviderTitle" = "未配置支持词典模式的 AI 服务";
+"dictionaryNoProviderHint" = "请启用 OpenAI、DeepSeek、Claude 或自定义 OpenAI 兼容服务。";
 
 /* Translation — settings tab */
+"translationDictionaryModeTitle" = "词典模式";
+"translationDictionaryModeSubtitle" = "开启后，截图翻译识别出单个英文单词时，显示词条、音标、释义、例句和难度。";
 "translationTargetLanguage" = "目标语言";
 "translationTargetHint" = "识别文本将翻译成该语言；若原文已是该语言则译为英文。";
 "translationProvidersHeader" = "AI 翻译服务";

@@ -306,8 +306,18 @@
 "ocrLineCopied" = "Line copied";
 "screenshotTranslationHeader" = "Translation";
 "screenshotTranslationLanguageButton" = "To %@";
+"dictionaryEntryLabel" = "Entry";
+"dictionaryPhoneticLabel" = "Pronunciation";
+"dictionaryPartOfSpeechLabel" = "Part of speech";
+"dictionaryDefinitionLabel" = "Meaning";
+"dictionaryExampleLabel" = "Example";
+"dictionaryDifficultyLabel" = "Difficulty";
+"dictionaryNoProviderTitle" = "No dictionary-capable AI service configured";
+"dictionaryNoProviderHint" = "Enable OpenAI, DeepSeek, Claude, or a custom OpenAI-compatible service in Settings → Translation.";
 
 /* Translation — settings tab */
+"translationDictionaryModeTitle" = "Dictionary Mode";
+"translationDictionaryModeSubtitle" = "When screenshot translation recognizes a single English word, show pronunciation, meaning, example, translation, and CEFR level.";
 "translationTargetLanguage" = "Target Language";
 "translationTargetHint" = "Recognized text is translated into this language; if it is already in that language, it is translated to English instead.";
 "translationProvidersHeader" = "AI Translation Services";

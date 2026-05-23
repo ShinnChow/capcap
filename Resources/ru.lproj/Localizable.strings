@@ -306,8 +306,18 @@
 "ocrLineCopied" = "Строка скопирована";
 "screenshotTranslationHeader" = "Перевод";
 "screenshotTranslationLanguageButton" = "На %@";
+"dictionaryEntryLabel" = "Слово";
+"dictionaryPhoneticLabel" = "Транскрипция";
+"dictionaryPartOfSpeechLabel" = "Часть речи";
+"dictionaryDefinitionLabel" = "Значение";
+"dictionaryExampleLabel" = "Пример";
+"dictionaryDifficultyLabel" = "Сложность";
+"dictionaryNoProviderTitle" = "Не настроена ИИ-служба для режима словаря";
+"dictionaryNoProviderHint" = "Включите OpenAI, DeepSeek, Claude или свой OpenAI-совместимый сервис в Настройки → Перевод.";
 
 /* Translation — settings tab */
+"translationDictionaryModeTitle" = "Режим словаря";
+"translationDictionaryModeSubtitle" = "Если перевод снимка распознал одно английское слово, показывает произношение, значение, пример, перевод и уровень CEFR.";
 "translationTargetLanguage" = "Язык перевода";
 "translationTargetHint" = "Распознанный текст переводится на этот язык; если он уже на этом языке, он переводится на английский.";
 "translationProvidersHeader" = "ИИ-службы перевода";

@@ -34,19 +34,112 @@ enum TranslationService {
         kind: TranslationProviderKind,
         config: TranslationConfig
     ) -> AsyncThrowingStream<String, Error> {
+        if !kind.isDeepL {
+            return streamChat(
+                text: text,
+                system: systemPrompt(for: target),
+                kind: kind,
+                config: config
+            )
+        }
+
+        return AsyncThrowingStream { continuation in
+            let work = Task.detached(priority: .userInitiated) {
+                do {
+                    let translated = try await translateWithDeepL(text: text, target: target, config: config)
+                    if !translated.isEmpty {
+                        continuation.yield(translated)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in work.cancel() }
+        }
+    }
+
+    /// Sends a tiny translation request to confirm the API key, endpoint and
+    /// model actually work. Returns `nil` on success, or the failure reason.
+    static func verify(
+        kind: TranslationProviderKind,
+        config: TranslationConfig
+    ) async -> Error? {
+        do {
+            for try await _ in stream(text: "hello", target: .chinese, kind: kind, config: config) {
+                return nil   // first delta arrived — credentials work
+            }
+            return nil       // finished without error
+        } catch {
+            return error
+        }
+    }
+
+    static func fetchDictionaryEntry(
+        word: String,
+        target: TranslationLanguage,
+        kind: TranslationProviderKind,
+        config: TranslationConfig
+    ) async throws -> DictionaryEntry {
+        guard !kind.isDeepL else { throw TranslationError.badResponse }
+
+        var raw = ""
+        let prompt = dictionaryUserPrompt(word: word)
+        for try await delta in streamChat(
+            text: prompt,
+            system: dictionarySystemPrompt(for: target),
+            kind: kind,
+            config: config
+        ) {
+            raw += delta
+        }
+        return parseDictionaryEntry(raw, fallbackWord: word)
+    }
+
+    // MARK: - Request building
+
+    private static func systemPrompt(for target: TranslationLanguage) -> String {
+        """
+        You are a professional translation engine. Translate the text the user \
+        provides into \(target.promptName). If the text is already written in \
+        \(target.promptName), translate it into English instead. Output only the \
+        final translation — no explanations, no notes, no quotation marks, no \
+        language labels. Preserve the original line breaks.
+        """
+    }
+
+    private static func dictionarySystemPrompt(for target: TranslationLanguage) -> String {
+        """
+        You are a concise bilingual dictionary engine. Return only valid JSON, \
+        without Markdown fences, comments, or extra text. The JSON object must \
+        contain string fields: word, phonetic, partOfSpeech, definition, \
+        example, exampleTranslation, difficulty. Explain definition in \
+        \(target.promptName). Use IPA for phonetic, English lower-case for \
+        partOfSpeech, one natural English sentence for example, translate that \
+        example into \(target.promptName), and use a CEFR level like A1, A2, \
+        B1, B2, C1, or C2 for difficulty when applicable.
+        """
+    }
+
+    private static func dictionaryUserPrompt(word: String) -> String {
+        "Word: \(word)"
+    }
+
+    private static func streamChat(
+        text: String,
+        system: String,
+        kind: TranslationProviderKind,
+        config: TranslationConfig
+    ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let work = Task.detached(priority: .userInitiated) {
                 do {
-                    if kind.isDeepL {
-                        let translated = try await translateWithDeepL(text: text, target: target, config: config)
-                        if !translated.isEmpty {
-                            continuation.yield(translated)
-                        }
-                        continuation.finish()
-                        return
-                    }
-
-                    let request = try buildRequest(text: text, target: target, kind: kind, config: config)
+                    let request = try buildRequest(
+                        text: text,
+                        system: system,
+                        kind: kind,
+                        config: config
+                    )
                     let (bytes, response) = try await URLSession.shared.bytes(for: request)
                     guard let http = response as? HTTPURLResponse else {
                         throw TranslationError.badResponse
@@ -81,37 +174,9 @@ enum TranslationService {
         }
     }
 
-    /// Sends a tiny translation request to confirm the API key, endpoint and
-    /// model actually work. Returns `nil` on success, or the failure reason.
-    static func verify(
-        kind: TranslationProviderKind,
-        config: TranslationConfig
-    ) async -> Error? {
-        do {
-            for try await _ in stream(text: "hello", target: .chinese, kind: kind, config: config) {
-                return nil   // first delta arrived — credentials work
-            }
-            return nil       // finished without error
-        } catch {
-            return error
-        }
-    }
-
-    // MARK: - Request building
-
-    private static func systemPrompt(for target: TranslationLanguage) -> String {
-        """
-        You are a professional translation engine. Translate the text the user \
-        provides into \(target.promptName). If the text is already written in \
-        \(target.promptName), translate it into English instead. Output only the \
-        final translation — no explanations, no notes, no quotation marks, no \
-        language labels. Preserve the original line breaks.
-        """
-    }
-
     private static func buildRequest(
         text: String,
-        target: TranslationLanguage,
+        system: String,
         kind: TranslationProviderKind,
         config: TranslationConfig
     ) throws -> URLRequest {
@@ -127,7 +192,6 @@ enum TranslationService {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let model = config.resolvedModel(for: kind)
-        let system = systemPrompt(for: target)
         let body: [String: Any]
 
         if kind.isClaude {
@@ -156,6 +220,30 @@ enum TranslationService {
 
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
         return request
+    }
+
+    private static func parseDictionaryEntry(_ raw: String, fallbackWord: String) -> DictionaryEntry {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            return DictionaryEntry(word: fallbackWord)
+        }
+
+        let json = extractJSONObject(from: trimmed) ?? trimmed
+        if let data = json.data(using: .utf8),
+           let entry = try? JSONDecoder().decode(DictionaryEntry.self, from: data) {
+            return entry.normalized(fallbackWord: fallbackWord)
+        }
+
+        return DictionaryEntry(word: fallbackWord, definition: trimmed)
+    }
+
+    private static func extractJSONObject(from text: String) -> String? {
+        guard let start = text.firstIndex(of: "{"),
+              let end = text.lastIndex(of: "}"),
+              start <= end else {
+            return nil
+        }
+        return String(text[start...end])
     }
 
     // MARK: - DeepL

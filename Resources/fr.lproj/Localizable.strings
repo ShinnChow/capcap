@@ -306,8 +306,18 @@
 "ocrLineCopied" = "Ligne copiée";
 "screenshotTranslationHeader" = "Traduction";
 "screenshotTranslationLanguageButton" = "Vers %@";
+"dictionaryEntryLabel" = "Entrée";
+"dictionaryPhoneticLabel" = "Prononciation";
+"dictionaryPartOfSpeechLabel" = "Nature";
+"dictionaryDefinitionLabel" = "Sens";
+"dictionaryExampleLabel" = "Exemple";
+"dictionaryDifficultyLabel" = "Difficulté";
+"dictionaryNoProviderTitle" = "Aucun service IA compatible avec le mode dictionnaire";
+"dictionaryNoProviderHint" = "Activez OpenAI, DeepSeek, Claude ou un service personnalisé compatible OpenAI dans Réglages → Traduction.";
 
 /* Translation — settings tab */
+"translationDictionaryModeTitle" = "Mode dictionnaire";
+"translationDictionaryModeSubtitle" = "Quand la traduction de capture reconnaît un seul mot anglais, affiche la prononciation, le sens, un exemple, sa traduction et le niveau CECR.";
 "translationTargetLanguage" = "Langue cible";
 "translationTargetHint" = "Le texte reconnu est traduit dans cette langue ; s'il est déjà dans cette langue, il est traduit en anglais.";
 "translationProvidersHeader" = "Services de traduction IA";
