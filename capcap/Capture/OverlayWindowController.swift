@@ -157,6 +157,12 @@ class OverlayWindowController {
             if self?.editController?.isTextEditing == true {
                 return event
             }
+            if self?.editController?.undoFromKeyboard(for: event) == true {
+                return nil
+            }
+            if self?.editController?.handleAnnotationClipboardShortcutFromKeyboard(for: event) == true {
+                return nil
+            }
             if self?.editController?.deleteSelectedAnnotationFromKeyboard(for: event) == true {
                 return nil
             }
