@@ -103,7 +103,7 @@ class StatusBarController: NSObject {
         if let url = Bundle.main.url(forResource: "MenuBarIcon", withExtension: "svg"),
            let image = NSImage(contentsOf: url) {
             image.size = size
-            image.isTemplate = false
+            image.isTemplate = true
             return image
         }
 
