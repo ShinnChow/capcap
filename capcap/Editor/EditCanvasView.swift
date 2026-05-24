@@ -1619,12 +1619,11 @@ class EditCanvasView: NSView {
         context.stroke(box)
         context.restoreGState()
 
-        // 1b. Resize grips — eight dots on the rect's corners + edge mids,
-        // shown for annotations that support resizing (mosaic).
+        // 1b. Resize grips — eight dots on the rect's corners + edge mids.
         if isResizable(annotation) {
             for anchor in ResizeAnchor.allCases {
                 drawHandleDot(
-                    at: anchor.point(in: annotation.boundingRect),
+                    at: resizeHandlePoint(anchor, for: annotation),
                     size: EditCanvasView.resizeHandleSize,
                     fill: NSColor.white.withAlphaComponent(0.95),
                     stroke: accentGreen,
@@ -1854,7 +1853,14 @@ class EditCanvasView: NSView {
 
     /// True for annotations that expose the eight-grip resize chrome.
     private func isResizable(_ annotation: Annotation) -> Bool {
-        annotation is MosaicAnnotation || annotation is MagnifierAnnotation
+        annotation is RectAnnotation
+            || annotation is EllipseAnnotation
+            || annotation is MosaicAnnotation
+            || annotation is MagnifierAnnotation
+    }
+
+    private func resizeHandlePoint(_ anchor: ResizeAnchor, for annotation: Annotation) -> NSPoint {
+        rotated(anchor.point(in: annotation.boundingRect), for: annotation)
     }
 
     private func hitTestSelectionHandle(at point: NSPoint) -> HandleDragState.Kind? {
@@ -1869,7 +1875,7 @@ class EditCanvasView: NSView {
         if isResizable(annotation) {
             let r = EditCanvasView.resizeHandleSize / 2 + 4
             for anchor in ResizeAnchor.allCases {
-                let c = anchor.point(in: annotation.boundingRect)
+                let c = resizeHandlePoint(anchor, for: annotation)
                 if hypot(point.x - c.x, point.y - c.y) <= r {
                     return .resize(anchor)
                 }
@@ -2004,18 +2010,11 @@ class EditCanvasView: NSView {
                 // Move only the edge(s) this grip owns; the opposite edge(s)
                 // stay pinned. min/abs keep the rect valid if the user drags a
                 // grip past its opposite side.
-                let o = mosaic.rect
-                var minX = o.minX, maxX = o.maxX
-                var minY = o.minY, maxY = o.maxY
-                if anchor.movesMinX { minX = currentMouse.x }
-                if anchor.movesMaxX { maxX = currentMouse.x }
-                if anchor.movesMinY { minY = currentMouse.y }
-                if anchor.movesMaxY { maxY = currentMouse.y }
-                let newRect = NSRect(
-                    x: min(minX, maxX),
-                    y: min(minY, maxY),
-                    width: abs(maxX - minX),
-                    height: abs(maxY - minY)
+                let newRect = resizedRect(
+                    from: mosaic.rect,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 4
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 // Re-pixelate from the untouched base image so the mosaic
@@ -2034,10 +2033,139 @@ class EditCanvasView: NSView {
                     rect: region.rect,
                     pixelatedImage: region.pixelatedImage
                 )
+            } else if let rect = state.original as? RectAnnotation {
+                let newRect = resizedRotatedRect(
+                    from: rect.rect,
+                    rotation: rect.rotation,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 4
+                )
+                guard newRect.width >= 4, newRect.height >= 4 else { return }
+                annotations[state.index] = RectAnnotation(
+                    rect: newRect,
+                    color: rect.color,
+                    lineWidth: rect.lineWidth,
+                    filled: rect.filled,
+                    rotation: rect.rotation
+                )
+            } else if let ellipse = state.original as? EllipseAnnotation {
+                let newRect = resizedRotatedRect(
+                    from: ellipse.rect,
+                    rotation: ellipse.rotation,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 4
+                )
+                guard newRect.width >= 4, newRect.height >= 4 else { return }
+                annotations[state.index] = EllipseAnnotation(
+                    rect: newRect,
+                    color: ellipse.color,
+                    lineWidth: ellipse.lineWidth,
+                    filled: ellipse.filled,
+                    rotation: ellipse.rotation
+                )
             }
         }
 
         needsDisplay = true
+    }
+
+    private func resizedRect(
+        from original: NSRect,
+        anchor: ResizeAnchor,
+        currentMouse: NSPoint,
+        minimumSize: CGFloat
+    ) -> NSRect {
+        var minX = original.minX
+        var maxX = original.maxX
+        var minY = original.minY
+        var maxY = original.maxY
+
+        if anchor.movesMinX { minX = currentMouse.x }
+        if anchor.movesMaxX { maxX = currentMouse.x }
+        if anchor.movesMinY { minY = currentMouse.y }
+        if anchor.movesMaxY { maxY = currentMouse.y }
+
+        let width = abs(maxX - minX)
+        let height = abs(maxY - minY)
+        guard width >= minimumSize, height >= minimumSize else {
+            return original
+        }
+
+        return NSRect(
+            x: min(minX, maxX),
+            y: min(minY, maxY),
+            width: width,
+            height: height
+        )
+    }
+
+    private func resizedRotatedRect(
+        from original: NSRect,
+        rotation: CGFloat,
+        anchor: ResizeAnchor,
+        currentMouse: NSPoint,
+        minimumSize: CGFloat
+    ) -> NSRect {
+        let originalHalfWidth = original.width / 2
+        let originalHalfHeight = original.height / 2
+        let originalCenter = NSPoint(x: original.midX, y: original.midY)
+        let minHalfSize = minimumSize / 2
+
+        let xSign: CGFloat? = anchor.movesMinX ? -1 : (anchor.movesMaxX ? 1 : nil)
+        let ySign: CGFloat? = anchor.movesMinY ? -1 : (anchor.movesMaxY ? 1 : nil)
+
+        let fixedLocal = NSPoint(
+            x: xSign.map { -$0 * originalHalfWidth } ?? 0,
+            y: ySign.map { -$0 * originalHalfHeight } ?? 0
+        )
+        let fixedWorld = point(originalCenter, adding: rotatedVector(fixedLocal, by: rotation))
+        let deltaLocal = unrotatedVector(delta(from: fixedWorld, to: currentMouse), by: rotation)
+
+        var halfWidth = originalHalfWidth
+        var halfHeight = originalHalfHeight
+        if let xSign {
+            halfWidth = xSign * deltaLocal.x / 2
+            guard halfWidth >= minHalfSize else { return original }
+        }
+        if let ySign {
+            halfHeight = ySign * deltaLocal.y / 2
+            guard halfHeight >= minHalfSize else { return original }
+        }
+
+        let centerLocal = NSPoint(
+            x: xSign.map { $0 * halfWidth } ?? 0,
+            y: ySign.map { $0 * halfHeight } ?? 0
+        )
+        let center = point(fixedWorld, adding: rotatedVector(centerLocal, by: rotation))
+        return NSRect(
+            x: center.x - halfWidth,
+            y: center.y - halfHeight,
+            width: halfWidth * 2,
+            height: halfHeight * 2
+        )
+    }
+
+    private func rotatedVector(_ vector: NSPoint, by rotation: CGFloat) -> NSPoint {
+        let cosR = cos(rotation)
+        let sinR = sin(rotation)
+        return NSPoint(
+            x: vector.x * cosR - vector.y * sinR,
+            y: vector.x * sinR + vector.y * cosR
+        )
+    }
+
+    private func unrotatedVector(_ vector: NSPoint, by rotation: CGFloat) -> NSPoint {
+        rotatedVector(vector, by: -rotation)
+    }
+
+    private func point(_ point: NSPoint, adding vector: NSPoint) -> NSPoint {
+        NSPoint(x: point.x + vector.x, y: point.y + vector.y)
+    }
+
+    private func delta(from start: NSPoint, to end: NSPoint) -> NSPoint {
+        NSPoint(x: end.x - start.x, y: end.y - start.y)
     }
 
     // MARK: - Cursor
