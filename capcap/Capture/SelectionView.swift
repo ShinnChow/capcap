@@ -68,7 +68,13 @@ class SelectionView: NSView {
     var windowDetector: WindowDetector?
 
     /// The window rect currently highlighted under the cursor (view coordinates).
+    /// This is clipped to the overlay's visible bounds so the hover cutout
+    /// stays drawable even when the real window extends off screen.
     private var hoverWindowRect: NSRect?
+    /// The full detected window rect in view coordinates. This may extend
+    /// outside `bounds`; use it for the actual clicked-window capture so the
+    /// output keeps the real window dimensions.
+    private var hoverWindowFullRect: NSRect?
     private var hoverWindowID: CGWindowID?
 
     /// Pending window selection — confirmed on mouseUp if no significant drag occurs.
@@ -152,9 +158,10 @@ class SelectionView: NSView {
         // On a highlighted window: defer confirmation until mouseUp.
         // If the user drags past the threshold, fall through to free-form drawing.
         if state == .idle, let hoverRect = hoverWindowRect {
-            pendingWindowRect = hoverRect
+            pendingWindowRect = hoverWindowFullRect ?? hoverRect
             pendingWindowID = hoverWindowID
             hoverWindowRect = nil
+            hoverWindowFullRect = nil
             hoverWindowID = nil
             selectionOrigin = point
             dragStart = point
@@ -373,8 +380,11 @@ class SelectionView: NSView {
                 NSCursor.crosshair.set()
                 return
             }
-            if hoverWindowRect != clamped || hoverWindowID != detected.windowID {
+            if hoverWindowRect != clamped
+                || hoverWindowFullRect != viewRect
+                || hoverWindowID != detected.windowID {
                 hoverWindowRect = clamped
+                hoverWindowFullRect = viewRect
                 hoverWindowID = detected.windowID
                 needsDisplay = true
             }
@@ -388,6 +398,7 @@ class SelectionView: NSView {
     private func clearHover() {
         if hoverWindowRect != nil {
             hoverWindowRect = nil
+            hoverWindowFullRect = nil
             hoverWindowID = nil
             needsDisplay = true
         }
