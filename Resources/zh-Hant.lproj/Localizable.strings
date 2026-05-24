@@ -98,7 +98,7 @@
 "mergedLongScreenshot" = "已合併長截圖";
 "autoScrollPermissionNeeded" = "長截圖需要「輔助使用」權限，請在「系統設定 → 隱私權與安全性 → 輔助使用」中允許 capcap。";
 "cropLongScreenshotHint" = "拖曳上下邊緣裁切長截圖，按 Enter 或點一下 ✓ 確認";
-"scrollCaptureHint" = "按 Enter 完成長截圖";
+"scrollCaptureHint" = "按任意鍵結束捲動";
 "finderEditExitHint" = "正在編輯 Finder 圖片。按 X 結束編輯";
 "clipboardEditExitHint" = "正在編輯剪貼簿圖片。按 X 結束編輯";
 "selectedImageEditNoImage" = "Finder 中沒有選取單張圖片";

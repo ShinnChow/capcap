@@ -98,7 +98,7 @@
 "mergedLongScreenshot" = "長いスクリーンショットを結合しました";
 "autoScrollPermissionNeeded" = "スクロールキャプチャにはアクセシビリティ権限が必要です。システム設定 → プライバシーとセキュリティ → アクセシビリティ で capcap を許可してください。";
 "cropLongScreenshotHint" = "上下の端をドラッグしてトリミング — Enter キーまたは ✓ をタップ";
-"scrollCaptureHint" = "Enter キーで長いスクリーンショットを終了";
+"scrollCaptureHint" = "任意のキーでスクロールを終了";
 "finderEditExitHint" = "Finder から編集中。X キーで編集を終了";
 "clipboardEditExitHint" = "クリップボードから編集中。X キーで編集を終了";
 "selectedImageEditNoImage" = "Finder で画像が 1 枚選択されていません";
