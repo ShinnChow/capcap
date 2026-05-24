@@ -38,6 +38,23 @@ final class ScrollCapturer {
     private var frames: [CapturedFrame] = []
     private var overlaps: [Int] = []
 
+    // MARK: - Sticky element exclusion state
+    //
+    // Pages with persistent UI (scrollbars on the right, sticky nav bars
+    // at the top) confuse Vision's translational image registration: the
+    // scrollbar slider sits in a different place between frames at a
+    // different rate than page content, and a sticky header doesn't move
+    // at all. Vision treats both regions as evidence and reports a
+    // translation that splits the difference — typically much smaller
+    // than the page's actual scroll offset. We detect both regions once
+    // per session from the first usable frame pair and crop them out of
+    // every image fed into Vision afterwards.
+    private var scrollbarWidthPx: Int = 0
+    private var scrollbarDetected: Bool = false
+    private var stickyHeaderPx: Int = 0
+    private var stickyHeaderDetectionDone: Bool = false
+    private var stickyHeaderSamplesTaken: Int = 0
+
     // Incremental preview state
     private var previewBitmap: BitmapData?
     private var previewHeightPixels: Int = 0
@@ -324,13 +341,44 @@ final class ScrollCapturer {
         let height = min(previous.height, current.height)
         guard height > 0 else { return 0 }
 
+        // One-time scrollbar detection on the first usable frame pair.
+        // Once cached, the right `scrollbarWidthPx` columns of every frame
+        // are kept out of Vision's view to stop the moving slider from
+        // poisoning the translation estimate.
+        if !scrollbarDetected {
+            detectScrollbar(current: current, previous: previous)
+        }
+
         guard let previousCG = previous.makeCGImage(pixelHeight: previous.height),
               let currentCG = current.makeCGImage(pixelHeight: current.height) else {
             return height
         }
 
-        let request = VNTranslationalImageRegistrationRequest(targetedCGImage: previousCG)
-        let handler = VNImageRequestHandler(cgImage: currentCG, options: [:])
+        // Crop sticky-UI regions out of the Vision inputs. The X crop is
+        // safe because Vision measures Y translation independently per
+        // column. The Y crop is safe because both images get the same
+        // top trimmed — the residual Y shift Vision reports is therefore
+        // the shift of post-header content, which is exactly the scroll
+        // distance we want.
+        let cropWidth = max(0, currentCG.width - scrollbarWidthPx)
+        let cropY = stickyHeaderDetectionDone
+            ? min(stickyHeaderPx, currentCG.height / 5)
+            : 0
+        let cropHeight = currentCG.height - cropY
+
+        let visionPrevious: CGImage
+        let visionCurrent: CGImage
+        if cropWidth >= 50 && cropHeight >= 50 && (scrollbarWidthPx > 0 || cropY > 0) {
+            let cropRect = CGRect(x: 0, y: cropY, width: cropWidth, height: cropHeight)
+            visionPrevious = previousCG.cropping(to: cropRect) ?? previousCG
+            visionCurrent = currentCG.cropping(to: cropRect) ?? currentCG
+        } else {
+            visionPrevious = previousCG
+            visionCurrent = currentCG
+        }
+
+        let request = VNTranslationalImageRegistrationRequest(targetedCGImage: visionPrevious)
+        let handler = VNImageRequestHandler(cgImage: visionCurrent, options: [:])
 
         guard (try? handler.perform([request])) != nil,
               let observation = request.results?.first as? VNImageTranslationAlignmentObservation
@@ -342,11 +390,171 @@ final class ScrollCapturer {
         // must be shifted to align with the target (previous frame). For a page
         // that scrolled DOWN between frames, this comes out positive and equals
         // the height of newly-revealed content at the bottom of `current`.
+        // Because both Vision inputs were cropped identically, ty is the same
+        // shift we would see in the original frame coordinates — apply directly.
         let newContentPx = Int(observation.alignmentTransform.ty.rounded())
+
+        // First time we see a real shift, try to learn where the sticky
+        // header ends so subsequent frames can crop it out.
+        if newContentPx > 5 && !stickyHeaderDetectionDone {
+            detectStickyHeader(current: current, previous: previous, shiftPx: newContentPx)
+        }
+
         guard newContentPx > 0 else { return height }  // upward scroll or no shift
 
         let overlap = height - newContentPx
         return max(0, min(height, overlap))
+    }
+
+    // MARK: - Sticky element detection
+
+    /// Scans the right edge of the frame pair looking for columns whose
+    /// pixels differ between the two captures. Those columns are where the
+    /// scrollbar slider lives — it moves while the page scrolls, while
+    /// page content shifts vertically. Identifying and cropping it out
+    /// keeps Vision from anchoring on the slider's bounding box.
+    private func detectScrollbar(current: BitmapData, previous: BitmapData) {
+        defer { scrollbarDetected = true }
+
+        let width = min(current.width, previous.width)
+        let height = min(current.height, previous.height)
+        guard width > 80, height > 40 else { return }
+
+        let maxScan = min(50, width / 8)
+        let sampleStart = height / 5
+        let sampleEnd = (height * 4) / 5
+        let sampleStep = max(1, (sampleEnd - sampleStart) / 30)
+
+        var detectedWidth = 0
+        var sawQuietAfterMoving = false
+
+        for offset in 0..<maxScan {
+            let column = width - 1 - offset
+            var totalDiff = 0
+            var samples = 0
+
+            var row = sampleStart
+            while row < sampleEnd {
+                let lhs = current.pixel(x: column, y: row)
+                let rhs = previous.pixel(x: column, y: row)
+                totalDiff +=
+                    abs(Int(lhs.r) - Int(rhs.r)) +
+                    abs(Int(lhs.g) - Int(rhs.g)) +
+                    abs(Int(lhs.b) - Int(rhs.b))
+                samples += 1
+                row += sampleStep
+            }
+
+            guard samples > 0 else { continue }
+            let avg = totalDiff / samples
+
+            if avg > 8 {
+                detectedWidth = offset + 1
+            } else if detectedWidth > 0 {
+                // First quiet column past the moving region — scrollbar
+                // edge found, stop scanning.
+                sawQuietAfterMoving = true
+                break
+            }
+        }
+
+        _ = sawQuietAfterMoving
+        if detectedWidth >= 3 && detectedWidth <= 40 {
+            // Small buffer past the detected edge to absorb anti-aliasing
+            // fringe and any 1–2 px misalignment in our column sampling.
+            scrollbarWidthPx = detectedWidth + 4
+        }
+    }
+
+    /// Scans top-to-bottom looking for the first row that genuinely differs
+    /// between the two captures. Rows above that boundary held identical
+    /// pixels in both frames, which is the signature of a sticky element
+    /// (top nav bar, toolbar, banner). Multiple samples are required to
+    /// agree before the value is locked in — a single observation could
+    /// be coincidental on a content-light page.
+    private func detectStickyHeader(current: BitmapData, previous: BitmapData, shiftPx: Int) {
+        let width = min(current.width, previous.width)
+        let height = min(current.height, previous.height)
+        guard width > 80, height > 40 else {
+            stickyHeaderDetectionDone = true
+            return
+        }
+
+        // Exclude the right margin (scrollbar) from sampling so its
+        // motion doesn't fool the per-row diff into thinking a header
+        // row is non-sticky.
+        let scanWidth = max(40, width - scrollbarWidthPx)
+        let columnStart = width / 10
+        let columnEnd = min(scanWidth - 1, (scanWidth * 9) / 10)
+        let columnStep = max(1, (columnEnd - columnStart) / 20)
+
+        var firstMovingRow = -1
+        for row in 0..<height {
+            var totalDiff = 0
+            var samples = 0
+
+            var column = columnStart
+            while column <= columnEnd {
+                let lhs = current.pixel(x: column, y: row)
+                let rhs = previous.pixel(x: column, y: row)
+                totalDiff +=
+                    abs(Int(lhs.r) - Int(rhs.r)) +
+                    abs(Int(lhs.g) - Int(rhs.g)) +
+                    abs(Int(lhs.b) - Int(rhs.b))
+                samples += 1
+                column += columnStep
+            }
+
+            guard samples > 0 else { continue }
+            if totalDiff / samples > 8 {
+                firstMovingRow = row
+                break
+            }
+        }
+
+        guard firstMovingRow >= 0 else {
+            // Whole frame is frozen — page didn't actually scroll. Don't
+            // make any decision yet; wait for a later frame pair.
+            return
+        }
+
+        let frozenRows = firstMovingRow
+        let maxPlausibleHeader = (height * 6) / 10  // 60% of height
+
+        stickyHeaderSamplesTaken += 1
+
+        if frozenRows < 10 {
+            // Too small to be a real sticky element. Lock in "no header".
+            stickyHeaderPx = 0
+            stickyHeaderDetectionDone = true
+            return
+        }
+
+        if frozenRows > maxPlausibleHeader {
+            // Implausibly large frozen region — give up rather than
+            // chop away real content.
+            stickyHeaderPx = 0
+            stickyHeaderDetectionDone = true
+            return
+        }
+
+        if stickyHeaderSamplesTaken == 1 {
+            stickyHeaderPx = frozenRows
+        } else if abs(frozenRows - stickyHeaderPx) <= 5 {
+            stickyHeaderPx = min(stickyHeaderPx, frozenRows)
+        } else {
+            // Sample disagrees with the previous one by too much.
+            // Detection isn't stable on this page; bail out without
+            // applying any header crop.
+            stickyHeaderPx = 0
+            stickyHeaderDetectionDone = true
+            return
+        }
+
+        // Two consistent samples is enough to commit.
+        if stickyHeaderSamplesTaken >= 2 {
+            stickyHeaderDetectionDone = true
+        }
     }
 
     // MARK: - Image Helpers
