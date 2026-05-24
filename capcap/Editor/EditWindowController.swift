@@ -71,6 +71,8 @@ class EditWindowController {
     private var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
     /// Whether new text annotations get a contrast outline.
     private var currentTextStroke: Bool = Defaults.lastTextStroke
+    /// Whether new rectangle/ellipse annotations are filled.
+    private var currentShapeFill: Bool = Defaults.lastShapeFill
     /// Marker keeps its own color/size slot so toggling between pen and
     /// marker preserves each tool's last-used choice.
     private var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
@@ -285,6 +287,7 @@ class EditWindowController {
         canvasView?.currentLineWidth = currentLineWidth
         canvasView?.currentMosaicBlockSize = currentMosaicBlockSize
         canvasView?.currentFontSize = currentFontSize
+        canvasView?.currentShapeFill = currentShapeFill
         toolbars.forEach { $0.updateSelection(tool: tool) }
         updateEditorInteractionState()
 
@@ -352,9 +355,11 @@ class EditWindowController {
         case let r as RectAnnotation:
             currentColor = r.color
             currentLineWidth = r.lineWidth
+            currentShapeFill = r.filled
         case let e as EllipseAnnotation:
             currentColor = e.color
             currentLineWidth = e.lineWidth
+            currentShapeFill = e.filled
         case let a as ArrowAnnotation:
             currentColor = a.color
             currentLineWidth = a.lineWidth
@@ -373,7 +378,7 @@ class EditWindowController {
         subToolbarView = nil
 
         switch tool {
-        case .pen, .rectangle, .ellipse, .arrow, .line:
+        case .pen, .arrow, .line:
             showColorSizeSubToolbar(
                 sizes: [2, 4, 6],
                 dynamicColor: pickedColorSwatch,
@@ -381,6 +386,28 @@ class EditWindowController {
                 onSize: { [weak self] size in
                     self?.currentLineWidth = size
                     self?.canvasView?.currentLineWidth = size
+                }
+            )
+        case .rectangle, .ellipse:
+            showColorSizeSubToolbar(
+                sizes: [2, 4, 6],
+                dynamicColor: pickedColorSwatch,
+                currentSize: currentLineWidth,
+                width: ColorSizeSubToolbar.preferredWidth(
+                    sizes: [2, 4, 6],
+                    dynamicColor: pickedColorSwatch,
+                    showsFillCheckbox: true
+                ),
+                onSize: { [weak self] size in
+                    self?.currentLineWidth = size
+                    self?.canvasView?.currentLineWidth = size
+                },
+                fillEnabled: currentShapeFill,
+                onFill: { [weak self] enabled in
+                    self?.currentShapeFill = enabled
+                    self?.canvasView?.currentShapeFill = enabled
+                    Defaults.lastShapeFill = enabled
+                    self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withFill(enabled) }
                 }
             )
         case .marker:
@@ -422,7 +449,9 @@ class EditWindowController {
         currentSize: CGFloat,
         width: CGFloat = 300,
         onColor: ((NSColor) -> Void)? = nil,
-        onSize: ((CGFloat) -> Void)? = nil
+        onSize: ((CGFloat) -> Void)? = nil,
+        fillEnabled: Bool? = nil,
+        onFill: ((Bool) -> Void)? = nil
     ) {
         guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
         let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
@@ -440,7 +469,8 @@ class EditWindowController {
             sizes: sizes,
             currentColor: resolvedColor,
             dynamicColor: dynamicColor,
-            currentSize: currentSize
+            currentSize: currentSize,
+            fillEnabled: fillEnabled
         )
         view.onColorChanged = { [weak self] color in
             if let onColor {
@@ -458,6 +488,7 @@ class EditWindowController {
             onSize?(size)
             self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withLineWidth(size) }
         }
+        view.onFillChanged = onFill
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
         subToolbarView = view
@@ -2305,14 +2336,18 @@ private final class ScrollPreviewWindow: NSPanel {
 private class ColorSizeSubToolbar: NSView {
     var currentColor: NSColor = .red
     var currentSize: CGFloat = 3.0
+    var fillEnabled: Bool = false
     var onColorChanged: ((NSColor) -> Void)?
     var onSizeChanged: ((CGFloat) -> Void)?
+    var onFillChanged: ((Bool) -> Void)?
 
     private var sizeButtons: [NSView] = []
     private var colorButtons: [NSView] = []
+    private var fillCheckbox: HUDCheckboxButton?
 
     private let sizes: [CGFloat]
     private let dynamicColor: NSColor?
+    private let showsFillCheckbox: Bool
     private let baseColors: [NSColor] = [
         NSColor(red: 1.0, green: 0.23, blue: 0.19, alpha: 1.0),   // Red
         NSColor(red: 0.0, green: 0.48, blue: 1.0, alpha: 1.0),    // Blue
@@ -2328,17 +2363,57 @@ private class ColorSizeSubToolbar: NSView {
         return baseColors + [dynamicColor]
     }
 
+    private static let leadingPad: CGFloat = 12
+    private static let swatchSize: CGFloat = 18
+    private static let swatchGap: CGFloat = 5
+    private static let separatorGap: CGFloat = 6
+    private static let checkboxGap: CGFloat = 8
+    private static let trailingPad: CGFloat = 12
+    private static let baseColorCount: CGFloat = 8
+
+    private static func fillCheckboxWidth() -> CGFloat {
+        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        let textWidth = ceil((L10n.shapeFillEffect as NSString).size(withAttributes: [.font: font]).width)
+        return 16 + 8 + textWidth
+    }
+
+    static func preferredWidth(
+        sizes: [CGFloat],
+        dynamicColor: NSColor?,
+        showsFillCheckbox: Bool
+    ) -> CGFloat {
+        var x = leadingPad
+        for i in sizes.indices {
+            x += 6 + CGFloat(i) * 4 + 10
+        }
+        if !sizes.isEmpty {
+            x += 8 + 1 + 9
+        }
+
+        let colorCount = baseColorCount + (dynamicColor == nil ? 0.0 : 1.0)
+        x += colorCount * swatchSize + max(colorCount - 1, 0) * swatchGap
+
+        if showsFillCheckbox {
+            x += separatorGap + 1 + checkboxGap + fillCheckboxWidth()
+        }
+
+        return ceil(x + trailingPad)
+    }
+
     init(
         frame: NSRect,
         sizes: [CGFloat] = [2, 4, 6],
         currentColor: NSColor = .red,
         dynamicColor: NSColor? = nil,
-        currentSize: CGFloat = 3.0
+        currentSize: CGFloat = 3.0,
+        fillEnabled: Bool? = nil
     ) {
         self.sizes = sizes
         self.currentColor = currentColor
         self.dynamicColor = dynamicColor
         self.currentSize = currentSize
+        self.fillEnabled = fillEnabled ?? false
+        self.showsFillCheckbox = fillEnabled != nil
         super.init(frame: frame)
         setup()
     }
@@ -2379,7 +2454,7 @@ private class ColorSizeSubToolbar: NSView {
         }
 
         // Color swatches
-        let swatchSize: CGFloat = 18
+        let swatchSize: CGFloat = ColorSizeSubToolbar.swatchSize
         for (i, color) in colors.enumerated() {
             let swatch = ColorSwatchView(
                 frame: NSRect(x: x, y: midY - swatchSize/2, width: swatchSize, height: swatchSize),
@@ -2391,7 +2466,32 @@ private class ColorSizeSubToolbar: NSView {
             swatch.addGestureRecognizer(click)
             addSubview(swatch)
             colorButtons.append(swatch)
-            x += swatchSize + 5
+            x += swatchSize + ColorSizeSubToolbar.swatchGap
+        }
+
+        if showsFillCheckbox {
+            let lastSwatchRightEdge = x - ColorSizeSubToolbar.swatchGap
+            let fillSepX = lastSwatchRightEdge + ColorSizeSubToolbar.separatorGap
+            let fillSep = NSView(frame: NSRect(x: fillSepX, y: 6, width: 1, height: bounds.height - 12))
+            fillSep.wantsLayer = true
+            fillSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            addSubview(fillSep)
+
+            let checkboxHeight: CGFloat = 20
+            let checkbox = HUDCheckboxButton(
+                frame: NSRect(
+                    x: fillSepX + 1 + ColorSizeSubToolbar.checkboxGap,
+                    y: midY - checkboxHeight / 2,
+                    width: ColorSizeSubToolbar.fillCheckboxWidth(),
+                    height: checkboxHeight
+                ),
+                title: L10n.shapeFillEffect,
+                target: self,
+                action: #selector(fillCheckboxChanged(_:))
+            )
+            checkbox.state = fillEnabled ? .on : .off
+            addSubview(checkbox)
+            fillCheckbox = checkbox
         }
     }
 
@@ -2412,6 +2512,11 @@ private class ColorSizeSubToolbar: NSView {
         currentColor = paletteColors[index]
         onColorChanged?(currentColor)
         updateColorSelection()
+    }
+
+    @objc private func fillCheckboxChanged(_ sender: HUDCheckboxButton) {
+        fillEnabled = sender.state == .on
+        onFillChanged?(fillEnabled)
     }
 
     private func updateSizeSelection() {

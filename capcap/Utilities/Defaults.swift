@@ -237,6 +237,9 @@ enum L10n {
     // Text tool
     static var textStrokeEffect: String { s("textStrokeEffect") }
 
+    // Shape tool
+    static var shapeFillEffect: String { s("shapeFillEffect") }
+
     // Language
     static var languageHeader: String { s("languageHeader") }
 
@@ -821,6 +824,12 @@ struct Defaults {
     static var lastTextStroke: Bool {
         get { defaults.bool(forKey: "lastTextStroke") }
         set { defaults.set(newValue, forKey: "lastTextStroke") }
+    }
+
+    /// Whether the rectangle/ellipse tool's fill checkbox was last left on.
+    static var lastShapeFill: Bool {
+        get { defaults.bool(forKey: "lastShapeFill") }
+        set { defaults.set(newValue, forKey: "lastShapeFill") }
     }
 
     static var lastPickedColorHex: String? {

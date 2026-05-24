@@ -66,6 +66,8 @@ class EditCanvasView: NSView {
     var currentTextStroke: Bool = Defaults.lastTextStroke {
         didSet { activeTextField?.hasStroke = currentTextStroke }
     }
+    /// Whether newly drawn rectangles/ellipses should be filled.
+    var currentShapeFill: Bool = Defaults.lastShapeFill
     var currentLineWidth: CGFloat = 3.0
     /// Base width for the marker brush. Drawn at `× MarkerAnnotation.brushScale`.
     var currentMarkerLineWidth: CGFloat = 4.0
@@ -472,11 +474,11 @@ class EditCanvasView: NSView {
         }
         if let a = a as? RectAnnotation, let b = b as? RectAnnotation {
             return a.rect == b.rect && a.lineWidth == b.lineWidth
-                && a.rotation == b.rotation && a.color == b.color
+                && a.filled == b.filled && a.rotation == b.rotation && a.color == b.color
         }
         if let a = a as? EllipseAnnotation, let b = b as? EllipseAnnotation {
             return a.rect == b.rect && a.lineWidth == b.lineWidth
-                && a.rotation == b.rotation && a.color == b.color
+                && a.filled == b.filled && a.rotation == b.rotation && a.color == b.color
         }
         if let a = a as? ArrowAnnotation, let b = b as? ArrowAnnotation {
             return a.startPoint == b.startPoint && a.endPoint == b.endPoint
@@ -838,7 +840,8 @@ class EditCanvasView: NSView {
                     annotations.append(RectAnnotation(
                         rect: rect,
                         color: currentColor,
-                        lineWidth: currentLineWidth
+                        lineWidth: currentLineWidth,
+                        filled: currentShapeFill
                     ))
                 }
             }
@@ -853,7 +856,8 @@ class EditCanvasView: NSView {
                     annotations.append(EllipseAnnotation(
                         rect: rect,
                         color: currentColor,
-                        lineWidth: currentLineWidth
+                        lineWidth: currentLineWidth,
+                        filled: currentShapeFill
                     ))
                 }
             }
@@ -966,9 +970,17 @@ class EditCanvasView: NSView {
             switch activeTool {
             case .rectangle:
                 let rect = rectFromTwoPoints(start, current)
+                if currentShapeFill {
+                    context.setFillColor(currentColor.cgColor)
+                    context.fill(rect)
+                }
                 context.stroke(rect)
             case .ellipse:
                 let rect = rectFromTwoPoints(start, current)
+                if currentShapeFill {
+                    context.setFillColor(currentColor.cgColor)
+                    context.fillEllipse(in: rect)
+                }
                 context.strokeEllipse(in: rect)
             case .mosaic:
                 // Mosaic preview: a semi-transparent gray fill marking the

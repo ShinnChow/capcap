@@ -156,6 +156,7 @@
 "beautifyPresetWallpaper" = "Обои";
 "beautifyShadowEffect" = "Тень";
 "textStrokeEffect" = "Обводка";
+"shapeFillEffect" = "Заливка";
 
 /* Language */
 "languageHeader" = "Язык";

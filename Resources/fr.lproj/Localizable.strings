@@ -156,6 +156,7 @@
 "beautifyPresetWallpaper" = "Fond d'écran";
 "beautifyShadowEffect" = "Ombre";
 "textStrokeEffect" = "Contour";
+"shapeFillEffect" = "Remplir";
 
 /* Language */
 "languageHeader" = "Langue";

@@ -156,6 +156,7 @@
 "beautifyPresetWallpaper" = "壁纸";
 "beautifyShadowEffect" = "阴影效果";
 "textStrokeEffect" = "描边";
+"shapeFillEffect" = "填充";
 
 /* Language */
 "languageHeader" = "语言";

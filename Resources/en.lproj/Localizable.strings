@@ -156,6 +156,7 @@
 "beautifyPresetWallpaper" = "Wallpaper";
 "beautifyShadowEffect" = "Shadow Effect";
 "textStrokeEffect" = "Stroke";
+"shapeFillEffect" = "Fill";
 
 /* Language */
 "languageHeader" = "Language";

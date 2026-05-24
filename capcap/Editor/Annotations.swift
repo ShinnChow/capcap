@@ -37,6 +37,7 @@ protocol Annotation {
     func withColor(_ color: NSColor) -> Annotation
     func withLineWidth(_ lineWidth: CGFloat) -> Annotation
     func withFontSize(_ fontSize: CGFloat) -> Annotation
+    func withFill(_ filled: Bool) -> Annotation
 }
 
 extension Annotation {
@@ -46,6 +47,7 @@ extension Annotation {
     func withColor(_ color: NSColor) -> Annotation { self }
     func withLineWidth(_ lineWidth: CGFloat) -> Annotation { self }
     func withFontSize(_ fontSize: CGFloat) -> Annotation { self }
+    func withFill(_ filled: Bool) -> Annotation { self }
 
     /// Wraps `draw` with the rotation transform if the annotation has any.
     /// All draw methods are written in unrotated coordinates; this helper is
@@ -427,32 +429,53 @@ struct RectAnnotation: Annotation {
     let rect: NSRect
     let color: NSColor
     let lineWidth: CGFloat
+    let filled: Bool
     var rotation: CGFloat = 0
+
+    init(
+        rect: NSRect,
+        color: NSColor,
+        lineWidth: CGFloat,
+        filled: Bool = false,
+        rotation: CGFloat = 0
+    ) {
+        self.rect = rect
+        self.color = color
+        self.lineWidth = lineWidth
+        self.filled = filled
+        self.rotation = rotation
+    }
 
     var boundingRect: NSRect { rect }
     var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
+        context.setFillColor(color.cgColor)
         context.setStrokeColor(color.cgColor)
         context.setLineWidth(lineWidth)
+        if filled {
+            context.fill(rect)
+        }
         context.stroke(rect)
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
         let p = unrotate(point)
         let path = CGPath(rect: rect, transform: nil)
+        if filled, path.contains(p) {
+            return true
+        }
         return strokedPathContains(path, point: p, lineWidth: lineWidth)
     }
 
     func translated(by delta: NSPoint) -> Annotation {
-        var copy = self
-        copy = RectAnnotation(
+        RectAnnotation(
             rect: rect.offsetBy(dx: delta.x, dy: delta.y),
             color: color,
             lineWidth: lineWidth,
+            filled: filled,
             rotation: rotation
         )
-        return copy
     }
 
     func withRotation(_ rotation: CGFloat) -> Annotation {
@@ -462,11 +485,15 @@ struct RectAnnotation: Annotation {
     }
 
     func withColor(_ color: NSColor) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, rotation: rotation)
     }
 
     func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, rotation: rotation)
+    }
+
+    func withFill(_ filled: Bool) -> Annotation {
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, rotation: rotation)
     }
 }
 
@@ -476,20 +503,42 @@ struct EllipseAnnotation: Annotation {
     let rect: NSRect
     let color: NSColor
     let lineWidth: CGFloat
+    let filled: Bool
     var rotation: CGFloat = 0
+
+    init(
+        rect: NSRect,
+        color: NSColor,
+        lineWidth: CGFloat,
+        filled: Bool = false,
+        rotation: CGFloat = 0
+    ) {
+        self.rect = rect
+        self.color = color
+        self.lineWidth = lineWidth
+        self.filled = filled
+        self.rotation = rotation
+    }
 
     var boundingRect: NSRect { rect }
     var supportsRotation: Bool { true }
 
     func draw(in context: CGContext, bounds: NSRect) {
+        context.setFillColor(color.cgColor)
         context.setStrokeColor(color.cgColor)
         context.setLineWidth(lineWidth)
+        if filled {
+            context.fillEllipse(in: rect)
+        }
         context.strokeEllipse(in: rect)
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
         let p = unrotate(point)
         let path = CGPath(ellipseIn: rect, transform: nil)
+        if filled, path.contains(p) {
+            return true
+        }
         return strokedPathContains(path, point: p, lineWidth: lineWidth)
     }
 
@@ -498,6 +547,7 @@ struct EllipseAnnotation: Annotation {
             rect: rect.offsetBy(dx: delta.x, dy: delta.y),
             color: color,
             lineWidth: lineWidth,
+            filled: filled,
             rotation: rotation
         )
     }
@@ -509,11 +559,15 @@ struct EllipseAnnotation: Annotation {
     }
 
     func withColor(_ color: NSColor) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, rotation: rotation)
     }
 
     func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, rotation: rotation)
+    }
+
+    func withFill(_ filled: Bool) -> Annotation {
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, rotation: rotation)
     }
 }
 
