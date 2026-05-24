@@ -98,7 +98,7 @@
 "mergedLongScreenshot" = "Long screenshot merged";
 "autoScrollPermissionNeeded" = "Scroll capture needs Accessibility access — grant capcap in System Settings → Privacy & Security → Accessibility.";
 "cropLongScreenshotHint" = "Drag the top/bottom edges to crop — press Enter or tap ✓";
-"scrollCaptureHint" = "Press Enter to finish long screenshot";
+"scrollCaptureHint" = "Press any key to finish scrolling";
 "finderEditExitHint" = "Editing from Finder. Press X to exit editing";
 "clipboardEditExitHint" = "Editing from clipboard. Press X to exit editing";
 "selectedImageEditNoImage" = "No single Finder image selected";

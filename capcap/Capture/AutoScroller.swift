@@ -41,6 +41,7 @@ final class AutoScroller {
     private let stallThreshold: Int
     private let queue = DispatchQueue(label: "capcap.auto-scroll", qos: .userInitiated)
     private let eventSource = CGEventSource(stateID: .hidSystemState)
+    private let onKeyPressed: (() -> Void)?
 
     /// Stamped onto capcap's synthetic scroll events so the input-blocking
     /// tap can tell them apart from the user's real trackpad / wheel input
@@ -70,13 +71,15 @@ final class AutoScroller {
         blockingRect: CGRect,
         stepPixels: Int,
         settleDelay: TimeInterval = 0.12,
-        stallThreshold: Int = 4
+        stallThreshold: Int = 4,
+        onKeyPressed: (() -> Void)? = nil
     ) {
         self.location = centerPoint
         self.blockingRect = blockingRect
         self.stepPixels = max(20, stepPixels)
         self.settleDelay = settleDelay
         self.stallThreshold = stallThreshold
+        self.onKeyPressed = onKeyPressed
     }
 
     /// Begins the scroll loop on a background queue.
@@ -160,10 +163,13 @@ final class AutoScroller {
 
     /// Installs a session-level event tap that drops the user's own mouse
     /// events while the pointer is inside the capture region, so manual
-    /// scrolling or clicking can't disturb the page mid-capture. capcap's own
-    /// synthetic scroll carries `syntheticTag` and is always let through.
+    /// scrolling or clicking can't disturb the page mid-capture. Any key press
+    /// finishes the capture and is swallowed so it does not affect the page.
+    /// capcap's own synthetic scroll carries `syntheticTag` and is always let
+    /// through.
     private func installInputBlocker() {
         let types: [CGEventType] = [
+            .keyDown,
             .scrollWheel,
             .leftMouseDown, .leftMouseUp, .leftMouseDragged,
             .rightMouseDown, .rightMouseUp, .rightMouseDragged,
@@ -213,6 +219,20 @@ final class AutoScroller {
                 return passthrough
             }
             return blockingRect.contains(event.location) ? nil : passthrough
+
+        case .keyDown:
+            lock.lock()
+            let wasCancelled = cancelledFlag
+            cancelledFlag = true
+            lock.unlock()
+
+            if !wasCancelled {
+                let onKeyPressed = onKeyPressed
+                DispatchQueue.main.async {
+                    onKeyPressed?()
+                }
+            }
+            return nil
 
         default:
             // Mouse clicks / drags: capcap posts no synthetic ones, so anything

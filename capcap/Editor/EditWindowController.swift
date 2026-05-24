@@ -49,13 +49,13 @@ class EditWindowController {
     private var isScrollCapturing = false
     private var scrollCaptureControlWindow: ScrollCaptureControlWindow?
     private var scrollPreviewWindow: ScrollPreviewWindow?
-    /// Persistent "press Enter to finish" hint shown inside the selection
+    /// Persistent "press any key to finish" hint shown inside the selection
     /// during auto-scroll. Excluded from the capture so it never appears in
     /// the stitched long screenshot.
     private var scrollCaptureHintWindow: ScrollCaptureHintWindow?
     private var autoScroller: AutoScroller?
-    /// Catches the Enter key while capcap is deactivated for auto-scroll, so
-    /// Enter stops scrolling and moves on to crop mode.
+    /// Backup monitor for key presses while capcap is deactivated for
+    /// auto-scroll, so any key stops scrolling and moves on to crop mode.
     private var scrollCaptureKeyMonitor: Any?
 
     // Crop mode state — shown between scroll capture and the editor so the
@@ -1031,7 +1031,11 @@ class EditWindowController {
         let scroller = AutoScroller(
             centerPoint: center,
             blockingRect: captureRect,
-            stepPixels: Int(stepPoints)
+            stepPixels: Int(stepPoints),
+            onKeyPressed: { [weak self] in
+                guard let self, self.isScrollCapturing else { return }
+                self.stopScrollCapture()
+            }
         )
         autoScroller = scroller
         scroller.start(
@@ -1448,18 +1452,13 @@ class EditWindowController {
     }
 
     /// While auto-scroll runs capcap is deactivated, so a local key monitor
-    /// would not fire. This global monitor lets the clipboard hotkey (when
-    /// customized) or the file-save hotkey (⌘S by default) stop scrolling.
-    /// The default clipboard hotkey is double-tap ⌘, routed separately via
-    /// `KeyMonitor` in `AppDelegate`.
+    /// would not fire. The event tap in `AutoScroller` is the primary path;
+    /// this global monitor is a fallback if the tap could not be installed.
     private func installScrollCaptureKeyMonitor() {
         removeScrollCaptureKeyMonitor()
-        scrollCaptureKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+        scrollCaptureKeyMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] _ in
             guard let self, self.isScrollCapturing else { return }
-            if HotkeyManager.eventMatchesClipboardHotkey(event)
-                || HotkeyManager.eventMatchesFileSaveHotkey(event) {
-                self.stopScrollCapture()
-            }
+            self.stopScrollCapture()
         }
     }
 
@@ -2055,7 +2054,7 @@ final class MoveSelectionDragHandle: NSView {
     }
 }
 
-/// Persistent "press Enter to finish" hint shown centered near the top of
+/// Persistent "press any key to finish" hint shown centered near the top of
 /// the selection during auto-scroll. It is its own window so it can be
 /// excluded from the ScreenCaptureKit capture — otherwise it would be baked
 /// into every stitched frame of the long screenshot.
