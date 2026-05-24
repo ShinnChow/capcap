@@ -137,6 +137,9 @@ class EditWindowController {
         canvas.onAnnotationSelected = { [weak self] annotation in
             self?.handleAnnotationSelectionChanged(annotation)
         }
+        canvas.onHistoryStateChanged = { [weak self] canUndo, canRedo in
+            self?.updateHistoryButtons(canUndo: canUndo, canRedo: canRedo)
+        }
 
         let container = BeautifyContainerView(canvasView: canvas)
         container.autoresizingMask = []
@@ -161,6 +164,7 @@ class EditWindowController {
         self.selectionChromeOverlay = overlay
 
         showToolbar()
+        updateHistoryButtons(canUndo: canvas.canUndo, canRedo: canvas.canRedo)
         bringEditorToFront()
     }
 
@@ -202,8 +206,8 @@ class EditWindowController {
     /// identically regardless of which bar it was dragged to.
     private func wireToolbarCallbacks(_ tv: ToolbarView) {
         tv.onToolSelected = { [weak self] tool in self?.selectTool(tool) }
-        tv.onUndo = { [weak self] in self?.canvasView?.undo() }
-        tv.onRedo = { [weak self] in self?.canvasView?.redo() }
+        tv.onUndo = { [weak self] in _ = self?.canvasView?.undo() }
+        tv.onRedo = { [weak self] in _ = self?.canvasView?.redo() }
         tv.onColorPicker = { [weak self] in self?.runColorPicker() }
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
@@ -223,6 +227,13 @@ class EditWindowController {
     /// Primary + side toolbars currently on screen.
     private var toolbars: [ToolbarView] {
         [toolbarView, sideToolbarView].compactMap { $0 }
+    }
+
+    private func updateHistoryButtons(canUndo: Bool, canRedo: Bool) {
+        toolbars.forEach {
+            $0.setUndoEnabled(canUndo)
+            $0.setRedoEnabled(canRedo)
+        }
     }
 
     /// Frame the option sub-toolbars (color/size, text, beautify) anchor
@@ -1306,6 +1317,16 @@ class EditWindowController {
         save()
     }
 
+    func undoFromKeyboard(for event: NSEvent) -> Bool {
+        guard !isScrollCapturing, !isCropping else { return false }
+        return canvasView?.undoFromKeyboard(for: event) ?? false
+    }
+
+    func handleAnnotationClipboardShortcutFromKeyboard(for event: NSEvent) -> Bool {
+        guard !isScrollCapturing, !isCropping else { return false }
+        return canvasView?.handleAnnotationClipboardShortcutFromKeyboard(for: event) ?? false
+    }
+
     func deleteSelectedAnnotationFromKeyboard(for event: NSEvent) -> Bool {
         guard !isScrollCapturing, !isCropping else { return false }
         return canvasView?.deleteSelectedAnnotationFromKeyboard(for: event) ?? false
@@ -1731,6 +1752,8 @@ class ToolbarView: NSView {
     func setScrollCaptureActive(_ active: Bool) { setActive(active, for: .scrollCapture) }
     func setScrollCaptureEnabled(_ enabled: Bool) { setEnabled(enabled, for: .scrollCapture) }
     func setBeautifyActive(_ active: Bool) { setActive(active, for: .beautify) }
+    func setUndoEnabled(_ enabled: Bool) { setEnabled(enabled, for: .undo) }
+    func setRedoEnabled(_ enabled: Bool) { setEnabled(enabled, for: .redo) }
     func setRecordingEnabled(_ enabled: Bool) {
         setEnabled(enabled, for: .record)
     }

@@ -140,6 +140,9 @@ class EditCanvasView: NSView {
     /// controller to switch the active tool / sub-toolbar to match the
     /// selected annotation and seed it with that annotation's properties.
     var onAnnotationSelected: ((Annotation?) -> Void)?
+    /// Fired whenever undo / redo availability changes so toolbar buttons can
+    /// reflect the real history state instead of acting as no-op controls.
+    var onHistoryStateChanged: ((Bool, Bool) -> Void)?
 
     private func notifySelectionChanged() {
         guard let cb = onAnnotationSelected else { return }
@@ -308,10 +311,14 @@ class EditCanvasView: NSView {
 
     private var undoStack: [EditorSnapshot] = []
     private var redoStack: [EditorSnapshot] = []
+    var canUndo: Bool { !undoStack.isEmpty }
+    var canRedo: Bool { !redoStack.isEmpty }
     /// Stash for drag-style operations and text edits — captured before the
     /// mutation begins, then either committed (drag actually moved / text
     /// edit produced a change) or discarded (just a click / cancel).
     private var pendingSnapshot: EditorSnapshot?
+    private static var annotationPasteboard: Annotation?
+    private static let defaultPasteOffset = NSPoint(x: 12, y: -12)
 
     private func currentSnapshot() -> EditorSnapshot {
         EditorSnapshot(annotations: annotations, numberCounter: numberCounter)
@@ -331,6 +338,7 @@ class EditCanvasView: NSView {
     private func recordUndo() {
         undoStack.append(currentSnapshot())
         redoStack.removeAll()
+        notifyHistoryStateChanged()
     }
 
     /// Stash current state for a drag-style operation. Pair with
@@ -345,26 +353,37 @@ class EditCanvasView: NSView {
         pendingSnapshot = nil
         undoStack.append(snap)
         redoStack.removeAll()
+        notifyHistoryStateChanged()
     }
 
     private func discardPendingUndo() {
         pendingSnapshot = nil
     }
 
-    func undo() {
-        guard let prev = undoStack.popLast() else { return }
+    @discardableResult
+    func undo() -> Bool {
+        guard let prev = undoStack.popLast() else { return false }
         redoStack.append(currentSnapshot())
         apply(prev)
         needsDisplay = true
+        notifyHistoryStateChanged()
         refreshCursorAtCurrentLocation()
+        return true
     }
 
-    func redo() {
-        guard let next = redoStack.popLast() else { return }
+    @discardableResult
+    func redo() -> Bool {
+        guard let next = redoStack.popLast() else { return false }
         undoStack.append(currentSnapshot())
         apply(next)
         needsDisplay = true
+        notifyHistoryStateChanged()
         refreshCursorAtCurrentLocation()
+        return true
+    }
+
+    private func notifyHistoryStateChanged() {
+        onHistoryStateChanged?(canUndo, canRedo)
     }
 
     @discardableResult
@@ -384,6 +403,55 @@ class EditCanvasView: NSView {
     func deleteSelectedAnnotationFromKeyboard(for event: NSEvent) -> Bool {
         guard EditCanvasView.isSelectionDeleteKey(event) else { return false }
         return deleteSelectedAnnotation()
+    }
+
+    func undoFromKeyboard(for event: NSEvent) -> Bool {
+        guard EditCanvasView.isUndoKey(event) else { return false }
+        return undo()
+    }
+
+    func handleAnnotationClipboardShortcutFromKeyboard(for event: NSEvent) -> Bool {
+        guard let shortcut = EditCanvasView.commandShortcutCharacter(for: event) else { return false }
+        switch shortcut {
+        case "x":
+            return cutSelectedAnnotation()
+        case "c":
+            return copySelectedAnnotation()
+        case "v":
+            return pasteCopiedAnnotation()
+        default:
+            return false
+        }
+    }
+
+    @discardableResult
+    func copySelectedAnnotation() -> Bool {
+        guard activeTextField == nil, let idx = selectedIndex, idx < annotations.count else {
+            return false
+        }
+        Self.annotationPasteboard = annotations[idx]
+        return true
+    }
+
+    @discardableResult
+    func cutSelectedAnnotation() -> Bool {
+        guard copySelectedAnnotation() else { return false }
+        return deleteSelectedAnnotation()
+    }
+
+    @discardableResult
+    func pasteCopiedAnnotation() -> Bool {
+        guard activeTextField == nil, let source = Self.annotationPasteboard else {
+            return false
+        }
+        let pasted = source.translated(by: pasteOffset(forPasting: source))
+        recordUndo()
+        annotations.append(pasted)
+        syncNumberCounterAfterAdding(pasted)
+        selectedIndex = annotations.indices.last
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+        return true
     }
 
     // MARK: - Selection adjustment (sub-toolbar driven)
@@ -446,6 +514,47 @@ class EditCanvasView: NSView {
             oldNumber.number != newNumber.number
         else { return }
         numberCounter = max(1, newNumber.number + 1)
+    }
+
+    private func syncNumberCounterAfterAdding(_ annotation: Annotation) {
+        guard let number = annotation as? NumberAnnotation else { return }
+        numberCounter = max(numberCounter, number.number + 1)
+    }
+
+    private func pasteOffset(forPasting annotation: Annotation) -> NSPoint {
+        if let cursorPoint = currentMousePointInCanvas(), bounds.contains(cursorPoint) {
+            let rect = annotation.boundingRect
+            return NSPoint(x: cursorPoint.x - rect.midX, y: cursorPoint.y - rect.midY)
+        }
+        return adjacentPasteOffsetKeepingAnnotationVisible(annotation)
+    }
+
+    private func currentMousePointInCanvas() -> NSPoint? {
+        guard let window else { return nil }
+        let mouseInScreen = NSEvent.mouseLocation
+        let mouseInWindow = window.convertPoint(fromScreen: mouseInScreen)
+        return convert(mouseInWindow, from: nil)
+    }
+
+    private func adjacentPasteOffsetKeepingAnnotationVisible(_ annotation: Annotation) -> NSPoint {
+        let margin: CGFloat = 4
+        var offset = Self.defaultPasteOffset
+        let pastedRect = annotation.translated(by: offset).boundingRect
+
+        if pastedRect.maxX > bounds.maxX - margin {
+            offset.x -= pastedRect.maxX - (bounds.maxX - margin)
+        }
+        if pastedRect.minX < bounds.minX + margin {
+            offset.x += (bounds.minX + margin) - pastedRect.minX
+        }
+        if pastedRect.maxY > bounds.maxY - margin {
+            offset.y -= pastedRect.maxY - (bounds.maxY - margin)
+        }
+        if pastedRect.minY < bounds.minY + margin {
+            offset.y += (bounds.minY + margin) - pastedRect.minY
+        }
+
+        return offset
     }
 
     private func resetNumberCounterIfNumberAnnotationsAreGone() {
@@ -2354,10 +2463,27 @@ class EditCanvasView: NSView {
     }
 
     override func keyDown(with event: NSEvent) {
+        if undoFromKeyboard(for: event) {
+            return
+        }
+        if handleAnnotationClipboardShortcutFromKeyboard(for: event) {
+            return
+        }
         if deleteSelectedAnnotationFromKeyboard(for: event) {
             return
         }
         super.keyDown(with: event)
+    }
+
+    private static func isUndoKey(_ event: NSEvent) -> Bool {
+        commandShortcutCharacter(for: event) == "z"
+    }
+
+    private static func commandShortcutCharacter(for event: NSEvent) -> String? {
+        let activeModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        let modifiers = event.modifierFlags.intersection(activeModifiers)
+        guard modifiers == .command else { return nil }
+        return event.charactersIgnoringModifiers?.lowercased()
     }
 
     private static func isSelectionDeleteKey(_ event: NSEvent) -> Bool {
