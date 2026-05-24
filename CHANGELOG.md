@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.16] - 2026-05-24
+
+### Added
+- Add undo state and annotation clipboard shortcuts (451ce2e)
+
+### Chore
+- Bump cask to 1.3.15 (d9c4f19)
+
 ## [1.3.15] - 2026-05-24
 
 ### Added
