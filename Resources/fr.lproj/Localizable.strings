@@ -89,6 +89,8 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";
+"dragToTextRecognition" = "Cliquez sur une fenêtre ou sélectionnez une zone pour reconnaître le texte";
+"dragToScreenshotTranslation" = "Cliquez sur une fenêtre ou sélectionnez une zone pour traduire le contenu";
 "dragToRecord" = "Cliquez sur une fenêtre ou faites glisser pour enregistrer";
 
 /* Toast */

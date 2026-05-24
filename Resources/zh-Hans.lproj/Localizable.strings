@@ -89,6 +89,8 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "点击窗口或拖动以截图";
+"dragToTextRecognition" = "点击窗口或框选区域识别文字";
+"dragToScreenshotTranslation" = "点击窗口或框选区域翻译内容";
 "dragToRecord" = "点击窗口或拖动以录制";
 
 /* Toast */

@@ -163,6 +163,8 @@ enum L10n {
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }
+    static var dragToTextRecognition: String { s("dragToTextRecognition") }
+    static var dragToScreenshotTranslation: String { s("dragToScreenshotTranslation") }
     static var dragToRecord: String { s("dragToRecord") }
 
     // Toast

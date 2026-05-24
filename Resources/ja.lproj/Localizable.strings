@@ -89,6 +89,8 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";
+"dragToTextRecognition" = "ウィンドウをクリックまたは範囲選択して文字認識";
+"dragToScreenshotTranslation" = "ウィンドウをクリックまたは範囲選択して内容を翻訳";
 "dragToRecord" = "ウィンドウをクリックまたはドラッグして録画";
 
 /* Toast */
