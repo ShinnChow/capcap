@@ -89,6 +89,8 @@
 
 /* Cursor chip */
 "dragToScreenshot" = "창을 클릭하거나 드래그하여 스크린샷";
+"dragToTextRecognition" = "창을 클릭하거나 영역을 선택하여 문자 인식";
+"dragToScreenshotTranslation" = "창을 클릭하거나 영역을 선택하여 내용 번역";
 "dragToRecord" = "창을 클릭하거나 드래그하여 녹화";
 
 /* Toast */

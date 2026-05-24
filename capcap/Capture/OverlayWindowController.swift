@@ -24,8 +24,12 @@ class OverlayWindowController {
             switch self {
             case .record:
                 return L10n.dragToRecord
-            case .edit, .textRecognition, .screenshotTranslation:
+            case .edit:
                 return L10n.dragToScreenshot
+            case .textRecognition:
+                return L10n.dragToTextRecognition
+            case .screenshotTranslation:
+                return L10n.dragToScreenshotTranslation
             }
         }
     }
