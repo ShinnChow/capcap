@@ -230,6 +230,7 @@ private enum PinZoom {
     static let navigatorScaleThreshold: CGFloat = 1.2
     static let navigatorGap: CGFloat = 8
     static let navigatorIdleHideDelay: TimeInterval = 0.8
+    static let navigatorActivationDelay: TimeInterval = 0.4
     static let navigatorEntryTimeout: TimeInterval = 3.0
     static let toolbarAnimationDuration: TimeInterval = 0.16
 }
@@ -276,6 +277,7 @@ final class PinContentView: NSView {
     private var wasMouseInNavigatorActivationRegion = false
     private var isMouseInNavigatorRegion = false
     private var lastNavigatorPointerPoint: NSPoint?
+    private var navigatorNavigationBlockedUntil: Date?
     private var navigatorIdleTimer: Timer?
     private var navigatorEntryTimer: Timer?
 
@@ -318,7 +320,7 @@ final class PinContentView: NSView {
             self?.focusImage(at: unitPoint)
         }
         navigator.onPointerActivity = { [weak self] point in
-            self?.registerNavigatorPointerActivity(at: point)
+            self?.registerNavigatorPointerActivity(at: point) == true
         }
         navigator.onPointerExited = { [weak self] in
             self?.handleNavigatorPointerExit()
@@ -524,6 +526,7 @@ final class PinContentView: NSView {
     private func focusImage(at unitPoint: NSPoint) {
         guard isNavigatorVisible,
               !isNavigatorSuppressedUntilMouseExit,
+              !isNavigatorNavigationBlocked,
               zoomScale >= PinZoom.navigatorScaleThreshold
         else { return }
 
@@ -714,6 +717,7 @@ final class PinContentView: NSView {
         let inside = navigatorActivationRect().contains(point)
         if !inside {
             isNavigatorSuppressedUntilMouseExit = false
+            navigatorNavigationBlockedUntil = nil
             lastNavigatorPointerPoint = nil
         }
         defer { wasMouseInNavigatorActivationRegion = inside }
@@ -728,10 +732,12 @@ final class PinContentView: NSView {
         if inside {
             if !wasMouseInNavigatorActivationRegion {
                 showNavigator(animated: animated)
+                beginNavigatorHover(at: point)
+                return
             }
             guard isNavigatorVisible else { return }
 
-            registerNavigatorPointerActivity(at: point)
+            guard registerNavigatorPointerActivity(at: point) else { return }
             if let unitPoint = navigator.unitPoint(forPointInSuperview: point) {
                 focusImage(at: unitPoint)
             }
@@ -785,6 +791,7 @@ final class PinContentView: NSView {
         navigatorEntryTimer?.invalidate()
         isMouseInNavigatorRegion = false
         isNavigatorSuppressedUntilMouseExit = suppressUntilMouseExit
+        navigatorNavigationBlockedUntil = nil
         lastNavigatorPointerPoint = nil
         wasMouseInNavigatorActivationRegion = suppressUntilMouseExit
         guard isNavigatorVisible || !navigator.isHidden else { return }
@@ -798,16 +805,29 @@ final class PinContentView: NSView {
         )
     }
 
-    private func registerNavigatorPointerActivity(at point: NSPoint? = nil) {
+    private func beginNavigatorHover(at point: NSPoint) {
         guard isNavigatorVisible else { return }
+        isMouseInNavigatorRegion = true
+        wasMouseInNavigatorActivationRegion = true
+        navigatorNavigationBlockedUntil = Date().addingTimeInterval(PinZoom.navigatorActivationDelay)
+        lastNavigatorPointerPoint = point
+        navigatorEntryTimer?.invalidate()
+        scheduleNavigatorIdleHide()
+    }
+
+    @discardableResult
+    private func registerNavigatorPointerActivity(at point: NSPoint? = nil) -> Bool {
+        guard isNavigatorVisible else { return false }
         isMouseInNavigatorRegion = true
         wasMouseInNavigatorActivationRegion = true
         navigatorEntryTimer?.invalidate()
 
         if let point {
-            guard navigatorPointerDidMove(to: point) || navigatorIdleTimer == nil else { return }
+            let didMove = navigatorPointerDidMove(to: point)
+            guard didMove || navigatorIdleTimer == nil else { return false }
         }
         scheduleNavigatorIdleHide()
+        return !isNavigatorNavigationBlocked
     }
 
     private func handleNavigatorPointerExit() {
@@ -820,6 +840,7 @@ final class PinContentView: NSView {
 
         isMouseInNavigatorRegion = false
         isNavigatorSuppressedUntilMouseExit = false
+        navigatorNavigationBlockedUntil = nil
         wasMouseInNavigatorActivationRegion = false
         lastNavigatorPointerPoint = nil
         navigatorIdleTimer?.invalidate()
@@ -832,6 +853,15 @@ final class PinContentView: NSView {
         guard let previous = lastNavigatorPointerPoint else { return true }
 
         return abs(previous.x - point.x) > 0.5 || abs(previous.y - point.y) > 0.5
+    }
+
+    private var isNavigatorNavigationBlocked: Bool {
+        guard let blockedUntil = navigatorNavigationBlockedUntil else { return false }
+        guard Date() < blockedUntil else {
+            navigatorNavigationBlockedUntil = nil
+            return false
+        }
+        return true
     }
 
     private func scheduleNavigatorIdleHide() {
@@ -900,7 +930,7 @@ private final class PinNavigatorView: NSView {
         didSet { needsDisplay = true }
     }
     var onFocusChanged: ((NSPoint) -> Void)?
-    var onPointerActivity: ((NSPoint) -> Void)?
+    var onPointerActivity: ((NSPoint) -> Bool)?
     var onPointerExited: (() -> Void)?
 
     private var trackingArea: NSTrackingArea?
@@ -1022,9 +1052,11 @@ private final class PinNavigatorView: NSView {
 
     private func updateFocus(with event: NSEvent) {
         let localPoint = convert(event.locationInWindow, from: nil)
+        var shouldFocus = true
         if let superview {
-            onPointerActivity?(convert(localPoint, to: superview))
+            shouldFocus = onPointerActivity?(convert(localPoint, to: superview)) ?? true
         }
+        guard shouldFocus else { return }
         guard let unitPoint = unitPoint(forLocalPoint: localPoint) else { return }
         onFocusChanged?(unitPoint)
     }

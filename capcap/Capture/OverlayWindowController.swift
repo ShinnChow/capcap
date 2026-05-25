@@ -38,6 +38,8 @@ class OverlayWindowController {
     private var chipWindow: CursorChipWindow?
     private var escLocalMonitor: Any?
     private var escGlobalMonitor: Any?
+    private var rightMouseLocalMonitor: Any?
+    private var rightMouseGlobalMonitor: Any?
     private var editController: EditWindowController?
     private var activeSelectionView: SelectionView?
     private let windowDetector = WindowDetector()
@@ -194,6 +196,19 @@ class OverlayWindowController {
                 self?.cancel()
             }
         }
+        rightMouseLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .rightMouseDown) { [weak self] event in
+            if self?.editController?.isTextEditing == true {
+                return event
+            }
+            self?.cancel()
+            return nil
+        }
+        rightMouseGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .rightMouseDown) { [weak self] _ in
+            if self?.editController?.isTextEditing == true {
+                return
+            }
+            self?.cancel()
+        }
 
         if presetImage == nil {
             NSCursor.crosshair.push()
@@ -271,6 +286,8 @@ class OverlayWindowController {
 
         if let m = escLocalMonitor { NSEvent.removeMonitor(m); escLocalMonitor = nil }
         if let m = escGlobalMonitor { NSEvent.removeMonitor(m); escGlobalMonitor = nil }
+        if let m = rightMouseLocalMonitor { NSEvent.removeMonitor(m); rightMouseLocalMonitor = nil }
+        if let m = rightMouseGlobalMonitor { NSEvent.removeMonitor(m); rightMouseGlobalMonitor = nil }
 
         for window in windows {
             window.orderOut(nil)
