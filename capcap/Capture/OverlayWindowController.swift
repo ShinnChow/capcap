@@ -180,10 +180,7 @@ class OverlayWindowController {
                 self?.editController?.saveFromKeyboard()
                 return nil
             }
-            // Image-edit mode only: X exits the preset editor, matching the
-            // toolbar close button.
-            if self?.presetSource != nil, event.keyCode == 7 {
-                self?.cancel()
+            if self?.editController?.handleEditorShortcutFromKeyboard(for: event) == true {
                 return nil
             }
             return event
