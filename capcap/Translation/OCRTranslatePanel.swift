@@ -38,14 +38,30 @@ private final class FlippedView: NSView {
 private final class OCRPreviewView: NSView {
     private let image: NSImage
     var showsLineBoxes = false {
-        didSet { needsDisplay = true }
+        didSet {
+            if !showsLineBoxes {
+                selectedLineIndices.removeAll()
+            }
+            needsDisplay = true
+        }
     }
     var lines: [RecognizedTextLine] = [] {
-        didSet { needsDisplay = true }
+        didSet {
+            selectedLineIndices = Set(selectedLineIndices.filter { lines.indices.contains($0) })
+            needsDisplay = true
+        }
     }
-    var onCopyText: ((String) -> Void)?
+    var onSelectLines: (([Int], Bool) -> Void)?
 
-    private var copiedLineIndex: Int?
+    private var selectedLineIndices: Set<Int> = [] {
+        didSet {
+            if oldValue != selectedLineIndices {
+                needsDisplay = true
+            }
+        }
+    }
+    private var selectionStartPoint: NSPoint?
+    private var selectionStartLineIndex: Int?
 
     init(image: NSImage) {
         self.image = image
@@ -58,6 +74,8 @@ private final class OCRPreviewView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var mouseDownCanMoveWindow: Bool { false }
 
     override func draw(_ dirtyRect: NSRect) {
         super.draw(dirtyRect)
@@ -85,17 +103,17 @@ private final class OCRPreviewView: NSView {
                     .insetBy(dx: -2, dy: -1)
                 guard rect.width > 2, rect.height > 2 else { continue }
                 let path = NSBezierPath(roundedRect: rect, xRadius: 3, yRadius: 3)
-                let isCopied = index == copiedLineIndex
-                (isCopied
-                    ? NSColor.systemGreen.withAlphaComponent(0.24)
+                let isSelected = selectedLineIndices.contains(index)
+                (isSelected
+                    ? NSColor.systemBlue.withAlphaComponent(0.22)
                     : NSColor.systemTeal.withAlphaComponent(0.12)
                 ).setFill()
                 path.fill()
-                (isCopied
-                    ? NSColor.systemGreen.withAlphaComponent(0.95)
+                (isSelected
+                    ? NSColor.systemBlue.withAlphaComponent(0.95)
                     : NSColor.systemTeal.withAlphaComponent(0.88)
                 ).setStroke()
-                path.lineWidth = isCopied ? 2 : 1.2
+                path.lineWidth = isSelected ? 2 : 1.2
                 path.stroke()
             }
         }
@@ -109,23 +127,28 @@ private final class OCRPreviewView: NSView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        guard showsLineBoxes else { return super.mouseDown(with: event) }
+        guard showsLineBoxes, !lines.isEmpty else { return }
         let point = convert(event.locationInWindow, from: nil)
         let imageRect = fittedImageRect()
-        for (index, line) in lines.enumerated().reversed() {
-            let rect = displayRect(for: line.boundingBox, in: imageRect).insetBy(dx: -4, dy: -3)
-            guard rect.contains(point) else { continue }
-            copiedLineIndex = index
-            onCopyText?(line.text)
-            needsDisplay = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.55) { [weak self] in
-                guard self?.copiedLineIndex == index else { return }
-                self?.copiedLineIndex = nil
-                self?.needsDisplay = true
-            }
-            return
+        selectionStartPoint = point
+        selectionStartLineIndex = lineIndex(at: point, in: imageRect)
+        updateSelection(to: point, isFinal: false)
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard selectionStartPoint != nil else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        updateSelection(to: point, isFinal: false)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        defer {
+            selectionStartPoint = nil
+            selectionStartLineIndex = nil
         }
-        super.mouseDown(with: event)
+        guard selectionStartPoint != nil else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        updateSelection(to: point, isFinal: true)
     }
 
     private func fittedImageRect() -> NSRect {
@@ -150,6 +173,91 @@ private final class OCRPreviewView: NSView {
             width: normalizedRect.width * imageRect.width,
             height: normalizedRect.height * imageRect.height
         )
+    }
+
+    private func updateSelection(to point: NSPoint, isFinal: Bool) {
+        guard let start = selectionStartPoint else { return }
+        let indices = selectionIndices(from: start, to: point, startLineIndex: selectionStartLineIndex)
+        selectedLineIndices = Set(indices)
+        onSelectLines?(indices, isFinal)
+    }
+
+    private func selectionIndices(
+        from start: NSPoint,
+        to current: NSPoint,
+        startLineIndex: Int?
+    ) -> [Int] {
+        let imageRect = fittedImageRect()
+        if let startLineIndex {
+            let targetIndex = lineIndex(at: current, in: imageRect)
+                ?? nearestLineIndex(to: current, in: imageRect)
+            guard let targetIndex else { return [startLineIndex] }
+            return contiguousIndices(from: startLineIndex, to: targetIndex)
+        }
+
+        let rect = NSRect(
+            x: min(start.x, current.x),
+            y: min(start.y, current.y),
+            width: abs(current.x - start.x),
+            height: abs(current.y - start.y)
+        ).insetBy(dx: -5, dy: -5)
+        let hits = lines.indices.filter { index in
+            lineHitRect(at: index, in: imageRect).intersects(rect)
+        }
+        return contiguousIndices(covering: hits)
+    }
+
+    private func lineIndex(at point: NSPoint, in imageRect: NSRect) -> Int? {
+        for index in lines.indices.reversed() {
+            if lineHitRect(at: index, in: imageRect).contains(point) {
+                return index
+            }
+        }
+        return nil
+    }
+
+    private func nearestLineIndex(to point: NSPoint, in imageRect: NSRect) -> Int? {
+        lines.indices.min { lhs, rhs in
+            let leftDistance = distance(from: point, to: lineHitRect(at: lhs, in: imageRect))
+            let rightDistance = distance(from: point, to: lineHitRect(at: rhs, in: imageRect))
+            return leftDistance < rightDistance
+        }
+    }
+
+    private func lineHitRect(at index: Int, in imageRect: NSRect) -> NSRect {
+        displayRect(for: lines[index].boundingBox, in: imageRect).insetBy(dx: -4, dy: -3)
+    }
+
+    private func distance(from point: NSPoint, to rect: NSRect) -> CGFloat {
+        let dx: CGFloat
+        if point.x < rect.minX {
+            dx = rect.minX - point.x
+        } else if point.x > rect.maxX {
+            dx = point.x - rect.maxX
+        } else {
+            dx = 0
+        }
+
+        let dy: CGFloat
+        if point.y < rect.minY {
+            dy = rect.minY - point.y
+        } else if point.y > rect.maxY {
+            dy = point.y - rect.maxY
+        } else {
+            dy = 0
+        }
+
+        return hypot(dx, dy)
+    }
+
+    private func contiguousIndices(from start: Int, to end: Int) -> [Int] {
+        guard lines.indices.contains(start), lines.indices.contains(end) else { return [] }
+        return Array(min(start, end)...max(start, end))
+    }
+
+    private func contiguousIndices(covering indices: [Int]) -> [Int] {
+        guard let first = indices.min(), let last = indices.max() else { return [] }
+        return contiguousIndices(from: first, to: last)
     }
 }
 
@@ -604,6 +712,7 @@ final class OCRTranslatePanel: NSPanel {
     private var currentDictionaryProvider: TranslationProviderKind?
     private var dictionaryTitleTimer: Timer?
     private var dictionaryTitleStep = 0
+    private var recognizedLines: [RecognizedTextLine] = []
     private var recognizedText = ""
     private var ocrReady = false
     private var selectedTarget = TranslationLanguage.appDefault
@@ -747,13 +856,8 @@ final class OCRTranslatePanel: NSPanel {
     private func buildScreenshotCard() {
         previewView = OCRPreviewView(image: screenshot)
         previewView.showsLineBoxes = mode == .textRecognition
-        previewView.onCopyText = { [weak self] text in
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-            ToastWindow.show(message: L10n.ocrLineCopied, duration: 0.9)
-            if let button = self?.ocrCopyButton {
-                flashButton(button, to: L10n.ocrCopied, restore: L10n.ocrCopy)
-            }
+        previewView.onSelectLines = { [weak self] indices, isFinal in
+            self?.selectOCRLines(indices, copyWhenFinal: isFinal)
         }
 
         let size = screenshot.size
@@ -859,6 +963,7 @@ final class OCRTranslatePanel: NSPanel {
     private func runOCR() {
         Task { @MainActor in
             let lines = await OCRService.recognizeLines(image: screenshot)
+            self.recognizedLines = lines
             self.previewView.lines = lines
             self.recognizedText = lines.map(\.text).joined(separator: "\n")
                 .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -885,6 +990,67 @@ final class OCRTranslatePanel: NSPanel {
             textView.textColor = NSColor.white.withAlphaComponent(0.9)
             copyButton.isEnabled = true
         }
+    }
+
+    private func selectOCRLines(_ indices: [Int], copyWhenFinal: Bool) {
+        guard mode == .textRecognition else { return }
+        let selectedIndices = contiguousOCRLineIndices(covering: indices)
+        guard let textView = ocrTextView, !selectedIndices.isEmpty else {
+            ocrTextView?.selectedRange = NSRange(location: 0, length: 0)
+            return
+        }
+
+        if let range = textRange(forOCRLineIndices: selectedIndices) {
+            makeFirstResponder(textView)
+            textView.selectedRange = range
+            textView.scrollRangeToVisible(range)
+        }
+
+        guard copyWhenFinal else { return }
+        let selectedText = selectedIndices
+            .compactMap { recognizedLines.indices.contains($0) ? recognizedLines[$0].text : nil }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !selectedText.isEmpty else { return }
+
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(selectedText, forType: .string)
+        ToastWindow.show(
+            message: selectedIndices.count == 1 ? L10n.ocrLineCopied : L10n.ocrCopied,
+            duration: 0.9
+        )
+        if let button = ocrCopyButton {
+            flashButton(button, to: L10n.ocrCopied, restore: L10n.ocrCopy)
+        }
+    }
+
+    private func contiguousOCRLineIndices(covering indices: [Int]) -> [Int] {
+        let valid = indices.filter { recognizedLines.indices.contains($0) }
+        guard let first = valid.min(), let last = valid.max() else { return [] }
+        return Array(first...last)
+    }
+
+    private func textRange(forOCRLineIndices indices: [Int]) -> NSRange? {
+        guard let first = indices.first, let last = indices.last,
+              recognizedLines.indices.contains(first),
+              recognizedLines.indices.contains(last) else {
+            return nil
+        }
+
+        var location = 0
+        for index in 0..<first {
+            location += (recognizedLines[index].text as NSString).length
+            location += 1
+        }
+
+        var length = 0
+        for index in first...last {
+            length += (recognizedLines[index].text as NSString).length
+            if index != last {
+                length += 1
+            }
+        }
+        return NSRange(location: location, length: length)
     }
 
     private func finishOCRAndStartTranslation() {
