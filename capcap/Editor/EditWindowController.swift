@@ -1249,6 +1249,23 @@ class EditWindowController {
         return canvasView?.deleteSelectedAnnotationFromKeyboard(for: event) ?? false
     }
 
+    func handleEditorShortcutFromKeyboard(for event: NSEvent) -> Bool {
+        guard !isScrollCapturing, !isCropping else { return false }
+        guard let shortcut = EditorKeyboardShortcut(event: event) else { return false }
+
+        switch shortcut {
+        case .select:
+            selectTool(.none)
+        case .tool(let tool):
+            selectTool(tool)
+        case .pin:
+            pin()
+        case .close:
+            close()
+        }
+        return true
+    }
+
     private func confirm() {
         canvasView?.commitActiveTextEditing()
         guard let finalImage = currentCompositeImage() else {
@@ -1521,6 +1538,39 @@ class EditWindowController {
         view.layer?.shadowOpacity = 0.25
         view.layer?.shadowRadius = 10
         view.layer?.shadowOffset = CGSize(width: 0, height: -2)
+    }
+}
+
+private enum EditorKeyboardShortcut {
+    case select
+    case tool(EditTool)
+    case pin
+    case close
+
+    init?(event: NSEvent) {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        guard modifiers.intersection(blockedModifiers).isEmpty else { return nil }
+        guard let key = event.charactersIgnoringModifiers?.lowercased(), key.count == 1 else {
+            return nil
+        }
+
+        switch key {
+        case "v": self = .select
+        case "r": self = .tool(.rectangle)
+        case "o": self = .tool(.ellipse)
+        case "l": self = .tool(.line)
+        case "a": self = .tool(.arrow)
+        case "d": self = .tool(.pen)
+        case "h": self = .tool(.marker)
+        case "m": self = .tool(.mosaic)
+        case "e": self = .tool(.eraser)
+        case "t": self = .tool(.text)
+        case "n": self = .tool(.numbered)
+        case "p": self = .pin
+        case "x": self = .close
+        default: return nil
+        }
     }
 }
 
