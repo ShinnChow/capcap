@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.19] - 2026-05-25
+
+### Changed
+- Delay pin navigator activation and cancel on right click (443ffa2)
+- Refine pin navigator hover hiding (e9a7d21)
+- Remove beautify debug logs and standardize save filename (61ef976)
+
+### Chore
+- Bump cask to 1.3.18 (ed07d1d)
+
 ## [1.3.18] - 2026-05-25
 
 ### Changed
