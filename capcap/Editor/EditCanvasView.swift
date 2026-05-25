@@ -1208,20 +1208,6 @@ class EditCanvasView: NSView {
         beautifyInnerShadowCornerRadius: CGFloat = BeautifyRenderer.innerCornerRadius,
         beautifyInnerShadowInset: CGFloat = 0
     ) -> NSImage? {
-        if let beautifyPreset {
-            DiagnosticLog.log(
-                "beautify.composite",
-                "begin",
-                metadata: [
-                    "preset": beautifyPreset.id,
-                    "previewImage": diagnosticString(previewImage),
-                    "fallbackBaseImage": diagnosticString(fallbackBaseImage),
-                    "annotationCount": annotations.count,
-                    "padding": beautifyPadding.map { String(format: "%.2f", $0) } ?? "nil",
-                    "shadowEnabled": beautifyShadowEnabled,
-                ]
-            )
-        }
         guard let baseImage = previewImage ?? fallbackBaseImage else { return nil }
 
         let innerImage: NSImage
@@ -1269,11 +1255,6 @@ class EditCanvasView: NSView {
                 innerShadowCornerRadius: beautifyInnerShadowCornerRadius,
                 innerShadowInset: beautifyInnerShadowInset
             )
-            DiagnosticLog.log(
-                "beautify.composite",
-                "end",
-                metadata: ["result": diagnosticString(rendered)]
-            )
             return rendered
         }
         return innerImage
@@ -1315,12 +1296,6 @@ class EditCanvasView: NSView {
 
         guard let rect = captureRect, let screen = captureScreen else { return nil }
         return ScreenCapturer.capture(rect: rect, screen: screen)
-    }
-
-    private func diagnosticString(_ image: NSImage?) -> String {
-        guard let image else { return "nil" }
-        let reps = image.representations.map { "\($0.pixelsWide)x\($0.pixelsHigh)" }.joined(separator: ",")
-        return "points=\(String(format: "%.1f", image.size.width))x\(String(format: "%.1f", image.size.height));reps=\(reps)"
     }
 
     private func cancelInFlightInteraction() {
