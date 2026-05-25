@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.18] - 2026-05-25
+
+### Changed
+- Disable window dragging in OCR preview (067d699)
+- Refine pin zoom and drag behavior (f4faaa2)
+- Make scroll capture stop on any key (5cbe741)
+- Make the menu bar icon adapt to appearance (2b58d19)
+
+### Chore
+- Bump cask to 1.3.17 (b22fdb3)
+
 ## [1.3.17] - 2026-05-24
 
 ### Changed
