@@ -130,6 +130,7 @@
 "tipNumbered" = "番号";
 "tipText" = "テキスト";
 "tipColorPicker" = "カラーピッカー";
+"tipPickedInkBottle" = "カラーピッカーでインク瓶に色を抽出";
 "tipUndo" = "取り消す";
 "tipRedo" = "やり直す";
 "tipMoveSelection" = "選択範囲を移動";

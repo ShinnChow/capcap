@@ -78,7 +78,7 @@ class EditWindowController {
     private var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
     private var currentMarkerLineWidth: CGFloat = 4.0
     /// Last color sampled from the toolbar eyedropper. Persisted locally and
-    /// shown as an extra swatch for color-capable annotation tools.
+    /// shown as an ink-bottle control for color-capable annotation tools.
     private var pickedColorSwatch: NSColor?
 
     var isTextEditing: Bool {
@@ -1171,9 +1171,9 @@ class EditWindowController {
     }
 
     /// Trigger the system color sampler (loupe). The picked color's hex is
-    /// copied to the clipboard and the color becomes an extra reusable swatch
-    /// for color-capable tools. It does not directly change the active tool
-    /// color.
+    /// copied to the clipboard and the color becomes the toolbar ink-bottle
+    /// color for color-capable tools. It does not directly change the active
+    /// tool color.
     private func runColorPicker() {
         canvasView?.commitActiveTextEditing()
         let sampler = NSColorSampler()
@@ -2388,14 +2388,22 @@ private class ColorSizeSubToolbar: NSView {
             x += 9
         }
 
-        // Color swatches
+        // Color swatches. The dynamic picked color uses an ink-bottle glyph
+        // rather than another static-looking palette dot.
         let swatchSize: CGFloat = ColorSizeSubToolbar.swatchSize
         for (i, color) in colors.enumerated() {
+            let style: ColorSwatchView.Style = (dynamicColor != nil && i == baseColors.count)
+                ? .pickedInkBottle
+                : .paletteDot
             let swatch = ColorSwatchView(
                 frame: NSRect(x: x, y: midY - swatchSize/2, width: swatchSize, height: swatchSize),
                 color: color,
-                isSelected: colorsMatch(color, currentColor)
+                isSelected: colorsMatch(color, currentColor),
+                style: style
             )
+            if style == .pickedInkBottle {
+                swatch.hoverTip = L10n.tipPickedInkBottle
+            }
             swatch.itemIndex = i
             let click = NSClickGestureRecognizer(target: self, action: #selector(colorTapped(_:)))
             swatch.addGestureRecognizer(click)
@@ -2610,14 +2618,22 @@ private class TextSubToolbar: NSView {
         addSubview(sep)
         x += 1 + 9
 
-        // Color swatches.
+        // Color swatches. The dynamic picked color uses an ink-bottle glyph
+        // rather than another static-looking palette dot.
         let swatchSize: CGFloat = TextSubToolbar.swatchSize
         for (i, color) in colors.enumerated() {
+            let style: ColorSwatchView.Style = (dynamicColor != nil && i == baseColors.count)
+                ? .pickedInkBottle
+                : .paletteDot
             let swatch = ColorSwatchView(
                 frame: NSRect(x: x, y: midY - swatchSize / 2, width: swatchSize, height: swatchSize),
                 color: color,
-                isSelected: colorsMatch(color, currentColor)
+                isSelected: colorsMatch(color, currentColor),
+                style: style
             )
+            if style == .pickedInkBottle {
+                swatch.hoverTip = L10n.tipPickedInkBottle
+            }
             swatch.itemIndex = i
             let click = NSClickGestureRecognizer(target: self, action: #selector(colorTapped(_:)))
             swatch.addGestureRecognizer(click)
@@ -2740,15 +2756,24 @@ private class SizeDotView: NSView {
 // MARK: - Color Swatch View
 
 private class ColorSwatchView: NSView {
+    enum Style {
+        case paletteDot
+        case pickedInkBottle
+    }
+
     let color: NSColor
+    private let style: Style
+    var hoverTip: String?
     var isSelected: Bool = false {
         didSet { needsDisplay = true }
     }
     var itemIndex: Int = 0
+    private var hoverTrackingArea: NSTrackingArea?
 
-    init(frame: NSRect, color: NSColor, isSelected: Bool) {
+    init(frame: NSRect, color: NSColor, isSelected: Bool, style: Style = .paletteDot) {
         self.color = color
         self.isSelected = isSelected
+        self.style = style
         super.init(frame: frame)
     }
 
@@ -2758,7 +2783,50 @@ private class ColorSwatchView: NSView {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = hoverTrackingArea {
+            removeTrackingArea(area)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        guard let tip = hoverTip, let window else { return }
+        let frameInWindow = convert(bounds, to: nil)
+        let frameOnScreen = window.convertToScreen(frameInWindow)
+        ToolTipWindow.show(text: tip, anchor: frameOnScreen)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        ToolTipWindow.hide()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        ToolTipWindow.hide()
+        super.mouseDown(with: event)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil { ToolTipWindow.hide() }
+    }
+
     override func draw(_ dirtyRect: NSRect) {
+        if style == .pickedInkBottle {
+            drawInkBottle()
+            return
+        }
+
         // Draw color circle
         let inset: CGFloat = isSelected ? 1 : 2
         let path = NSBezierPath(ovalIn: bounds.insetBy(dx: inset, dy: inset))
@@ -2780,6 +2848,88 @@ private class ColorSwatchView: NSView {
             border.lineWidth = 0.5
             border.stroke()
         }
+    }
+
+    private func drawInkBottle() {
+        let unit = min(bounds.width, bounds.height) / 18.0
+        let origin = NSPoint(
+            x: bounds.midX - 9.0 * unit,
+            y: bounds.midY - 9.0 * unit
+        )
+
+        func rect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> NSRect {
+            NSRect(
+                x: origin.x + x * unit,
+                y: origin.y + y * unit,
+                width: width * unit,
+                height: height * unit
+            )
+        }
+
+        if isSelected {
+            let ring = NSBezierPath(ovalIn: bounds.insetBy(dx: 0.75, dy: 0.75))
+            accentGreen.setStroke()
+            ring.lineWidth = 2
+            ring.stroke()
+        }
+
+        let bodyRect = rect(4.5, 4.0, 9.0, 9.8)
+        let bodyPath = NSBezierPath(
+            roundedRect: bodyRect,
+            xRadius: 2.2 * unit,
+            yRadius: 2.2 * unit
+        )
+
+        NSColor.white.withAlphaComponent(0.12).setFill()
+        bodyPath.fill()
+
+        let inkPath = NSBezierPath()
+        let inset = 0.75 * unit
+        let inkBottom = bodyRect.minY + inset
+        let inkLeft = bodyRect.minX + inset
+        let inkRight = bodyRect.maxX - inset
+        let inkTop = bodyRect.minY + bodyRect.height * 0.58
+        inkPath.move(to: NSPoint(x: inkLeft, y: inkBottom))
+        inkPath.line(to: NSPoint(x: inkLeft, y: inkTop))
+        inkPath.curve(
+            to: NSPoint(x: inkRight, y: inkTop - 0.2 * unit),
+            controlPoint1: NSPoint(x: bodyRect.minX + bodyRect.width * 0.36, y: inkTop + 1.15 * unit),
+            controlPoint2: NSPoint(x: bodyRect.minX + bodyRect.width * 0.62, y: inkTop - 1.05 * unit)
+        )
+        inkPath.line(to: NSPoint(x: inkRight, y: inkBottom))
+        inkPath.close()
+
+        NSGraphicsContext.current?.saveGraphicsState()
+        bodyPath.addClip()
+        color.setFill()
+        inkPath.fill()
+        NSGraphicsContext.current?.restoreGraphicsState()
+
+        let neckRect = rect(7.0, 12.7, 4.0, 2.0)
+        let neckPath = NSBezierPath(roundedRect: neckRect, xRadius: 0.7 * unit, yRadius: 0.7 * unit)
+        NSColor.white.withAlphaComponent(0.58).setFill()
+        neckPath.fill()
+
+        let capRect = rect(6.2, 14.2, 5.6, 1.8)
+        let capPath = NSBezierPath(roundedRect: capRect, xRadius: 0.8 * unit, yRadius: 0.8 * unit)
+        NSColor.white.withAlphaComponent(0.88).setFill()
+        capPath.fill()
+
+        let highlight = NSBezierPath()
+        highlight.move(to: NSPoint(x: bodyRect.minX + 2.5 * unit, y: bodyRect.minY + 2.1 * unit))
+        highlight.line(to: NSPoint(x: bodyRect.minX + 2.5 * unit, y: bodyRect.maxY - 2.3 * unit))
+        NSColor.white.withAlphaComponent(0.42).setStroke()
+        highlight.lineWidth = 1
+        highlight.lineCapStyle = .round
+        highlight.stroke()
+
+        NSColor.white.withAlphaComponent(0.82).setStroke()
+        bodyPath.lineWidth = 1
+        bodyPath.stroke()
+
+        NSColor.black.withAlphaComponent(0.22).setStroke()
+        capPath.lineWidth = 0.6
+        capPath.stroke()
     }
 }
 

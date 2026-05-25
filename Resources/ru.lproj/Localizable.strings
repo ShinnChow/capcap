@@ -130,6 +130,7 @@
 "tipNumbered" = "Нумерация";
 "tipText" = "Текст";
 "tipColorPicker" = "Пипетка";
+"tipPickedInkBottle" = "Взять цвет пипеткой в чернильницу";
 "tipUndo" = "Отменить";
 "tipRedo" = "Повторить";
 "tipMoveSelection" = "Переместить выделение";
