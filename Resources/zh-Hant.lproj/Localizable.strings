@@ -130,6 +130,7 @@
 "tipNumbered" = "編號";
 "tipText" = "文字";
 "tipColorPicker" = "取色器";
+"tipPickedInkBottle" = "使用取色器提取顏色到墨水瓶";
 "tipUndo" = "復原";
 "tipRedo" = "重做";
 "tipMoveSelection" = "移動選取範圍";

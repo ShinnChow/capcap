@@ -130,6 +130,7 @@
 "tipNumbered" = "Numéro";
 "tipText" = "Texte";
 "tipColorPicker" = "Pipette";
+"tipPickedInkBottle" = "Utiliser la pipette pour remplir l’encrier";
 "tipUndo" = "Annuler";
 "tipRedo" = "Rétablir";
 "tipMoveSelection" = "Déplacer la sélection";

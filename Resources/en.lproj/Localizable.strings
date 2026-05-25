@@ -130,6 +130,7 @@
 "tipNumbered" = "Numbered";
 "tipText" = "Text";
 "tipColorPicker" = "Color Picker";
+"tipPickedInkBottle" = "Use the color picker to fill the ink bottle";
 "tipUndo" = "Undo";
 "tipRedo" = "Redo";
 "tipMoveSelection" = "Move Selection";

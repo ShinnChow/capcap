@@ -130,6 +130,7 @@
 "tipNumbered" = "번호";
 "tipText" = "텍스트";
 "tipColorPicker" = "색상 추출기";
+"tipPickedInkBottle" = "색상 추출기로 잉크병에 색상 추출";
 "tipUndo" = "실행 취소";
 "tipRedo" = "다시 실행";
 "tipMoveSelection" = "선택 영역 이동";

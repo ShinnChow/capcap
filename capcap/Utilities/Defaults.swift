@@ -208,6 +208,7 @@ enum L10n {
     static var tipNumbered: String { s("tipNumbered") }
     static var tipText: String { s("tipText") }
     static var tipColorPicker: String { s("tipColorPicker") }
+    static var tipPickedInkBottle: String { s("tipPickedInkBottle") }
     static var tipUndo: String { s("tipUndo") }
     static var tipRedo: String { s("tipRedo") }
     static var tipMoveSelection: String { s("tipMoveSelection") }
