@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.20] - 2026-05-26
+
+### Changed
+- Add editor hotkeys and tooltips (53e6444)
+- Add ink-bottle hover tips for picked colors (c42b35b)
+
+### Chore
+- Bump cask to 1.3.19 (0b9cb75)
+
 ## [1.3.19] - 2026-05-25
 
 ### Changed
