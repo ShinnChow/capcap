@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.21] - 2026-05-26
+
+### Changed
+- Restore source focus and support annotation nudging (07d67b7)
+- Address review: chord-based scaling + truncated cp for curved shaft (46bf3bb)
+- Address review: centralize arrow geometry + consistent live preview (632f35e)
+- Address review: scale short arrows, tight hit-test, accurate bounds (111ad5c)
+- Address review: precise head hit-test + simpler cp tangent (ec23dfd)
+- Drop unused stroke state from arrow draw (e8373b4)
+- Improve arrow shape: tapered shaft + swept head (dac9707)
+- Add fill toggle shortcut to editor (c915d9a)
+
+### Chore
+- Bump cask to 1.3.20 (9e2d068)
+
 ## [1.3.20] - 2026-05-26
 
 ### Changed
