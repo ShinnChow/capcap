@@ -89,6 +89,7 @@ class SelectionView: NSView {
     private let handleHitSize: CGFloat = 12
     private let borderWidth: CGFloat = 2.0
     private let dashPattern: [CGFloat] = [6, 4]
+    private let dimmingOverlayAlpha: CGFloat = 0.45
 
     // MARK: - Public
 
@@ -422,7 +423,7 @@ class SelectionView: NSView {
             let path = CGMutablePath()
             path.addRect(bounds)
             path.addRect(hoverRect)
-            context.setFillColor(NSColor.black.withAlphaComponent(0.35).cgColor)
+            context.setFillColor(NSColor.black.withAlphaComponent(dimmingOverlayAlpha).cgColor)
             context.addPath(path)
             context.fillPath(using: .evenOdd)
             // Solid accent border
@@ -449,7 +450,7 @@ class SelectionView: NSView {
         path.addRect(bounds)
         let cutoutRect = scrollCaptureActive ? rect.insetBy(dx: -0.5, dy: -0.5) : rect
         path.addRect(cutoutRect)
-        context.setFillColor(NSColor.black.withAlphaComponent(0.35).cgColor)
+        context.setFillColor(NSColor.black.withAlphaComponent(dimmingOverlayAlpha).cgColor)
         context.addPath(path)
         context.fillPath(using: .evenOdd)
 
