@@ -673,13 +673,11 @@ struct ArrowAnnotation: Annotation {
             let startPerpX = -startDY / startLen
             let startPerpY = startDX / startLen
 
-            // Perpendicular at the control point — average of in/out tangents.
-            let cpInX = cp.x - startPoint.x
-            let cpInY = cp.y - startPoint.y
-            let cpOutX = endPoint.x - cp.x
-            let cpOutY = endPoint.y - cp.y
-            let cpTangentX = cpInX + cpOutX
-            let cpTangentY = cpInY + cpOutY
+            // Perpendicular at the control point — uses the chord direction
+            // (start → end), which equals the sum of the in/out tangents at
+            // the control point of a quadratic bezier.
+            let cpTangentX = endPoint.x - startPoint.x
+            let cpTangentY = endPoint.y - startPoint.y
             let cpTangentLen = max(hypot(cpTangentX, cpTangentY), 0.0001)
             let cpPerpX = -cpTangentY / cpTangentLen
             let cpPerpY = cpTangentX / cpTangentLen
@@ -762,17 +760,28 @@ struct ArrowAnnotation: Annotation {
         let length = sqrt(endTangent.dx * endTangent.dx + endTangent.dy * endTangent.dy)
         guard length > 0 else { return false }
 
+        // Mirror the head geometry from `draw(in:bounds:)` so the hit-test
+        // matches the rendered concave (swept) silhouette — clicks in the
+        // cut-out between an outer corner and the neck should miss.
         let headLength: CGFloat = max(22, lineWidth * 6.5)
         let headWidth: CGFloat = max(22, lineWidth * 7.5)
+        let neckHalf: CGFloat = max(3, lineWidth * 1.4)
+        let neckIndent: CGFloat = headLength * 0.14
         let unitX = endTangent.dx / length
         let unitY = endTangent.dy / length
+        let perpX = -unitY
+        let perpY = unitX
         let baseX = endPoint.x - unitX * headLength
         let baseY = endPoint.y - unitY * headLength
+        let neckX = endPoint.x - unitX * (headLength - neckIndent)
+        let neckY = endPoint.y - unitY * (headLength - neckIndent)
 
         let head = CGMutablePath()
         head.move(to: endPoint)
-        head.addLine(to: CGPoint(x: baseX - unitY * headWidth / 2, y: baseY + unitX * headWidth / 2))
-        head.addLine(to: CGPoint(x: baseX + unitY * headWidth / 2, y: baseY - unitX * headWidth / 2))
+        head.addLine(to: CGPoint(x: baseX + perpX * headWidth / 2, y: baseY + perpY * headWidth / 2))
+        head.addLine(to: CGPoint(x: neckX + perpX * neckHalf, y: neckY + perpY * neckHalf))
+        head.addLine(to: CGPoint(x: neckX - perpX * neckHalf, y: neckY - perpY * neckHalf))
+        head.addLine(to: CGPoint(x: baseX - perpX * headWidth / 2, y: baseY - perpY * headWidth / 2))
         head.closeSubpath()
         return head.contains(point)
     }
