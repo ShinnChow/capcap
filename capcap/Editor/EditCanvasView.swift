@@ -1076,7 +1076,8 @@ class EditCanvasView: NSView {
             magnifierBaseImage = nil
 
         case .rectangle:
-            if let start = shapeStart, let end = shapeCurrent {
+            if let start = shapeStart, let current = shapeCurrent {
+                let end = constrainedShapeEnd(from: start, to: current, tool: .rectangle, modifiers: event.modifierFlags)
                 let rect = rectFromTwoPoints(start, end)
                 if rect.width > 2, rect.height > 2 {
                     recordUndo()
@@ -1092,7 +1093,8 @@ class EditCanvasView: NSView {
             shapeCurrent = nil
 
         case .ellipse:
-            if let start = shapeStart, let end = shapeCurrent {
+            if let start = shapeStart, let current = shapeCurrent {
+                let end = constrainedShapeEnd(from: start, to: current, tool: .ellipse, modifiers: event.modifierFlags)
                 let rect = rectFromTwoPoints(start, end)
                 if rect.width > 2, rect.height > 2 {
                     recordUndo()
@@ -1108,7 +1110,8 @@ class EditCanvasView: NSView {
             shapeCurrent = nil
 
         case .arrow:
-            if let start = shapeStart, let end = shapeCurrent {
+            if let start = shapeStart, let current = shapeCurrent {
+                let end = constrainedShapeEnd(from: start, to: current, tool: .arrow, modifiers: event.modifierFlags)
                 let dist = hypot(end.x - start.x, end.y - start.y)
                 if dist > 5 {
                     recordUndo()
@@ -1124,7 +1127,8 @@ class EditCanvasView: NSView {
             shapeCurrent = nil
 
         case .line:
-            if let start = shapeStart, let end = shapeCurrent {
+            if let start = shapeStart, let current = shapeCurrent {
+                let end = constrainedShapeEnd(from: start, to: current, tool: .line, modifiers: event.modifierFlags)
                 let dist = hypot(end.x - start.x, end.y - start.y)
                 if dist > 5 {
                     recordUndo()
@@ -1142,6 +1146,13 @@ class EditCanvasView: NSView {
 
         needsDisplay = true
         refreshCursorAtCurrentLocation()
+    }
+
+    override func flagsChanged(with event: NSEvent) {
+        if shapeStart != nil, constrainsShapeWithShift(activeTool) {
+            needsDisplay = true
+        }
+        super.flagsChanged(with: event)
     }
 
     // MARK: - Drawing
@@ -1211,7 +1222,13 @@ class EditCanvasView: NSView {
         }
 
         // Draw in-progress shape preview
-        if let start = shapeStart, let current = shapeCurrent {
+        if let start = shapeStart, let rawCurrent = shapeCurrent {
+            let current = constrainedShapeEnd(
+                from: start,
+                to: rawCurrent,
+                tool: activeTool,
+                modifiers: NSEvent.modifierFlags
+            )
             context.setStrokeColor(currentColor.cgColor)
             context.setLineWidth(currentLineWidth)
 
@@ -1667,6 +1684,59 @@ class EditCanvasView: NSView {
             y: min(a.y, b.y),
             width: abs(b.x - a.x),
             height: abs(b.y - a.y)
+        )
+    }
+
+    private func constrainedShapeEnd(
+        from start: NSPoint,
+        to end: NSPoint,
+        tool: EditTool,
+        modifiers: NSEvent.ModifierFlags
+    ) -> NSPoint {
+        guard modifiers
+            .intersection(.deviceIndependentFlagsMask)
+            .contains(.shift)
+        else { return end }
+
+        switch tool {
+        case .line, .arrow:
+            return axisLockedEnd(from: start, to: end)
+        case .rectangle, .ellipse:
+            return squareLockedEnd(from: start, to: end)
+        default:
+            return end
+        }
+    }
+
+    private func constrainsShapeWithShift(_ tool: EditTool) -> Bool {
+        switch tool {
+        case .line, .arrow, .rectangle, .ellipse:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func axisLockedEnd(from start: NSPoint, to end: NSPoint) -> NSPoint {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        if abs(dx) >= abs(dy) {
+            return NSPoint(x: end.x, y: start.y)
+        }
+        return NSPoint(x: start.x, y: end.y)
+    }
+
+    private func squareLockedEnd(from start: NSPoint, to end: NSPoint) -> NSPoint {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let side = max(abs(dx), abs(dy))
+        guard side > 0 else { return end }
+
+        let xSign: CGFloat = dx < 0 ? -1 : 1
+        let ySign: CGFloat = dy < 0 ? -1 : 1
+        return NSPoint(
+            x: start.x + side * xSign,
+            y: start.y + side * ySign
         )
     }
 
