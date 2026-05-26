@@ -123,16 +123,24 @@ class EditCanvasView: NSView {
     /// soon as they intersect the rectangle.
     private var eraserSelection: EraserSelection?
     private let dragThreshold: CGFloat = 4
-    /// Index of the annotation showing selection chrome (rotate / curve
-    /// handles). nil when no annotation is selected. Cleared whenever a
-    /// drawing tool is activated or an undo / commit invalidates the index.
+    /// Primary selected annotation. Existing single-selection paths read this
+    /// value for sub-toolbar seeding and handle editing, while `selectedIndexes`
+    /// carries the full multi-selection set.
     private var selectedIndex: Int? {
-        didSet {
-            if oldValue != selectedIndex {
-                needsDisplay = true
-                notifySelectionChanged()
+        get { primarySelectedIndex }
+        set {
+            if let newValue {
+                setSelectedIndexes([newValue], primary: newValue)
+            } else {
+                setSelectedIndexes([], primary: nil)
             }
         }
+    }
+    private var selectedIndexes: Set<Int> = []
+    private var primarySelectedIndex: Int?
+    private var hasSelection: Bool { !selectedIndexes.isEmpty }
+    private var validSelectedIndexes: [Int] {
+        selectedIndexes.filter { annotations.indices.contains($0) }.sorted()
     }
 
     /// Fired when the selected annotation identity changes — non-nil when a
@@ -140,31 +148,79 @@ class EditCanvasView: NSView {
     /// controller to switch the active tool / sub-toolbar to match the
     /// selected annotation and seed it with that annotation's properties.
     var onAnnotationSelected: ((Annotation?) -> Void)?
+    /// Fired when selection enters or leaves multi-select mode. The editor
+    /// controller uses this to hide sub-toolbars and clear active tools only
+    /// for true multi-selection, without disrupting normal drawing flows.
+    var onMultiSelectionChanged: ((Bool) -> Void)?
     /// Fired whenever undo / redo availability changes so toolbar buttons can
     /// reflect the real history state instead of acting as no-op controls.
     var onHistoryStateChanged: ((Bool, Bool) -> Void)?
 
     private func notifySelectionChanged() {
         guard let cb = onAnnotationSelected else { return }
-        if let idx = selectedIndex, idx < annotations.count {
+        if selectedIndexes.count == 1, let idx = selectedIndex, idx < annotations.count {
             cb(annotations[idx])
         } else {
             cb(nil)
         }
     }
 
+    private func setSelectedIndexes(_ indexes: Set<Int>, primary: Int? = nil) {
+        let wasMultiSelecting = selectedIndexes.count > 1
+        let validIndexes = Set(indexes.filter { annotations.indices.contains($0) })
+        let resolvedPrimary: Int?
+        if let primary, validIndexes.contains(primary) {
+            resolvedPrimary = primary
+        } else if let current = primarySelectedIndex, validIndexes.contains(current) {
+            resolvedPrimary = current
+        } else {
+            resolvedPrimary = validIndexes.max()
+        }
+
+        let changed = validIndexes != selectedIndexes || resolvedPrimary != primarySelectedIndex
+        selectedIndexes = validIndexes
+        primarySelectedIndex = resolvedPrimary
+        if changed {
+            needsDisplay = true
+            let isMultiSelecting = validIndexes.count > 1
+            if wasMultiSelecting != isMultiSelecting {
+                onMultiSelectionChanged?(isMultiSelecting)
+            }
+            notifySelectionChanged()
+        }
+    }
+
+    private func toggleSelection(of index: Int) {
+        var next = selectedIndexes
+        if next.contains(index) {
+            next.remove(index)
+            setSelectedIndexes(next)
+        } else {
+            next.insert(index)
+            setSelectedIndexes(next, primary: index)
+        }
+    }
+
     /// The currently selected annotation, if any. Read by the controller
     /// when seeding sub-toolbar values.
     var selectedAnnotation: Annotation? {
-        guard let idx = selectedIndex, idx < annotations.count else { return nil }
+        guard selectedIndexes.count == 1, let idx = selectedIndex, idx < annotations.count else { return nil }
         return annotations[idx]
     }
+
+    @discardableResult
+    func clearMultiSelection() -> Bool {
+        guard selectedIndexes.count > 1 else { return false }
+        selectedIndex = nil
+        return true
+    }
+
     private var handleDragState: HandleDragState?
 
     private struct DragState {
         let index: Int
         let startMouse: NSPoint
-        let original: Annotation
+        let originals: [Int: Annotation]
         var didDrag: Bool
     }
 
@@ -262,7 +318,7 @@ class EditCanvasView: NSView {
         // SelectionView so the user can re-crop. But when there's a
         // selection or in-progress text edit to dismiss, capture the
         // click so mouseDown can clear that chrome / commit the field.
-        if selectedIndex != nil || activeTextField != nil {
+        if hasSelection || activeTextField != nil {
             if bounds.contains(local) {
                 return super.hitTest(point)
             }
@@ -318,7 +374,7 @@ class EditCanvasView: NSView {
     /// mutation begins, then either committed (drag actually moved / text
     /// edit produced a change) or discarded (just a click / cancel).
     private var pendingSnapshot: EditorSnapshot?
-    private static var annotationPasteboard: Annotation?
+    private static var annotationPasteboard: [Annotation] = []
     private static let defaultPasteOffset = NSPoint(x: 12, y: -12)
 
     private func currentSnapshot() -> EditorSnapshot {
@@ -328,9 +384,7 @@ class EditCanvasView: NSView {
     private func apply(_ snapshot: EditorSnapshot) {
         annotations = snapshot.annotations
         numberCounter = snapshot.numberCounter
-        if let idx = selectedIndex, idx >= annotations.count {
-            selectedIndex = nil
-        }
+        setSelectedIndexes(selectedIndexes, primary: primarySelectedIndex)
     }
 
     /// Push current state onto the undo stack and clear the redo stack.
@@ -389,11 +443,14 @@ class EditCanvasView: NSView {
 
     @discardableResult
     func deleteSelectedAnnotation() -> Bool {
-        guard activeTextField == nil, let idx = selectedIndex, idx < annotations.count else {
+        let indexes = validSelectedIndexes
+        guard activeTextField == nil, !indexes.isEmpty else {
             return false
         }
         recordUndo()
-        annotations.remove(at: idx)
+        for idx in indexes.reversed() {
+            annotations.remove(at: idx)
+        }
         resetNumberCounterIfNumberAnnotationsAreGone()
         selectedIndex = nil
         needsDisplay = true
@@ -407,16 +464,18 @@ class EditCanvasView: NSView {
     }
 
     func nudgeSelectedAnnotationFromKeyboard(for event: NSEvent) -> Bool {
+        let indexes = validSelectedIndexes
         guard
             activeTextField == nil,
             let delta = EditCanvasView.selectionNudgeDelta(for: event),
-            let idx = selectedIndex,
-            idx < annotations.count
+            !indexes.isEmpty
         else {
             return false
         }
         recordUndo()
-        annotations[idx] = annotations[idx].translated(by: delta)
+        for idx in indexes {
+            annotations[idx] = annotations[idx].translated(by: delta)
+        }
         needsDisplay = true
         refreshCursorAtCurrentLocation()
         return true
@@ -441,6 +500,8 @@ class EditCanvasView: NSView {
             return copySelectedAnnotation()
         case "v":
             return pasteCopiedAnnotation()
+        case "a":
+            return selectAllAnnotations()
         default:
             return false
         }
@@ -448,10 +509,11 @@ class EditCanvasView: NSView {
 
     @discardableResult
     func copySelectedAnnotation() -> Bool {
-        guard activeTextField == nil, let idx = selectedIndex, idx < annotations.count else {
+        let indexes = validSelectedIndexes
+        guard activeTextField == nil, indexes.count == 1 else {
             return false
         }
-        Self.annotationPasteboard = annotations[idx]
+        Self.annotationPasteboard = indexes.map { annotations[$0] }
         return true
     }
 
@@ -463,15 +525,28 @@ class EditCanvasView: NSView {
 
     @discardableResult
     func pasteCopiedAnnotation() -> Bool {
-        guard activeTextField == nil, let source = Self.annotationPasteboard else {
+        let sources = Self.annotationPasteboard
+        guard activeTextField == nil, sources.count == 1 else {
             return false
         }
-        let pasted = source.translated(by: pasteOffset(forPasting: source))
+        let offset = pasteOffset(forPasting: sources)
+        let pasted = sources.map { $0.translated(by: offset) }
+        let firstNewIndex = annotations.count
         recordUndo()
-        annotations.append(pasted)
-        syncNumberCounterAfterAdding(pasted)
-        selectedIndex = annotations.indices.last
+        annotations.append(contentsOf: pasted)
+        pasted.forEach(syncNumberCounterAfterAdding)
+        setSelectedIndexes(Set(firstNewIndex..<annotations.count), primary: annotations.indices.last)
         needsDisplay = true
+        refreshCursorAtCurrentLocation()
+        return true
+    }
+
+    @discardableResult
+    func selectAllAnnotations() -> Bool {
+        guard activeTextField == nil, !annotations.isEmpty else {
+            return false
+        }
+        setSelectedIndexes(Set(annotations.indices), primary: annotations.indices.last)
         refreshCursorAtCurrentLocation()
         return true
     }
@@ -488,7 +563,7 @@ class EditCanvasView: NSView {
     /// adjustment (e.g. slider drag). No-op when nothing is selected, so
     /// idle slider clicks don't pollute the undo stack.
     func beginSelectionAdjustment() {
-        guard selectedIndex != nil else { return }
+        guard selectedIndexes.count == 1 else { return }
         captureUndoForPending()
         selectionAdjustmentDirty = false
     }
@@ -506,7 +581,7 @@ class EditCanvasView: NSView {
     /// the transform, redraws. Used by color taps and discrete size dots
     /// where there's no drag to batch.
     func mutateSelectedAnnotationAtomic(_ transform: (Annotation) -> Annotation) {
-        guard let idx = selectedIndex, idx < annotations.count else { return }
+        guard selectedIndexes.count == 1, let idx = selectedIndex, idx < annotations.count else { return }
         let original = annotations[idx]
         let updated = transform(original)
         guard !annotationsEqualEnough(updated, original) else { return }
@@ -519,7 +594,7 @@ class EditCanvasView: NSView {
     /// Live mutation during a slider drag — caller is responsible for
     /// `beginSelectionAdjustment` / `commitSelectionAdjustment` bookending.
     func mutateSelectedAnnotationLive(_ transform: (Annotation) -> Annotation) {
-        guard let idx = selectedIndex, idx < annotations.count else { return }
+        guard selectedIndexes.count == 1, let idx = selectedIndex, idx < annotations.count else { return }
         let original = annotations[idx]
         let updated = transform(original)
         guard !annotationsEqualEnough(updated, original) else { return }
@@ -543,12 +618,12 @@ class EditCanvasView: NSView {
         numberCounter = max(numberCounter, number.number + 1)
     }
 
-    private func pasteOffset(forPasting annotation: Annotation) -> NSPoint {
+    private func pasteOffset(forPasting annotations: [Annotation]) -> NSPoint {
         if let cursorPoint = currentMousePointInCanvas(), bounds.contains(cursorPoint) {
-            let rect = annotation.boundingRect
+            let rect = combinedBoundingRect(for: annotations)
             return NSPoint(x: cursorPoint.x - rect.midX, y: cursorPoint.y - rect.midY)
         }
-        return adjacentPasteOffsetKeepingAnnotationVisible(annotation)
+        return adjacentPasteOffsetKeepingAnnotationsVisible(annotations)
     }
 
     private func currentMousePointInCanvas() -> NSPoint? {
@@ -558,10 +633,10 @@ class EditCanvasView: NSView {
         return convert(mouseInWindow, from: nil)
     }
 
-    private func adjacentPasteOffsetKeepingAnnotationVisible(_ annotation: Annotation) -> NSPoint {
+    private func adjacentPasteOffsetKeepingAnnotationsVisible(_ annotations: [Annotation]) -> NSPoint {
         let margin: CGFloat = 4
         var offset = Self.defaultPasteOffset
-        let pastedRect = annotation.translated(by: offset).boundingRect
+        let pastedRect = combinedBoundingRect(for: annotations.map { $0.translated(by: offset) })
 
         if pastedRect.maxX > bounds.maxX - margin {
             offset.x -= pastedRect.maxX - (bounds.maxX - margin)
@@ -577,6 +652,11 @@ class EditCanvasView: NSView {
         }
 
         return offset
+    }
+
+    private func combinedBoundingRect(for annotations: [Annotation]) -> NSRect {
+        guard let first = annotations.first?.boundingRect else { return .zero }
+        return annotations.dropFirst().reduce(first) { $0.union($1.boundingRect) }
     }
 
     private func resetNumberCounterIfNumberAnnotationsAreGone() {
@@ -632,9 +712,14 @@ class EditCanvasView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        let isShiftSelecting = event.modifierFlags
+            .intersection(.deviceIndependentFlagsMask)
+            .contains(.shift)
 
         // Action buttons (delete / edit) — clicked, not dragged.
-        if let action = hitTestSelectionAction(at: point), let idx = selectedIndex {
+        if !isShiftSelecting,
+           let action = hitTestSelectionAction(at: point),
+           let idx = selectedIndex {
             activeTextField?.commit()
             switch action {
             case .delete:
@@ -671,7 +756,9 @@ class EditCanvasView: NSView {
         // Selection handles (rotate / curve / tip) take priority over body
         // drags so the user can grab a handle that visually overlaps the
         // annotation it controls.
-        if let kind = hitTestSelectionHandle(at: point), let idx = selectedIndex {
+        if !isShiftSelecting,
+           let kind = hitTestSelectionHandle(at: point),
+           let idx = selectedIndex {
             activeTextField?.commit()
             let original = annotations[idx]
             let center = NSPoint(x: original.boundingRect.midX, y: original.boundingRect.midY)
@@ -695,22 +782,33 @@ class EditCanvasView: NSView {
         if let idx = hitTestAnnotation(at: point) {
             // Commit any in-progress text edit before grabbing something else.
             activeTextField?.commit()
+            if isShiftSelecting {
+                toggleSelection(of: idx)
+                refreshCursorAtCurrentLocation()
+                return
+            }
             if event.clickCount >= 2,
+               selectedIndexes.count == 1,
                selectedIndex == idx,
                let textAnnotation = annotations[idx] as? TextAnnotation {
                 reEditTextAnnotation(at: idx, annotation: textAnnotation)
                 return
             }
+            if selectedIndexes.contains(idx), selectedIndexes.count > 1 {
+                setSelectedIndexes(selectedIndexes, primary: idx)
+            } else {
+                selectedIndex = idx
+            }
+            let originals = Dictionary(
+                uniqueKeysWithValues: validSelectedIndexes.map { ($0, annotations[$0]) }
+            )
             dragState = DragState(
                 index: idx,
                 startMouse: point,
-                original: annotations[idx],
+                originals: originals,
                 didDrag: false
             )
             captureUndoForPending()
-            // Attach the selection to whatever the user just grabbed —
-            // works in any tool so the user can immediately adjust the mark.
-            selectedIndex = idx
             NSCursor.closedHand.set()
             return
         }
@@ -777,8 +875,12 @@ class EditCanvasView: NSView {
                 x: point.x - state.startMouse.x,
                 y: point.y - state.startMouse.y
             )
-            if state.index < annotations.count {
-                annotations[state.index] = state.original.translated(by: delta)
+            var didMove = false
+            for (idx, original) in state.originals where idx < annotations.count {
+                annotations[idx] = original.translated(by: delta)
+                didMove = true
+            }
+            if didMove {
                 needsDisplay = true
             }
             return
@@ -843,9 +945,13 @@ class EditCanvasView: NSView {
         // adjust-mode chrome appears. Drag also moves it.
         if let state = dragState {
             dragState = nil
-            selectedIndex = state.index
             // Click without drag → no mutation happened; drop the stash.
             discardPendingUndo()
+            if state.didDrag {
+                setSelectedIndexes(Set(state.originals.keys), primary: state.index)
+            } else {
+                selectedIndex = state.index
+            }
             refreshCursorAtCurrentLocation()
             return
         }
@@ -1069,8 +1175,13 @@ class EditCanvasView: NSView {
         }
 
         // Selection chrome — drawn on top so it's always reachable.
-        if let idx = selectedIndex, idx < annotations.count {
+        let selected = validSelectedIndexes
+        if selected.count == 1, let idx = selected.first {
             drawSelectionHandles(for: annotations[idx], in: context)
+        } else {
+            for idx in selected {
+                drawSelectionOutline(for: annotations[idx], in: context)
+            }
         }
 
         // Draw in-progress pen stroke (smoothed live so the preview matches
@@ -1702,9 +1813,7 @@ class EditCanvasView: NSView {
         return NSRect(x: centerX - s / 2, y: centerY - s / 2, width: s, height: s)
     }
 
-    private func drawSelectionHandles(for annotation: Annotation, in context: CGContext) {
-        // 1. Dashed selection box — rotated with the annotation so it stays
-        // wrapped around the visible content at any angle.
+    private func drawSelectionOutline(for annotation: Annotation, in context: CGContext) {
         let box = selectionBox(for: annotation)
         let needsRotation = annotation.supportsRotation && annotation.rotation != 0
         context.saveGState()
@@ -1719,6 +1828,12 @@ class EditCanvasView: NSView {
         context.setLineDash(phase: 0, lengths: [4, 3])
         context.stroke(box)
         context.restoreGState()
+    }
+
+    private func drawSelectionHandles(for annotation: Annotation, in context: CGContext) {
+        // 1. Dashed selection box — rotated with the annotation so it stays
+        // wrapped around the visible content at any angle.
+        drawSelectionOutline(for: annotation, in: context)
 
         // 1b. Resize grips — eight dots on the rect's corners + edge mids.
         if isResizable(annotation) {
@@ -1930,6 +2045,7 @@ class EditCanvasView: NSView {
     /// Top-right action buttons (delete, edit) — clicked, not dragged.
     private func hitTestSelectionAction(at point: NSPoint) -> SelectionAction? {
         guard
+            selectedIndexes.count == 1,
             let idx = selectedIndex,
             idx < annotations.count
         else { return nil }
@@ -1966,6 +2082,7 @@ class EditCanvasView: NSView {
 
     private func hitTestSelectionHandle(at point: NSPoint) -> HandleDragState.Kind? {
         guard
+            selectedIndexes.count == 1,
             let idx = selectedIndex,
             idx < annotations.count
         else { return nil }

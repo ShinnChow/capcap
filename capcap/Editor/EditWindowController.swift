@@ -144,6 +144,11 @@ class EditWindowController {
         canvas.onAnnotationSelected = { [weak self] annotation in
             self?.handleAnnotationSelectionChanged(annotation)
         }
+        canvas.onMultiSelectionChanged = { [weak self] isMultiSelecting in
+            if isMultiSelecting {
+                self?.selectTool(.none)
+            }
+        }
         canvas.onHistoryStateChanged = { [weak self] canUndo, canRedo in
             self?.updateHistoryButtons(canUndo: canUndo, canRedo: canRedo)
         }
@@ -299,6 +304,9 @@ class EditWindowController {
         // Beautify stays active — tools and beautify coexist so the user
         // can draw on top of the beautified live preview.
 
+        if tool != .none {
+            canvasView?.clearMultiSelection()
+        }
         activeTool = tool
         canvasView?.activeTool = tool
         canvasView?.currentColor = currentColor
