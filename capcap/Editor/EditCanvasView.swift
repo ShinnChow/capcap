@@ -294,6 +294,7 @@ class EditCanvasView: NSView {
                 color: annotation.color,
                 hasStroke: annotation.hasStroke,
                 initialText: annotation.text,
+                rotation: annotation.rotation,
                 replacingIndex: index
             )
         }
@@ -689,6 +690,12 @@ class EditCanvasView: NSView {
         if let idx = hitTestAnnotation(at: point) {
             // Commit any in-progress text edit before grabbing something else.
             activeTextField?.commit()
+            if event.clickCount >= 2,
+               selectedIndex == idx,
+               let textAnnotation = annotations[idx] as? TextAnnotation {
+                reEditTextAnnotation(at: idx, annotation: textAnnotation)
+                return
+            }
             dragState = DragState(
                 index: idx,
                 startMouse: point,
@@ -1412,6 +1419,7 @@ class EditCanvasView: NSView {
         color: NSColor,
         hasStroke: Bool,
         initialText: String = "",
+        rotation: CGFloat = 0,
         replacingIndex: Int? = nil
     ) {
         let font = NSFont.systemFont(ofSize: fontSize, weight: .bold)
@@ -1435,18 +1443,19 @@ class EditCanvasView: NSView {
             editingOriginalIndex = nil
         }
 
-        let initialWidth: CGFloat = 80
+        let initialSize = TextAnnotation.editorSize(for: initialText, font: font)
         let fieldRect = NSRect(
             x: bottomLeft.x,
             y: bottomLeft.y,
-            width: initialWidth,
-            height: lineHeight
+            width: initialSize.width,
+            height: max(initialSize.height, lineHeight)
         )
 
         let field = EditableTextField(frame: fieldRect)
         field.font = font
         field.textColor = color
         field.hasStroke = hasStroke
+        field.rotation = rotation
         field.stringValue = initialText
         field.onCommit = { [weak self, weak field] text in
             self?.handleTextCommit(text: text, field: field)
@@ -1491,6 +1500,7 @@ class EditCanvasView: NSView {
                 origin: NSPoint(x: field.frame.minX, y: field.frame.minY),
                 color: field.textColor ?? currentColor,
                 fontSize: font.pointSize,
+                rotation: field.rotation,
                 hasStroke: field.hasStroke
             )
             if let idx = editingOriginalIndex {
@@ -2503,9 +2513,15 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// shows plain text; the outline is rendered on the committed
     /// `TextAnnotation`, which adds it without shifting the glyphs.
     var hasStroke: Bool = false
+    /// Rotation carried by an existing text annotation while it is being edited.
+    /// The live editor stays horizontal, but the committed annotation keeps the
+    /// original angle instead of snapping back to zero.
+    var rotation: CGFloat = 0
 
     private var didFinish = false
     private var wasCanceled = false
+    private static let insertNewlineIgnoringFieldEditorSelector = Selector(("insertNewlineIgnoringFieldEditor:"))
+    private static let insertLineBreakSelector = Selector(("insertLineBreak:"))
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -2523,9 +2539,10 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
         backgroundColor = .clear
         focusRingType = .none
         delegate = self
-        cell?.usesSingleLineMode = true
+        cell?.usesSingleLineMode = false
         cell?.wraps = false
-        cell?.isScrollable = true
+        cell?.isScrollable = false
+        maximumNumberOfLines = 0
         target = self
         action = #selector(commitFromAction)
         stringValue = ""
@@ -2576,7 +2593,27 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
             window?.makeFirstResponder(nil)
             return true
         }
+        if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+            let modifiers = NSApp.currentEvent?.modifierFlags.intersection(.deviceIndependentFlagsMask) ?? []
+            if modifiers.contains(.shift) {
+                insertLineBreak(in: textView)
+            } else {
+                window?.makeFirstResponder(nil)
+            }
+            return true
+        }
+        if commandSelector == Self.insertNewlineIgnoringFieldEditorSelector
+            || commandSelector == Self.insertLineBreakSelector {
+            insertLineBreak(in: textView)
+            return true
+        }
         return false
+    }
+
+    private func insertLineBreak(in textView: NSTextView) {
+        textView.insertText("\n", replacementRange: textView.selectedRange())
+        stringValue = textView.string
+        sizeToFitText()
     }
 
     /// The app has no main menu, so standard editing key equivalents

@@ -1084,13 +1084,30 @@ struct TextAnnotation: Annotation {
         ceil(font.ascender - font.descender + font.leading)
     }
 
+    static func lines(for text: String) -> [String] {
+        let normalized = text
+            .replacingOccurrences(of: "\r\n", with: "\n")
+            .replacingOccurrences(of: "\r", with: "\n")
+        let lines = normalized.components(separatedBy: "\n")
+        return lines.isEmpty ? [""] : lines
+    }
+
+    private static func measuredLineWidth(_ line: String, attributes: [NSAttributedString.Key: Any]) -> CGFloat {
+        guard !line.isEmpty else { return 0 }
+        return ceil((line as NSString).size(withAttributes: attributes).width)
+    }
+
     static func editorSize(for text: String, font: NSFont) -> NSSize {
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
-        let textToMeasure = text.isEmpty ? "M" : text
-        let measured = (textToMeasure as NSString).size(withAttributes: attrs)
+        let lines = Self.lines(for: text)
+        let fallbackWidth = ceil(("M" as NSString).size(withAttributes: attrs).width)
+        let measuredWidth = lines
+            .map { measuredLineWidth($0, attributes: attrs) }
+            .max() ?? fallbackWidth
+        let lineCount = max(1, lines.count)
         return NSSize(
-            width: max(ceil(measured.width) + trailingCaretPadding, minimumEditorWidth),
-            height: lineHeight(for: font)
+            width: max(measuredWidth + trailingCaretPadding, minimumEditorWidth),
+            height: lineHeight(for: font) * CGFloat(lineCount)
         )
     }
 
@@ -1103,22 +1120,32 @@ struct TextAnnotation: Annotation {
     var textBounds: NSRect {
         let font = TextAnnotation.font(forSize: fontSize)
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
-        let textToMeasure = text.isEmpty ? "M" : text
-        let attr = NSAttributedString(string: textToMeasure, attributes: attrs)
-        let ink = attr.boundingRect(
-            with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
-            options: [.usesDeviceMetrics]
-        )
-        // `.usesDeviceMetrics` returns the ink rect with origin relative to
-        // the typographic baseline. Convert to coordinates relative to the
-        // draw origin (which is the typographic frame's bottom): the baseline
-        // sits |descender| above that bottom.
-        return NSRect(
-            x: origin.x + ink.origin.x,
-            y: origin.y + ink.origin.y - font.descender,
-            width: ink.width,
-            height: ink.height
-        )
+        let lines = TextAnnotation.lines(for: text)
+        guard lines.count > 1 else {
+            let textToMeasure = text.isEmpty ? "M" : text
+            let attr = NSAttributedString(string: textToMeasure, attributes: attrs)
+            let ink = attr.boundingRect(
+                with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+                options: [.usesDeviceMetrics]
+            )
+            // `.usesDeviceMetrics` returns the ink rect with origin relative to
+            // the typographic baseline. Convert to coordinates relative to the
+            // draw origin (which is the typographic frame's bottom): the baseline
+            // sits |descender| above that bottom.
+            return NSRect(
+                x: origin.x + ink.origin.x,
+                y: origin.y + ink.origin.y - font.descender,
+                width: ink.width,
+                height: ink.height
+            )
+        }
+
+        let measuredWidth = lines
+            .map { TextAnnotation.measuredLineWidth($0, attributes: attrs) }
+            .max() ?? 0
+        let blockHeight = TextAnnotation.lineHeight(for: font) * CGFloat(lines.count)
+        let width = max(measuredWidth, TextAnnotation.minimumEditorWidth - TextAnnotation.trailingCaretPadding)
+        return NSRect(x: origin.x, y: origin.y, width: width, height: blockHeight)
     }
 
     var hitBounds: NSRect {
@@ -1130,24 +1157,34 @@ struct TextAnnotation: Annotation {
 
     func draw(in context: CGContext, bounds: NSRect) {
         let font = TextAnnotation.font(forSize: fontSize)
+        let lines = TextAnnotation.lines(for: text)
+        let lineHeight = TextAnnotation.lineHeight(for: font)
         NSGraphicsContext.saveGraphicsState()
-        if hasStroke {
-            // Outline pass: a solid silhouette in the stroke color, drawn
-            // first and fattened by the stroke pen. The fill pass below then
-            // covers the inner half, leaving a clean outline on the outside
-            // that never eats into the glyph (a single centered stroke would).
+        let fillAttributes: [NSAttributedString.Key: Any] = [
+            .foregroundColor: color,
+            .font: font
+        ]
+        let strokeAttributes: [NSAttributedString.Key: Any]? = {
+            guard hasStroke else { return nil }
             let stroke = TextAnnotation.strokeColor(for: color)
-            text.draw(at: origin, withAttributes: [
+            return [
                 .foregroundColor: stroke,
                 .strokeColor: stroke,
                 .strokeWidth: -TextAnnotation.strokeWidthPercent,
                 .font: font
-            ])
+            ]
+        }()
+
+        for (index, line) in lines.enumerated() where !line.isEmpty {
+            let lineOrigin = NSPoint(
+                x: origin.x,
+                y: origin.y + lineHeight * CGFloat(lines.count - 1 - index)
+            )
+            if let strokeAttributes {
+                (line as NSString).draw(at: lineOrigin, withAttributes: strokeAttributes)
+            }
+            (line as NSString).draw(at: lineOrigin, withAttributes: fillAttributes)
         }
-        text.draw(at: origin, withAttributes: [
-            .foregroundColor: color,
-            .font: font
-        ])
         NSGraphicsContext.restoreGraphicsState()
     }
 
@@ -1192,13 +1229,13 @@ struct TextAnnotation: Annotation {
     }
 
     /// Resize the text in place. The visual top-left stays anchored — fonts
-    /// grow downward in canvas coords (which use a flipped origin), so the
-    /// origin shifts by the line-height delta to keep the cap line steady.
+    /// grow downward in canvas coords, so the origin shifts by the full text
+    /// block height delta to keep the cap line steady.
     func withFontSize(_ fontSize: CGFloat) -> Annotation {
         let oldFont = TextAnnotation.font(forSize: self.fontSize)
         let newFont = TextAnnotation.font(forSize: fontSize)
-        let oldHeight = TextAnnotation.lineHeight(for: oldFont)
-        let newHeight = TextAnnotation.lineHeight(for: newFont)
+        let oldHeight = TextAnnotation.editorSize(for: text, font: oldFont).height
+        let newHeight = TextAnnotation.editorSize(for: text, font: newFont).height
         let newOrigin = NSPoint(x: origin.x, y: origin.y + (oldHeight - newHeight))
         return TextAnnotation(
             text: text,
