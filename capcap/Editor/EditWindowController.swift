@@ -415,10 +415,7 @@ class EditWindowController {
                 },
                 fillEnabled: currentShapeFill,
                 onFill: { [weak self] enabled in
-                    self?.currentShapeFill = enabled
-                    self?.canvasView?.currentShapeFill = enabled
-                    Defaults.lastShapeFill = enabled
-                    self?.canvasView?.mutateSelectedAnnotationAtomic { $0.withFill(enabled) }
+                    self?.setShapeFillEnabled(enabled)
                 }
             )
         case .marker:
@@ -1158,6 +1155,13 @@ class EditWindowController {
         }
     }
 
+    private func setShapeFillEnabled(_ enabled: Bool) {
+        currentShapeFill = enabled
+        canvasView?.currentShapeFill = enabled
+        Defaults.lastShapeFill = enabled
+        canvasView?.mutateSelectedAnnotationAtomic { $0.withFill(enabled) }
+    }
+
     private static func color(fromHex hex: String?) -> NSColor? {
         guard var trimmed = hex?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased() else {
             return nil
@@ -1258,11 +1262,20 @@ class EditWindowController {
             selectTool(.none)
         case .tool(let tool):
             selectTool(tool)
+        case .fill:
+            return toggleShapeFillFromKeyboard()
         case .pin:
             pin()
         case .close:
             close()
         }
+        return true
+    }
+
+    private func toggleShapeFillFromKeyboard() -> Bool {
+        guard activeTool == .rectangle || activeTool == .ellipse else { return false }
+        setShapeFillEnabled(!currentShapeFill)
+        showSubToolbar(for: activeTool)
         return true
     }
 
@@ -1544,6 +1557,7 @@ class EditWindowController {
 private enum EditorKeyboardShortcut {
     case select
     case tool(EditTool)
+    case fill
     case pin
     case close
 
@@ -1565,6 +1579,7 @@ private enum EditorKeyboardShortcut {
         case "h": self = .tool(.marker)
         case "m": self = .tool(.mosaic)
         case "e": self = .tool(.eraser)
+        case "f": self = .fill
         case "t": self = .tool(.text)
         case "n": self = .tool(.numbered)
         case "p": self = .pin
@@ -2483,6 +2498,7 @@ private class ColorSizeSubToolbar: NSView {
                 action: #selector(fillCheckboxChanged(_:))
             )
             checkbox.state = fillEnabled ? .on : .off
+            checkbox.toolTip = "\(L10n.shapeFillEffect) (F)"
             addSubview(checkbox)
             fillCheckbox = checkbox
         }
