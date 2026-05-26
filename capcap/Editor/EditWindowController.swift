@@ -81,6 +81,9 @@ class EditWindowController {
     /// Last color sampled from the toolbar eyedropper. Persisted locally and
     /// shown as an ink-bottle control for color-capable annotation tools.
     private var pickedColorSwatch: NSColor?
+    /// Active system eyedropper session. AppKit does not expose a direct
+    /// cancel API, so teardown cancels it by posting Escape.
+    private var activeColorSampler: NSColorSampler?
 
     var isTextEditing: Bool {
         canvasView?.isTextEditing == true
@@ -1186,9 +1189,13 @@ class EditWindowController {
     /// tool color.
     private func runColorPicker() {
         canvasView?.commitActiveTextEditing()
+        guard activeColorSampler == nil else { return }
         let sampler = NSColorSampler()
-        sampler.show { [weak self] picked in
-            guard let self, let picked else { return }
+        activeColorSampler = sampler
+        sampler.show { [weak self, weak sampler] picked in
+            guard let self, self.activeColorSampler === sampler else { return }
+            self.activeColorSampler = nil
+            guard let picked else { return }
             let rgb = picked.usingColorSpace(.sRGB) ?? picked
             let r = Int(round(max(0, min(1, rgb.redComponent)) * 255))
             let g = Int(round(max(0, min(1, rgb.greenComponent)) * 255))
@@ -1213,6 +1220,21 @@ class EditWindowController {
             }
             ToastWindow.show(message: L10n.colorCopied(hex), on: self.screen)
         }
+    }
+
+    private func cancelActiveColorSampler() {
+        guard activeColorSampler != nil else { return }
+        activeColorSampler = nil
+        Self.postEscapeKeyEvent()
+    }
+
+    private static func postEscapeKeyEvent() {
+        let source = CGEventSource(stateID: .hidSystemState)
+        let escapeKeyCode = CGKeyCode(53)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: escapeKeyCode, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: escapeKeyCode, keyDown: false)
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
     }
 
     func confirmFromKeyboard() {
@@ -1308,6 +1330,7 @@ class EditWindowController {
     }
 
     func tearDown() {
+        cancelActiveColorSampler()
         isScrollCapturing = false
         autoScroller?.stop()
         autoScroller = nil
