@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.22] - 2026-05-26
+
+### Changed
+- Darken capture overlay dimming (7bc3da2)
+- Support multiline text editing and preserve rotation (587f980)
+- Cancel active eyedropper on editor teardown (849d1ad)
+- Handle Cmd+W in settings window (0c5fb3a)
+
+### Chore
+- Bump cask to 1.3.21 (a0fd1b0)
+
 ## [1.3.21] - 2026-05-26
 
 ### Changed
