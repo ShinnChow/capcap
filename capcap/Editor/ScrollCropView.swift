@@ -5,7 +5,8 @@ import AppKit
 /// once; only the top and bottom edges move — the width is fixed.
 ///
 /// At fit scale a long screenshot shrinks to a thin sliver, so dragging an
-/// edge pops a 1:1 loupe at the cut line, letting the user place it exactly.
+/// edge pops a full-width preview at the cut line, letting the user place it
+/// exactly without losing horizontal context.
 final class ScrollCropView: NSView {
     private let image: NSImage
     private let cgImage: CGImage?
@@ -23,15 +24,16 @@ final class ScrollCropView: NSView {
 
     private var activeEdge: Edge?
 
-    // Mouse X (this view's coords) during an edge drag. The loupe pans
-    // horizontally to follow it so the user magnifies wherever the cursor is.
-    private var pointerX: CGFloat = 0
-
     private let accent = NSColor(red: 0, green: 212.0 / 255.0, blue: 106.0 / 255.0, alpha: 1.0)
     private let outerMargin: CGFloat = 80
+    private let minimumImageInset: CGFloat = 24
     private let minimumCropHeight: CGFloat = 12
     private let edgeHitInset: CGFloat = 16
-    private let loupeSize = NSSize(width: 280, height: 190)
+    private let edgePreviewGap: CGFloat = 44
+    private let edgePreviewInset: CGFloat = 16
+    private let edgePreviewHeight: CGFloat = 190
+    private let edgePreviewMaxWidth: CGFloat = 720
+    private let edgePreviewMaxWidthFraction: CGFloat = 0.54
 
     init(frame frameRect: NSRect, image: NSImage) {
         self.image = image
@@ -89,7 +91,16 @@ final class ScrollCropView: NSView {
 
         let fractions = resetCrop ? nil : currentCropFractions()
 
-        let availableW = max(1, bounds.width - outerMargin * 2)
+        let preferredEdgePreviewSize = edgePreviewSize()
+        let fullAvailableW = max(1, bounds.width - outerMargin * 2)
+        let reservedPreviewAvailableW = bounds.width
+            - minimumImageInset
+            - edgePreviewInset
+            - edgePreviewGap
+            - preferredEdgePreviewSize.width
+        let availableW = max(1, reservedPreviewAvailableW > 0
+            ? min(fullAvailableW, reservedPreviewAvailableW)
+            : fullAvailableW)
         let availableH = max(1, bounds.height - outerMargin * 2)
         let imgW = max(1, image.size.width)
         let imgH = max(1, image.size.height)
@@ -97,8 +108,18 @@ final class ScrollCropView: NSView {
         let scale = min(availableW / imgW, availableH / imgH, 1)
         let drawSize = NSSize(width: imgW * scale, height: imgH * scale)
 
+        let centeredX = ((bounds.width - drawSize.width) / 2).rounded()
+        let maxXForRightPreview = (
+            bounds.maxX
+            - edgePreviewInset
+            - edgePreviewGap
+            - preferredEdgePreviewSize.width
+            - drawSize.width
+        ).rounded()
+        let imageX = max(bounds.minX + minimumImageInset, min(centeredX, maxXForRightPreview))
+
         imageFrame = NSRect(
-            x: ((bounds.width - drawSize.width) / 2).rounded(),
+            x: imageX,
             y: ((bounds.height - drawSize.height) / 2).rounded(),
             width: drawSize.width,
             height: drawSize.height
@@ -183,7 +204,7 @@ final class ScrollCropView: NSView {
         drawHandle(atY: cropBottom)
 
         if let activeEdge {
-            drawLoupe(forEdge: activeEdge)
+            drawEdgePreview(forEdge: activeEdge)
         }
     }
 
@@ -206,40 +227,34 @@ final class ScrollCropView: NSView {
         }
     }
 
-    /// Draws a 1:1 magnified window of the image at the cut line so the user
-    /// can crop precisely despite the tiny fit-scaled preview.
-    private func drawLoupe(forEdge edge: Edge) {
+    /// Draws a full-width preview of the image at the cut line so the user can
+    /// crop precisely despite the tiny fit-scaled overview.
+    private func drawEdgePreview(forEdge edge: Edge) {
         guard let cg = cgImage else { return }
         let lineY = (edge == .top) ? cropTop : cropBottom
         let fraction = clamp((lineY - imageFrame.minY) / max(imageFrame.height, 1), 0, 1)
 
-        let pixelScale = CGFloat(cg.height) / max(image.size.height, 1)
-        let bandH = min(loupeSize.height * pixelScale, CGFloat(cg.height))
-        let bandW = min(loupeSize.width * pixelScale, CGFloat(cg.width))
+        let previewRect = edgePreviewFrame(forLineY: lineY)
+        let previewScale = previewRect.width / max(image.size.width, 1)
+        let pixelScaleY = CGFloat(cg.height) / max(image.size.height, 1)
+        let bandH = min((previewRect.height / max(previewScale, 0.01)) * pixelScaleY, CGFloat(cg.height))
         let centerPx = fraction * CGFloat(cg.height)
         let bandY = clamp(centerPx - bandH / 2, 0, max(0, CGFloat(cg.height) - bandH))
-
-        // Follow the cursor horizontally instead of locking to the center.
-        let fractionX = clamp((pointerX - imageFrame.minX) / max(imageFrame.width, 1), 0, 1)
-        let centerPxX = fractionX * CGFloat(cg.width)
-        let bandX = clamp(centerPxX - bandW / 2, 0, max(0, CGFloat(cg.width) - bandW))
-        let band = CGRect(x: bandX, y: bandY, width: bandW, height: bandH)
-
-        let loupeRect = loupeFrame(forLineY: lineY)
+        let band = CGRect(x: 0, y: bandY, width: CGFloat(cg.width), height: bandH)
 
         NSColor(white: 0.1, alpha: 0.96).setFill()
         NSBezierPath(
-            roundedRect: loupeRect.insetBy(dx: -10, dy: -10),
+            roundedRect: previewRect.insetBy(dx: -10, dy: -10),
             xRadius: 12, yRadius: 12
         ).fill()
 
         NSGraphicsContext.saveGraphicsState()
-        NSBezierPath(rect: loupeRect).addClip()
+        NSBezierPath(rect: previewRect).addClip()
         NSColor.black.setFill()
-        loupeRect.fill()
+        previewRect.fill()
         if let cropped = cg.cropping(to: band) {
-            NSImage(cgImage: cropped, size: loupeRect.size).draw(
-                in: loupeRect,
+            NSImage(cgImage: cropped, size: previewRect.size).draw(
+                in: previewRect,
                 from: .zero,
                 operation: .copy,
                 fraction: 1,
@@ -252,31 +267,49 @@ final class ScrollCropView: NSView {
         // Cut-line marker — tracks the real cut position even when the band
         // was clamped against the top or bottom of the image.
         let markerFraction = bandH > 0 ? (centerPx - bandY) / bandH : 0.5
-        let markerY = loupeRect.minY + markerFraction * loupeRect.height
+        let markerY = previewRect.minY + markerFraction * previewRect.height
         NSColor.systemRed.setStroke()
         let marker = NSBezierPath()
         marker.lineWidth = 2
-        marker.move(to: NSPoint(x: loupeRect.minX, y: markerY))
-        marker.line(to: NSPoint(x: loupeRect.maxX, y: markerY))
+        marker.move(to: NSPoint(x: previewRect.minX, y: markerY))
+        marker.line(to: NSPoint(x: previewRect.maxX, y: markerY))
         marker.stroke()
 
         accent.setStroke()
-        let frame = NSBezierPath(rect: loupeRect)
+        let frame = NSBezierPath(rect: previewRect)
         frame.lineWidth = 1.5
         frame.stroke()
     }
 
-    private func loupeFrame(forLineY lineY: CGFloat) -> NSRect {
-        var y = lineY - loupeSize.height / 2
-        y = clamp(y, bounds.minY + 16, bounds.maxY - 16 - loupeSize.height)
+    private func edgePreviewFrame(forLineY lineY: CGFloat) -> NSRect {
+        let rightMaxWidth = bounds.maxX - edgePreviewInset - (imageFrame.maxX + edgePreviewGap)
+        var size = rightMaxWidth >= 1 ? edgePreviewSize(constrainedTo: rightMaxWidth) : .zero
+        var x = imageFrame.maxX + edgePreviewGap
 
-        // The fit-scaled image is a thin sliver, so there is room beside it.
-        var x = imageFrame.maxX + 44
-        if x + loupeSize.width > bounds.maxX - 16 {
-            x = imageFrame.minX - 44 - loupeSize.width
+        if size.width < 1 {
+            let leftMaxWidth = imageFrame.minX - edgePreviewGap - edgePreviewInset
+            size = leftMaxWidth >= 1 ? edgePreviewSize(constrainedTo: leftMaxWidth) : .zero
+            x = imageFrame.minX - edgePreviewGap - size.width
         }
-        x = clamp(x, bounds.minX + 16, bounds.maxX - 16 - loupeSize.width)
-        return NSRect(x: x, y: y, width: loupeSize.width, height: loupeSize.height)
+
+        guard size.width >= 1 else {
+            return NSRect(x: bounds.maxX, y: lineY, width: 0, height: edgePreviewHeight)
+        }
+
+        var y = lineY - size.height / 2
+        y = clamp(y, bounds.minY + edgePreviewInset, bounds.maxY - edgePreviewInset - size.height)
+
+        return NSRect(x: x.rounded(), y: y.rounded(), width: size.width, height: size.height)
+    }
+
+    private func edgePreviewSize(constrainedTo maxWidth: CGFloat? = nil) -> NSSize {
+        let viewCappedWidth = min(edgePreviewMaxWidth, max(1, bounds.width * edgePreviewMaxWidthFraction))
+        let constraint = maxWidth ?? viewCappedWidth
+        guard constraint >= 1 else { return .zero }
+
+        let rawWidth = min(max(1, image.size.width), viewCappedWidth, constraint)
+        let width = max(1, rawWidth.rounded(.down))
+        return NSSize(width: width, height: edgePreviewHeight)
     }
 
     // MARK: - Mouse
@@ -285,7 +318,6 @@ final class ScrollCropView: NSView {
         let point = convert(event.locationInWindow, from: nil)
         activeEdge = edge(at: point)
         if activeEdge != nil {
-            pointerX = point.x
             needsDisplay = true
         }
     }
@@ -293,7 +325,6 @@ final class ScrollCropView: NSView {
     override func mouseDragged(with event: NSEvent) {
         guard let activeEdge else { return }
         let point = convert(event.locationInWindow, from: nil)
-        pointerX = point.x
         switch activeEdge {
         case .top:
             cropTop = clamp(point.y, imageFrame.minY, cropBottom - minimumCropHeight)
