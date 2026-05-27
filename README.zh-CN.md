@@ -88,16 +88,14 @@
 
 ## 使用 Homebrew 安装
 
-本仓库已提供 Homebrew cask，位于 `Casks/capcap.rb`。
-
-由于仓库名是 `capcap`，而不是 `homebrew-capcap`，需要显式指定仓库 URL 进行 tap：
+Homebrew cask 现在位于统一的 `realskyrin/tap` Homebrew tap：
 
 ```bash
-brew tap realskyrin/capcap https://github.com/realskyrin/capcap
-brew install --cask capcap
+brew tap realskyrin/tap
+brew install --cask realskyrin/tap/capcap
 ```
 
-发布和更新流程见 [docs/homebrew.md](docs/homebrew.md)。
+Tap 维护流程见 [homebrew-tap](https://github.com/realskyrin/homebrew-tap)。
 
 ## 从源码构建
 
@@ -195,7 +193,7 @@ xattr -dr com.apple.quarantine ./build/capcap.app
 - `capcap/Settings/`：首次启动/设置窗口和偏好设置 UI
 - `capcap/Upload/`：图床实现（腾讯云 COS、七牛云 Kodo、阿里云 OSS）、HMAC 签名、带进度的 HTTP 封装，以及上传过程的浮动进度提示
 - `capcap/Utilities/`：默认值、本地化和开机启动支持
-- `scripts/`：编译检查、打包、重启运行、图标、DMG 和 Homebrew cask 辅助脚本
+- `scripts/`：编译检查、打包、重启运行、图标和 DMG 辅助脚本
 
 ## 开发
 

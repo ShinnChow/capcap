@@ -88,16 +88,14 @@ On first launch, capcap opens a setup window that shows both permission states. 
 
 ## Install with Homebrew
 
-This repository ships a Homebrew cask at `Casks/capcap.rb`.
-
-Because the repository name is `capcap` rather than `homebrew-capcap`, tap it with an explicit URL:
+The Homebrew cask lives in the shared `realskyrin/tap` Homebrew tap:
 
 ```bash
-brew tap realskyrin/capcap https://github.com/realskyrin/capcap
-brew install --cask capcap
+brew tap realskyrin/tap
+brew install --cask realskyrin/tap/capcap
 ```
 
-See [docs/homebrew.md](docs/homebrew.md) for the release/update workflow.
+See the [homebrew-tap README](https://github.com/realskyrin/homebrew-tap) for tap maintenance.
 
 ## Build from Source
 
@@ -195,7 +193,7 @@ Only do this for builds downloaded from this repository or ones you built yourse
 - `capcap/Settings/` — startup/settings window and preferences UI
 - `capcap/Upload/` — image-host providers (Tencent COS, Qiniu Kodo, Aliyun OSS), HMAC signing, progress-tracking HTTP wrapper, and the floating upload chip
 - `capcap/Utilities/` — defaults, localization, and launch-at-login support
-- `scripts/` — compile check, bundle, rebuild/open, icon, DMG, and Homebrew cask helpers
+- `scripts/` — compile check, bundle, rebuild/open, icon, and DMG helpers
 
 ## Development
 
