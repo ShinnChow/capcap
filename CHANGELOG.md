@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.23] - 2026-05-27
+
+### Changed
+- Move Homebrew cask to shared tap (06bdd27)
+- Expand scroll crop edge preview width (81264c6)
+- Address review: raw pixel signature, crop bounds, scrollbar edge guard (89b8161)
+- Reduce auto-scroll step to ~15% of selection height (917c38d)
+- Exclude scrollbar and sticky headers from Vision overlap detection (6002ecd)
+- Wait for frame settlement before measuring scroll offset (c77ebda)
+- Use Apple Vision for scroll-capture overlap detection (9633012)
+- Add Shift constraints for shape drawing (09cb3cb)
+- Consolidate agent docs and add verification wrappers (1fd1c87)
+- Add multi-select selection handling (b337f58)
+- Add redo shortcut and undo tips (7c52a5a)
+- Add scroll crop confirm tooltip (95ffc2e)
+
+### Chore
+- Bump cask to 1.3.22 (302c224)
+
 ## [1.3.22] - 2026-05-26
 
 ### Changed
