@@ -289,7 +289,7 @@ private final class TranslationProviderCard: NSView {
         body.addArrangedSubview(makeFieldRow(apiKeyLabel, apiKeyField,
                                              label: L10n.translationApiKey,
                                              placeholder: "sk-…", width: body))
-        if !kind.isDeepL {
+        if !kind.isDirectTranslationAPI {
             body.addArrangedSubview(makeFieldRow(modelLabel, modelField,
                                                  label: L10n.translationModel,
                                                  placeholder: modelPlaceholder(), width: body))
@@ -373,6 +373,9 @@ private final class TranslationProviderCard: NSView {
         if kind.isDeepL {
             return "Auto: api-free.deepl.com for :fx keys"
         }
+        if kind.isDeepLX {
+            return kind.defaultEndpoint
+        }
         return kind.defaultEndpoint.isEmpty
             ? "https://api.example.com/v1/chat/completions"
             : kind.defaultEndpoint
@@ -390,7 +393,7 @@ private final class TranslationProviderCard: NSView {
     private func currentConfig() -> TranslationConfig {
         TranslationConfig(
             apiKey: apiKeyField.stringValue,
-            model: kind.isDeepL ? "" : modelField.stringValue,
+            model: kind.isDirectTranslationAPI ? "" : modelField.stringValue,
             endpoint: endpointField.stringValue
         )
     }

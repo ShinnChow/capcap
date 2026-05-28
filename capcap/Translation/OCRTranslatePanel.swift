@@ -1112,7 +1112,7 @@ final class OCRTranslatePanel: NSPanel {
         currentDictionaryProvider = nil
         showDictionaryHeader(word: word)
 
-        guard let kind = TranslationConfigStore.usableKinds().first(where: { !$0.isDeepL }) else {
+        guard let kind = TranslationConfigStore.usableKinds().first(where: { !$0.isDirectTranslationAPI }) else {
             setTranslationPlaceholder("\(L10n.dictionaryNoProviderTitle)\n\(L10n.dictionaryNoProviderHint)")
             refreshHeight()
             return
