@@ -270,6 +270,7 @@ struct MarkerAnnotation: Annotation {
 struct MosaicAnnotation: Annotation {
     let rect: NSRect
     let pixelatedImage: NSImage
+    let blockSize: CGFloat
 
     var boundingRect: NSRect { rect }
 
@@ -284,7 +285,8 @@ struct MosaicAnnotation: Annotation {
     func translated(by delta: NSPoint) -> Annotation {
         MosaicAnnotation(
             rect: rect.offsetBy(dx: delta.x, dy: delta.y),
-            pixelatedImage: pixelatedImage
+            pixelatedImage: pixelatedImage,
+            blockSize: blockSize
         )
     }
 }

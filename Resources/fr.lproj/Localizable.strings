@@ -125,6 +125,7 @@
 "tipPen" = "Stylo";
 "tipMarker" = "Surligneur";
 "tipMosaic" = "Mosaïque";
+"mosaicGranularity" = "Granularité de la mosaïque";
 "tipEraser" = "Gomme";
 "tipMagnifier" = "Loupe";
 "tipNumbered" = "Numéro";

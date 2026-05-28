@@ -125,6 +125,7 @@
 "tipPen" = "畫筆";
 "tipMarker" = "螢光筆";
 "tipMosaic" = "馬賽克";
+"mosaicGranularity" = "馬賽克顆粒度";
 "tipEraser" = "橡皮擦";
 "tipMagnifier" = "放大鏡";
 "tipNumbered" = "編號";

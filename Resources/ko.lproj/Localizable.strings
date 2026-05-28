@@ -125,6 +125,7 @@
 "tipPen" = "펜";
 "tipMarker" = "형광펜";
 "tipMosaic" = "모자이크";
+"mosaicGranularity" = "모자이크 입자 크기";
 "tipEraser" = "지우개";
 "tipMagnifier" = "돋보기";
 "tipNumbered" = "번호";

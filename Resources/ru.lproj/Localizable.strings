@@ -125,6 +125,7 @@
 "tipPen" = "Карандаш";
 "tipMarker" = "Маркер";
 "tipMosaic" = "Мозаика";
+"mosaicGranularity" = "Зернистость мозаики";
 "tipEraser" = "Ластик";
 "tipMagnifier" = "Лупа";
 "tipNumbered" = "Нумерация";

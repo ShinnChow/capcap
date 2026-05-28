@@ -203,6 +203,7 @@ enum L10n {
     static var tipPen: String { s("tipPen") }
     static var tipMarker: String { s("tipMarker") }
     static var tipMosaic: String { s("tipMosaic") }
+    static var mosaicGranularity: String { s("mosaicGranularity") }
     static var tipEraser: String { s("tipEraser") }
     static var tipMagnifier: String { s("tipMagnifier") }
     static var tipNumbered: String { s("tipNumbered") }
@@ -807,12 +808,16 @@ struct Defaults {
     static var mosaicBlockSize: Double {
         get {
             let val = defaults.double(forKey: "mosaicBlockSize")
-            return val > 0 ? val : 12.0
+            guard val > 0 else { return 12.0 }
+            return min(max(val, mosaicBlockSizeMin), mosaicBlockSizeMax)
         }
         set {
-            defaults.set(newValue, forKey: "mosaicBlockSize")
+            defaults.set(min(max(newValue, mosaicBlockSizeMin), mosaicBlockSizeMax), forKey: "mosaicBlockSize")
         }
     }
+
+    static let mosaicBlockSizeMin: Double = 4
+    static let mosaicBlockSizeMax: Double = 48
 
     static let textFontSizeMin: Double = 10
     static let textFontSizeMax: Double = 100

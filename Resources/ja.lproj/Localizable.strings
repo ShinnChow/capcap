@@ -125,6 +125,7 @@
 "tipPen" = "ペン";
 "tipMarker" = "マーカー";
 "tipMosaic" = "モザイク";
+"mosaicGranularity" = "モザイク粒度";
 "tipEraser" = "消しゴム";
 "tipMagnifier" = "拡大鏡";
 "tipNumbered" = "番号";

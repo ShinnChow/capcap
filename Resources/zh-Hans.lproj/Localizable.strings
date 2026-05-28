@@ -125,6 +125,7 @@
 "tipPen" = "画笔";
 "tipMarker" = "高亮笔";
 "tipMosaic" = "马赛克";
+"mosaicGranularity" = "马赛克颗粒度";
 "tipEraser" = "橡皮擦";
 "tipMagnifier" = "放大镜";
 "tipNumbered" = "序号";

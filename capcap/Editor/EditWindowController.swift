@@ -69,7 +69,7 @@ class EditWindowController {
     // Drawing properties
     private var currentColor: NSColor = .red
     private var currentLineWidth: CGFloat = 3.0
-    private var currentMosaicBlockSize: CGFloat = 12.0
+    private var currentMosaicBlockSize: CGFloat = CGFloat(Defaults.mosaicBlockSize)
     private var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
     /// Whether new text annotations get a contrast outline.
     private var currentTextStroke: Bool = Defaults.lastTextStroke
@@ -365,6 +365,7 @@ class EditWindowController {
         case is LineAnnotation: return .line
         case is PenAnnotation: return .pen
         case is MarkerAnnotation: return .marker
+        case is MosaicAnnotation: return .mosaic
         case is NumberAnnotation: return .numbered
         case is EmojiAnnotation: return .emoji
         default: return nil
@@ -386,6 +387,9 @@ class EditWindowController {
         case let m as MarkerAnnotation:
             currentMarkerColor = m.color
             currentMarkerLineWidth = m.lineWidth
+        case let mosaic as MosaicAnnotation:
+            currentMosaicBlockSize = mosaic.blockSize
+            canvasView?.currentMosaicBlockSize = mosaic.blockSize
         case let r as RectAnnotation:
             currentColor = r.color
             currentLineWidth = r.lineWidth
@@ -470,8 +474,10 @@ class EditWindowController {
                 currentSize: 0,
                 width: pickedColorSwatch == nil ? 200 : 225
             )
-        case .mosaic, .eraser:
-            // These tools have no sub-toolbar — drag a rectangle on canvas.
+        case .mosaic:
+            showMosaicSubToolbar()
+        case .eraser:
+            // The eraser has no sub-toolbar — drag over annotations to delete.
             break
         default:
             break
@@ -573,6 +579,35 @@ class EditWindowController {
             self?.canvasView?.mutateSelectedAnnotationLive { $0.withFontSize(size) }
         }
         view.onFontSizeEnded = { [weak self] in
+            self?.canvasView?.commitSelectionAdjustment()
+        }
+        styleFloatingHUD(view)
+        hostSelectionView.addSubview(view)
+        subToolbarView = view
+    }
+
+    private func showMosaicSubToolbar() {
+        guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
+        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let subRect = subToolbarRect(
+            width: MosaicSubToolbar.preferredWidth,
+            height: 36,
+            toolbarFrame: toolbarFrame,
+            in: hostSelectionView.bounds,
+            offset: offset
+        )
+
+        let view = MosaicSubToolbar(frame: subRect, currentBlockSize: currentMosaicBlockSize)
+        view.onBlockSizeBegan = { [weak self] in
+            self?.canvasView?.beginSelectionAdjustment()
+        }
+        view.onBlockSizeChanged = { [weak self] size in
+            self?.currentMosaicBlockSize = size
+            self?.canvasView?.currentMosaicBlockSize = size
+            Defaults.mosaicBlockSize = Double(size)
+            self?.canvasView?.mutateSelectedMosaicBlockSizeLive(size)
+        }
+        view.onBlockSizeEnded = { [weak self] in
             self?.canvasView?.commitSelectionAdjustment()
         }
         styleFloatingHUD(view)
@@ -2933,6 +2968,104 @@ private class ColorSizeSubToolbar: NSView {
         return abs(ac.redComponent - bc.redComponent) < 0.01 &&
                abs(ac.greenComponent - bc.greenComponent) < 0.01 &&
                abs(ac.blueComponent - bc.blueComponent) < 0.01
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
+        NSColor(white: 0.12, alpha: 0.9).setFill()
+        path.fill()
+    }
+}
+
+// MARK: - Mosaic Sub-toolbar
+
+private class MosaicSubToolbar: NSView {
+    var currentBlockSize: CGFloat
+    var onBlockSizeBegan: (() -> Void)?
+    var onBlockSizeChanged: ((CGFloat) -> Void)?
+    var onBlockSizeEnded: (() -> Void)?
+
+    private var slider: NSSlider!
+    private var valueLabel: NSTextField!
+    private var isAdjusting = false
+
+    static let preferredWidth: CGFloat = 206
+    private static let leadingPad: CGFloat = 12
+    private static let labelWidth: CGFloat = 32
+    private static let sliderWidth: CGFloat = 138
+
+    init(frame: NSRect, currentBlockSize: CGFloat) {
+        self.currentBlockSize = Self.clampedBlockSize(currentBlockSize)
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func setup() {
+        var x = Self.leadingPad
+        let midY = bounds.midY
+
+        let label = NSTextField(labelWithString: "")
+        label.font = NSFont.systemFont(ofSize: 11, weight: .semibold)
+        label.textColor = .white
+        label.alignment = .right
+        label.frame = NSRect(x: x, y: midY - 8, width: Self.labelWidth, height: 16)
+        label.toolTip = L10n.mosaicGranularity
+        addSubview(label)
+        valueLabel = label
+        x += Self.labelWidth + 8
+
+        let s = NSSlider(
+            value: Double(currentBlockSize),
+            minValue: Defaults.mosaicBlockSizeMin,
+            maxValue: Defaults.mosaicBlockSizeMax,
+            target: self,
+            action: #selector(sliderChanged(_:))
+        )
+        s.isContinuous = true
+        s.frame = NSRect(x: x, y: midY - 10, width: Self.sliderWidth, height: 20)
+        s.toolTip = L10n.mosaicGranularity
+        addSubview(s)
+        slider = s
+
+        updateValueLabel()
+    }
+
+    @objc private func sliderChanged(_ sender: NSSlider) {
+        let rounded = Self.clampedBlockSize(CGFloat(sender.doubleValue))
+        currentBlockSize = rounded
+        sender.doubleValue = Double(rounded)
+        updateValueLabel()
+
+        let phase = NSApp.currentEvent?.type
+        let isMouseDragEvent = phase == .leftMouseDown || phase == .leftMouseDragged || phase == .leftMouseUp
+        if !isAdjusting {
+            isAdjusting = true
+            onBlockSizeBegan?()
+        }
+
+        onBlockSizeChanged?(rounded)
+
+        if phase == .leftMouseUp || !isMouseDragEvent {
+            isAdjusting = false
+            onBlockSizeEnded?()
+        }
+    }
+
+    private static func clampedBlockSize(_ size: CGFloat) -> CGFloat {
+        max(
+            CGFloat(Defaults.mosaicBlockSizeMin),
+            min(CGFloat(Defaults.mosaicBlockSizeMax), size)
+        ).rounded()
+    }
+
+    private func updateValueLabel() {
+        valueLabel.stringValue = "\(Int(currentBlockSize.rounded()))"
     }
 
     override func draw(_ dirtyRect: NSRect) {

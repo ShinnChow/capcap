@@ -125,6 +125,7 @@
 "tipPen" = "Pen";
 "tipMarker" = "Marker";
 "tipMosaic" = "Mosaic";
+"mosaicGranularity" = "Mosaic Granularity";
 "tipEraser" = "Eraser";
 "tipMagnifier" = "Magnifier";
 "tipNumbered" = "Numbered";

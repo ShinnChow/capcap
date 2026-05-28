@@ -225,6 +225,8 @@ private enum PinZoom {
     static let minScale: CGFloat = 0.25
     static let maxScale: CGFloat = 5.0
     static let buttonStep: CGFloat = 0.1
+    static let doubleClickTargetScale: CGFloat = 2.0
+    static let doubleClickMultiplier: CGFloat = 2.0
     static let wheelSensitivity: CGFloat = 0.002
     static let toolbarInset: CGFloat = 8
     static let navigatorScaleThreshold: CGFloat = 1.2
@@ -431,6 +433,11 @@ final class PinContentView: NSView {
         guard !navigatorInteractiveRect().contains(point) else { return }
         guard imageHoverRect().contains(point) else { return }
 
+        if event.clickCount >= 2 {
+            zoomIn(at: point)
+            return
+        }
+
         if zoomScale > 1 {
             panStartPoint = point
             panStartOffset = panOffset
@@ -465,12 +472,12 @@ final class PinContentView: NSView {
 
         let normalizedDelta = event.hasPreciseScrollingDeltas ? delta : delta * 10
         let factor = pow(1 + PinZoom.wheelSensitivity, normalizedDelta)
-        setZoom(zoomScale * factor)
+        zoomAtEventLocation(zoomScale * factor, event: event)
     }
 
     override func magnify(with event: NSEvent) {
         let factor = max(0.1, 1 + event.magnification)
-        setZoom(zoomScale * factor)
+        zoomAtEventLocation(zoomScale * factor, event: event)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -506,15 +513,58 @@ final class PinContentView: NSView {
         setZoom(zoomScale + delta)
     }
 
-    private func setZoom(_ proposedScale: CGFloat) {
-        let newScale = min(max(proposedScale, PinZoom.minScale), PinZoom.maxScale)
-        guard abs(newScale - zoomScale) > 0.001 else { return }
+    private func zoomAtEventLocation(_ proposedScale: CGFloat, event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let unitPoint = imageUnitPoint(for: point) else {
+            setZoom(proposedScale)
+            return
+        }
 
-        let shouldRevealNavigator = zoomScale < PinZoom.navigatorScaleThreshold &&
+        setZoom(proposedScale, focusing: unitPoint, at: point)
+    }
+
+    private func zoomIn(at point: NSPoint) {
+        guard let unitPoint = imageUnitPoint(for: point) else { return }
+        let targetScale = zoomScale < PinZoom.doubleClickTargetScale
+            ? PinZoom.doubleClickTargetScale
+            : zoomScale * PinZoom.doubleClickMultiplier
+        setZoom(targetScale, focusing: unitPoint)
+    }
+
+    private func setZoom(
+        _ proposedScale: CGFloat,
+        focusing unitPoint: NSPoint? = nil,
+        at focusPoint: NSPoint? = nil
+    ) {
+        let newScale = min(max(proposedScale, PinZoom.minScale), PinZoom.maxScale)
+        let didChangeScale = abs(newScale - zoomScale) > 0.001
+        guard didChangeScale || unitPoint != nil else { return }
+
+        let currentSize = bounds.size
+        let targetSize = windowSize(for: newScale)
+        let shouldRevealNavigator = didChangeScale &&
+            zoomScale < PinZoom.navigatorScaleThreshold &&
             newScale >= PinZoom.navigatorScaleThreshold
-        zoomScale = newScale
-        panOffset = newScale > 1 ? clampedPanOffset(panOffset, scale: newScale) : .zero
-        resizeWindowKeepingTopLeft(for: newScale)
+        if didChangeScale {
+            zoomScale = newScale
+        }
+        if let unitPoint, newScale > 1 {
+            resizeWindowKeepingTopLeft(for: newScale)
+            panOffset = focusedPanOffset(
+                on: unitPoint,
+                scale: newScale,
+                at: adjustedFocusPoint(
+                    focusPoint,
+                    from: currentSize,
+                    to: targetSize
+                )
+            )
+        } else {
+            panOffset = newScale > 1 ? clampedPanOffset(panOffset, scale: newScale) : .zero
+            if didChangeScale {
+                resizeWindowKeepingTopLeft(for: newScale)
+            }
+        }
         updateImageInteractionGeometry()
         if shouldRevealNavigator {
             isNavigatorSuppressedUntilMouseExit = false
@@ -531,16 +581,52 @@ final class PinContentView: NSView {
         else { return }
 
         let imageSize = scaledImageSize(for: zoomScale)
+        panOffset = focusedPanOffset(on: unitPoint, scale: zoomScale, imageSize: imageSize)
+        updateImageInteractionGeometry()
+    }
+
+    private func imageUnitPoint(for point: NSPoint) -> NSPoint? {
+        let frame = imageRect()
+        guard frame.width > 0,
+              frame.height > 0,
+              frame.contains(point)
+        else { return nil }
+
+        return NSPoint(
+            x: min(max((point.x - frame.minX) / frame.width, 0), 1),
+            y: min(max((point.y - frame.minY) / frame.height, 0), 1)
+        )
+    }
+
+    private func focusedPanOffset(
+        on unitPoint: NSPoint,
+        scale: CGFloat,
+        imageSize: NSSize? = nil,
+        at focusPoint: NSPoint? = nil
+    ) -> NSPoint {
+        let size = imageSize ?? scaledImageSize(for: scale)
+        let targetPoint = focusPoint ?? NSPoint(x: bounds.midX, y: bounds.midY)
         let imagePoint = NSPoint(
-            x: min(max(unitPoint.x, 0), 1) * imageSize.width,
-            y: min(max(unitPoint.y, 0), 1) * imageSize.height
+            x: min(max(unitPoint.x, 0), 1) * size.width,
+            y: min(max(unitPoint.y, 0), 1) * size.height
         )
         let proposed = NSPoint(
-            x: bounds.midX - imagePoint.x,
-            y: bounds.midY - imagePoint.y - bounds.height + imageSize.height
+            x: targetPoint.x - imagePoint.x,
+            y: targetPoint.y - imagePoint.y - bounds.height + size.height
         )
-        panOffset = clampedPanOffset(proposed, scale: zoomScale)
-        updateImageInteractionGeometry()
+        return clampedPanOffset(proposed, scale: scale)
+    }
+
+    private func adjustedFocusPoint(
+        _ point: NSPoint?,
+        from currentSize: NSSize,
+        to targetSize: NSSize
+    ) -> NSPoint? {
+        guard let point else { return nil }
+        return NSPoint(
+            x: point.x,
+            y: point.y + targetSize.height - currentSize.height
+        )
     }
 
     private func imageRect() -> NSRect {

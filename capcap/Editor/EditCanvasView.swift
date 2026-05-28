@@ -78,7 +78,7 @@ class EditCanvasView: NSView {
     /// Marker uses a separate color slot so switching tools keeps the
     /// highlighter's yellow without overriding the pen's red, and vice-versa.
     var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
-    var currentMosaicBlockSize: CGFloat = 12.0
+    var currentMosaicBlockSize: CGFloat = CGFloat(Defaults.mosaicBlockSize)
     var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize) {
         didSet {
             guard let field = activeTextField else { return }
@@ -713,6 +713,29 @@ class EditCanvasView: NSView {
         needsDisplay = true
     }
 
+    func mutateSelectedMosaicBlockSizeLive(_ blockSize: CGFloat) {
+        guard let baseImage = resolveBaseImageForEditing() else { return }
+        let imageSize = bounds.size
+        mutateSelectedAnnotationLive { annotation in
+            guard
+                let mosaic = annotation as? MosaicAnnotation,
+                let region = MosaicTool.createMosaicRegion(
+                    rect: mosaic.rect,
+                    imageSize: imageSize,
+                    baseImage: baseImage,
+                    blockSize: blockSize
+                )
+            else {
+                return annotation
+            }
+            return MosaicAnnotation(
+                rect: region.rect,
+                pixelatedImage: region.pixelatedImage,
+                blockSize: blockSize
+            )
+        }
+    }
+
     private func syncNumberCounterAfterMutation(from original: Annotation, to updated: Annotation) {
         guard
             let oldNumber = original as? NumberAnnotation,
@@ -813,6 +836,9 @@ class EditCanvasView: NSView {
             return a.center == b.center && a.tip == b.tip
                 && a.controlPoint == b.controlPoint && a.number == b.number
                 && a.color == b.color
+        }
+        if let a = a as? MosaicAnnotation, let b = b as? MosaicAnnotation {
+            return a.rect == b.rect && a.blockSize == b.blockSize
         }
         if let a = a as? ImageAnnotation, let b = b as? ImageAnnotation {
             return a.image === b.image && a.rect == b.rect && a.rotation == b.rotation
@@ -1167,7 +1193,8 @@ class EditCanvasView: NSView {
                     recordUndo()
                     annotations.append(MosaicAnnotation(
                         rect: region.rect,
-                        pixelatedImage: region.pixelatedImage
+                        pixelatedImage: region.pixelatedImage,
+                        blockSize: currentMosaicBlockSize
                     ))
                 }
             }
@@ -2451,12 +2478,13 @@ class EditCanvasView: NSView {
                         rect: newRect,
                         imageSize: bounds.size,
                         baseImage: baseImage,
-                        blockSize: currentMosaicBlockSize
+                        blockSize: mosaic.blockSize
                     )
                 else { return }
                 annotations[state.index] = MosaicAnnotation(
                     rect: region.rect,
-                    pixelatedImage: region.pixelatedImage
+                    pixelatedImage: region.pixelatedImage,
+                    blockSize: mosaic.blockSize
                 )
             } else if let rect = state.original as? RectAnnotation {
                 let newRect = resizedRotatedRect(
