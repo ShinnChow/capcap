@@ -517,6 +517,15 @@ private final class ProviderCard: NSView {
         ProviderConfigStore.save(ProviderConfig(kind: kind, fields: dict))
     }
 
+    private func hasMissingRequiredFields() -> Bool {
+        requiredKeys(for: kind).contains { key in
+            guard let value = inputs[key]?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) else {
+                return true
+            }
+            return value.isEmpty
+        }
+    }
+
     private func setExpanded(_ expanded: Bool, animated: Bool) {
         isExpanded = expanded
         if measuredBodyHeight == 0 {
@@ -548,6 +557,9 @@ private final class ProviderCard: NSView {
         let on = enableSwitch.state == .on
         ProviderConfigStore.setEnabled(on, kind: kind)
         if on {
+            if hasMissingRequiredFields() {
+                setExpanded(true, animated: true)
+            }
             runValidation()
         } else {
             // Cancel any in-flight test result so it doesn't paint a stale state.

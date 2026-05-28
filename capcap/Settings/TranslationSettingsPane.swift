@@ -397,7 +397,13 @@ private final class TranslationProviderCard: NSView {
 
     @objc private func switchToggled() {
         let on = enableSwitch.state == .on
-        if on { TranslationConfigStore.save(currentConfig(), for: kind) }
+        let config = currentConfig()
+        if on {
+            TranslationConfigStore.save(config, for: kind)
+            if config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                setExpanded(true, animated: true)
+            }
+        }
         TranslationConfigStore.setEnabled(on, for: kind)
     }
 
