@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.24] - 2026-05-28
+
+### Changed
+- Add emoji and image editor tools (fcca0e5)
+
 ## [1.3.23] - 2026-05-27
 
 ### Changed
