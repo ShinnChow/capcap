@@ -13,10 +13,9 @@ APP_NAME="capcap"
 VOLNAME="capcap"
 APP="$ROOT/build/${APP_NAME}.app"
 DIST="$ROOT/dist"
-STAGE="$ROOT/build/dmg-root"
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$ROOT/capcap/App/Info.plist")
-DMG="$DIST/${APP_NAME}-${VERSION}.dmg"
+DMG="$DIST/${APP_NAME}-${VERSION}-macos.dmg"
 
 echo "==> building .app (release, universal arm64 + x86_64)"
 CONFIG=release UNIVERSAL=1 bash "$ROOT/scripts/bundle.sh"
@@ -30,28 +29,16 @@ if [[ "$ARCHS" != *"arm64"* ]] || [[ "$ARCHS" != *"x86_64"* ]]; then
 fi
 echo "==> binary archs: $ARCHS"
 
-echo "==> staging dmg contents"
-rm -rf "$STAGE"
-mkdir -p "$STAGE"
-cp -R "$APP" "$STAGE/${APP_NAME}.app"
-ln -s /Applications "$STAGE/Applications"
-
 echo "==> creating $DMG"
-mkdir -p "$DIST"
-rm -f "$DMG"
-hdiutil create \
-    -volname "$VOLNAME" \
-    -srcfolder "$STAGE" \
-    -ov \
-    -format UDZO \
-    -fs HFS+ \
-    "$DMG" >/dev/null
+bash "$ROOT/scripts/create-dmg.sh" "$APP" "$DMG" "$VOLNAME"
 
-rm -rf "$STAGE"
+SHA256=$(shasum -a 256 "$DMG" | awk '{print $1}')
+printf '%s  %s\n' "$SHA256" "$(basename "$DMG")" > "${DMG}.sha256"
 
 SIZE=$(du -h "$DMG" | awk '{print $1}')
 echo ""
 echo "SUCCESS: $DMG ($SIZE)"
+echo "    sha256: ${DMG}.sha256"
 echo "    drag ${APP_NAME}.app into Applications when the window opens."
 
 if [[ "${OPEN_DMG_ON_SUCCESS:-1}" == "1" ]]; then

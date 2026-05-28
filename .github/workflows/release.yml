@@ -20,6 +20,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       artifact_name: ${{ steps.package.outputs.artifact_name }}
       artifact_sha256: ${{ steps.package.outputs.artifact_sha256 }}
+      dmg_name: ${{ steps.package.outputs.dmg_name }}
+      dmg_sha256: ${{ steps.package.outputs.dmg_sha256 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -194,9 +196,19 @@ jobs:
           SHA256="$(shasum -a 256 "$ARTIFACT" | awk '{print $1}')"
           printf '%s  %s\n' "$SHA256" "$ARTIFACT" > "${ARTIFACT}.sha256"
 
+          # Package as a draggable DMG for users who prefer the native
+          # Applications-folder install flow.
+          DMG_ARTIFACT="capcap-${VERSION}-macos.dmg"
+          bash scripts/create-dmg.sh "$APP_DIR" "$DMG_ARTIFACT" "capcap"
+
+          DMG_SHA256="$(shasum -a 256 "$DMG_ARTIFACT" | awk '{print $1}')"
+          printf '%s  %s\n' "$DMG_SHA256" "$DMG_ARTIFACT" > "${DMG_ARTIFACT}.sha256"
+
           echo "artifact_name=$ARTIFACT" >> "$GITHUB_OUTPUT"
           echo "artifact_sha256=$SHA256" >> "$GITHUB_OUTPUT"
-          ls -lh "$ARTIFACT" "${ARTIFACT}.sha256"
+          echo "dmg_name=$DMG_ARTIFACT" >> "$GITHUB_OUTPUT"
+          echo "dmg_sha256=$DMG_SHA256" >> "$GITHUB_OUTPUT"
+          ls -lh "$ARTIFACT" "${ARTIFACT}.sha256" "$DMG_ARTIFACT" "${DMG_ARTIFACT}.sha256"
 
       # ---------------------------------------------------------------
       # Notarization (DISABLED — uncomment when signing is enabled)
@@ -231,6 +243,8 @@ jobs:
           path: |
             ${{ steps.package.outputs.artifact_name }}
             ${{ steps.package.outputs.artifact_name }}.sha256
+            ${{ steps.package.outputs.dmg_name }}
+            ${{ steps.package.outputs.dmg_name }}.sha256
           if-no-files-found: error
           retention-days: 30
 
