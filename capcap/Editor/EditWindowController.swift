@@ -1,5 +1,6 @@
 import AppKit
 import QuartzCore
+import UniformTypeIdentifiers
 
 class EditWindowController {
     private var canvasView: EditCanvasView?
@@ -78,6 +79,7 @@ class EditWindowController {
     /// marker preserves each tool's last-used choice.
     private var currentMarkerColor: NSColor = NSColor(red: 1.0, green: 0.85, blue: 0.0, alpha: 1.0)
     private var currentMarkerLineWidth: CGFloat = 4.0
+    private var currentEmoji: String?
     /// Last color sampled from the toolbar eyedropper. Persisted locally and
     /// shown as an ink-bottle control for color-capable annotation tools.
     private var pickedColorSwatch: NSColor?
@@ -152,6 +154,9 @@ class EditWindowController {
         canvas.onHistoryStateChanged = { [weak self] canUndo, canRedo in
             self?.updateHistoryButtons(canUndo: canUndo, canRedo: canRedo)
         }
+        canvas.onEmojiStamped = { [weak self] in
+            self?.handleEmojiStamped()
+        }
 
         let container = BeautifyContainerView(canvasView: canvas)
         container.autoresizingMask = []
@@ -223,6 +228,7 @@ class EditWindowController {
         tv.onColorPicker = { [weak self] in self?.runColorPicker() }
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
+        tv.onInsertImage = { [weak self] in self?.showInsertImageMenu() }
         tv.onOCR = { [weak self] in self?.performOCR() }
         tv.onScreenshotTranslate = { [weak self] in self?.performScreenshotTranslation() }
         tv.onSave = { [weak self] in self?.save() }
@@ -314,6 +320,7 @@ class EditWindowController {
         canvasView?.currentMosaicBlockSize = currentMosaicBlockSize
         canvasView?.currentFontSize = currentFontSize
         canvasView?.currentShapeFill = currentShapeFill
+        canvasView?.currentEmoji = currentEmoji
         toolbars.forEach { $0.updateSelection(tool: tool) }
         updateEditorInteractionState()
 
@@ -359,6 +366,7 @@ class EditWindowController {
         case is PenAnnotation: return .pen
         case is MarkerAnnotation: return .marker
         case is NumberAnnotation: return .numbered
+        case is EmojiAnnotation: return .emoji
         default: return nil
         }
     }
@@ -394,6 +402,9 @@ class EditWindowController {
             currentLineWidth = l.lineWidth
         case let n as NumberAnnotation:
             currentColor = n.color
+        case is EmojiAnnotation:
+            currentEmoji = nil
+            canvasView?.currentEmoji = nil
         default:
             break
         }
@@ -450,6 +461,8 @@ class EditWindowController {
             )
         case .text:
             showTextSubToolbar()
+        case .emoji:
+            showEmojiSubToolbar()
         case .numbered:
             showColorSizeSubToolbar(
                 sizes: [],
@@ -565,6 +578,44 @@ class EditWindowController {
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
         subToolbarView = view
+    }
+
+    private func showEmojiSubToolbar() {
+        guard let hostSelectionView, let toolbarFrame = subToolbarAnchorFrame else { return }
+        let offset: CGFloat = isBeautifyActive ? (36 + 4) : 0
+        let width = min(
+            EmojiSubToolbar.preferredVisibleWidth,
+            max(EmojiSubToolbar.minimumVisibleWidth, hostSelectionView.bounds.width - 16)
+        )
+        let subRect = subToolbarRect(
+            width: width,
+            height: 42,
+            toolbarFrame: toolbarFrame,
+            in: hostSelectionView.bounds,
+            offset: offset
+        )
+
+        let view = EmojiSubToolbar(
+            frame: subRect,
+            emojis: Self.quickEmojiChoices,
+            selectedEmoji: currentEmoji
+        )
+        view.onEmojiSelected = { [weak self, weak view] emoji in
+            self?.currentEmoji = emoji
+            self?.canvasView?.currentEmoji = emoji
+            view?.selectedEmoji = emoji
+            self?.bringEditorToFront()
+        }
+        styleFloatingHUD(view)
+        hostSelectionView.addSubview(view)
+        subToolbarView = view
+    }
+
+    private func handleEmojiStamped() {
+        currentEmoji = nil
+        canvasView?.currentEmoji = nil
+        (subToolbarView as? EmojiSubToolbar)?.selectedEmoji = nil
+        NSCursor.arrow.set()
     }
 
     private func updateSubToolbarPosition() {
@@ -1234,6 +1285,108 @@ class EditWindowController {
         }
     }
 
+    private func showInsertImageMenu() {
+        canvasView?.commitActiveTextEditing()
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        menu.addItem(ClosureMenuItem(title: L10n.insertImageFromClipboard) { [weak self] in
+            self?.insertImageFromClipboard()
+        })
+        menu.addItem(ClosureMenuItem(title: L10n.insertImageFromFile) { [weak self] in
+            self?.insertImageFromFile()
+        })
+        popUpToolbarMenu(menu, anchoredTo: .insertImage)
+    }
+
+    private func insertImageFromClipboard() {
+        guard let image = ClipboardImageSource.currentImage() else {
+            ToastWindow.show(message: L10n.insertImageNoClipboardImage, on: screen)
+            bringEditorToFront()
+            return
+        }
+        insertImage(image)
+    }
+
+    private func insertImageFromFile() {
+        canvasView?.commitActiveTextEditing()
+        let panel = NSOpenPanel()
+        panel.title = L10n.insertImageChooseFile
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.image]
+
+        let completion: (NSApplication.ModalResponse) -> Void = { [weak self, panel] response in
+            guard
+                response == .OK,
+                let url = panel.url,
+                let image = Self.loadImageForInsertion(from: url)
+            else {
+                self?.bringEditorToFront()
+                return
+            }
+            self?.insertImage(image)
+        }
+
+        if let hostWindow = hostSelectionView?.window {
+            panel.beginSheetModal(for: hostWindow, completionHandler: completion)
+        } else {
+            panel.begin(completionHandler: completion)
+        }
+    }
+
+    private func insertImage(_ image: NSImage) {
+        selectTool(.none)
+        _ = canvasView?.insertImage(image)
+        bringEditorToFront()
+    }
+
+    private func popUpToolbarMenu(_ menu: NSMenu, anchoredTo itemID: ToolbarItemID) {
+        guard let hostSelectionView else { return }
+        let anchor = toolbarItemFrameInHost(for: itemID) ?? NSRect(
+            x: hostSelectionView.bounds.midX,
+            y: hostSelectionView.bounds.midY,
+            width: 1,
+            height: 1
+        )
+        menu.popUp(
+            positioning: nil,
+            at: NSPoint(x: anchor.minX, y: anchor.maxY + 4),
+            in: hostSelectionView
+        )
+        bringEditorToFront()
+    }
+
+    private func toolbarItemFrameInHost(for itemID: ToolbarItemID) -> NSRect? {
+        guard let hostSelectionView else { return nil }
+        for toolbar in toolbars {
+            if let frame = toolbar.frame(for: itemID) {
+                return toolbar.convert(frame, to: hostSelectionView)
+            }
+        }
+        return nil
+    }
+
+    private static func loadImageForInsertion(from url: URL) -> NSImage? {
+        if let data = try? Data(contentsOf: url),
+           let rep = NSBitmapImageRep(data: data) {
+            let pixelSize = NSSize(width: rep.pixelsWide, height: rep.pixelsHigh)
+            guard pixelSize.width > 0, pixelSize.height > 0 else { return nil }
+            rep.size = pixelSize
+            let image = NSImage(size: pixelSize)
+            image.addRepresentation(rep)
+            return image
+        }
+        return NSImage(contentsOf: url)
+    }
+
+    private static let quickEmojiChoices = [
+        "😀", "😄", "😂", "😊", "😍", "😎",
+        "👍", "👏", "🙏", "💪", "👀", "🤔",
+        "🔥", "✨", "🎉", "🚀", "💡", "📌",
+        "⭐️", "❤️", "✅", "❌", "⚠️", "❓",
+    ]
+
     private func cancelActiveColorSampler() {
         guard activeColorSampler != nil else { return }
         activeColorSampler = nil
@@ -1650,6 +1803,25 @@ private enum EditorKeyboardShortcut {
 
 let accentGreen = NSColor(red: 0, green: 212.0/255.0, blue: 106.0/255.0, alpha: 1.0)
 
+private final class ClosureMenuItem: NSMenuItem {
+    private let handler: () -> Void
+
+    init(title: String, keyEquivalent: String = "", handler: @escaping () -> Void) {
+        self.handler = handler
+        super.init(title: title, action: nil, keyEquivalent: keyEquivalent)
+        target = self
+        action = #selector(run)
+    }
+
+    required init(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func run() {
+        handler()
+    }
+}
+
 private final class EditorScrollView: NSScrollView {
     weak var editorCanvasView: EditCanvasView?
     /// When `true`, every viewport click is captured (drawing tools, long
@@ -1718,6 +1890,7 @@ class ToolbarView: NSView {
     var onColorPicker: (() -> Void)?
     var onScrollCapture: (() -> Void)?
     var onBeautify: (() -> Void)?
+    var onInsertImage: (() -> Void)?
     var onOCR: (() -> Void)?
     var onScreenshotTranslate: (() -> Void)?
     var onSave: (() -> Void)?
@@ -1853,11 +2026,12 @@ class ToolbarView: NSView {
         guard sender.tag >= 0, sender.tag < items.count else { return }
         let id = items[sender.tag]
         switch id {
-        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text:
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
             guard let tool = id.editTool else { return }
             // Click an already-selected tool to deselect it and enter adjust
             // mode (no tool, but existing marks remain draggable).
             onToolSelected?(tool == currentTool ? .none : tool)
+        case .insertImage:   onInsertImage?()
         case .colorPicker:   onColorPicker?()
         case .undo:          onUndo?()
         case .redo:          onRedo?()
@@ -2385,6 +2559,162 @@ private final class ScrollPreviewWindow: NSPanel {
         orderOut(nil)
         imageView.image = nil
         contentView = nil
+    }
+}
+
+// MARK: - Emoji Sub-toolbar
+
+private final class EmojiSubToolbar: NSView {
+    static let preferredVisibleWidth: CGFloat = 420
+    static let minimumVisibleWidth: CGFloat = 220
+
+    var selectedEmoji: String? {
+        didSet { updateSelection() }
+    }
+    var onEmojiSelected: ((String) -> Void)?
+
+    private let emojis: [String]
+    private let scrollView = HorizontalWheelScrollView()
+    private let contentView = NSView()
+    private var emojiViews: [EmojiChoiceView] = []
+
+    private static let itemSize: CGFloat = 30
+    private static let itemGap: CGFloat = 4
+    private static let horizontalPad: CGFloat = 10
+
+    init(frame: NSRect, emojis: [String], selectedEmoji: String?) {
+        self.emojis = emojis
+        self.selectedEmoji = selectedEmoji
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func setup() {
+        let scrollFrame = bounds.insetBy(dx: 8, dy: 5)
+        scrollView.frame = scrollFrame
+        scrollView.autoresizingMask = [.width, .height]
+        scrollView.drawsBackground = false
+        scrollView.borderType = .noBorder
+        scrollView.hasHorizontalScroller = false
+        scrollView.hasVerticalScroller = false
+        scrollView.scrollerStyle = .overlay
+        scrollView.autohidesScrollers = true
+
+        let contentWidth = Self.horizontalPad * 2
+            + CGFloat(emojis.count) * Self.itemSize
+            + CGFloat(max(0, emojis.count - 1)) * Self.itemGap
+        contentView.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: max(contentWidth, scrollFrame.width),
+            height: scrollFrame.height
+        )
+
+        var x = Self.horizontalPad
+        for emoji in emojis {
+            let item = EmojiChoiceView(
+                frame: NSRect(
+                    x: x,
+                    y: (contentView.bounds.height - Self.itemSize) / 2,
+                    width: Self.itemSize,
+                    height: Self.itemSize
+                ),
+                emoji: emoji,
+                isSelected: emoji == selectedEmoji
+            )
+            item.onSelect = { [weak self] emoji in
+                self?.onEmojiSelected?(emoji)
+            }
+            contentView.addSubview(item)
+            emojiViews.append(item)
+            x += Self.itemSize + Self.itemGap
+        }
+
+        scrollView.documentView = contentView
+        addSubview(scrollView)
+    }
+
+    private func updateSelection() {
+        for view in emojiViews {
+            view.isSelected = view.emoji == selectedEmoji
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
+        NSColor(white: 0.12, alpha: 0.9).setFill()
+        path.fill()
+    }
+}
+
+private final class EmojiChoiceView: NSView {
+    let emoji: String
+    var onSelect: ((String) -> Void)?
+    var isSelected: Bool {
+        didSet { needsDisplay = true }
+    }
+
+    init(frame: NSRect, emoji: String, isSelected: Bool) {
+        self.emoji = emoji
+        self.isSelected = isSelected
+        super.init(frame: frame)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        onSelect?(emoji)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if isSelected {
+            let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
+            NSColor.white.withAlphaComponent(0.16).setFill()
+            bg.fill()
+            accentGreen.setStroke()
+            bg.lineWidth = 1.4
+            bg.stroke()
+        }
+
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.systemFont(ofSize: 19)
+        ]
+        let size = (emoji as NSString).size(withAttributes: attributes)
+        let point = NSPoint(
+            x: bounds.midX - size.width / 2,
+            y: bounds.midY - size.height / 2
+        )
+        (emoji as NSString).draw(at: point, withAttributes: attributes)
+    }
+}
+
+private final class HorizontalWheelScrollView: NSScrollView {
+    override func scrollWheel(with event: NSEvent) {
+        guard let documentView else {
+            super.scrollWheel(with: event)
+            return
+        }
+
+        let dominantDelta = abs(event.scrollingDeltaX) >= abs(event.scrollingDeltaY)
+            ? event.scrollingDeltaX
+            : -event.scrollingDeltaY
+        guard dominantDelta != 0 else { return }
+
+        let maxX = max(0, documentView.bounds.width - contentView.bounds.width)
+        let nextX = min(max(contentView.bounds.origin.x + dominantDelta, 0), maxX)
+        contentView.scroll(to: NSPoint(x: nextX, y: 0))
+        reflectScrolledClipView(contentView)
     }
 }
 

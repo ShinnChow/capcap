@@ -207,6 +207,8 @@ enum L10n {
     static var tipMagnifier: String { s("tipMagnifier") }
     static var tipNumbered: String { s("tipNumbered") }
     static var tipText: String { s("tipText") }
+    static var tipEmoji: String { s("tipEmoji") }
+    static var tipInsertImage: String { s("tipInsertImage") }
     static var tipColorPicker: String { s("tipColorPicker") }
     static var tipPickedInkBottle: String { s("tipPickedInkBottle") }
     static var tipUndo: String { s("tipUndo") }
@@ -241,6 +243,12 @@ enum L10n {
 
     // Shape tool
     static var shapeFillEffect: String { s("shapeFillEffect") }
+
+    // Insert tools
+    static var insertImageFromClipboard: String { s("insertImageFromClipboard") }
+    static var insertImageFromFile: String { s("insertImageFromFile") }
+    static var insertImageChooseFile: String { s("insertImageChooseFile") }
+    static var insertImageNoClipboardImage: String { s("insertImageNoClipboardImage") }
 
     // Language
     static var languageHeader: String { s("languageHeader") }

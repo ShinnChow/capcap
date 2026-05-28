@@ -129,6 +129,8 @@
 "tipMagnifier" = "Magnifier";
 "tipNumbered" = "Numbered";
 "tipText" = "Text";
+"tipEmoji" = "Emoji";
+"tipInsertImage" = "Insert Image";
 "tipColorPicker" = "Color Picker";
 "tipPickedInkBottle" = "Use the color picker to fill the ink bottle";
 "tipUndo" = "Undo";
@@ -159,6 +161,10 @@
 "beautifyShadowEffect" = "Shadow Effect";
 "textStrokeEffect" = "Stroke";
 "shapeFillEffect" = "Fill";
+"insertImageFromClipboard" = "From Clipboard";
+"insertImageFromFile" = "From File...";
+"insertImageChooseFile" = "Choose Image";
+"insertImageNoClipboardImage" = "No image in clipboard";
 
 /* Language */
 "languageHeader" = "Language";
