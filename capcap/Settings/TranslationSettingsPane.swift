@@ -474,9 +474,11 @@ private final class TranslationProviderCard: NSView {
         TranslationConfigStore.save(config, for: kind)
 
         // Nothing to test against without an API key — just confirm the save.
-        guard !config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            flashButton(saveButton, to: L10n.translationConfigSaved, restore: L10n.translationSave)
-            return
+        if kind.isAPIKeyRequired {
+            guard !config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                flashButton(saveButton, to: L10n.translationConfigSaved, restore: L10n.translationSave)
+                return
+            }
         }
 
         saveButton.isEnabled = false

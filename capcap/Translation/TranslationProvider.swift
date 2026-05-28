@@ -159,6 +159,9 @@ enum TranslationProviderKind: String, CaseIterable {
     /// Custom must supply its own endpoint; the rest ship a sensible default
     /// but still allow an override (e.g. a proxy).
     var endpointRequired: Bool { self == .custom }
+
+    /// DeepLX can be self-hosted without an API key.
+    var isAPIKeyRequired: Bool { !isDeepLX }
 }
 
 extension TranslationLanguage {
@@ -324,7 +327,9 @@ enum TranslationConfigStore {
     /// True when the saved config has the fields a request needs.
     static func isConfigured(_ kind: TranslationProviderKind) -> Bool {
         let cfg = load(kind)
-        guard !cfg.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        if kind.isAPIKeyRequired {
+            guard !cfg.apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        }
         if kind.endpointRequired {
             return !cfg.endpoint.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         }
