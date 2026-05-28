@@ -13,6 +13,7 @@ enum EditTool {
     case line
     case numbered
     case text
+    case emoji
     case scrollCapture
 }
 
@@ -38,6 +39,9 @@ class EditCanvasView: NSView {
             }
             if activeTool == .eraser {
                 selectedIndex = nil
+            }
+            if activeTool != .emoji {
+                emojiPreviewPoint = nil
             }
             // Tool change can affect what counts as "interactive area" — refresh
             // cursor immediately under the current mouse position.
@@ -82,6 +86,13 @@ class EditCanvasView: NSView {
             field.sizeToFitText()
         }
     }
+    var currentEmoji: String? {
+        didSet {
+            if activeTool == .emoji {
+                needsDisplay = true
+            }
+        }
+    }
 
     // Annotations stack (supports undo)
     private var annotations: [Annotation] = []
@@ -119,6 +130,7 @@ class EditCanvasView: NSView {
     /// so a click that just committed an in-progress field doesn't pop a new
     /// one.
     private var pendingTextCreate: PendingTextCreate?
+    private var emojiPreviewPoint: NSPoint?
     /// Active eraser drag rectangle. Matching annotations are removed as
     /// soon as they intersect the rectangle.
     private var eraserSelection: EraserSelection?
@@ -155,6 +167,9 @@ class EditCanvasView: NSView {
     /// Fired whenever undo / redo availability changes so toolbar buttons can
     /// reflect the real history state instead of acting as no-op controls.
     var onHistoryStateChanged: ((Bool, Bool) -> Void)?
+    /// Fired after the emoji tool stamps a sticker so the controller can clear
+    /// the pending emoji without leaving the tool.
+    var onEmojiStamped: (() -> Void)?
 
     private func notifySelectionChanged() {
         guard let cb = onAnnotationSelected else { return }
@@ -551,6 +566,100 @@ class EditCanvasView: NSView {
         return true
     }
 
+    @discardableResult
+    func insertEmoji(_ emoji: String) -> Bool {
+        activeTextField?.commit()
+        let rect = emojiRect(centeredAt: insertionCenter())
+        recordUndo()
+        annotations.append(EmojiAnnotation(emoji: emoji, rect: rect))
+        selectedIndex = annotations.indices.last
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+        return true
+    }
+
+    @discardableResult
+    private func stampCurrentEmoji(at point: NSPoint) -> Bool {
+        guard let currentEmoji else { return false }
+        activeTextField?.commit()
+        recordUndo()
+        annotations.append(EmojiAnnotation(
+            emoji: currentEmoji,
+            rect: emojiRect(centeredAt: point)
+        ))
+        selectedIndex = annotations.indices.last
+        emojiPreviewPoint = point
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+        return true
+    }
+
+    @discardableResult
+    func insertImage(_ image: NSImage) -> Bool {
+        activeTextField?.commit()
+        let size = fittedInsertedImageSize(for: image)
+        guard size.width > 0, size.height > 0 else { return false }
+        let rect = insertionRect(size: size)
+        recordUndo()
+        annotations.append(ImageAnnotation(image: image, rect: rect))
+        selectedIndex = annotations.indices.last
+        needsDisplay = true
+        refreshCursorAtCurrentLocation()
+        return true
+    }
+
+    private func fittedInsertedImageSize(for image: NSImage) -> NSSize {
+        let imageSize = image.size
+        guard imageSize.width > 0, imageSize.height > 0 else { return .zero }
+        let maxWidth = min(max(24, bounds.width - 16), 360)
+        let maxHeight = min(max(24, bounds.height - 16), 360)
+        let scale = min(1, maxWidth / imageSize.width, maxHeight / imageSize.height)
+        return NSSize(width: imageSize.width * scale, height: imageSize.height * scale)
+    }
+
+    private func insertionRect(size: NSSize) -> NSRect {
+        let center = insertionCenter()
+        let origin = NSPoint(x: center.x - size.width / 2, y: center.y - size.height / 2)
+        return clampedInsertionRect(NSRect(origin: origin, size: size))
+    }
+
+    private func emojiRect(centeredAt point: NSPoint) -> NSRect {
+        let size = NSSize(width: 44, height: 44)
+        return clampedInsertionRect(NSRect(
+            x: point.x - size.width / 2,
+            y: point.y - size.height / 2,
+            width: size.width,
+            height: size.height
+        ))
+    }
+
+    private func insertionCenter() -> NSPoint {
+        if let cursorPoint = currentMousePointInCanvas(), bounds.contains(cursorPoint) {
+            return cursorPoint
+        }
+        return NSPoint(x: bounds.midX, y: bounds.midY)
+    }
+
+    private func clampedInsertionRect(_ rect: NSRect) -> NSRect {
+        let margin: CGFloat = 8
+        var result = rect
+        let available = bounds.insetBy(dx: margin, dy: margin)
+
+        if result.width <= available.width {
+            result.origin.x = min(max(result.minX, available.minX), available.maxX - result.width)
+        } else {
+            result.origin.x = bounds.midX - result.width / 2
+        }
+
+        if result.height <= available.height {
+            result.origin.y = min(max(result.minY, available.minY), available.maxY - result.height)
+        } else {
+            result.origin.y = bounds.midY - result.height / 2
+        }
+
+        return result
+    }
+
     // MARK: - Selection adjustment (sub-toolbar driven)
 
     /// True between `beginSelectionAdjustment()` and `commitSelectionAdjustment()`
@@ -705,6 +814,12 @@ class EditCanvasView: NSView {
                 && a.controlPoint == b.controlPoint && a.number == b.number
                 && a.color == b.color
         }
+        if let a = a as? ImageAnnotation, let b = b as? ImageAnnotation {
+            return a.image === b.image && a.rect == b.rect && a.rotation == b.rotation
+        }
+        if let a = a as? EmojiAnnotation, let b = b as? EmojiAnnotation {
+            return a.emoji == b.emoji && a.rect == b.rect && a.rotation == b.rotation
+        }
         return false
     }
 
@@ -825,6 +940,11 @@ class EditCanvasView: NSView {
         case .none, .scrollCapture, .eraser:
             return
 
+        case .emoji:
+            if stampCurrentEmoji(at: point) {
+                onEmojiStamped?()
+            }
+
         case .pen:
             currentPenPoints = [point]
 
@@ -910,7 +1030,7 @@ class EditCanvasView: NSView {
         guard activeTool != .none else { return }
 
         switch activeTool {
-        case .none, .scrollCapture, .numbered, .text, .eraser:
+        case .none, .scrollCapture, .numbered, .text, .eraser, .emoji:
             return
 
         case .pen:
@@ -1008,7 +1128,7 @@ class EditCanvasView: NSView {
         guard activeTool != .none else { return }
 
         switch activeTool {
-        case .none, .scrollCapture, .numbered, .text, .eraser:
+        case .none, .scrollCapture, .numbered, .text, .eraser, .emoji:
             return
 
         case .pen:
@@ -1307,6 +1427,16 @@ class EditCanvasView: NSView {
             preview.draw(in: context, bounds: bounds)
         }
 
+        if activeTool == .emoji, let currentEmoji, let emojiPreviewPoint {
+            context.saveGState()
+            context.setAlpha(0.45)
+            EmojiAnnotation(
+                emoji: currentEmoji,
+                rect: emojiRect(centeredAt: emojiPreviewPoint)
+            ).draw(in: context, bounds: bounds)
+            context.restoreGState()
+        }
+
         if didClip {
             context.restoreGState()
         }
@@ -1450,6 +1580,7 @@ class EditCanvasView: NSView {
         handleDragState = nil
         pendingNumberCreate = nil
         pendingTextCreate = nil
+        emojiPreviewPoint = nil
         if eraserSelection?.didDelete != true {
             discardPendingUndo()
         }
@@ -2144,6 +2275,8 @@ class EditCanvasView: NSView {
             || annotation is EllipseAnnotation
             || annotation is MosaicAnnotation
             || annotation is MagnifierAnnotation
+            || annotation is ImageAnnotation
+            || annotation is EmojiAnnotation
     }
 
     private func resizeHandlePoint(_ anchor: ResizeAnchor, for annotation: Annotation) -> NSPoint {
@@ -2279,6 +2412,9 @@ class EditCanvasView: NSView {
             }
 
         case .resize(let anchor):
+            let preserveAspectRatio = NSEvent.modifierFlags
+                .intersection(.deviceIndependentFlagsMask)
+                .contains(.shift)
             if let magnifier = state.original as? MagnifierAnnotation {
                 // Circular lens — keep the center pinned and set the radius
                 // to the cursor's distance from it. Every grip behaves the
@@ -2302,7 +2438,8 @@ class EditCanvasView: NSView {
                     from: mosaic.rect,
                     anchor: anchor,
                     currentMouse: currentMouse,
-                    minimumSize: 4
+                    minimumSize: 4,
+                    preserveAspectRatio: preserveAspectRatio
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 // Re-pixelate from the untouched base image so the mosaic
@@ -2327,7 +2464,8 @@ class EditCanvasView: NSView {
                     rotation: rect.rotation,
                     anchor: anchor,
                     currentMouse: currentMouse,
-                    minimumSize: 4
+                    minimumSize: 4,
+                    preserveAspectRatio: preserveAspectRatio
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 annotations[state.index] = RectAnnotation(
@@ -2343,7 +2481,8 @@ class EditCanvasView: NSView {
                     rotation: ellipse.rotation,
                     anchor: anchor,
                     currentMouse: currentMouse,
-                    minimumSize: 4
+                    minimumSize: 4,
+                    preserveAspectRatio: preserveAspectRatio
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 annotations[state.index] = EllipseAnnotation(
@@ -2353,6 +2492,28 @@ class EditCanvasView: NSView {
                     filled: ellipse.filled,
                     rotation: ellipse.rotation
                 )
+            } else if let image = state.original as? ImageAnnotation {
+                let newRect = resizedRotatedRect(
+                    from: image.rect,
+                    rotation: image.rotation,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 12,
+                    preserveAspectRatio: preserveAspectRatio
+                )
+                guard newRect.width >= 12, newRect.height >= 12 else { return }
+                annotations[state.index] = image.withRect(newRect)
+            } else if let emoji = state.original as? EmojiAnnotation {
+                let newRect = resizedRotatedRect(
+                    from: emoji.rect,
+                    rotation: emoji.rotation,
+                    anchor: anchor,
+                    currentMouse: currentMouse,
+                    minimumSize: 12,
+                    preserveAspectRatio: preserveAspectRatio
+                )
+                guard newRect.width >= 12, newRect.height >= 12 else { return }
+                annotations[state.index] = emoji.withRect(newRect)
             }
         }
 
@@ -2363,8 +2524,20 @@ class EditCanvasView: NSView {
         from original: NSRect,
         anchor: ResizeAnchor,
         currentMouse: NSPoint,
-        minimumSize: CGFloat
+        minimumSize: CGFloat,
+        preserveAspectRatio: Bool = false
     ) -> NSRect {
+        if preserveAspectRatio {
+            return resizedRotatedRect(
+                from: original,
+                rotation: 0,
+                anchor: anchor,
+                currentMouse: currentMouse,
+                minimumSize: minimumSize,
+                preserveAspectRatio: true
+            )
+        }
+
         var minX = original.minX
         var maxX = original.maxX
         var minY = original.minY
@@ -2394,12 +2567,14 @@ class EditCanvasView: NSView {
         rotation: CGFloat,
         anchor: ResizeAnchor,
         currentMouse: NSPoint,
-        minimumSize: CGFloat
+        minimumSize: CGFloat,
+        preserveAspectRatio: Bool = false
     ) -> NSRect {
         let originalHalfWidth = original.width / 2
         let originalHalfHeight = original.height / 2
         let originalCenter = NSPoint(x: original.midX, y: original.midY)
         let minHalfSize = minimumSize / 2
+        guard original.width > 0, original.height > 0 else { return original }
 
         let xSign: CGFloat? = anchor.movesMinX ? -1 : (anchor.movesMaxX ? 1 : nil)
         let ySign: CGFloat? = anchor.movesMinY ? -1 : (anchor.movesMaxY ? 1 : nil)
@@ -2413,13 +2588,36 @@ class EditCanvasView: NSView {
 
         var halfWidth = originalHalfWidth
         var halfHeight = originalHalfHeight
-        if let xSign {
-            halfWidth = xSign * deltaLocal.x / 2
-            guard halfWidth >= minHalfSize else { return original }
-        }
-        if let ySign {
-            halfHeight = ySign * deltaLocal.y / 2
-            guard halfHeight >= minHalfSize else { return original }
+        if preserveAspectRatio, xSign != nil || ySign != nil {
+            let proposedWidth = xSign.map { $0 * deltaLocal.x } ?? original.width
+            let proposedHeight = ySign.map { $0 * deltaLocal.y } ?? original.height
+            let scale: CGFloat
+            switch (xSign, ySign) {
+            case (.some, .some):
+                let denominator = original.width * original.width + original.height * original.height
+                scale = denominator > 0
+                    ? (original.width * proposedWidth + original.height * proposedHeight) / denominator
+                    : 1
+            case (.some, .none):
+                scale = proposedWidth / original.width
+            case (.none, .some):
+                scale = proposedHeight / original.height
+            case (.none, .none):
+                scale = 1
+            }
+            guard scale.isFinite, scale > 0 else { return original }
+            halfWidth = originalHalfWidth * scale
+            halfHeight = originalHalfHeight * scale
+            guard halfWidth >= minHalfSize, halfHeight >= minHalfSize else { return original }
+        } else {
+            if let xSign {
+                halfWidth = xSign * deltaLocal.x / 2
+                guard halfWidth >= minHalfSize else { return original }
+            }
+            if let ySign {
+                halfHeight = ySign * deltaLocal.y / 2
+                guard halfHeight >= minHalfSize else { return original }
+            }
         }
 
         let centerLocal = NSPoint(
@@ -2558,6 +2756,30 @@ class EditCanvasView: NSView {
         return NSCursor(image: image, hotSpot: NSPoint(x: center.x, y: size - center.y))
     }()
 
+    private static let plusCursor: NSCursor = {
+        let size: CGFloat = 28
+        let center = NSPoint(x: 14, y: 14)
+
+        let image = NSImage(size: NSSize(width: size, height: size), flipped: false) { _ in
+            let plus = NSBezierPath()
+            plus.lineCapStyle = .round
+            plus.move(to: NSPoint(x: center.x - 8, y: center.y))
+            plus.line(to: NSPoint(x: center.x + 8, y: center.y))
+            plus.move(to: NSPoint(x: center.x, y: center.y - 8))
+            plus.line(to: NSPoint(x: center.x, y: center.y + 8))
+
+            NSColor.black.withAlphaComponent(0.55).setStroke()
+            plus.lineWidth = 5
+            plus.stroke()
+
+            NSColor.white.setStroke()
+            plus.lineWidth = 2.5
+            plus.stroke()
+            return true
+        }
+        return NSCursor(image: image, hotSpot: NSPoint(x: center.x, y: size - center.y))
+    }()
+
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let trackingArea {
@@ -2575,17 +2797,38 @@ class EditCanvasView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        updateEmojiPreview(at: point)
         updateCursor(at: point)
     }
 
     override func mouseEntered(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        updateEmojiPreview(at: point)
         updateCursor(at: point)
     }
 
     override func mouseExited(with event: NSEvent) {
+        if emojiPreviewPoint != nil {
+            emojiPreviewPoint = nil
+            needsDisplay = true
+        }
         // Let whatever's underneath manage its own cursor.
         NSCursor.arrow.set()
+    }
+
+    private func updateEmojiPreview(at point: NSPoint) {
+        guard activeTool == .emoji, currentEmoji != nil else {
+            if emojiPreviewPoint != nil {
+                emojiPreviewPoint = nil
+                needsDisplay = true
+            }
+            return
+        }
+        guard bounds.contains(point) else { return }
+        if emojiPreviewPoint != point {
+            emojiPreviewPoint = point
+            needsDisplay = true
+        }
     }
 
     private func updateCursor(at point: NSPoint) {
@@ -2618,6 +2861,10 @@ class EditCanvasView: NSView {
         // can be picked up regardless of the active tool.
         if hitTestAnnotation(at: point) != nil {
             NSCursor.openHand.set()
+            return
+        }
+        if activeTool == .emoji, currentEmoji != nil {
+            EditCanvasView.plusCursor.set()
             return
         }
         // Magnifier tool over empty canvas: a loupe cursor signals that a

@@ -129,6 +129,8 @@
 "tipMagnifier" = "Loupe";
 "tipNumbered" = "Numéro";
 "tipText" = "Texte";
+"tipEmoji" = "Emoji";
+"tipInsertImage" = "Insérer une image";
 "tipColorPicker" = "Pipette";
 "tipPickedInkBottle" = "Utiliser la pipette pour remplir l’encrier";
 "tipUndo" = "Annuler";
@@ -159,6 +161,10 @@
 "beautifyShadowEffect" = "Ombre";
 "textStrokeEffect" = "Contour";
 "shapeFillEffect" = "Remplir";
+"insertImageFromClipboard" = "Depuis le presse-papiers";
+"insertImageFromFile" = "Depuis un fichier...";
+"insertImageChooseFile" = "Choisir une image";
+"insertImageNoClipboardImage" = "Aucune image dans le presse-papiers";
 
 /* Language */
 "languageHeader" = "Langue";

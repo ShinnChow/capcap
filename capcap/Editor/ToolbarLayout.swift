@@ -16,6 +16,8 @@ enum ToolbarItemID: String, Codable, CaseIterable {
     case magnifier
     case numbered
     case text
+    case emoji
+    case insertImage
     // Stateful actions
     case colorPicker
     case undo
@@ -50,13 +52,13 @@ extension ToolbarItemID {
 
     var kind: Kind {
         switch self {
-        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text:
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
             return .toggleTool
         case .scrollCapture, .beautify:
             return .toggleAction
         case .moveSelection:
             return .dragHandle
-        case .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .save, .upload, .pin, .record, .close, .confirm:
+        case .insertImage, .colorPicker, .undo, .redo, .ocr, .screenshotTranslate, .save, .upload, .pin, .record, .close, .confirm:
             return .momentary
         }
     }
@@ -75,6 +77,7 @@ extension ToolbarItemID {
         case .magnifier: return .magnifier
         case .numbered:  return .numbered
         case .text:      return .text
+        case .emoji:     return .emoji
         default:         return nil
         }
     }
@@ -92,6 +95,8 @@ extension ToolbarItemID {
         case .magnifier:     return "plus.magnifyingglass"
         case .numbered:      return "1.circle"
         case .text:          return "textformat"
+        case .emoji:         return "face.smiling"
+        case .insertImage:   return "photo"
         case .colorPicker:   return "eyedropper"
         case .undo:          return "arrow.uturn.backward"
         case .redo:          return "arrow.uturn.forward"
@@ -124,6 +129,8 @@ extension ToolbarItemID {
         case .magnifier:     title = L10n.tipMagnifier
         case .numbered:      title = L10n.tipNumbered
         case .text:          title = L10n.tipText
+        case .emoji:         title = L10n.tipEmoji
+        case .insertImage:   title = L10n.tipInsertImage
         case .colorPicker:   title = L10n.tipColorPicker
         case .undo:          title = L10n.tipUndo
         case .redo:          title = L10n.tipRedo
@@ -199,7 +206,7 @@ struct ToolbarLayout: Equatable {
     /// place any newly-introduced tool that an older persisted layout never
     /// recorded.
     static let canonicalOrder: [ToolbarItemID] = [
-        .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text,
+        .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text, .emoji, .insertImage,
         .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .ocr,
         .screenshotTranslate,
         .save, .upload, .pin, .record, .close, .confirm,
@@ -211,7 +218,7 @@ struct ToolbarLayout: Equatable {
     static var `default`: ToolbarLayout {
         ToolbarLayout(
             primary: [
-                .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text,
+                .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text, .emoji, .insertImage,
                 .colorPicker, .magnifier, .beautify, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection,
             ],
             side: [.scrollCapture, .upload, .save, .pin, .record, .close, .confirm],

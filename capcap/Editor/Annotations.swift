@@ -1040,6 +1040,121 @@ struct LineAnnotation: Annotation {
     }
 }
 
+// MARK: - Image Annotation
+
+struct ImageAnnotation: Annotation {
+    let image: NSImage
+    let rect: NSRect
+    var rotation: CGFloat = 0
+
+    var boundingRect: NSRect { rect }
+    var supportsRotation: Bool { true }
+
+    func draw(in context: CGContext, bounds: NSRect) {
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        image.draw(
+            in: rect,
+            from: NSRect(origin: .zero, size: image.size),
+            operation: .sourceOver,
+            fraction: 1.0,
+            respectFlipped: false,
+            hints: [.interpolation: NSImageInterpolation.high.rawValue]
+        )
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    func containsPoint(_ point: NSPoint) -> Bool {
+        let p = unrotate(point)
+        return rect.insetBy(dx: -8, dy: -8).contains(p)
+    }
+
+    func translated(by delta: NSPoint) -> Annotation {
+        ImageAnnotation(
+            image: image,
+            rect: rect.offsetBy(dx: delta.x, dy: delta.y),
+            rotation: rotation
+        )
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        ImageAnnotation(image: image, rect: rect, rotation: rotation)
+    }
+
+    func withRect(_ rect: NSRect) -> ImageAnnotation {
+        ImageAnnotation(image: image, rect: rect, rotation: rotation)
+    }
+}
+
+// MARK: - Emoji Annotation
+
+struct EmojiAnnotation: Annotation {
+    let emoji: String
+    let rect: NSRect
+    var rotation: CGFloat = 0
+
+    var boundingRect: NSRect { rect }
+    var supportsRotation: Bool { true }
+
+    func draw(in context: CGContext, bounds: NSRect) {
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current?.imageInterpolation = .high
+        EmojiGlyphRenderer.image(for: emoji).draw(
+            in: rect,
+            from: NSRect(origin: .zero, size: EmojiGlyphRenderer.imageSize),
+            operation: .sourceOver,
+            fraction: 1.0,
+            respectFlipped: false,
+            hints: [.interpolation: NSImageInterpolation.high.rawValue]
+        )
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    func containsPoint(_ point: NSPoint) -> Bool {
+        let p = unrotate(point)
+        return rect.insetBy(dx: -8, dy: -8).contains(p)
+    }
+
+    func translated(by delta: NSPoint) -> Annotation {
+        EmojiAnnotation(
+            emoji: emoji,
+            rect: rect.offsetBy(dx: delta.x, dy: delta.y),
+            rotation: rotation
+        )
+    }
+
+    func withRotation(_ rotation: CGFloat) -> Annotation {
+        EmojiAnnotation(emoji: emoji, rect: rect, rotation: rotation)
+    }
+
+    func withRect(_ rect: NSRect) -> EmojiAnnotation {
+        EmojiAnnotation(emoji: emoji, rect: rect, rotation: rotation)
+    }
+}
+
+private enum EmojiGlyphRenderer {
+    static let imageSize = NSSize(width: 128, height: 128)
+    private static var cache: [String: NSImage] = [:]
+
+    static func image(for emoji: String) -> NSImage {
+        if let cached = cache[emoji] { return cached }
+
+        let image = NSImage(size: imageSize, flipped: false) { rect in
+            let font = NSFont.systemFont(ofSize: 96)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font]
+            let measured = (emoji as NSString).size(withAttributes: attributes)
+            let origin = NSPoint(
+                x: rect.midX - measured.width / 2,
+                y: rect.midY - measured.height / 2
+            )
+            (emoji as NSString).draw(at: origin, withAttributes: attributes)
+            return true
+        }
+        cache[emoji] = image
+        return image
+    }
+}
+
 // MARK: - Text Annotation
 
 struct TextAnnotation: Annotation {

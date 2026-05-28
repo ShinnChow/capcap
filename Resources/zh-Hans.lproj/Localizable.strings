@@ -129,6 +129,8 @@
 "tipMagnifier" = "放大镜";
 "tipNumbered" = "序号";
 "tipText" = "文字";
+"tipEmoji" = "表情";
+"tipInsertImage" = "插入图片";
 "tipColorPicker" = "取色器";
 "tipPickedInkBottle" = "使用取色器提取颜色到墨水瓶";
 "tipUndo" = "撤销";
@@ -159,6 +161,10 @@
 "beautifyShadowEffect" = "阴影效果";
 "textStrokeEffect" = "描边";
 "shapeFillEffect" = "填充";
+"insertImageFromClipboard" = "从剪贴板插入";
+"insertImageFromFile" = "从本地文件插入...";
+"insertImageChooseFile" = "选择图片";
+"insertImageNoClipboardImage" = "剪贴板中没有图片";
 
 /* Language */
 "languageHeader" = "语言";

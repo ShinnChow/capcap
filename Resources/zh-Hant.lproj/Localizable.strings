@@ -129,6 +129,8 @@
 "tipMagnifier" = "放大鏡";
 "tipNumbered" = "編號";
 "tipText" = "文字";
+"tipEmoji" = "表情";
+"tipInsertImage" = "插入圖片";
 "tipColorPicker" = "取色器";
 "tipPickedInkBottle" = "使用取色器提取顏色到墨水瓶";
 "tipUndo" = "復原";
@@ -159,6 +161,10 @@
 "beautifyShadowEffect" = "陰影效果";
 "textStrokeEffect" = "描邊";
 "shapeFillEffect" = "填充";
+"insertImageFromClipboard" = "從剪貼簿插入";
+"insertImageFromFile" = "從本機檔案插入...";
+"insertImageChooseFile" = "選擇圖片";
+"insertImageNoClipboardImage" = "剪貼簿中沒有圖片";
 
 /* Language */
 "languageHeader" = "語言";

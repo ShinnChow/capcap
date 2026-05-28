@@ -129,6 +129,8 @@
 "tipMagnifier" = "Лупа";
 "tipNumbered" = "Нумерация";
 "tipText" = "Текст";
+"tipEmoji" = "Эмодзи";
+"tipInsertImage" = "Вставить изображение";
 "tipColorPicker" = "Пипетка";
 "tipPickedInkBottle" = "Взять цвет пипеткой в чернильницу";
 "tipUndo" = "Отменить";
@@ -159,6 +161,10 @@
 "beautifyShadowEffect" = "Тень";
 "textStrokeEffect" = "Обводка";
 "shapeFillEffect" = "Заливка";
+"insertImageFromClipboard" = "Из буфера обмена";
+"insertImageFromFile" = "Из файла...";
+"insertImageChooseFile" = "Выбрать изображение";
+"insertImageNoClipboardImage" = "В буфере обмена нет изображения";
 
 /* Language */
 "languageHeader" = "Язык";

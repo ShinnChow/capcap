@@ -129,6 +129,8 @@
 "tipMagnifier" = "拡大鏡";
 "tipNumbered" = "番号";
 "tipText" = "テキスト";
+"tipEmoji" = "絵文字";
+"tipInsertImage" = "画像を挿入";
 "tipColorPicker" = "カラーピッカー";
 "tipPickedInkBottle" = "カラーピッカーでインク瓶に色を抽出";
 "tipUndo" = "取り消す";
@@ -159,6 +161,10 @@
 "beautifyShadowEffect" = "影効果";
 "textStrokeEffect" = "縁取り";
 "shapeFillEffect" = "塗りつぶし";
+"insertImageFromClipboard" = "クリップボードから";
+"insertImageFromFile" = "ファイルから...";
+"insertImageChooseFile" = "画像を選択";
+"insertImageNoClipboardImage" = "クリップボードに画像がありません";
 
 /* Language */
 "languageHeader" = "言語";
