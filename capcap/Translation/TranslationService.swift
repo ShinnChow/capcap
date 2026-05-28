@@ -22,8 +22,8 @@ enum TranslationError: LocalizedError {
 }
 
 /// Streams translations. OpenAI / DeepSeek / Custom share the OpenAI
-/// chat-completions SSE format; Claude uses Anthropic Messages SSE; DeepL
-/// returns a single JSON payload that is yielded as one chunk.
+/// chat-completions SSE format; Claude uses Anthropic Messages SSE; DeepL and
+/// DeepLX return a single JSON payload that is yielded as one chunk.
 enum TranslationService {
 
     /// Yields translated text deltas as they arrive. Cancelling the consuming
@@ -34,7 +34,7 @@ enum TranslationService {
         kind: TranslationProviderKind,
         config: TranslationConfig
     ) -> AsyncThrowingStream<String, Error> {
-        if !kind.isDeepL {
+        if !kind.isDirectTranslationAPI {
             return streamChat(
                 text: text,
                 system: systemPrompt(for: target),
@@ -46,7 +46,9 @@ enum TranslationService {
         return AsyncThrowingStream { continuation in
             let work = Task.detached(priority: .userInitiated) {
                 do {
-                    let translated = try await translateWithDeepL(text: text, target: target, config: config)
+                    let translated = kind.isDeepLX
+                        ? try await translateWithDeepLX(text: text, target: target, config: config)
+                        : try await translateWithDeepL(text: text, target: target, config: config)
                     if !translated.isEmpty {
                         continuation.yield(translated)
                     }
@@ -81,7 +83,7 @@ enum TranslationService {
         kind: TranslationProviderKind,
         config: TranslationConfig
     ) async throws -> DictionaryEntry {
-        guard !kind.isDeepL else { throw TranslationError.badResponse }
+        guard !kind.isDirectTranslationAPI else { throw TranslationError.badResponse }
 
         var raw = ""
         let prompt = dictionaryUserPrompt(word: word)
@@ -360,6 +362,115 @@ enum TranslationService {
 
     private static func deepLBaseLanguage(_ code: String) -> String {
         code.uppercased().split(separator: "-").first.map(String.init) ?? code.uppercased()
+    }
+
+    // MARK: - DeepLX
+
+    private struct DeepLXTranslationResult {
+        let text: String
+        let detectedSourceLanguage: String?
+    }
+
+    private static func translateWithDeepLX(
+        text: String,
+        target: TranslationLanguage,
+        config: TranslationConfig
+    ) async throws -> String {
+        let result = try await requestDeepLXTranslation(text: text, target: target, config: config)
+        if target != .english,
+           deepLSourceMatchesTarget(result.detectedSourceLanguage, target: target) {
+            let fallback = try await requestDeepLXTranslation(text: text, target: .english, config: config)
+            return fallback.text
+        }
+        return result.text
+    }
+
+    private static func requestDeepLXTranslation(
+        text: String,
+        target: TranslationLanguage,
+        config: TranslationConfig
+    ) async throws -> DeepLXTranslationResult {
+        let request = try buildDeepLXRequest(text: text, target: target, config: config)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw TranslationError.badResponse
+        }
+        guard (200..<300).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? ""
+            throw TranslationError.http(http.statusCode, String(body.prefix(600)))
+        }
+        return try parseDeepLXResponse(data)
+    }
+
+    private static func buildDeepLXRequest(
+        text: String,
+        target: TranslationLanguage,
+        config: TranslationConfig
+    ) throws -> URLRequest {
+        let apiKey = config.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        let endpoint = config.resolvedEndpoint(for: .deeplx)
+        guard !endpoint.contains("{{apiKey}}") || !apiKey.isEmpty else {
+            throw TranslationError.missingAPIKey
+        }
+        guard let url = URL(string: resolvedDeepLXEndpoint(endpoint: endpoint, apiKey: apiKey)),
+              url.scheme != nil else {
+            throw TranslationError.badEndpoint
+        }
+
+        var request = URLRequest(url: url, timeoutInterval: 60)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !apiKey.isEmpty, !endpoint.contains("{{apiKey}}") {
+            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+
+        let body: [String: Any] = [
+            "text": text,
+            "source_lang": "auto",
+            "target_lang": target.deepLXTargetCode,
+        ]
+
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        return request
+    }
+
+    private static func resolvedDeepLXEndpoint(endpoint: String, apiKey: String) -> String {
+        let encodedKey = apiKey.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? apiKey
+        return endpoint.replacingOccurrences(of: "{{apiKey}}", with: encodedKey)
+    }
+
+    private static func parseDeepLXResponse(_ data: Data) throws -> DeepLXTranslationResult {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw TranslationError.badResponse
+        }
+
+        if let code = json["code"] as? Int, code != 200 {
+            let message = json["message"] as? String ?? json["msg"] as? String ?? ""
+            throw TranslationError.http(code, message)
+        }
+
+        if let text = json["data"] as? String {
+            return DeepLXTranslationResult(
+                text: text,
+                detectedSourceLanguage: deepLXDetectedSourceLanguage(from: json)
+            )
+        }
+
+        if let data = json["data"] as? [String: Any],
+           let text = data["text"] as? String ?? data["translation"] as? String {
+            return DeepLXTranslationResult(
+                text: text,
+                detectedSourceLanguage: deepLXDetectedSourceLanguage(from: data) ?? deepLXDetectedSourceLanguage(from: json)
+            )
+        }
+
+        throw TranslationError.badResponse
+    }
+
+    private static func deepLXDetectedSourceLanguage(from json: [String: Any]) -> String? {
+        json["source_lang"] as? String
+            ?? json["sourceLang"] as? String
+            ?? json["detected_source_language"] as? String
     }
 
     // MARK: - SSE parsing

@@ -103,11 +103,12 @@ enum TranslationLanguage: String, CaseIterable {
 // MARK: - Provider kinds
 
 /// Translation providers. OpenAI / DeepSeek / Custom all speak the OpenAI
-/// chat-completions wire format; Claude and DeepL use their own APIs.
+/// chat-completions wire format; Claude, DeepL, and DeepLX use their own APIs.
 enum TranslationProviderKind: String, CaseIterable {
     case openai
     case deepseek
     case deepl
+    case deeplx
     case custom
     case claude
 
@@ -116,6 +117,7 @@ enum TranslationProviderKind: String, CaseIterable {
         case .openai:   return "OpenAI"
         case .deepseek: return "DeepSeek"
         case .deepl:    return "DeepL"
+        case .deeplx:   return "DeepLX"
         case .custom:   return L10n.translationProviderCustom
         case .claude:   return "Claude"
         }
@@ -127,11 +129,17 @@ enum TranslationProviderKind: String, CaseIterable {
     /// DeepL uses a non-SSE JSON response instead of chat completions.
     var isDeepL: Bool { self == .deepl }
 
+    /// DeepLX uses a non-SSE JSON response instead of chat completions.
+    var isDeepLX: Bool { self == .deeplx }
+
+    var isDirectTranslationAPI: Bool { isDeepL || isDeepLX }
+
     var defaultEndpoint: String {
         switch self {
         case .openai:   return "https://api.openai.com/v1/chat/completions"
         case .deepseek: return "https://api.deepseek.com/chat/completions"
         case .deepl:    return "https://api.deepl.com/v2/translate"
+        case .deeplx:   return "https://api.deeplx.org/{{apiKey}}/translate"
         case .custom:   return ""
         case .claude:   return "https://api.anthropic.com/v1/messages"
         }
@@ -142,6 +150,7 @@ enum TranslationProviderKind: String, CaseIterable {
         case .openai:   return "gpt-4o-mini"
         case .deepseek: return "deepseek-v4-flash"
         case .deepl:    return ""
+        case .deeplx:   return ""
         case .custom:   return ""
         case .claude:   return "claude-3-5-haiku-latest"
         }
@@ -173,6 +182,10 @@ extension TranslationLanguage {
         case .korean:     return "KO"
         case .turkish:    return "TR"
         }
+    }
+
+    var deepLXTargetCode: String {
+        deepLTargetCode.split(separator: "-").first.map(String.init) ?? deepLTargetCode
     }
 }
 
