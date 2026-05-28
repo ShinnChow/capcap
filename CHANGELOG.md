@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.25] - 2026-05-28
+
+### Added
+- Add DeepLX translation provider support (ce5f6da)
+
+### Fixed
+- Allow empty API key for self-hosted DeepLX instances (bf93824)
+
+### Changed
+- Add DMG artifacts to release workflow (aafbcb6)
+- Refine arrow styles to match numbered arrows (c3ed7b4)
+- Make translation providers default to off and mark DeepLX key optional (6f8d4b1)
+- Expand provider cards when required fields are missing (dbbd68c)
+- Make double-click close pinned images (dee774b)
+- Refine settings slider rendering to match native controls (e7794b2)
+- Add mosaic granularity subtoolbar (c59fd20)
+
 ## [1.3.24] - 2026-05-28
 
 ### Changed
