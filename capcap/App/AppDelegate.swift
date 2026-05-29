@@ -21,30 +21,36 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        showStartupDialog()
+        if LaunchAtLogin.isEnabled {
+            initializeApp()
+        } else {
+            showStartupDialog()
+        }
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if appInitialized {
             openSettings()
         } else {
-            SettingsWindowController.shared.showAsStartupDialog()
+            showStartupDialog()
         }
         return false
     }
 
     private func showStartupDialog() {
-        let settingsController = SettingsWindowController.shared
+        let settingsController = configuredSettingsController()
+        settingsController.showAsStartupDialog()
+    }
 
+    private func configuredSettingsController() -> SettingsWindowController {
+        let settingsController = SettingsWindowController.shared
         settingsController.onMenuBarToggle = { [weak self] visible in
             self?.statusBarController?.setMenuBarVisible(visible)
         }
-
         settingsController.onLaunch = { [weak self] in
             self?.initializeApp()
         }
-
-        settingsController.showAsStartupDialog()
+        return settingsController
     }
 
     private func initializeApp() {
@@ -586,7 +592,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func openSettings() {
-        SettingsWindowController.shared.showAsSettings()
+        configuredSettingsController().showAsSettings()
     }
 }
 
