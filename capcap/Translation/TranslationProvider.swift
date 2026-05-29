@@ -187,9 +187,6 @@ extension TranslationLanguage {
         }
     }
 
-    var deepLXTargetCode: String {
-        deepLTargetCode.split(separator: "-").first.map(String.init) ?? deepLTargetCode
-    }
 }
 
 // MARK: - Config model
