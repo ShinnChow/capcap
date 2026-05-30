@@ -197,8 +197,10 @@ final class ImageMergeThumbnailListView: NSView {
     }
     var onReorder: (() -> Void)?
     var onSelect: (() -> Void)?
+    var onDelete: (() -> Void)?
 
     private var rowRects: [UUID: NSRect] = [:]
+    private var closeRects: [UUID: NSRect] = [:]
     private var dragSourceIndex: Int?
     private let rowHeight: CGFloat = 58
 
@@ -215,6 +217,7 @@ final class ImageMergeThumbnailListView: NSView {
         NSColor.clear.setFill()
         bounds.fill()
         rowRects.removeAll()
+        closeRects.removeAll()
 
         guard let document else { return }
         for (index, item) in document.items.enumerated() {
@@ -228,6 +231,18 @@ final class ImageMergeThumbnailListView: NSView {
     override func mouseDown(with event: NSEvent) {
         guard let document else { return }
         let point = convert(event.locationInWindow, from: nil)
+
+        for item in document.items {
+            if closeRects[item.id]?.contains(point) == true {
+                document.removeItem(id: item.id)
+                dragSourceIndex = nil
+                rebuildHeight()
+                needsDisplay = true
+                onDelete?()
+                return
+            }
+        }
+
         for (index, item) in document.items.enumerated() {
             if rowRects[item.id]?.contains(point) == true {
                 document.select(item.id)
@@ -271,6 +286,14 @@ final class ImageMergeThumbnailListView: NSView {
         path.lineWidth = selected ? 1.5 : 1
         path.stroke()
 
+        let closeRect = NSRect(
+            x: rect.maxX - 34,
+            y: rect.midY - 11,
+            width: 22,
+            height: 22
+        )
+        closeRects[item.id] = closeRect
+
         let thumbRect = NSRect(x: rect.minX + 8, y: rect.minY + 7, width: 44, height: 44)
         NSColor(calibratedWhite: 0.15, alpha: 0.12).setFill()
         NSBezierPath(roundedRect: thumbRect, xRadius: 5, yRadius: 5).fill()
@@ -281,8 +304,14 @@ final class ImageMergeThumbnailListView: NSView {
             .font: NSFont.systemFont(ofSize: 12, weight: .medium),
             .foregroundColor: NSColor.labelColor
         ]
-        let titleRect = NSRect(x: thumbRect.maxX + 8, y: rect.midY - 8, width: rect.width - thumbRect.maxX - 20, height: 18)
+        let titleRect = NSRect(
+            x: thumbRect.maxX + 8,
+            y: rect.midY - 8,
+            width: max(20, closeRect.minX - thumbRect.maxX - 18),
+            height: 18
+        )
         title.draw(in: titleRect, withAttributes: attrs)
+        drawCloseButton(in: closeRect)
     }
 
     private func drawThumbnail(_ image: NSImage, in rect: NSRect) {
@@ -296,5 +325,23 @@ final class ImageMergeThumbnailListView: NSView {
             height: size.height
         )
         image.draw(in: target, from: .zero, operation: .sourceOver, fraction: 1)
+    }
+
+    private func drawCloseButton(in rect: NSRect) {
+        let circle = NSBezierPath(ovalIn: rect)
+        NSColor.labelColor.withAlphaComponent(0.10).setFill()
+        circle.fill()
+
+        let lineWidth: CGFloat = 1.8
+        let inset = rect.insetBy(dx: 6.5, dy: 6.5)
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: inset.minX, y: inset.minY))
+        path.line(to: NSPoint(x: inset.maxX, y: inset.maxY))
+        path.move(to: NSPoint(x: inset.maxX, y: inset.minY))
+        path.line(to: NSPoint(x: inset.minX, y: inset.maxY))
+        path.lineWidth = lineWidth
+        path.lineCapStyle = .round
+        NSColor.labelColor.withAlphaComponent(0.64).setStroke()
+        path.stroke()
     }
 }

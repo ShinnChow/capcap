@@ -57,11 +57,11 @@ final class ImageMergeDocument {
 
     init(items: [ImageMergeItem] = []) {
         self.items = items
-        template = .horizontal
-        spacing = 12
-        margin = 24
-        background = .transparent
-        cornerRadius = 0
+        template = Defaults.imageMergeTemplate
+        spacing = CGFloat(Defaults.imageMergeSpacing)
+        margin = CGFloat(Defaults.imageMergeMargin)
+        background = Self.savedBackground()
+        cornerRadius = CGFloat(Defaults.imageMergeCornerRadius)
         selectedItemID = items.first?.id
     }
 
@@ -93,6 +93,22 @@ final class ImageMergeDocument {
 
     func select(_ id: UUID?) {
         selectedItemID = id
+    }
+
+    func removeItem(id: UUID) {
+        guard let index = items.firstIndex(where: { $0.id == id }) else { return }
+        let removedWasSelected = selectedItemID == id
+        items.remove(at: index)
+
+        if removedWasSelected {
+            if items.isEmpty {
+                selectedItemID = nil
+            } else {
+                selectedItemID = items[min(index, items.count - 1)].id
+            }
+        } else {
+            removeInvalidSelectionIfNeeded()
+        }
     }
 
     func updateAdjustment(for id: UUID, offset: NSPoint? = nil, scale: CGFloat? = nil) {
@@ -135,6 +151,36 @@ final class ImageMergeDocument {
     static func item(fromClipboardImage image: NSImage) -> ImageMergeItem? {
         guard image.size.width > 0, image.size.height > 0 else { return nil }
         return ImageMergeItem(displayName: L10n.imageMergeClipboardSourceName, image: normalizedImage(image) ?? image)
+    }
+
+    static func hexString(from color: NSColor) -> String? {
+        guard let rgb = color.usingColorSpace(.deviceRGB) ?? color.usingColorSpace(.sRGB) else {
+            return nil
+        }
+        let red = min(max(Int(round(rgb.redComponent * 255)), 0), 255)
+        let green = min(max(Int(round(rgb.greenComponent * 255)), 0), 255)
+        let blue = min(max(Int(round(rgb.blueComponent * 255)), 0), 255)
+        return String(format: "#%02X%02X%02X", red, green, blue)
+    }
+
+    private static func savedBackground() -> ImageMergeBackground {
+        guard Defaults.imageMergeBackgroundIsSolid else { return .transparent }
+        return .solid(color(fromHex: Defaults.imageMergeBackgroundColorHex) ?? .white)
+    }
+
+    static func color(fromHex hex: String) -> NSColor? {
+        var value = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("#") { value.removeFirst() }
+        guard value.count == 6,
+              let raw = UInt32(value, radix: 16) else {
+            return nil
+        }
+        return NSColor(
+            calibratedRed: CGFloat((raw >> 16) & 0xFF) / 255,
+            green: CGFloat((raw >> 8) & 0xFF) / 255,
+            blue: CGFloat(raw & 0xFF) / 255,
+            alpha: 1
+        )
     }
 
     private static func isImageFile(_ url: URL) -> Bool {

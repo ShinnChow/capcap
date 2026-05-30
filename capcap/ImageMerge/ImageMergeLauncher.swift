@@ -35,6 +35,33 @@ final class ImageMergeLauncher {
         open(urls: urls)
     }
 
+    func openFromShortcutSources() {
+        if let windowController, windowController.window?.isVisible == true {
+            windowController.show()
+            return
+        }
+
+        let finderURLs = FinderSelection.currentImageFileURLs()
+        if !finderURLs.isEmpty {
+            open(urls: finderURLs)
+            return
+        }
+
+        let clipboardURLs = ClipboardImageSource.currentImageFileURLs()
+        if !clipboardURLs.isEmpty {
+            open(urls: clipboardURLs)
+            return
+        }
+
+        if let image = ClipboardImageSource.currentImage(),
+           let item = ImageMergeDocument.item(fromClipboardImage: image) {
+            present(document: ImageMergeDocument(items: [item]))
+            return
+        }
+
+        openEmpty()
+    }
+
     func open(urls: [URL]) {
         if let windowController, windowController.window?.isVisible == true {
             windowController.appendImages(from: urls)

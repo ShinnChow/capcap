@@ -1,6 +1,19 @@
 import AppKit
 import UniformTypeIdentifiers
 
+private final class ImageMergeWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        let commandModifiers: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+        let modifiers = event.modifierFlags.intersection(commandModifiers)
+        if modifiers == .command,
+           event.charactersIgnoringModifiers?.lowercased() == "w" {
+            performClose(nil)
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+}
+
 final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
     private let mergeDocument: ImageMergeDocument
     private let onContinueEditing: (NSImage) -> Void
@@ -31,7 +44,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
         self.onContinueEditing = onContinueEditing
         self.onClose = onClose
 
-        let window = NSWindow(
+        let window = ImageMergeWindow(
             contentRect: NSRect(x: 0, y: 0, width: 1040, height: 700),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
@@ -148,6 +161,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
         thumbnailListView.document = mergeDocument
         thumbnailListView.onSelect = { [weak self] in self?.refreshAll() }
         thumbnailListView.onReorder = { [weak self] in self?.refreshAll() }
+        thumbnailListView.onDelete = { [weak self] in self?.refreshAll() }
         let thumbScroll = NSScrollView()
         thumbScroll.hasVerticalScroller = true
         thumbScroll.borderType = .noBorder
@@ -200,7 +214,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
 
         colorWell.target = self
         colorWell.action = #selector(backgroundColorChanged)
-        colorWell.color = .white
+        colorWell.color = ImageMergeDocument.color(fromHex: Defaults.imageMergeBackgroundColorHex) ?? .white
 
         copyButton.target = self
         copyButton.action = #selector(copyClicked)
@@ -378,6 +392,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
         case .transparent:
             backgroundMode.selectedSegment = 0
             colorWell.isEnabled = false
+            colorWell.color = ImageMergeDocument.color(fromHex: Defaults.imageMergeBackgroundColorHex) ?? .white
         case .solid(let color):
             backgroundMode.selectedSegment = 1
             colorWell.isEnabled = true
@@ -431,6 +446,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
 
     @objc private func templateChipClicked(_ sender: ImageMergeTemplateChipButton) {
         mergeDocument.template = sender.template
+        Defaults.imageMergeTemplate = sender.template
         refreshAll()
     }
 
@@ -438,14 +454,20 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
         mergeDocument.spacing = CGFloat(spacingSlider.doubleValue.rounded())
         mergeDocument.margin = CGFloat(marginSlider.doubleValue.rounded())
         mergeDocument.cornerRadius = CGFloat(cornerSlider.doubleValue.rounded())
+        Defaults.imageMergeSpacing = Double(mergeDocument.spacing)
+        Defaults.imageMergeMargin = Double(mergeDocument.margin)
+        Defaults.imageMergeCornerRadius = Double(mergeDocument.cornerRadius)
         refreshAll()
     }
 
     @objc private func backgroundModeChanged() {
         if backgroundMode.selectedSegment == 1 {
             mergeDocument.background = .solid(colorWell.color)
+            Defaults.imageMergeBackgroundIsSolid = true
+            persistBackgroundColor(colorWell.color)
         } else {
             mergeDocument.background = .transparent
+            Defaults.imageMergeBackgroundIsSolid = false
         }
         refreshAll()
     }
@@ -453,8 +475,16 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
     @objc private func backgroundColorChanged() {
         if backgroundMode.selectedSegment == 1 {
             mergeDocument.background = .solid(colorWell.color)
+            Defaults.imageMergeBackgroundIsSolid = true
+            persistBackgroundColor(colorWell.color)
         }
         refreshAll()
+    }
+
+    private func persistBackgroundColor(_ color: NSColor) {
+        if let hex = ImageMergeDocument.hexString(from: color) {
+            Defaults.imageMergeBackgroundColorHex = hex
+        }
     }
 
     @objc private func copyClicked() {

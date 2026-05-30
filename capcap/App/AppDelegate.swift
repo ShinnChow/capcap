@@ -371,7 +371,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
               !countdownActive,
               !ImageMergeLauncher.shared.isWorkbenchActive
         else { return }
-        ImageMergeLauncher.shared.openFromFinderSelection()
+        ImageMergeLauncher.shared.openFromShortcutSources()
     }
 
     func startCapture(postCaptureAction: OverlayWindowController.PostCaptureAction = .edit) {

@@ -760,6 +760,66 @@ struct Defaults {
         defaults.removeObject(forKey: "imageMergeHotkeyModifiers")
     }
 
+    static var imageMergeTemplate: ImageMergeTemplate {
+        get {
+            let rawValue = defaults.integer(forKey: "imageMergeTemplate")
+            return ImageMergeTemplate(rawValue: rawValue) ?? .horizontal
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "imageMergeTemplate")
+        }
+    }
+
+    static var imageMergeSpacing: Double {
+        get {
+            if defaults.object(forKey: "imageMergeSpacing") == nil {
+                return 12
+            }
+            return min(max(defaults.double(forKey: "imageMergeSpacing"), 0), 80)
+        }
+        set {
+            defaults.set(min(max(newValue.rounded(), 0), 80), forKey: "imageMergeSpacing")
+        }
+    }
+
+    static var imageMergeMargin: Double {
+        get {
+            if defaults.object(forKey: "imageMergeMargin") == nil {
+                return 24
+            }
+            return min(max(defaults.double(forKey: "imageMergeMargin"), 0), 120)
+        }
+        set {
+            defaults.set(min(max(newValue.rounded(), 0), 120), forKey: "imageMergeMargin")
+        }
+    }
+
+    static var imageMergeCornerRadius: Double {
+        get {
+            if defaults.object(forKey: "imageMergeCornerRadius") == nil {
+                return 0
+            }
+            return min(max(defaults.double(forKey: "imageMergeCornerRadius"), 0), 80)
+        }
+        set {
+            defaults.set(min(max(newValue.rounded(), 0), 80), forKey: "imageMergeCornerRadius")
+        }
+    }
+
+    static var imageMergeBackgroundIsSolid: Bool {
+        get { defaults.bool(forKey: "imageMergeBackgroundIsSolid") }
+        set { defaults.set(newValue, forKey: "imageMergeBackgroundIsSolid") }
+    }
+
+    static var imageMergeBackgroundColorHex: String {
+        get {
+            normalizedHexColor(defaults.string(forKey: "imageMergeBackgroundColorHex")) ?? "#FFFFFF"
+        }
+        set {
+            defaults.set(normalizedHexColor(newValue) ?? "#FFFFFF", forKey: "imageMergeBackgroundColorHex")
+        }
+    }
+
     static var recordingSaveFormat: ScreenRecordingFormat {
         get {
             guard let raw = defaults.string(forKey: "recordingSaveFormat"),
