@@ -4,7 +4,12 @@ import CoreGraphics
 struct DetectedWindow {
     let name: String
     let windowID: CGWindowID
+    let layer: Int
     let frame: CGRect   // CG coordinates (global, top-left origin)
+
+    var usesCompositedScreenBackdrop: Bool {
+        layer >= 20
+    }
 }
 
 class WindowDetector {
@@ -63,8 +68,15 @@ class WindowDetector {
             let name = info[kCGWindowOwnerName as String] as? String ?? ""
             let windowID = info[kCGWindowNumber as String] as? CGWindowID ?? 0
 
-            return DetectedWindow(name: name, windowID: windowID, frame: rect)
+            return DetectedWindow(name: name, windowID: windowID, layer: layer, frame: rect)
         }
+    }
+
+    /// High-layer system surfaces (menu bar, Dock, popups) are often only a
+    /// translucent foreground when captured as independent windows. Capture
+    /// their already-composited screen pixels instead.
+    func usesCompositedScreenBackdrop(forWindowID windowID: CGWindowID) -> Bool {
+        windows.first { $0.windowID == windowID }?.usesCompositedScreenBackdrop ?? false
     }
 
     /// Return the topmost window whose frame contains `cgPoint`

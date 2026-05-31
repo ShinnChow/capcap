@@ -432,9 +432,16 @@ extension OverlayWindowController: SelectionViewDelegate {
             // First time selection complete — show editor
             let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             let preSnapshot = displayID.flatMap { screenSnapshots[$0] }
-            let windowBaseImage = isWindowSelection
+            let useScreenBackdropForWindow = isWindowSelection
+                && preSnapshot != nil
+                && windowID.map { windowDetector.usesCompositedScreenBackdrop(forWindowID: $0) } == true
+            let directWindowImage = isWindowSelection && !useScreenBackdropForWindow
                 ? windowID.flatMap { ScreenCapturer.capture(windowID: $0, pointSize: rect.size) }
                 : nil
+            let windowBaseImage = directWindowImage.flatMap { image in
+                ScreenCapturer.isEffectivelyTransparent(image) ? nil : image
+            }
+            let shouldApplyWindowEffects = isWindowSelection && !useScreenBackdropForWindow && windowBaseImage != nil
 
             switch postCaptureAction {
             case .edit:
@@ -480,7 +487,7 @@ extension OverlayWindowController: SelectionViewDelegate {
                 preSnapshot: preSnapshot,
                 overrideBaseImage: presetImage,
                 windowBaseImage: windowBaseImage,
-                isWindowCapture: isWindowSelection,
+                isWindowCapture: shouldApplyWindowEffects,
                 onRecordingSelection: onRecordingSelection,
                 onRequestFocusReturn: onRequestFocusReturn
             ) { [weak self] finalImage in
