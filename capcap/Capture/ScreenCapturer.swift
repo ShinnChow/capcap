@@ -53,6 +53,51 @@ struct ScreenCapturer {
         return resultImage
     }
 
+    static func isEffectivelyTransparent(_ image: NSImage, alphaThreshold: UInt8 = 3) -> Bool {
+        guard let cgImage = image.cgImagePreservingBacking() else { return false }
+
+        switch cgImage.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast:
+            return false
+        default:
+            break
+        }
+
+        let width = cgImage.width
+        let height = cgImage.height
+        guard width > 0, height > 0 else { return true }
+
+        let bytesPerPixel = 4
+        let bytesPerRow = width * bytesPerPixel
+        var rgba = [UInt8](repeating: 0, count: bytesPerRow * height)
+
+        let drewImage = rgba.withUnsafeMutableBytes { ptr -> Bool in
+            guard let context = CGContext(
+                data: ptr.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: bytesPerRow,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                return false
+            }
+
+            context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+
+        guard drewImage else { return false }
+
+        for index in stride(from: 3, to: rgba.count, by: bytesPerPixel) {
+            if rgba[index] > alphaThreshold {
+                return false
+            }
+        }
+        return true
+    }
+
     private static func captureAsync(
         rect: CGRect,
         screen: NSScreen,
