@@ -62,6 +62,19 @@ enum WindowEffects {
         return true
     }
 
+    /// Preserve the visible pixels from `image` while borrowing the real
+    /// WindowServer alpha silhouette from `maskImage`.
+    static func applyingAlphaMask(from maskImage: NSImage, to image: NSImage) -> NSImage? {
+        guard let maskCG = maskImage.cgImagePreservingBacking(),
+              hasAlpha(maskCG),
+              let alphaMask = alphaMask(from: maskCG, width: maskCG.width, height: maskCG.height)
+        else {
+            return nil
+        }
+
+        return applyMask(alphaMask, to: image)
+    }
+
     private static func continuousCornerMask(
         pixelWidth: Int,
         pixelHeight: Int,
@@ -155,6 +168,15 @@ enum WindowEffects {
             shouldInterpolate: true,
             intent: .defaultIntent
         )
+    }
+
+    private static func hasAlpha(_ image: CGImage) -> Bool {
+        switch image.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast:
+            return false
+        default:
+            return true
+        }
     }
 
     private static func applyMask(_ mask: CGImage, to image: NSImage) -> NSImage {

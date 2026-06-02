@@ -432,16 +432,15 @@ extension OverlayWindowController: SelectionViewDelegate {
             // First time selection complete — show editor
             let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
             let preSnapshot = displayID.flatMap { screenSnapshots[$0] }
-            let useScreenBackdropForWindow = isWindowSelection
-                && preSnapshot != nil
-                && windowID.map { windowDetector.usesCompositedScreenBackdrop(forWindowID: $0) } == true
-            let directWindowImage = isWindowSelection && !useScreenBackdropForWindow
-                ? windowID.flatMap { ScreenCapturer.capture(windowID: $0, pointSize: rect.size) }
-                : nil
-            let windowBaseImage = directWindowImage.flatMap { image in
-                ScreenCapturer.isEffectivelyTransparent(image) ? nil : image
-            }
-            let shouldApplyWindowEffects = isWindowSelection && !useScreenBackdropForWindow && windowBaseImage != nil
+            let windowBaseImage = imageForWindowSelection(
+                isWindowSelection: isWindowSelection,
+                windowID: windowID,
+                pointSize: rect.size,
+                captureRect: cgRect,
+                screen: screen,
+                preSnapshot: preSnapshot
+            )
+            let shouldApplyWindowEffects = isWindowSelection && windowBaseImage != nil
 
             switch postCaptureAction {
             case .edit:
@@ -538,6 +537,66 @@ extension OverlayWindowController: SelectionViewDelegate {
             screen: screen,
             excludingWindowNumbers: overlayWindowIDs
         )
+    }
+
+    private func imageForWindowSelection(
+        isWindowSelection: Bool,
+        windowID: CGWindowID?,
+        pointSize: NSSize,
+        captureRect: CGRect,
+        screen: NSScreen,
+        preSnapshot: CGImage?
+    ) -> NSImage? {
+        guard isWindowSelection else { return nil }
+
+        // High-layer system surfaces such as menus and popups are often only
+        // translucent foreground windows. Keep those on the composited screen
+        // backdrop path when a pre-overlay snapshot is available.
+        if preSnapshot != nil,
+           windowID.map({ windowDetector.usesCompositedScreenBackdrop(forWindowID: $0) }) == true {
+            return nil
+        }
+
+        let directWindowImage = windowID
+            .flatMap { ScreenCapturer.capture(windowID: $0, pointSize: pointSize) }
+            .flatMap { image in
+                ScreenCapturer.isEffectivelyTransparent(image) ? nil : image
+            }
+
+        if let snapshotWindowImage = preSnapshotImage(
+            captureRect: captureRect,
+            screen: screen,
+            preSnapshot: preSnapshot
+        ) {
+            if let directWindowImage,
+               let maskedImage = WindowEffects.applyingAlphaMask(from: directWindowImage, to: snapshotWindowImage) {
+                return maskedImage
+            }
+            return WindowEffects.roundedCorners(snapshotWindowImage)
+        }
+
+        return directWindowImage
+    }
+
+    private func preSnapshotImage(
+        captureRect: CGRect,
+        screen: NSScreen,
+        preSnapshot: CGImage?
+    ) -> NSImage? {
+        guard let preSnapshot,
+              let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        else {
+            return nil
+        }
+
+        // A pre-overlay screen snapshot can only supply pixels that were
+        // visible on this display. For partially off-screen windows, keep the
+        // direct window capture path so the full window content and size survive.
+        guard CGDisplayBounds(displayID).contains(captureRect) else {
+            return nil
+        }
+
+        return ScreenCapturer.crop(from: preSnapshot, captureRect: captureRect, screen: screen)
     }
 }
 
