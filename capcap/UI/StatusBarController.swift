@@ -40,6 +40,9 @@ class StatusBarController: NSObject {
         NotificationCenter.default.addObserver(forName: .historyDidUpdate, object: nil, queue: .main) { [weak self] _ in
             self?.refreshHistoryItemState()
         }
+        NotificationCenter.default.addObserver(forName: .historyCacheEnabledDidChange, object: nil, queue: .main) { [weak self] _ in
+            self?.setupMenu()
+        }
         NotificationCenter.default.addObserver(forName: .hotkeyDidChange, object: nil, queue: .main) { [weak self] _ in
             self?.setupMenu()
         }
@@ -72,16 +75,21 @@ class StatusBarController: NSObject {
 
         menu.addItem(NSMenuItem.separator())
 
-        let history = NSMenuItem(title: L10n.historyMenu, action: nil, keyEquivalent: "")
-        history.image = Self.menuIcon(systemName: "clock.arrow.circlepath")
-        let historySubmenu = NSMenu(title: L10n.historyMenu)
-        historySubmenu.delegate = self
-        history.submenu = historySubmenu
-        historyMenu = historySubmenu
-        historyItem = history
-        menu.addItem(history)
+        if Defaults.historyCacheEnabled {
+            let history = NSMenuItem(title: L10n.historyMenu, action: nil, keyEquivalent: "")
+            history.image = Self.menuIcon(systemName: "clock.arrow.circlepath")
+            let historySubmenu = NSMenu(title: L10n.historyMenu)
+            historySubmenu.delegate = self
+            history.submenu = historySubmenu
+            historyMenu = historySubmenu
+            historyItem = history
+            menu.addItem(history)
 
-        menu.addItem(NSMenuItem.separator())
+            menu.addItem(NSMenuItem.separator())
+        } else {
+            historyMenu = nil
+            historyItem = nil
+        }
 
         let settingsItem = NSMenuItem(title: L10n.settings, action: #selector(openSettings), keyEquivalent: ",")
         settingsItem.target = self
@@ -342,7 +350,7 @@ class StatusBarController: NSObject {
 
 extension StatusBarController: NSMenuDelegate {
     func menuNeedsUpdate(_ menu: NSMenu) {
-        guard menu === historyMenu else { return }
+        guard Defaults.historyCacheEnabled, menu === historyMenu else { return }
         menu.removeAllItems()
 
         let entries = HistoryManager.shared.entries()

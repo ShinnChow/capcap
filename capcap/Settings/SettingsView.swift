@@ -63,6 +63,7 @@ class SettingsView: NSView {
 
     // Picker & slider
     private var langPicker: NSPopUpButton!
+    private var historyCacheSwitch: NSSwitch!
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
     private var countdownSlider: SettingsTickSlider!
@@ -172,6 +173,8 @@ class SettingsView: NSView {
     private var demoModeTitleLabel: NSTextField!
     private var demoModeSubtitleLabel: NSTextField!
     private var langTitleLabel: NSTextField!
+    private var historyCacheToggleTitleLabel: NSTextField!
+    private var historyCacheToggleHintLabel: NSTextField?
     private var historyCacheTitleLabel: NSTextField!
     private var historyCacheHintLabel: NSTextField!
     private var permHeaderSubtitleLabel: NSTextField?
@@ -648,6 +651,14 @@ class SettingsView: NSView {
         windowShadowPreview?.isEffectEnabled = on
     }
 
+    private func updateHistoryCacheControlsEnabled() {
+        let on = Defaults.historyCacheEnabled
+        historyCacheSlider?.isEnabled = on
+        historyCacheTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
+        historyCacheValueLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.88 : 0.4)
+        historyCacheHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
+    }
+
     private func buildShortcutsPane() -> NSView {
         let stack = paneStack()
 
@@ -828,7 +839,23 @@ class SettingsView: NSView {
         historyInner.spacing = 10
         historyInner.translatesAutoresizingMaskIntoConstraints = false
         historyCard.addSubview(historyInner)
-        pin(historyInner, to: historyCard, insets: NSEdgeInsets(top: 14, left: 14, bottom: 14, right: 14))
+        pin(historyInner, to: historyCard, insets: NSEdgeInsets(top: 4, left: 14, bottom: 14, right: 14))
+
+        let historyToggle = makeToggleRow(
+            title: L10n.historyCacheToggleLabel,
+            subtitle: L10n.historyCacheToggleHint,
+            isOn: Defaults.historyCacheEnabled,
+            action: #selector(historyCacheToggled(_:))
+        )
+        historyCacheToggleTitleLabel = historyToggle.title
+        historyCacheToggleHintLabel = historyToggle.subtitle
+        historyCacheSwitch = historyToggle.toggle
+        historyInner.addArrangedSubview(historyToggle.row)
+        historyToggle.row.widthAnchor.constraint(equalTo: historyInner.widthAnchor).isActive = true
+
+        let historyDivider = rowDivider()
+        historyInner.addArrangedSubview(historyDivider)
+        historyDivider.widthAnchor.constraint(equalTo: historyInner.widthAnchor).isActive = true
 
         let historyHeader = NSStackView()
         historyHeader.orientation = .horizontal
@@ -865,6 +892,8 @@ class SettingsView: NSView {
         historyCacheHintLabel = secondaryLabel(L10n.historyCacheHint, wrapping: true)
         historyInner.addArrangedSubview(historyCacheHintLabel)
         historyCacheHintLabel.widthAnchor.constraint(equalTo: historyInner.widthAnchor).isActive = true
+
+        updateHistoryCacheControlsEnabled()
 
         stack.addArrangedSubview(historyCard)
         historyCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -1958,11 +1987,20 @@ class SettingsView: NSView {
     }
 
     @objc private func historyCacheSliderChanged(_ sender: SettingsTickSlider) {
+        guard Defaults.historyCacheEnabled else {
+            sender.doubleValue = Double(Defaults.historyCacheLimit)
+            return
+        }
         let value = Int(sender.doubleValue.rounded())
         Defaults.historyCacheLimit = value
         let normalizedValue = Defaults.historyCacheLimit
         sender.doubleValue = Double(normalizedValue)
         historyCacheValueLabel?.stringValue = "\(normalizedValue)"
+    }
+
+    @objc private func historyCacheToggled(_ sender: NSSwitch) {
+        Defaults.historyCacheEnabled = sender.state == .on
+        updateHistoryCacheControlsEnabled()
     }
 
     @objc private func countdownSliderChanged(_ sender: SettingsTickSlider) {
@@ -3118,6 +3156,8 @@ class SettingsView: NSView {
         accessibilityDescLabel?.stringValue = L10n.accessibilityDescription
         screenRecordingNameLabel?.stringValue = L10n.screenRecordingPermission
         screenRecordingDescLabel?.stringValue = L10n.screenRecordingDescription
+        historyCacheToggleTitleLabel?.stringValue = L10n.historyCacheToggleLabel
+        historyCacheToggleHintLabel?.stringValue = L10n.historyCacheToggleHint
         historyCacheTitleLabel?.stringValue = L10n.historyCacheLabel
         historyCacheHintLabel?.stringValue = L10n.historyCacheHint
         windowShadowTitleLabel?.stringValue = L10n.windowShadowToggleLabel
@@ -3522,7 +3562,12 @@ private final class SettingsTickSlider: NSControl {
     }
 
     override var isEnabled: Bool {
-        didSet { needsDisplay = true }
+        didSet {
+            if !isEnabled {
+                isDragging = false
+            }
+            needsDisplay = true
+        }
     }
 
     private var value: Double
@@ -3575,8 +3620,8 @@ private final class SettingsTickSlider: NSControl {
         NSSize(width: NSView.noIntrinsicMetric, height: 22)
     }
 
-    override var acceptsFirstResponder: Bool { true }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+    override var acceptsFirstResponder: Bool { isEnabled }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { isEnabled }
 
     override func draw(_ dirtyRect: NSRect) {
         let enabledAlpha: CGFloat = isEnabled ? 1 : 0.35
@@ -3623,21 +3668,28 @@ private final class SettingsTickSlider: NSControl {
     }
 
     override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
         window?.makeFirstResponder(self)
         isDragging = true
         updateValue(with: event, notify: true)
     }
 
     override func mouseDragged(with event: NSEvent) {
+        guard isEnabled else { return }
         updateValue(with: event, notify: true)
     }
 
     override func mouseUp(with event: NSEvent) {
+        guard isEnabled else {
+            isDragging = false
+            return
+        }
         updateValue(with: event, notify: true)
         isDragging = false
     }
 
     override func keyDown(with event: NSEvent) {
+        guard isEnabled else { return }
         let step = stepValue > 0 ? stepValue : (maxValue - minValue) / 10
         switch Int(event.keyCode) {
         case kVK_LeftArrow, kVK_DownArrow:

@@ -61,6 +61,7 @@ enum AppLanguage: String, CaseIterable {
 
 extension Notification.Name {
     static let languageDidChange = Notification.Name("capcap.languageDidChange")
+    static let historyCacheEnabledDidChange = Notification.Name("capcap.historyCacheEnabledDidChange")
     static let historyCacheLimitDidChange = Notification.Name("capcap.historyCacheLimitDidChange")
     static let historyDidUpdate = Notification.Name("capcap.historyDidUpdate")
     static let hotkeyDidChange = Notification.Name("capcap.hotkeyDidChange")
@@ -87,6 +88,8 @@ enum L10n {
     static var launchAtLogin: String { s("launchAtLogin") }
     static var demoMode: String { s("demoMode") }
     static var demoModeHint: String { s("demoModeHint") }
+    static var historyCacheToggleLabel: String { s("historyCacheToggleLabel") }
+    static var historyCacheToggleHint: String { s("historyCacheToggleHint") }
     static var historyCacheLabel: String { s("historyCacheLabel") }
     static var historyCacheHint: String { s("historyCacheHint") }
     static var countdownLabel: String { s("countdownLabel") }
@@ -982,7 +985,10 @@ struct Defaults {
     }
 
     static var lastPickedColorHex: String? {
-        get { normalizedHexColor(defaults.string(forKey: "lastPickedColorHex")) }
+        get {
+            guard historyCacheEnabled else { return nil }
+            return normalizedHexColor(defaults.string(forKey: "lastPickedColorHex"))
+        }
         set {
             if let normalized = normalizedHexColor(newValue) {
                 defaults.set(normalized, forKey: "lastPickedColorHex")
@@ -1034,6 +1040,25 @@ struct Defaults {
     static let historyCacheMin: Int = 10
     static let historyCacheMax: Int = 100
     static let historyCacheStep: Int = 10
+
+    static var historyCacheEnabled: Bool {
+        get {
+            if defaults.object(forKey: "historyCacheEnabled") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "historyCacheEnabled")
+        }
+        set {
+            let oldValue = historyCacheEnabled
+            defaults.set(newValue, forKey: "historyCacheEnabled")
+            if !newValue {
+                lastPickedColorHex = nil
+            }
+            if oldValue != newValue {
+                NotificationCenter.default.post(name: .historyCacheEnabledDidChange, object: nil)
+            }
+        }
+    }
 
     static let countdownSecondsMin: Int = 3
     static let countdownSecondsMax: Int = 10
