@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.27] - 2026-06-02
+
+### Fixed
+- Prevent toolbar double-clicks from closing pinned images (002b9ff)
+- Fallback to screen backdrop for transparent window captures (34c6af1)
+
+### Changed
+- Preserve active window appearance in window screenshots (1a2f0cc)
+
 ## [1.3.26] - 2026-05-30
 
 ### Added
