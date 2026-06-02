@@ -56,6 +56,8 @@
 "screenshotTranslationShortcutDefaultDisplay" = "未设置";
 "recordShortcutHeader" = "录制";
 "recordShortcutDefaultDisplay" = "未设置";
+"fullScreenScreenshotShortcutHeader" = "截全屏";
+"fullScreenScreenshotShortcutDefaultDisplay" = "未设置";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "复制到剪贴板";
@@ -79,9 +81,11 @@
 "shortcutConflictTextRecognition" = "该按键组合已被文字识别快捷键占用，请换一个。";
 "shortcutConflictScreenshotTranslation" = "该按键组合已被截图翻译快捷键占用，请换一个。";
 "shortcutConflictRecord" = "该按键组合已被录制快捷键占用，请换一个。";
+"shortcutConflictFullScreenScreenshot" = "该按键组合已被截全屏快捷键占用，请换一个。";
 
 /* Menu bar */
 "takeScreenshot" = "截图";
+"takeFullScreenScreenshot" = "截全屏";
 "record" = "录制";
 "settings" = "设置...";
 "quitApp" = "退出 capcap";
@@ -104,6 +108,8 @@
 "scrollCaptureHint" = "按任意键结束滚动";
 "finderEditExitHint" = "从访达编辑，按 X 退出编辑";
 "clipboardEditExitHint" = "从剪贴板编辑，按 X 退出编辑";
+"fullScreenEditExitHint" = "正在编辑全屏截图，按 X 退出编辑";
+"fullScreenScreenshotFailed" = "截全屏失败";
 "selectedImageEditNoImage" = "未找到 Finder 中选中的单张图片";
 "clipboardImageEditNoImage" = "剪贴板里没有可编辑的图片";
 "recordingSaved" = "录制已保存";

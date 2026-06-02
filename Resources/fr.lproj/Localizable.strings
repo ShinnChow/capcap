@@ -56,6 +56,8 @@
 "screenshotTranslationShortcutDefaultDisplay" = "Non défini";
 "recordShortcutHeader" = "Enregistrer";
 "recordShortcutDefaultDisplay" = "Non défini";
+"fullScreenScreenshotShortcutHeader" = "Capture plein écran";
+"fullScreenScreenshotShortcutDefaultDisplay" = "Non défini";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copier dans le presse-papiers";
@@ -79,9 +81,11 @@
 "shortcutConflictTextRecognition" = "Cette combinaison de touches est déjà utilisée par le raccourci Reconnaissance de texte. Veuillez en choisir une autre.";
 "shortcutConflictScreenshotTranslation" = "Cette combinaison de touches est déjà utilisée par le raccourci Traduction de capture. Veuillez en choisir une autre.";
 "shortcutConflictRecord" = "Cette combinaison de touches est déjà utilisée par le raccourci Enregistrer. Veuillez en choisir une autre.";
+"shortcutConflictFullScreenScreenshot" = "Cette combinaison de touches est déjà utilisée par le raccourci Capture plein écran. Veuillez en choisir une autre.";
 
 /* Menu bar */
 "takeScreenshot" = "Capturer l'écran";
+"takeFullScreenScreenshot" = "Capturer le plein écran";
 "record" = "Enregistrer";
 "settings" = "Réglages...";
 "quitApp" = "Quitter capcap";
@@ -104,6 +108,8 @@
 "scrollCaptureHint" = "Appuyez sur n'importe quelle touche pour arrêter le défilement";
 "finderEditExitHint" = "Édition depuis le Finder. Appuyez sur X pour quitter l'édition";
 "clipboardEditExitHint" = "Édition depuis le presse-papiers. Appuyez sur X pour quitter l'édition";
+"fullScreenEditExitHint" = "Édition de la capture plein écran. Appuyez sur X pour quitter l'édition";
+"fullScreenScreenshotFailed" = "Échec de la capture plein écran";
 "selectedImageEditNoImage" = "Aucune image unique sélectionnée dans le Finder";
 "clipboardImageEditNoImage" = "Aucune image modifiable dans le presse-papiers";
 "recordingSaved" = "Enregistrement sauvegardé";

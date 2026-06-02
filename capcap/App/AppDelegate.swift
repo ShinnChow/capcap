@@ -64,6 +64,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusBarController = StatusBarController(
             onTakeScreenshot: { [weak self] in self?.handleTrigger() },
+            onTakeFullScreenScreenshot: { [weak self] in self?.handleFullScreenScreenshotTrigger() },
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
             onOpenSettings: { [weak self] in self?.openSettings() }
@@ -194,6 +195,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             HotkeyManager.shared.unregisterImageMerge()
         }
+
+        if Defaults.hasCustomFullScreenScreenshotHotkey {
+            HotkeyManager.shared.registerFullScreenScreenshot { [weak self] in
+                self?.handleFullScreenScreenshotTrigger(fromShortcut: true)
+            }
+        } else {
+            HotkeyManager.shared.unregisterFullScreenScreenshot()
+        }
     }
 
     private func unregisterNonScreenshotHotkeys() {
@@ -205,6 +214,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterScreenshotTranslation()
         HotkeyManager.shared.unregisterRecord()
         HotkeyManager.shared.unregisterImageMerge()
+        HotkeyManager.shared.unregisterFullScreenScreenshot()
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
@@ -372,6 +382,39 @@ class AppDelegate: NSObject, NSApplicationDelegate {
               !ImageMergeLauncher.shared.isWorkbenchActive
         else { return }
         ImageMergeLauncher.shared.openFromShortcutSources()
+    }
+
+    func handleFullScreenScreenshotTrigger(fromShortcut: Bool = false) {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
+        if fromShortcut {
+            UpdateChecker.shared.checkFromScreenshotShortcutIfDue()
+        }
+
+        let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
+        let cursorPoint = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first(where: { $0.frame.contains(cursorPoint) })
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        guard let screen,
+              let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+              let image = ScreenCapturer.capture(rect: CGDisplayBounds(displayID), screen: screen),
+              let controller = ImageEditLauncher.launch(
+                generatedImage: image,
+                source: .fullScreen,
+                onRequestFocusReturn: {
+                    focusRestorer.restore()
+                },
+                onComplete: { [weak self] finalImage in
+                    self?.handleEditCompletion(finalImage)
+                }
+              )
+        else {
+            ToastWindow.show(message: L10n.fullScreenScreenshotFailed)
+            return
+        }
+
+        overlayController = controller
+        applyHotkeyState()
     }
 
     func startCapture(postCaptureAction: OverlayWindowController.PostCaptureAction = .edit) {

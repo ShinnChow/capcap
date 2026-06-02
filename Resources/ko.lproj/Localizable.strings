@@ -56,6 +56,8 @@
 "screenshotTranslationShortcutDefaultDisplay" = "설정 안 됨";
 "recordShortcutHeader" = "녹화";
 "recordShortcutDefaultDisplay" = "설정 안 됨";
+"fullScreenScreenshotShortcutHeader" = "전체 화면 스크린샷";
+"fullScreenScreenshotShortcutDefaultDisplay" = "설정 안 됨";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "클립보드에 복사";
@@ -79,9 +81,11 @@
 "shortcutConflictTextRecognition" = "이 키 조합은 이미 문자 인식 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictScreenshotTranslation" = "이 키 조합은 이미 스크린샷 번역 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 "shortcutConflictRecord" = "이 키 조합은 이미 녹화 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
+"shortcutConflictFullScreenScreenshot" = "이 키 조합은 이미 전체 화면 스크린샷 단축키에 사용되고 있습니다. 다른 조합을 선택하세요.";
 
 /* Menu bar */
 "takeScreenshot" = "스크린샷";
+"takeFullScreenScreenshot" = "전체 화면 스크린샷";
 "record" = "녹화";
 "settings" = "설정...";
 "quitApp" = "capcap 종료";
@@ -104,6 +108,8 @@
 "scrollCaptureHint" = "아무 키나 눌러 스크롤 종료";
 "finderEditExitHint" = "Finder에서 편집 중. X 키로 편집 종료";
 "clipboardEditExitHint" = "클립보드에서 편집 중. X 키로 편집 종료";
+"fullScreenEditExitHint" = "전체 화면 스크린샷 편집 중입니다. X 키로 편집 종료";
+"fullScreenScreenshotFailed" = "전체 화면 스크린샷 실패";
 "selectedImageEditNoImage" = "Finder에서 단일 이미지가 선택되지 않았습니다";
 "clipboardImageEditNoImage" = "클립보드에 편집할 이미지가 없습니다";
 "recordingSaved" = "녹화가 저장되었습니다";
