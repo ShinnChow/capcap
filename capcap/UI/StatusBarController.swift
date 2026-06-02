@@ -4,6 +4,7 @@ import ImageIO
 class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
     private let onTakeScreenshot: () -> Void
+    private let onTakeFullScreenScreenshot: () -> Void
     private let onRecord: () -> Void
     private let onMergeImages: () -> Void
     private let onOpenSettings: () -> Void
@@ -12,11 +13,13 @@ class StatusBarController: NSObject {
 
     init(
         onTakeScreenshot: @escaping () -> Void,
+        onTakeFullScreenScreenshot: @escaping () -> Void,
         onRecord: @escaping () -> Void,
         onMergeImages: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.onTakeScreenshot = onTakeScreenshot
+        self.onTakeFullScreenScreenshot = onTakeFullScreenScreenshot
         self.onRecord = onRecord
         self.onMergeImages = onMergeImages
         self.onOpenSettings = onOpenSettings
@@ -60,6 +63,12 @@ class StatusBarController: NSObject {
         screenshotItem.image = Self.menuIcon(systemName: "crop")
         HotkeyManager.applyToMenuItem(screenshotItem)
         menu.addItem(screenshotItem)
+
+        let fullScreenItem = NSMenuItem(title: L10n.takeFullScreenScreenshot, action: #selector(takeFullScreenScreenshot), keyEquivalent: "")
+        fullScreenItem.target = self
+        fullScreenItem.image = Self.menuIcon(systemName: "display")
+        HotkeyManager.applyFullScreenScreenshotToMenuItem(fullScreenItem)
+        menu.addItem(fullScreenItem)
 
         let recordItem = NSMenuItem(title: L10n.record, action: #selector(record), keyEquivalent: "")
         recordItem.target = self
@@ -139,6 +148,10 @@ class StatusBarController: NSObject {
 
     @objc private func takeScreenshot() {
         onTakeScreenshot()
+    }
+
+    @objc private func takeFullScreenScreenshot() {
+        onTakeFullScreenScreenshot()
     }
 
     @objc private func record() {

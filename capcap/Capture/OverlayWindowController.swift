@@ -13,6 +13,7 @@ class OverlayWindowController {
         case finder
         case clipboard
         case merge
+        case fullScreen
     }
 
     enum PostCaptureAction {
@@ -272,6 +273,8 @@ class OverlayWindowController {
         switch presetSource {
         case .clipboard:
             hint = L10n.clipboardEditExitHint
+        case .fullScreen:
+            hint = L10n.fullScreenEditExitHint
         case .merge:
             hint = L10n.mergeEditExitHint
         case .finder, nil:

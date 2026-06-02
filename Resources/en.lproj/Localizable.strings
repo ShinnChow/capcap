@@ -56,6 +56,8 @@
 "screenshotTranslationShortcutDefaultDisplay" = "Not set";
 "recordShortcutHeader" = "Record";
 "recordShortcutDefaultDisplay" = "Not set";
+"fullScreenScreenshotShortcutHeader" = "Full Screen Screenshot";
+"fullScreenScreenshotShortcutDefaultDisplay" = "Not set";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copy to Clipboard";
@@ -79,9 +81,11 @@
 "shortcutConflictTextRecognition" = "This key combination is already used by the Text Recognition shortcut. Please choose a different one.";
 "shortcutConflictScreenshotTranslation" = "This key combination is already used by the Screenshot Translation shortcut. Please choose a different one.";
 "shortcutConflictRecord" = "This key combination is already used by the Record shortcut. Please choose a different one.";
+"shortcutConflictFullScreenScreenshot" = "This key combination is already used by the Full Screen Screenshot shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";
+"takeFullScreenScreenshot" = "Capture Full Screen";
 "record" = "Record";
 "settings" = "Settings...";
 "quitApp" = "Quit capcap";
@@ -104,6 +108,8 @@
 "scrollCaptureHint" = "Press any key to finish scrolling";
 "finderEditExitHint" = "Editing from Finder. Press X to exit editing";
 "clipboardEditExitHint" = "Editing from clipboard. Press X to exit editing";
+"fullScreenEditExitHint" = "Editing full-screen screenshot. Press X to exit editing";
+"fullScreenScreenshotFailed" = "Full-screen screenshot failed";
 "selectedImageEditNoImage" = "No single Finder image selected";
 "clipboardImageEditNoImage" = "No editable image on the clipboard";
 "recordingSaved" = "Recording saved";

@@ -88,6 +88,13 @@ class SettingsView: NSView {
     private var shortcutRestoreButton: NSButton!
     private var shortcutRecordingMonitor: Any?
 
+    // Full-screen screenshot shortcut card
+    private var fullScreenScreenshotShortcutTitleLabel: NSTextField!
+    private var fullScreenScreenshotShortcutField: NSTextField!
+    private var fullScreenScreenshotShortcutSetButton: NSButton!
+    private var fullScreenScreenshotShortcutRestoreButton: NSButton!
+    private var fullScreenScreenshotShortcutRecordingMonitor: Any?
+
     // Pin selected image shortcut card
     private var selectedImagePinShortcutTitleLabel: NSTextField!
     private var selectedImagePinShortcutField: NSTextField!
@@ -254,6 +261,7 @@ class SettingsView: NSView {
     deinit {
         refreshTimer?.invalidate()
         cancelShortcutRecording()
+        cancelFullScreenScreenshotShortcutRecording()
         cancelSelectedImagePinShortcutRecording()
         cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
@@ -324,6 +332,7 @@ class SettingsView: NSView {
         updateLaunchButtonVisibility()
         refreshPermissionStatus()
         refreshShortcutDisplay()
+        refreshFullScreenScreenshotShortcutDisplay()
         refreshSelectedImagePinShortcutDisplay()
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
@@ -700,6 +709,19 @@ class SettingsView: NSView {
         fileSaveShortcutRestoreButton = fileSaveShortcut.restoreButton
         stack.addArrangedSubview(fileSaveShortcut.card)
         fileSaveShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Full-screen screenshot shortcut card
+        let fullScreenScreenshotShortcut = buildShortcutCard(
+            title: L10n.fullScreenScreenshotShortcutHeader,
+            setAction: #selector(fullScreenScreenshotShortcutSetClicked),
+            restoreAction: #selector(fullScreenScreenshotShortcutRestoreClicked)
+        )
+        fullScreenScreenshotShortcutTitleLabel = fullScreenScreenshotShortcut.title
+        fullScreenScreenshotShortcutField = fullScreenScreenshotShortcut.field
+        fullScreenScreenshotShortcutSetButton = fullScreenScreenshotShortcut.setButton
+        fullScreenScreenshotShortcutRestoreButton = fullScreenScreenshotShortcut.restoreButton
+        stack.addArrangedSubview(fullScreenScreenshotShortcut.card)
+        fullScreenScreenshotShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit selected image shortcut card
         let selectedImageEditShortcut = buildShortcutCard(
@@ -2130,6 +2152,9 @@ class SettingsView: NSView {
         if slot != .screenshot, shortcutRecordingMonitor != nil {
             cancelShortcutRecording()
         }
+        if slot != .fullScreenScreenshot, fullScreenScreenshotShortcutRecordingMonitor != nil {
+            cancelFullScreenScreenshotShortcutRecording()
+        }
         if slot != .selectedImagePin, selectedImagePinShortcutRecordingMonitor != nil {
             cancelSelectedImagePinShortcutRecording()
         }
@@ -2248,6 +2273,93 @@ class SettingsView: NSView {
         } else {
             shortcutField?.stringValue = L10n.shortcutDefaultDisplay
             shortcutRestoreButton?.isHidden = true
+        }
+    }
+
+    @objc private func fullScreenScreenshotShortcutSetClicked() {
+        if fullScreenScreenshotShortcutRecordingMonitor != nil {
+            cancelFullScreenScreenshotShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .fullScreenScreenshot)
+        HotkeyManager.shared.beginRecording()
+        fullScreenScreenshotShortcutSetButton.title = L10n.shortcutCancel
+        fullScreenScreenshotShortcutField.stringValue = L10n.shortcutWaiting
+        fullScreenScreenshotShortcutRestoreButton.isHidden = true
+
+        fullScreenScreenshotShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelFullScreenScreenshotShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .fullScreenScreenshot) {
+                self.cancelFullScreenScreenshotShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.fullScreenScreenshotHotkeyKeyCode = Int(keyCode)
+            Defaults.fullScreenScreenshotHotkeyModifiers = Int(carbonMods)
+            self.finishFullScreenScreenshotShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func fullScreenScreenshotShortcutRestoreClicked() {
+        if fullScreenScreenshotShortcutRecordingMonitor != nil {
+            cancelFullScreenScreenshotShortcutRecording()
+        }
+        Defaults.clearFullScreenScreenshotHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshFullScreenScreenshotShortcutDisplay()
+    }
+
+    private func finishFullScreenScreenshotShortcutRecording() {
+        if let m = fullScreenScreenshotShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            fullScreenScreenshotShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshFullScreenScreenshotShortcutDisplay()
+    }
+
+    func cancelFullScreenScreenshotShortcutRecording() {
+        guard fullScreenScreenshotShortcutRecordingMonitor != nil else { return }
+        if let m = fullScreenScreenshotShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            fullScreenScreenshotShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshFullScreenScreenshotShortcutDisplay()
+    }
+
+    private func refreshFullScreenScreenshotShortcutDisplay() {
+        fullScreenScreenshotShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentFullScreenScreenshotDisplayString() {
+            fullScreenScreenshotShortcutField?.stringValue = display
+            fullScreenScreenshotShortcutRestoreButton?.isHidden = false
+        } else {
+            fullScreenScreenshotShortcutField?.stringValue = L10n.fullScreenScreenshotShortcutDefaultDisplay
+            fullScreenScreenshotShortcutRestoreButton?.isHidden = true
         }
     }
 
@@ -3119,6 +3231,7 @@ class SettingsView: NSView {
 
     @objc private func shortcutsResetClicked() {
         cancelShortcutRecording()
+        cancelFullScreenScreenshotShortcutRecording()
         cancelSelectedImagePinShortcutRecording()
         cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
@@ -3133,6 +3246,7 @@ class SettingsView: NSView {
         Defaults.resetShortcutHotkeysToDefaults()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
         refreshShortcutDisplay()
+        refreshFullScreenScreenshotShortcutDisplay()
         refreshSelectedImagePinShortcutDisplay()
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
@@ -3169,6 +3283,8 @@ class SettingsView: NSView {
         countdownValueLabel?.stringValue = "\(Defaults.countdownSeconds)\(L10n.countdownSecondsSuffix)"
         shortcutTitleLabel?.stringValue = L10n.shortcutHeader
         shortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        fullScreenScreenshotShortcutTitleLabel?.stringValue = L10n.fullScreenScreenshotShortcutHeader
+        fullScreenScreenshotShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         selectedImagePinShortcutTitleLabel?.stringValue = L10n.selectedImagePinShortcutHeader
         selectedImagePinShortcutRestoreButton?.toolTip = L10n.selectedImagePinShortcutClear
         clipboardImagePinShortcutTitleLabel?.stringValue = L10n.clipboardImagePinShortcutHeader
@@ -3208,6 +3324,7 @@ class SettingsView: NSView {
         refreshErrorLogStatus()
         refreshUpdateRow()
         refreshShortcutDisplay()
+        refreshFullScreenScreenshotShortcutDisplay()
         refreshSelectedImagePinShortcutDisplay()
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()

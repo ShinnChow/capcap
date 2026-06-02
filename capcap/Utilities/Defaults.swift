@@ -136,6 +136,8 @@ enum L10n {
     static var recordShortcutDefaultDisplay: String { s("recordShortcutDefaultDisplay") }
     static var imageMergeShortcutHeader: String { s("imageMergeShortcutHeader") }
     static var imageMergeShortcutDefaultDisplay: String { s("imageMergeShortcutDefaultDisplay") }
+    static var fullScreenScreenshotShortcutHeader: String { s("fullScreenScreenshotShortcutHeader") }
+    static var fullScreenScreenshotShortcutDefaultDisplay: String { s("fullScreenScreenshotShortcutDefaultDisplay") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -160,9 +162,11 @@ enum L10n {
     static var shortcutConflictScreenshotTranslation: String { s("shortcutConflictScreenshotTranslation") }
     static var shortcutConflictRecord: String { s("shortcutConflictRecord") }
     static var shortcutConflictImageMerge: String { s("shortcutConflictImageMerge") }
+    static var shortcutConflictFullScreenScreenshot: String { s("shortcutConflictFullScreenScreenshot") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
+    static var takeFullScreenScreenshot: String { s("takeFullScreenScreenshot") }
     static var record: String { s("record") }
     static var mergeImages: String { s("mergeImages") }
     static var settings: String { s("settings") }
@@ -186,6 +190,8 @@ enum L10n {
     static var scrollCaptureHint: String { s("scrollCaptureHint") }
     static var finderEditExitHint: String { s("finderEditExitHint") }
     static var clipboardEditExitHint: String { s("clipboardEditExitHint") }
+    static var fullScreenEditExitHint: String { s("fullScreenEditExitHint") }
+    static var fullScreenScreenshotFailed: String { s("fullScreenScreenshotFailed") }
     static var selectedImageEditNoImage: String { s("selectedImageEditNoImage") }
     static var clipboardImageEditNoImage: String { s("clipboardImageEditNoImage") }
     static var mergeEditExitHint: String { s("mergeEditExitHint") }
@@ -637,6 +643,7 @@ struct Defaults {
         clearScreenshotTranslationHotkey()
         clearRecordHotkey()
         clearImageMergeHotkey()
+        clearFullScreenScreenshotHotkey()
         clearClipboardHotkey()
         clearFileSaveHotkey()
     }
@@ -762,6 +769,25 @@ struct Defaults {
     static func clearImageMergeHotkey() {
         defaults.removeObject(forKey: "imageMergeHotkeyKeyCode")
         defaults.removeObject(forKey: "imageMergeHotkeyModifiers")
+    }
+
+    static var fullScreenScreenshotHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "fullScreenScreenshotHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "fullScreenScreenshotHotkeyKeyCode") }
+    }
+
+    static var fullScreenScreenshotHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "fullScreenScreenshotHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "fullScreenScreenshotHotkeyModifiers") }
+    }
+
+    static var hasCustomFullScreenScreenshotHotkey: Bool {
+        defaults.object(forKey: "fullScreenScreenshotHotkeyKeyCode") != nil
+    }
+
+    static func clearFullScreenScreenshotHotkey() {
+        defaults.removeObject(forKey: "fullScreenScreenshotHotkeyKeyCode")
+        defaults.removeObject(forKey: "fullScreenScreenshotHotkeyModifiers")
     }
 
     static var imageMergeTemplate: ImageMergeTemplate {

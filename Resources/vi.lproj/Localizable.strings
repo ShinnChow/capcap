@@ -56,6 +56,8 @@
 "screenshotTranslationShortcutDefaultDisplay" = "Chưa đặt";
 "recordShortcutHeader" = "Ghi màn hình";
 "recordShortcutDefaultDisplay" = "Chưa đặt";
+"fullScreenScreenshotShortcutHeader" = "Chụp toàn màn hình";
+"fullScreenScreenshotShortcutDefaultDisplay" = "Chưa đặt";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Sao chép vào clipboard";
@@ -79,9 +81,11 @@
 "shortcutConflictTextRecognition" = "Tổ hợp phím này đã được dùng cho phím tắt nhận dạng văn bản. Vui lòng chọn tổ hợp khác.";
 "shortcutConflictScreenshotTranslation" = "Tổ hợp phím này đã được dùng cho phím tắt dịch ảnh chụp màn hình. Vui lòng chọn tổ hợp khác.";
 "shortcutConflictRecord" = "Tổ hợp phím này đã được dùng cho phím tắt ghi màn hình. Vui lòng chọn tổ hợp khác.";
+"shortcutConflictFullScreenScreenshot" = "Tổ hợp phím này đã được dùng cho phím tắt chụp toàn màn hình. Vui lòng chọn tổ hợp khác.";
 
 /* Menu bar */
 "takeScreenshot" = "Chụp màn hình";
+"takeFullScreenScreenshot" = "Chụp toàn màn hình";
 "record" = "Ghi màn hình";
 "settings" = "Cài đặt...";
 "quitApp" = "Thoát capcap";
@@ -104,6 +108,8 @@
 "scrollCaptureHint" = "Nhấn phím bất kỳ để kết thúc cuộn";
 "finderEditExitHint" = "Đang chỉnh sửa từ Finder. Nhấn X để thoát chỉnh sửa";
 "clipboardEditExitHint" = "Đang chỉnh sửa từ clipboard. Nhấn X để thoát chỉnh sửa";
+"fullScreenEditExitHint" = "Đang chỉnh sửa ảnh chụp toàn màn hình. Nhấn X để thoát chỉnh sửa";
+"fullScreenScreenshotFailed" = "Chụp toàn màn hình thất bại";
 "selectedImageEditNoImage" = "Chưa chọn đúng một ảnh trong Finder";
 "clipboardImageEditNoImage" = "Không có ảnh có thể chỉnh sửa trong clipboard";
 "recordingSaved" = "Đã lưu bản ghi";

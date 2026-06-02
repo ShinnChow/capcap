@@ -17,6 +17,7 @@ final class HotkeyManager {
     private var screenshotTranslationHotKeyRef: EventHotKeyRef?
     private var recordHotKeyRef: EventHotKeyRef?
     private var imageMergeHotKeyRef: EventHotKeyRef?
+    private var fullScreenScreenshotHotKeyRef: EventHotKeyRef?
     private var callback: (() -> Void)?
     private var countdownCallback: (() -> Void)?
     private var selectedImagePinCallback: (() -> Void)?
@@ -27,6 +28,7 @@ final class HotkeyManager {
     private var screenshotTranslationCallback: (() -> Void)?
     private var recordCallback: (() -> Void)?
     private var imageMergeCallback: (() -> Void)?
+    private var fullScreenScreenshotCallback: (() -> Void)?
     private var eventHandlerRef: EventHandlerRef?
 
     private static let regularHotKeySignature: OSType = OSType(0x4341_5043) // 'CAPC'
@@ -40,6 +42,7 @@ final class HotkeyManager {
     private static let screenshotTranslationHotKeyID: UInt32 = 8
     private static let recordHotKeyID: UInt32 = 9
     private static let imageMergeHotKeyID: UInt32 = 10
+    private static let fullScreenScreenshotHotKeyID: UInt32 = 11
 
     private init() {}
 
@@ -54,6 +57,7 @@ final class HotkeyManager {
         unregisterScreenshotTranslation()
         unregisterRecord()
         unregisterImageMerge()
+        unregisterFullScreenScreenshot()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -329,6 +333,32 @@ final class HotkeyManager {
         }
     }
 
+    /// Register the saved full-screen screenshot hotkey, if any.
+    func registerFullScreenScreenshot(callback: @escaping () -> Void) {
+        self.fullScreenScreenshotCallback = callback
+        unregisterFullScreenScreenshot()
+
+        guard let (keyCode, modifiers) = currentFullScreenScreenshotHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.fullScreenScreenshotHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref = ref {
+            fullScreenScreenshotHotKeyRef = ref
+        }
+    }
+
+    func unregisterFullScreenScreenshot() {
+        if let ref = fullScreenScreenshotHotKeyRef {
+            UnregisterEventHotKey(ref)
+            fullScreenScreenshotHotKeyRef = nil
+        }
+    }
+
     /// Returns the (keyCode, modifiers) for the countdown variant — user hotkey + ⌥.
     /// Returns nil if no custom hotkey is set or the saved hotkey already contains ⌥.
     func currentCountdownHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
@@ -353,6 +383,7 @@ final class HotkeyManager {
         unregisterScreenshotTranslation()
         unregisterRecord()
         unregisterImageMerge()
+        unregisterFullScreenScreenshot()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
     }
 
@@ -510,6 +541,22 @@ final class HotkeyManager {
         return modifierString(mods) + keyString(kc)
     }
 
+    /// Returns (keyCode, carbonModifiers) for the saved full-screen screenshot
+    /// hotkey.
+    func currentFullScreenScreenshotHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomFullScreenScreenshotHotkey else { return nil }
+        let kc = UInt32(Defaults.fullScreenScreenshotHotkeyKeyCode)
+        let mods = UInt32(Defaults.fullScreenScreenshotHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    /// Display string for the full-screen screenshot hotkey, or nil if not set.
+    static func currentFullScreenScreenshotDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentFullScreenScreenshotHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
     /// Returns (keyCode, carbonModifiers) for the saved copy-to-clipboard
     /// hotkey, or nil when the user hasn't bound one (the default is
     /// "double-tap ⌘", handled separately by `KeyMonitor`).
@@ -584,6 +631,7 @@ final class HotkeyManager {
         case screenshotTranslation
         case record
         case imageMerge
+        case fullScreenScreenshot
         case clipboard
         case fileSave
     }
@@ -695,6 +743,17 @@ final class HotkeyManager {
                 return L10n.shortcutConflictImageMerge
             }
         }
+        if slot != .fullScreenScreenshot,
+           let (kc, m) = currentFullScreenScreenshotHotkey(),
+           kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictFullScreenScreenshot
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictFullScreenScreenshot
+            }
+        }
         if slot != .clipboard, let (kc, m) = currentClipboardHotkey(), kc == keyCode, m == modifiers {
             return L10n.shortcutConflictClipboard
         }
@@ -752,6 +811,8 @@ final class HotkeyManager {
                 } else if hkID.id == HotkeyManager.recordHotKeyID, let cb = mgr.recordCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.imageMergeHotKeyID, let cb = mgr.imageMergeCallback {
+                    DispatchQueue.main.async { cb() }
+                } else if hkID.id == HotkeyManager.fullScreenScreenshotHotKeyID, let cb = mgr.fullScreenScreenshotCallback {
                     DispatchQueue.main.async { cb() }
                 } else if hkID.id == HotkeyManager.regularHotKeyID, let cb = mgr.callback {
                     DispatchQueue.main.async { cb() }
@@ -812,6 +873,16 @@ final class HotkeyManager {
     static func applyImageMergeToMenuItem(_ item: NSMenuItem) {
         item.attributedTitle = nil
         guard let (kc, mods) = HotkeyManager.shared.currentImageMergeHotkey() else {
+            item.keyEquivalent = ""
+            item.keyEquivalentModifierMask = []
+            return
+        }
+        apply(keyCode: kc, modifiers: mods, to: item)
+    }
+
+    static func applyFullScreenScreenshotToMenuItem(_ item: NSMenuItem) {
+        item.attributedTitle = nil
+        guard let (kc, mods) = HotkeyManager.shared.currentFullScreenScreenshotHotkey() else {
             item.keyEquivalent = ""
             item.keyEquivalentModifierMask = []
             return

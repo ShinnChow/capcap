@@ -56,6 +56,8 @@
 "screenshotTranslationShortcutDefaultDisplay" = "Не задано";
 "recordShortcutHeader" = "Запись";
 "recordShortcutDefaultDisplay" = "Не задано";
+"fullScreenScreenshotShortcutHeader" = "Снимок всего экрана";
+"fullScreenScreenshotShortcutDefaultDisplay" = "Не задано";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Копировать в буфер обмена";
@@ -79,9 +81,11 @@
 "shortcutConflictTextRecognition" = "Это сочетание клавиш уже назначено для распознавания текста. Выберите другое.";
 "shortcutConflictScreenshotTranslation" = "Это сочетание клавиш уже назначено для перевода снимка. Выберите другое.";
 "shortcutConflictRecord" = "Это сочетание клавиш уже назначено для записи. Выберите другое.";
+"shortcutConflictFullScreenScreenshot" = "Это сочетание клавиш уже назначено для снимка всего экрана. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";
+"takeFullScreenScreenshot" = "Снимок всего экрана";
 "record" = "Запись";
 "settings" = "Настройки...";
 "quitApp" = "Завершить capcap";
@@ -104,6 +108,8 @@
 "scrollCaptureHint" = "Нажмите любую клавишу, чтобы остановить прокрутку";
 "finderEditExitHint" = "Редактирование из Finder. Нажмите X, чтобы выйти из редактирования";
 "clipboardEditExitHint" = "Редактирование из буфера обмена. Нажмите X, чтобы выйти из редактирования";
+"fullScreenEditExitHint" = "Редактирование снимка всего экрана. Нажмите X, чтобы выйти";
+"fullScreenScreenshotFailed" = "Не удалось сделать снимок всего экрана";
 "selectedImageEditNoImage" = "В Finder не выбрано одно изображение";
 "clipboardImageEditNoImage" = "В буфере обмена нет изображения для редактирования";
 "recordingSaved" = "Запись сохранена";
