@@ -1404,8 +1404,10 @@ class EditWindowController {
             pasteboard.clearContents()
             pasteboard.setString(hex, forType: .string)
 
-            HistoryManager.shared.addColor(hex: hex)
-            Defaults.lastPickedColorHex = hex
+            if Defaults.historyCacheEnabled {
+                HistoryManager.shared.addColor(hex: hex)
+                Defaults.lastPickedColorHex = hex
+            }
             self.pickedColorSwatch = swatchColor
             if self.toolUsesPickedColorSwatch(self.activeTool) {
                 self.showSubToolbar(for: self.activeTool)

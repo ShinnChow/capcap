@@ -33,6 +33,16 @@ final class HistoryManager {
             name: .historyCacheLimitDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(cacheEnabledChanged),
+            name: .historyCacheEnabledDidChange,
+            object: nil
+        )
+
+        if !Defaults.historyCacheEnabled {
+            removeAllEntries()
+        }
     }
 
     deinit {
@@ -48,10 +58,24 @@ final class HistoryManager {
         }
     }
 
+    @objc private func cacheEnabledChanged() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            if !Defaults.historyCacheEnabled {
+                self.removeAllEntries()
+            }
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
+            }
+        }
+    }
+
     func add(image: NSImage, cloudURL: URL? = nil) {
+        guard Defaults.historyCacheEnabled else { return }
         guard let data = image.pngDataPreservingBacking() else { return }
         queue.async { [weak self] in
             guard let self = self else { return }
+            guard Defaults.historyCacheEnabled else { return }
             let name = Self.filenameFormatter.string(from: Date()) + ".png"
             let url = self.directoryURL.appendingPathComponent(name)
             do {
@@ -70,9 +94,11 @@ final class HistoryManager {
     }
 
     func addColor(hex: String) {
+        guard Defaults.historyCacheEnabled else { return }
         let normalized = hex.uppercased()
         queue.async { [weak self] in
             guard let self = self else { return }
+            guard Defaults.historyCacheEnabled else { return }
             let name = Self.filenameFormatter.string(from: Date()) + ".color"
             let url = self.directoryURL.appendingPathComponent(name)
             do {
@@ -88,6 +114,11 @@ final class HistoryManager {
     }
 
     func entries() -> [HistoryEntry] {
+        guard Defaults.historyCacheEnabled else { return [] }
+        return loadEntries()
+    }
+
+    private func loadEntries() -> [HistoryEntry] {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(
             at: directoryURL,
@@ -116,6 +147,7 @@ final class HistoryManager {
     }
 
     func hasEntries() -> Bool {
+        guard Defaults.historyCacheEnabled else { return false }
         let fm = FileManager.default
         guard let enumerator = fm.enumerator(
             at: directoryURL,
@@ -136,6 +168,7 @@ final class HistoryManager {
     }
 
     func image(for entry: HistoryEntry) -> NSImage? {
+        guard Defaults.historyCacheEnabled else { return nil }
         guard case .image = entry.kind else { return nil }
         return NSImage(contentsOf: entry.fileURL)
     }
@@ -143,10 +176,7 @@ final class HistoryManager {
     func clearAll() {
         queue.async { [weak self] in
             guard let self = self else { return }
-            let fm = FileManager.default
-            for entry in self.entries() {
-                try? fm.removeItem(at: entry.fileURL)
-            }
+            self.removeAllEntries()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -154,12 +184,42 @@ final class HistoryManager {
     }
 
     private func pruneToLimit() {
+        guard Defaults.historyCacheEnabled else {
+            removeAllEntries()
+            return
+        }
         let limit = Defaults.historyCacheLimit
-        let all = entries()
+        let all = loadEntries()
         guard all.count > limit else { return }
         let fm = FileManager.default
         for extra in all.dropFirst(limit) {
             try? fm.removeItem(at: extra.fileURL)
+        }
+    }
+
+    private func removeAllEntries() {
+        let fm = FileManager.default
+        for url in storedHistoryFileURLs() {
+            try? fm.removeItem(at: url)
+        }
+    }
+
+    private func storedHistoryFileURLs() -> [URL] {
+        let fm = FileManager.default
+        guard let urls = try? fm.contentsOfDirectory(
+            at: directoryURL,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+        return urls.filter { url in
+            switch url.pathExtension.lowercased() {
+            case "png", "color":
+                return true
+            default:
+                return false
+            }
         }
     }
 
