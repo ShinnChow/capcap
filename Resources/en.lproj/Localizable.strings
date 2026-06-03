@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "Not set";
 "fullScreenScreenshotShortcutHeader" = "Full Screen Screenshot";
 "fullScreenScreenshotShortcutDefaultDisplay" = "Not set";
+"colorPickerShortcutHeader" = "Color Picker";
+"colorPickerShortcutDefaultDisplay" = "Not set";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copy to Clipboard";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "This key combination is already used by the Screenshot Translation shortcut. Please choose a different one.";
 "shortcutConflictRecord" = "This key combination is already used by the Record shortcut. Please choose a different one.";
 "shortcutConflictFullScreenScreenshot" = "This key combination is already used by the Full Screen Screenshot shortcut. Please choose a different one.";
+"shortcutConflictColorPicker" = "This key combination is already used by the Color Picker shortcut. Please choose a different one.";
 
 /* Menu bar */
 "takeScreenshot" = "Take Screenshot";
 "takeFullScreenScreenshot" = "Capture Full Screen";
 "record" = "Record";
+"colorPicker" = "Color Picker";
 "settings" = "Settings...";
 "quitApp" = "Quit capcap";
 "historyMenu" = "History";

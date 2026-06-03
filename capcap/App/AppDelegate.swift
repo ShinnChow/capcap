@@ -67,6 +67,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onTakeFullScreenScreenshot: { [weak self] in self?.handleFullScreenScreenshotTrigger() },
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
+            onColorPicker: { [weak self] in self?.handleColorPickerTrigger() },
             onOpenSettings: { [weak self] in self?.openSettings() }
         )
         statusBarController.setMenuBarVisible(Defaults.showMenuBar)
@@ -203,6 +204,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             HotkeyManager.shared.unregisterFullScreenScreenshot()
         }
+
+        if Defaults.hasCustomColorPickerHotkey {
+            HotkeyManager.shared.registerColorPicker { [weak self] in
+                self?.handleColorPickerTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterColorPicker()
+        }
     }
 
     private func unregisterNonScreenshotHotkeys() {
@@ -215,6 +224,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterRecord()
         HotkeyManager.shared.unregisterImageMerge()
         HotkeyManager.shared.unregisterFullScreenScreenshot()
+        HotkeyManager.shared.unregisterColorPicker()
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
@@ -402,6 +412,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
               !ImageMergeLauncher.shared.isWorkbenchActive
         else { return }
         ImageMergeLauncher.shared.openFromShortcutSources()
+    }
+
+    func handleColorPickerTrigger() {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
+        let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
+        NSApp.activate(ignoringOtherApps: true)
+        let didStart = ColorPickerRunner.shared.run(onFinished: {
+            focusRestorer.restore()
+        })
+        if !didStart {
+            focusRestorer.restore()
+        }
     }
 
     func handleFullScreenScreenshotTrigger(fromShortcut: Bool = false) {

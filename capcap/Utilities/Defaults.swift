@@ -139,6 +139,8 @@ enum L10n {
     static var imageMergeShortcutDefaultDisplay: String { s("imageMergeShortcutDefaultDisplay") }
     static var fullScreenScreenshotShortcutHeader: String { s("fullScreenScreenshotShortcutHeader") }
     static var fullScreenScreenshotShortcutDefaultDisplay: String { s("fullScreenScreenshotShortcutDefaultDisplay") }
+    static var colorPickerShortcutHeader: String { s("colorPickerShortcutHeader") }
+    static var colorPickerShortcutDefaultDisplay: String { s("colorPickerShortcutDefaultDisplay") }
 
     // Copy-to-clipboard shortcut (editor confirm)
     static var clipboardShortcutHeader: String { s("clipboardShortcutHeader") }
@@ -164,12 +166,14 @@ enum L10n {
     static var shortcutConflictRecord: String { s("shortcutConflictRecord") }
     static var shortcutConflictImageMerge: String { s("shortcutConflictImageMerge") }
     static var shortcutConflictFullScreenScreenshot: String { s("shortcutConflictFullScreenScreenshot") }
+    static var shortcutConflictColorPicker: String { s("shortcutConflictColorPicker") }
 
     // Menu bar
     static var takeScreenshot: String { s("takeScreenshot") }
     static var takeFullScreenScreenshot: String { s("takeFullScreenScreenshot") }
     static var record: String { s("record") }
     static var mergeImages: String { s("mergeImages") }
+    static var colorPicker: String { s("colorPicker") }
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
     static var historyMenu: String { s("historyMenu") }
@@ -651,6 +655,7 @@ struct Defaults {
         clearRecordHotkey()
         clearImageMergeHotkey()
         clearFullScreenScreenshotHotkey()
+        clearColorPickerHotkey()
         clearClipboardHotkey()
         clearFileSaveHotkey()
     }
@@ -795,6 +800,25 @@ struct Defaults {
     static func clearFullScreenScreenshotHotkey() {
         defaults.removeObject(forKey: "fullScreenScreenshotHotkeyKeyCode")
         defaults.removeObject(forKey: "fullScreenScreenshotHotkeyModifiers")
+    }
+
+    static var colorPickerHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "colorPickerHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "colorPickerHotkeyKeyCode") }
+    }
+
+    static var colorPickerHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "colorPickerHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "colorPickerHotkeyModifiers") }
+    }
+
+    static var hasCustomColorPickerHotkey: Bool {
+        defaults.object(forKey: "colorPickerHotkeyKeyCode") != nil
+    }
+
+    static func clearColorPickerHotkey() {
+        defaults.removeObject(forKey: "colorPickerHotkeyKeyCode")
+        defaults.removeObject(forKey: "colorPickerHotkeyModifiers")
     }
 
     static var imageMergeTemplate: ImageMergeTemplate {

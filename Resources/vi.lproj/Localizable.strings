@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "Chưa đặt";
 "fullScreenScreenshotShortcutHeader" = "Chụp toàn màn hình";
 "fullScreenScreenshotShortcutDefaultDisplay" = "Chưa đặt";
+"colorPickerShortcutHeader" = "Chọn màu";
+"colorPickerShortcutDefaultDisplay" = "Chưa đặt";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Sao chép vào clipboard";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "Tổ hợp phím này đã được dùng cho phím tắt dịch ảnh chụp màn hình. Vui lòng chọn tổ hợp khác.";
 "shortcutConflictRecord" = "Tổ hợp phím này đã được dùng cho phím tắt ghi màn hình. Vui lòng chọn tổ hợp khác.";
 "shortcutConflictFullScreenScreenshot" = "Tổ hợp phím này đã được dùng cho phím tắt chụp toàn màn hình. Vui lòng chọn tổ hợp khác.";
+"shortcutConflictColorPicker" = "Tổ hợp phím này đã được dùng cho phím tắt Chọn màu. Vui lòng chọn tổ hợp khác.";
 
 /* Menu bar */
 "takeScreenshot" = "Chụp màn hình";
 "takeFullScreenScreenshot" = "Chụp toàn màn hình";
 "record" = "Ghi màn hình";
+"colorPicker" = "Chọn màu";
 "settings" = "Cài đặt...";
 "quitApp" = "Thoát capcap";
 "historyMenu" = "Lịch sử";

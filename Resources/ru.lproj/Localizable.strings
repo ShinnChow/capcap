@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "Не задано";
 "fullScreenScreenshotShortcutHeader" = "Снимок всего экрана";
 "fullScreenScreenshotShortcutDefaultDisplay" = "Не задано";
+"colorPickerShortcutHeader" = "Пипетка";
+"colorPickerShortcutDefaultDisplay" = "Не задано";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Копировать в буфер обмена";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "Это сочетание клавиш уже назначено для перевода снимка. Выберите другое.";
 "shortcutConflictRecord" = "Это сочетание клавиш уже назначено для записи. Выберите другое.";
 "shortcutConflictFullScreenScreenshot" = "Это сочетание клавиш уже назначено для снимка всего экрана. Выберите другое.";
+"shortcutConflictColorPicker" = "Это сочетание клавиш уже назначено для пипетки. Выберите другое.";
 
 /* Menu bar */
 "takeScreenshot" = "Сделать снимок";
 "takeFullScreenScreenshot" = "Снимок всего экрана";
 "record" = "Запись";
+"colorPicker" = "Пипетка";
 "settings" = "Настройки...";
 "quitApp" = "Завершить capcap";
 "historyMenu" = "История";

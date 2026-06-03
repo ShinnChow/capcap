@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "未設定";
 "fullScreenScreenshotShortcutHeader" = "截全螢幕";
 "fullScreenScreenshotShortcutDefaultDisplay" = "未設定";
+"colorPickerShortcutHeader" = "取色器";
+"colorPickerShortcutDefaultDisplay" = "未設定";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "複製到剪貼簿";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "這組按鍵已用於截圖翻譯快捷鍵。請選擇其他組合。";
 "shortcutConflictRecord" = "這組按鍵已用於錄製快捷鍵。請選擇其他組合。";
 "shortcutConflictFullScreenScreenshot" = "這組按鍵已用於截全螢幕快捷鍵。請選擇其他組合。";
+"shortcutConflictColorPicker" = "這組按鍵已用於取色器快捷鍵。請選擇其他組合。";
 
 /* Menu bar */
 "takeScreenshot" = "截圖";
 "takeFullScreenScreenshot" = "截全螢幕";
 "record" = "錄製";
+"colorPicker" = "取色器";
 "settings" = "設定...";
 "quitApp" = "結束 capcap";
 "historyMenu" = "歷史記錄";

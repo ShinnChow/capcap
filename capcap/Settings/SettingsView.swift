@@ -95,6 +95,13 @@ class SettingsView: NSView {
     private var fullScreenScreenshotShortcutRestoreButton: NSButton!
     private var fullScreenScreenshotShortcutRecordingMonitor: Any?
 
+    // Color picker shortcut card
+    private var colorPickerShortcutTitleLabel: NSTextField!
+    private var colorPickerShortcutField: NSTextField!
+    private var colorPickerShortcutSetButton: NSButton!
+    private var colorPickerShortcutRestoreButton: NSButton!
+    private var colorPickerShortcutRecordingMonitor: Any?
+
     // Pin selected image shortcut card
     private var selectedImagePinShortcutTitleLabel: NSTextField!
     private var selectedImagePinShortcutField: NSTextField!
@@ -262,6 +269,7 @@ class SettingsView: NSView {
         refreshTimer?.invalidate()
         cancelShortcutRecording()
         cancelFullScreenScreenshotShortcutRecording()
+        cancelColorPickerShortcutRecording()
         cancelSelectedImagePinShortcutRecording()
         cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
@@ -333,6 +341,7 @@ class SettingsView: NSView {
         refreshPermissionStatus()
         refreshShortcutDisplay()
         refreshFullScreenScreenshotShortcutDisplay()
+        refreshColorPickerShortcutDisplay()
         refreshSelectedImagePinShortcutDisplay()
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
@@ -722,6 +731,19 @@ class SettingsView: NSView {
         fullScreenScreenshotShortcutRestoreButton = fullScreenScreenshotShortcut.restoreButton
         stack.addArrangedSubview(fullScreenScreenshotShortcut.card)
         fullScreenScreenshotShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        // Color picker shortcut card
+        let colorPickerShortcut = buildShortcutCard(
+            title: L10n.colorPickerShortcutHeader,
+            setAction: #selector(colorPickerShortcutSetClicked),
+            restoreAction: #selector(colorPickerShortcutRestoreClicked)
+        )
+        colorPickerShortcutTitleLabel = colorPickerShortcut.title
+        colorPickerShortcutField = colorPickerShortcut.field
+        colorPickerShortcutSetButton = colorPickerShortcut.setButton
+        colorPickerShortcutRestoreButton = colorPickerShortcut.restoreButton
+        stack.addArrangedSubview(colorPickerShortcut.card)
+        colorPickerShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Edit selected image shortcut card
         let selectedImageEditShortcut = buildShortcutCard(
@@ -2155,6 +2177,9 @@ class SettingsView: NSView {
         if slot != .fullScreenScreenshot, fullScreenScreenshotShortcutRecordingMonitor != nil {
             cancelFullScreenScreenshotShortcutRecording()
         }
+        if slot != .colorPicker, colorPickerShortcutRecordingMonitor != nil {
+            cancelColorPickerShortcutRecording()
+        }
         if slot != .selectedImagePin, selectedImagePinShortcutRecordingMonitor != nil {
             cancelSelectedImagePinShortcutRecording()
         }
@@ -2360,6 +2385,93 @@ class SettingsView: NSView {
         } else {
             fullScreenScreenshotShortcutField?.stringValue = L10n.fullScreenScreenshotShortcutDefaultDisplay
             fullScreenScreenshotShortcutRestoreButton?.isHidden = true
+        }
+    }
+
+    @objc private func colorPickerShortcutSetClicked() {
+        if colorPickerShortcutRecordingMonitor != nil {
+            cancelColorPickerShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .colorPicker)
+        HotkeyManager.shared.beginRecording()
+        colorPickerShortcutSetButton.title = L10n.shortcutCancel
+        colorPickerShortcutField.stringValue = L10n.shortcutWaiting
+        colorPickerShortcutRestoreButton.isHidden = true
+
+        colorPickerShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelColorPickerShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .colorPicker) {
+                self.cancelColorPickerShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.colorPickerHotkeyKeyCode = Int(keyCode)
+            Defaults.colorPickerHotkeyModifiers = Int(carbonMods)
+            self.finishColorPickerShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func colorPickerShortcutRestoreClicked() {
+        if colorPickerShortcutRecordingMonitor != nil {
+            cancelColorPickerShortcutRecording()
+        }
+        Defaults.clearColorPickerHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshColorPickerShortcutDisplay()
+    }
+
+    private func finishColorPickerShortcutRecording() {
+        if let m = colorPickerShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            colorPickerShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshColorPickerShortcutDisplay()
+    }
+
+    func cancelColorPickerShortcutRecording() {
+        guard colorPickerShortcutRecordingMonitor != nil else { return }
+        if let m = colorPickerShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            colorPickerShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshColorPickerShortcutDisplay()
+    }
+
+    private func refreshColorPickerShortcutDisplay() {
+        colorPickerShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentColorPickerDisplayString() {
+            colorPickerShortcutField?.stringValue = display
+            colorPickerShortcutRestoreButton?.isHidden = false
+        } else {
+            colorPickerShortcutField?.stringValue = L10n.colorPickerShortcutDefaultDisplay
+            colorPickerShortcutRestoreButton?.isHidden = true
         }
     }
 
@@ -3232,6 +3344,7 @@ class SettingsView: NSView {
     @objc private func shortcutsResetClicked() {
         cancelShortcutRecording()
         cancelFullScreenScreenshotShortcutRecording()
+        cancelColorPickerShortcutRecording()
         cancelSelectedImagePinShortcutRecording()
         cancelClipboardImagePinShortcutRecording()
         cancelSelectedImageEditShortcutRecording()
@@ -3247,6 +3360,7 @@ class SettingsView: NSView {
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
         refreshShortcutDisplay()
         refreshFullScreenScreenshotShortcutDisplay()
+        refreshColorPickerShortcutDisplay()
         refreshSelectedImagePinShortcutDisplay()
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()
@@ -3285,6 +3399,8 @@ class SettingsView: NSView {
         shortcutRestoreButton?.toolTip = L10n.shortcutRestore
         fullScreenScreenshotShortcutTitleLabel?.stringValue = L10n.fullScreenScreenshotShortcutHeader
         fullScreenScreenshotShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        colorPickerShortcutTitleLabel?.stringValue = L10n.colorPickerShortcutHeader
+        colorPickerShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         selectedImagePinShortcutTitleLabel?.stringValue = L10n.selectedImagePinShortcutHeader
         selectedImagePinShortcutRestoreButton?.toolTip = L10n.selectedImagePinShortcutClear
         clipboardImagePinShortcutTitleLabel?.stringValue = L10n.clipboardImagePinShortcutHeader
@@ -3325,6 +3441,7 @@ class SettingsView: NSView {
         refreshUpdateRow()
         refreshShortcutDisplay()
         refreshFullScreenScreenshotShortcutDisplay()
+        refreshColorPickerShortcutDisplay()
         refreshSelectedImagePinShortcutDisplay()
         refreshClipboardImagePinShortcutDisplay()
         refreshSelectedImageEditShortcutDisplay()

@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "未设置";
 "fullScreenScreenshotShortcutHeader" = "截全屏";
 "fullScreenScreenshotShortcutDefaultDisplay" = "未设置";
+"colorPickerShortcutHeader" = "取色器";
+"colorPickerShortcutDefaultDisplay" = "未设置";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "复制到剪贴板";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "该按键组合已被截图翻译快捷键占用，请换一个。";
 "shortcutConflictRecord" = "该按键组合已被录制快捷键占用，请换一个。";
 "shortcutConflictFullScreenScreenshot" = "该按键组合已被截全屏快捷键占用，请换一个。";
+"shortcutConflictColorPicker" = "该按键组合已被取色器快捷键占用，请换一个。";
 
 /* Menu bar */
 "takeScreenshot" = "截图";
 "takeFullScreenScreenshot" = "截全屏";
 "record" = "录制";
+"colorPicker" = "取色器";
 "settings" = "设置...";
 "quitApp" = "退出 capcap";
 "historyMenu" = "历史";
