@@ -16,6 +16,8 @@ class KeyMonitor {
     private var globalMonitor: Any?
     private var localMonitor: Any?
     private var keyDownMonitor: Any?
+    private var eventTap: CFMachPort?
+    private var eventTapSource: CFRunLoopSource?
     private var lastCommandPressTime: TimeInterval = 0
     private var lastCommandPressOption: Bool = false
     private var commandIsDown = false
@@ -35,6 +37,8 @@ class KeyMonitor {
     }
 
     private func startMonitoring() {
+        guard !startEventTapMonitoring() else { return }
+
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.handleFlagsChanged(event)
         }
@@ -48,9 +52,26 @@ class KeyMonitor {
     }
 
     private func stopMonitoring() {
-        if let m = globalMonitor { NSEvent.removeMonitor(m) }
-        if let m = localMonitor { NSEvent.removeMonitor(m) }
-        if let m = keyDownMonitor { NSEvent.removeMonitor(m) }
+        if let source = eventTapSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes)
+            eventTapSource = nil
+        }
+        if let tap = eventTap {
+            CFMachPortInvalidate(tap)
+            eventTap = nil
+        }
+        if let m = globalMonitor {
+            NSEvent.removeMonitor(m)
+            globalMonitor = nil
+        }
+        if let m = localMonitor {
+            NSEvent.removeMonitor(m)
+            localMonitor = nil
+        }
+        if let m = keyDownMonitor {
+            NSEvent.removeMonitor(m)
+            keyDownMonitor = nil
+        }
     }
 
     private func resetSequence() {
@@ -60,13 +81,70 @@ class KeyMonitor {
     }
 
     private func handleFlagsChanged(_ event: NSEvent) {
+        handleFlagsChanged(
+            commandIsDown: event.modifierFlags.contains(.command),
+            optionIsDown: event.modifierFlags.contains(.option),
+            hasDisruptiveModifiers: event.modifierFlags.contains(.shift)
+                || event.modifierFlags.contains(.control)
+        )
+    }
+
+    @discardableResult
+    private func startEventTapMonitoring() -> Bool {
+        let types: [CGEventType] = [.flagsChanged, .keyDown]
+        let mask = types.reduce(CGEventMask(0)) { $0 | (CGEventMask(1) << $1.rawValue) }
+
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap,
+            place: .headInsertEventTap,
+            options: .listenOnly,
+            eventsOfInterest: mask,
+            callback: { _, type, event, refcon in
+                guard let refcon else { return Unmanaged.passUnretained(event) }
+                let monitor = Unmanaged<KeyMonitor>.fromOpaque(refcon).takeUnretainedValue()
+                monitor.handleTappedEvent(type: type, event: event)
+                return Unmanaged.passUnretained(event)
+            },
+            userInfo: Unmanaged.passUnretained(self).toOpaque()
+        ) else {
+            return false
+        }
+
+        let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+        eventTap = tap
+        eventTapSource = source
+        return true
+    }
+
+    private func handleTappedEvent(type: CGEventType, event: CGEvent) {
+        switch type {
+        case .tapDisabledByTimeout, .tapDisabledByUserInput:
+            if let eventTap {
+                CGEvent.tapEnable(tap: eventTap, enable: true)
+            }
+        case .keyDown:
+            otherKeyPressed = true
+        case .flagsChanged:
+            let flags = event.flags
+            handleFlagsChanged(
+                commandIsDown: flags.contains(.maskCommand),
+                optionIsDown: flags.contains(.maskAlternate),
+                hasDisruptiveModifiers: flags.contains(.maskShift)
+                    || flags.contains(.maskControl)
+            )
+        default:
+            break
+        }
+    }
+
+    private func handleFlagsChanged(
+        commandIsDown cmd: Bool,
+        optionIsDown opt: Bool,
+        hasDisruptiveModifiers hasDisruptive: Bool
+    ) {
         guard isEnabled else { return }
-        let cmd = event.modifierFlags.contains(.command)
-        let opt = event.modifierFlags.contains(.option)
-        // Shift / Control invalidate any in-flight double-tap sequence so the
-        // user can't accidentally fire either trigger from a stray combo.
-        let hasDisruptive = event.modifierFlags.contains(.shift)
-            || event.modifierFlags.contains(.control)
 
         if hasDisruptive {
             otherKeyPressed = true
@@ -85,9 +163,9 @@ class KeyMonitor {
 
             if isDoubleTap {
                 if opt {
-                    DispatchQueue.main.async { [weak self] in self?.onCountdownTrigger() }
+                    MainRunLoopScheduler.perform { [weak self] in self?.onCountdownTrigger() }
                 } else if isRegularDoubleTapEnabled {
-                    DispatchQueue.main.async { [weak self] in self?.onTrigger() }
+                    MainRunLoopScheduler.perform { [weak self] in self?.onTrigger() }
                 }
                 lastCommandPressTime = 0
             } else {

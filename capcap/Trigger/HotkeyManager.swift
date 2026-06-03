@@ -852,30 +852,37 @@ final class HotkeyManager {
                 )
                 guard status == noErr else { return OSStatus(eventNotHandledErr) }
 
-                if hkID.id == HotkeyManager.countdownHotKeyID, let cb = mgr.countdownCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.selectedImagePinHotKeyID, let cb = mgr.selectedImagePinCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.clipboardImagePinHotKeyID, let cb = mgr.clipboardImagePinCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.selectedImageEditHotKeyID, let cb = mgr.selectedImageEditCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.clipboardImageEditHotKeyID, let cb = mgr.clipboardImageEditCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.textRecognitionHotKeyID, let cb = mgr.textRecognitionCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.screenshotTranslationHotKeyID, let cb = mgr.screenshotTranslationCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.recordHotKeyID, let cb = mgr.recordCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.imageMergeHotKeyID, let cb = mgr.imageMergeCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.fullScreenScreenshotHotKeyID, let cb = mgr.fullScreenScreenshotCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.colorPickerHotKeyID, let cb = mgr.colorPickerCallback {
-                    DispatchQueue.main.async { cb() }
-                } else if hkID.id == HotkeyManager.regularHotKeyID, let cb = mgr.callback {
-                    DispatchQueue.main.async { cb() }
+                let callback: (() -> Void)?
+                switch hkID.id {
+                case HotkeyManager.countdownHotKeyID:
+                    callback = mgr.countdownCallback
+                case HotkeyManager.selectedImagePinHotKeyID:
+                    callback = mgr.selectedImagePinCallback
+                case HotkeyManager.clipboardImagePinHotKeyID:
+                    callback = mgr.clipboardImagePinCallback
+                case HotkeyManager.selectedImageEditHotKeyID:
+                    callback = mgr.selectedImageEditCallback
+                case HotkeyManager.clipboardImageEditHotKeyID:
+                    callback = mgr.clipboardImageEditCallback
+                case HotkeyManager.textRecognitionHotKeyID:
+                    callback = mgr.textRecognitionCallback
+                case HotkeyManager.screenshotTranslationHotKeyID:
+                    callback = mgr.screenshotTranslationCallback
+                case HotkeyManager.recordHotKeyID:
+                    callback = mgr.recordCallback
+                case HotkeyManager.imageMergeHotKeyID:
+                    callback = mgr.imageMergeCallback
+                case HotkeyManager.fullScreenScreenshotHotKeyID:
+                    callback = mgr.fullScreenScreenshotCallback
+                case HotkeyManager.colorPickerHotKeyID:
+                    callback = mgr.colorPickerCallback
+                case HotkeyManager.regularHotKeyID:
+                    callback = mgr.callback
+                default:
+                    callback = nil
+                }
+                if let callback {
+                    MainRunLoopScheduler.perform(callback)
                 }
                 return noErr
             },

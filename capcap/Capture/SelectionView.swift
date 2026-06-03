@@ -98,6 +98,11 @@ class SelectionView: NSView {
 
     var currentSelectionRect: NSRect? { selectionRect }
 
+    func refreshHoverAtCurrentMouseLocation() {
+        guard state == .idle, !selectionLocked else { return }
+        updateWindowHover(screenPoint: NSEvent.mouseLocation)
+    }
+
     func updateSelectionRect(_ rect: NSRect) {
         selectionRect = rect
         state = .selected
@@ -353,6 +358,20 @@ class SelectionView: NSView {
     // MARK: - Window Hover
 
     private func updateWindowHover(with event: NSEvent) {
+        guard let win = self.window else {
+            clearHover()
+            NSCursor.crosshair.set()
+            return
+        }
+
+        // Convert view point → screen point
+        let viewPoint = convert(event.locationInWindow, from: nil)
+        let windowPoint = convert(viewPoint, to: nil)
+        let screenPoint = win.convertPoint(toScreen: windowPoint)
+        updateWindowHover(screenPoint: screenPoint)
+    }
+
+    private func updateWindowHover(screenPoint: NSPoint) {
         guard let detector = windowDetector,
               let win = self.window,
               let screen = win.screen else {
@@ -361,10 +380,7 @@ class SelectionView: NSView {
             return
         }
 
-        // Convert view point → screen point → CG point
-        let viewPoint = convert(event.locationInWindow, from: nil)
-        let windowPoint = convert(viewPoint, to: nil)
-        let screenPoint = win.convertPoint(toScreen: windowPoint)
+        // Convert screen point → CG point
         let primaryHeight = NSScreen.screens[0].frame.height
         let cgPoint = CGPoint(x: screenPoint.x, y: primaryHeight - screenPoint.y)
 

@@ -58,6 +58,7 @@ class OverlayWindowController {
     private let presetImage: NSImage?
     /// In image-edit mode, where `presetImage` came from. nil otherwise.
     private let presetSource: PresetSource?
+    private var presentationScheduled = false
 
     /// Route the default copy-to-clipboard hotkey (double-tap ⌘) into the
     /// editor while the overlay is active. No-op when the editor isn't up yet.
@@ -94,6 +95,22 @@ class OverlayWindowController {
     }
 
     func activate() {
+        guard !presentationScheduled else { return }
+        presentationScheduled = true
+
+        prepareScreenContext()
+
+        if Self.isRunningEventTrackingMode {
+            Self.dismissActiveEventTrackingSurface()
+            MainRunLoopScheduler.performInDefaultMode { [weak self] in
+                self?.presentOverlay()
+            }
+        } else {
+            presentOverlay()
+        }
+    }
+
+    private func prepareScreenContext() {
         // Snapshot visible windows before our overlays appear
         windowDetector.refresh()
 
@@ -116,7 +133,10 @@ class OverlayWindowController {
                 }
             }
         }
+    }
 
+    private func presentOverlay() {
+        guard windows.isEmpty else { return }
         // Create all overlay windows and pre-render their content before
         // showing any of them, so there is no visible flash or zoom.
         for screen in NSScreen.screens {
@@ -159,6 +179,12 @@ class OverlayWindowController {
         }
         windows.first?.makeKey()
         CATransaction.commit()
+
+        if presetImage == nil {
+            for case let selectionView as SelectionView in windows.compactMap(\.contentView) {
+                selectionView.refreshHoverAtCurrentMouseLocation()
+            }
+        }
 
         chipWindow = CursorChipWindow(text: postCaptureAction.cursorChipText)
         chipWindow?.show()
@@ -231,6 +257,25 @@ class OverlayWindowController {
             chipWindow = nil
             enterPresetSelection()
         }
+    }
+
+    private static var isRunningEventTrackingMode: Bool {
+        guard let mode = CFRunLoopCopyCurrentMode(CFRunLoopGetMain()) else {
+            return false
+        }
+        return mode.rawValue as String == RunLoop.Mode.eventTracking.rawValue
+    }
+
+    private static func dismissActiveEventTrackingSurface() {
+        NSApp.sendAction(#selector(NSResponder.cancelOperation(_:)), to: nil, from: nil)
+
+        let source = CGEventSource(stateID: .combinedSessionState)
+        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 53, keyDown: true)
+        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 53, keyDown: false)
+        keyDown?.flags = []
+        keyUp?.flags = []
+        keyDown?.post(tap: .cghidEventTap)
+        keyUp?.post(tap: .cghidEventTap)
     }
 
     /// Image-edit mode: pick the screen under the cursor, place a centered

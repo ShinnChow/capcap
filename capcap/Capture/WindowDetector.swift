@@ -36,14 +36,12 @@ class WindowDetector {
                   layer >= 0
             else { return nil }
 
-            // Exclude this app's own windows — but only the transient UI.
-            // capcap's real content windows (Settings at .normal, pinned
-            // screenshots at .floating) sit at layer 0–3 and should stay
-            // detectable; toasts, tooltips, countdown and progress panels
-            // live at .screenSaver+ levels and must never be selectable.
-            // The capture overlay itself is created after refresh(), so it
-            // is never in this snapshot.
-            if pid == ownPID && layer > Int(CGWindowLevelForKey(.floatingWindow)) {
+            // Keep this app's own menus/popups detectable so capcap can capture
+            // its visible transient UI. Only screen-saver-level chrome (toasts,
+            // tooltips, countdown and progress panels) is excluded.
+            // The capture overlay itself is created after refresh(), so it is
+            // never in this snapshot.
+            if pid == ownPID && layer >= Int(CGWindowLevelForKey(.screenSaverWindow)) {
                 return nil
             }
 
