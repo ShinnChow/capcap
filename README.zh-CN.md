@@ -1,8 +1,37 @@
-# capcap
+<p align="center">
+  <img src="images/app-banner.png" alt="capcap 应用横幅" width="760" />
+</p>
 
-![capcap](images/app-banner.png)
+<h1 align="center">capcap</h1>
 
-[English](README.md) &nbsp;·&nbsp; [繁體中文](README.zh-TW.md)
+<p align="center">
+  macOS 上最顺手的菜单栏截图工具：双击 <code>⌘</code> 即刻截图、标注、长截图、美化、钉图和上传。
+</p>
+
+<p align="center">
+  <a href="https://github.com/realskyrin/capcap/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/realskyrin/capcap?style=flat-square"></a>
+  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square&logo=apple">
+  <img alt="Swift 5.9" src="https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="README.md">简体中文</a> ·
+  <a href="README.zh-TW.md">繁體中文</a> ·
+  <a href="README.en.md">English</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.fr.md">Français</a> ·
+  <a href="README.ru.md">Русский</a> ·
+  <a href="README.vi.md">Tiếng Việt</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/realskyrin/capcap/releases/latest">下载</a> ·
+  <a href="#使用-homebrew-安装">Homebrew</a> ·
+  <a href="CHANGELOG.md">更新日志</a> ·
+  <a href="https://github.com/realskyrin/capcap/issues">Issues</a>
+</p>
 
 **macOS 上最顺手的截图工具。** 双击 `⌘` 即开即用——窗口一点就贴边、选区像素级精准、长截图边滚边拼，再用浮动编辑器一气呵成完成标注与美化。常驻菜单栏，不占 Dock，无遥测、无订阅、零第三方依赖；想要一键拿到图片云端链接，自己接入图床即可。
 
@@ -74,7 +103,7 @@
 - **最近历史**：菜单栏历史子菜单显示截图缩略图和取色记录，方便快速再次复制；缓存数量可配置。
 - **图床上传**：可选地把截图一键上传到腾讯云 COS、七牛云 Kodo 或阿里云 OSS，公网链接写入剪贴板，并和缩略图一起保存到历史记录。所有密钥只保存在本机 UserDefaults；选定一个为默认图床后，编辑器里的上传按钮即被点亮。
 - **自定义触发方式**：默认双击 `⌘`，也可在设置里录制全局快捷键。
-- **设置与本地化**：支持中文/英文 UI、菜单栏图标开关、开机启动、演示模式、权限状态、快捷键录制和历史缓存数量。
+- **设置与本地化**：支持简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt UI，并提供菜单栏图标开关、开机启动、演示模式、权限状态、快捷键录制和历史缓存数量。
 - **菜单栏应用**：以 agent app 运行，不显示 Dock 图标。
 
 ## 环境要求
@@ -154,7 +183,7 @@ scripts/package-dmg.sh
 
 从菜单栏打开设置后，可以配置：
 
-- 语言：中文或 English
+- 语言：简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt
 - 是否显示菜单栏图标
 - 是否开机自动启动
 - 演示模式：允许外部录屏软件捕获 capcap 的遮罩和编辑器

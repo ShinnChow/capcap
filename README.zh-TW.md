@@ -1,8 +1,37 @@
-# capcap
+<p align="center">
+  <img src="images/app-banner.png" alt="capcap 應用程式橫幅" width="760" />
+</p>
 
-![capcap](images/app-banner.png)
+<h1 align="center">capcap</h1>
 
-[English](README.md) &nbsp;·&nbsp; [简体中文](README.zh-CN.md)
+<p align="center">
+  macOS 上最順手的選單列截圖工具：雙擊 <code>⌘</code> 即刻截圖、標注、長截圖、美化、釘圖和上傳。
+</p>
+
+<p align="center">
+  <a href="https://github.com/realskyrin/capcap/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/realskyrin/capcap?style=flat-square"></a>
+  <img alt="macOS 14+" src="https://img.shields.io/badge/macOS-14%2B-black?style=flat-square&logo=apple">
+  <img alt="Swift 5.9" src="https://img.shields.io/badge/Swift-5.9-orange?style=flat-square&logo=swift">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square"></a>
+</p>
+
+<p align="center">
+  <a href="README.md">简体中文</a> ·
+  <a href="README.zh-TW.md">繁體中文</a> ·
+  <a href="README.en.md">English</a> ·
+  <a href="README.ja.md">日本語</a> ·
+  <a href="README.ko.md">한국어</a> ·
+  <a href="README.fr.md">Français</a> ·
+  <a href="README.ru.md">Русский</a> ·
+  <a href="README.vi.md">Tiếng Việt</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/realskyrin/capcap/releases/latest">下載</a> ·
+  <a href="#使用-homebrew-安裝">Homebrew</a> ·
+  <a href="CHANGELOG.md">更新日誌</a> ·
+  <a href="https://github.com/realskyrin/capcap/issues">Issues</a>
+</p>
 
 **macOS 上最順手的截圖工具。** 雙擊 `⌘` 即開即用——視窗一點就貼邊、選取範圍像素級精準、長截圖邊捲邊拼，再用浮動編輯器一氣呵成完成標注與美化。常駐選單列，不佔 Dock，無遙測、無訂閱、零第三方依賴；想要一鍵拿到圖片雲端連結，自己接入圖床即可。
 
@@ -74,7 +103,7 @@
 - **最近歷程**：選單列歷程子選單顯示截圖縮圖和取色記錄，方便快速再次複製；快取數量可設定。
 - **圖床上傳**：可選地把截圖一鍵上傳到騰訊雲 COS、七牛雲 Kodo 或阿里雲 OSS，公開網路連結寫入剪貼簿，並和縮圖一起儲存到歷程記錄。所有金鑰只儲存在本機 UserDefaults；選定一個為預設圖床後，編輯器裡的上傳按鈕即被點亮。
 - **自訂觸發方式**：預設雙擊 `⌘`，也可在設定裡錄製全域快速鍵。
-- **設定與本地化**：支援中文/英文 UI、選單列圖示開關、開機啟動、示範模式、權限狀態、快速鍵錄製和歷程快取數量。
+- **設定與本地化**：支援简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt UI，並提供選單列圖示開關、開機啟動、示範模式、權限狀態、快速鍵錄製和歷程快取數量。
 - **選單列應用程式**：以 agent app 執行，不顯示 Dock 圖示。
 
 ## 環境需求
@@ -154,7 +183,7 @@ scripts/package-dmg.sh
 
 從選單列開啟設定後，可以設定：
 
-- 語言：中文或 English
+- 語言：简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt
 - 是否顯示選單列圖示
 - 是否開機自動啟動
 - 示範模式：允許外部錄影軟體擷取 capcap 的遮罩和編輯器
