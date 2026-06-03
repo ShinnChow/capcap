@@ -87,9 +87,6 @@ class EditWindowController {
     /// Last color sampled from the toolbar eyedropper. Persisted locally and
     /// shown as an ink-bottle control for color-capable annotation tools.
     private var pickedColorSwatch: NSColor?
-    /// Active system eyedropper session. AppKit does not expose a direct
-    /// cancel API, so teardown cancels it by posting Escape.
-    private var activeColorSampler: NSColorSampler?
 
     var isTextEditing: Bool {
         canvasView?.isTextEditing == true
@@ -1501,38 +1498,12 @@ class EditWindowController {
     /// tool color.
     private func runColorPicker() {
         canvasView?.commitActiveTextEditing()
-        guard activeColorSampler == nil else { return }
-        let sampler = NSColorSampler()
-        activeColorSampler = sampler
-        sampler.show { [weak self, weak sampler] picked in
-            guard let self, self.activeColorSampler === sampler else { return }
-            self.activeColorSampler = nil
-            guard let picked else { return }
-            let rgb = picked.usingColorSpace(.sRGB) ?? picked
-            let r = Int(round(max(0, min(1, rgb.redComponent)) * 255))
-            let g = Int(round(max(0, min(1, rgb.greenComponent)) * 255))
-            let b = Int(round(max(0, min(1, rgb.blueComponent)) * 255))
-            let hex = String(format: "#%02X%02X%02X", r, g, b)
-            let swatchColor = NSColor(
-                srgbRed: CGFloat(r) / 255.0,
-                green: CGFloat(g) / 255.0,
-                blue: CGFloat(b) / 255.0,
-                alpha: 1.0
-            )
-
-            let pasteboard = NSPasteboard.general
-            pasteboard.clearContents()
-            pasteboard.setString(hex, forType: .string)
-
-            if Defaults.historyCacheEnabled {
-                HistoryManager.shared.addColor(hex: hex)
-                Defaults.lastPickedColorHex = hex
-            }
+        ColorPickerRunner.shared.run(on: screen) { [weak self] swatchColor, _ in
+            guard let self else { return }
             self.pickedColorSwatch = swatchColor
             if self.toolUsesPickedColorSwatch(self.activeTool) {
                 self.showSubToolbar(for: self.activeTool)
             }
-            ToastWindow.show(message: L10n.colorCopied(hex), on: self.screen)
         }
     }
 
@@ -1657,18 +1628,7 @@ class EditWindowController {
     }
 
     private func cancelActiveColorSampler() {
-        guard activeColorSampler != nil else { return }
-        activeColorSampler = nil
-        Self.postEscapeKeyEvent()
-    }
-
-    private static func postEscapeKeyEvent() {
-        let source = CGEventSource(stateID: .hidSystemState)
-        let escapeKeyCode = CGKeyCode(53)
-        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: escapeKeyCode, keyDown: true)
-        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: escapeKeyCode, keyDown: false)
-        keyDown?.post(tap: .cghidEventTap)
-        keyUp?.post(tap: .cghidEventTap)
+        ColorPickerRunner.shared.cancel()
     }
 
     func confirmFromKeyboard() {

@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "Non défini";
 "fullScreenScreenshotShortcutHeader" = "Capture plein écran";
 "fullScreenScreenshotShortcutDefaultDisplay" = "Non défini";
+"colorPickerShortcutHeader" = "Pipette";
+"colorPickerShortcutDefaultDisplay" = "Non défini";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "Copier dans le presse-papiers";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "Cette combinaison de touches est déjà utilisée par le raccourci Traduction de capture. Veuillez en choisir une autre.";
 "shortcutConflictRecord" = "Cette combinaison de touches est déjà utilisée par le raccourci Enregistrer. Veuillez en choisir une autre.";
 "shortcutConflictFullScreenScreenshot" = "Cette combinaison de touches est déjà utilisée par le raccourci Capture plein écran. Veuillez en choisir une autre.";
+"shortcutConflictColorPicker" = "Cette combinaison de touches est déjà utilisée par le raccourci Pipette. Veuillez en choisir une autre.";
 
 /* Menu bar */
 "takeScreenshot" = "Capturer l'écran";
 "takeFullScreenScreenshot" = "Capturer le plein écran";
 "record" = "Enregistrer";
+"colorPicker" = "Pipette";
 "settings" = "Réglages...";
 "quitApp" = "Quitter capcap";
 "historyMenu" = "Historique";

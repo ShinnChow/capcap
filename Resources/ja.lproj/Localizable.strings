@@ -59,6 +59,8 @@
 "recordShortcutDefaultDisplay" = "未設定";
 "fullScreenScreenshotShortcutHeader" = "フルスクリーンショット";
 "fullScreenScreenshotShortcutDefaultDisplay" = "未設定";
+"colorPickerShortcutHeader" = "カラーピッカー";
+"colorPickerShortcutDefaultDisplay" = "未設定";
 
 /* Copy-to-clipboard shortcut (editor confirm) */
 "clipboardShortcutHeader" = "クリップボードへコピー";
@@ -83,11 +85,13 @@
 "shortcutConflictScreenshotTranslation" = "このキーの組み合わせはスクリーンショット翻訳ショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictRecord" = "このキーの組み合わせは録画ショートカットで既に使用されています。別の組み合わせを選んでください。";
 "shortcutConflictFullScreenScreenshot" = "このキーの組み合わせはフルスクリーンショットのショートカットで既に使用されています。別の組み合わせを選んでください。";
+"shortcutConflictColorPicker" = "このキーの組み合わせはカラーピッカーのショートカットで既に使用されています。別の組み合わせを選んでください。";
 
 /* Menu bar */
 "takeScreenshot" = "スクリーンショット";
 "takeFullScreenScreenshot" = "フルスクリーンショット";
 "record" = "録画";
+"colorPicker" = "カラーピッカー";
 "settings" = "設定...";
 "quitApp" = "capcap を終了";
 "historyMenu" = "履歴";

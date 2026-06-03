@@ -7,6 +7,7 @@ class StatusBarController: NSObject {
     private let onTakeFullScreenScreenshot: () -> Void
     private let onRecord: () -> Void
     private let onMergeImages: () -> Void
+    private let onColorPicker: () -> Void
     private let onOpenSettings: () -> Void
     private var historyMenu: NSMenu?
     private var historyItem: NSMenuItem?
@@ -16,12 +17,14 @@ class StatusBarController: NSObject {
         onTakeFullScreenScreenshot: @escaping () -> Void,
         onRecord: @escaping () -> Void,
         onMergeImages: @escaping () -> Void,
+        onColorPicker: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.onTakeScreenshot = onTakeScreenshot
         self.onTakeFullScreenScreenshot = onTakeFullScreenScreenshot
         self.onRecord = onRecord
         self.onMergeImages = onMergeImages
+        self.onColorPicker = onColorPicker
         self.onOpenSettings = onOpenSettings
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -81,6 +84,12 @@ class StatusBarController: NSObject {
         mergeItem.image = Self.menuIcon(systemName: "square.grid.2x2")
         HotkeyManager.applyImageMergeToMenuItem(mergeItem)
         menu.addItem(mergeItem)
+
+        let colorPickerItem = NSMenuItem(title: L10n.colorPicker, action: #selector(colorPicker), keyEquivalent: "")
+        colorPickerItem.target = self
+        colorPickerItem.image = Self.menuIcon(systemName: "eyedropper")
+        HotkeyManager.applyColorPickerToMenuItem(colorPickerItem)
+        menu.addItem(colorPickerItem)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -160,6 +169,10 @@ class StatusBarController: NSObject {
 
     @objc private func mergeImages() {
         onMergeImages()
+    }
+
+    @objc private func colorPicker() {
+        onColorPicker()
     }
 
     @objc private func openSettings() {
