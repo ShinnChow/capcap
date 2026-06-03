@@ -236,6 +236,7 @@ enum L10n {
     static var tipNumbered: String { s("tipNumbered") }
     static var tipText: String { s("tipText") }
     static var tipEmoji: String { s("tipEmoji") }
+    static var tipMoreEmoji: String { s("tipMoreEmoji") }
     static var tipInsertImage: String { s("tipInsertImage") }
     static var tipColorPicker: String { s("tipColorPicker") }
     static var tipPickedInkBottle: String { s("tipPickedInkBottle") }
@@ -1029,6 +1030,31 @@ struct Defaults {
                 defaults.removeObject(forKey: "lastPickedColorHex")
             }
         }
+    }
+
+    static var recentEmojis: [String] {
+        get {
+            normalizedEmojiList(defaults.stringArray(forKey: "recentEmojis") ?? [])
+        }
+        set {
+            let normalized = normalizedEmojiList(newValue)
+            if normalized.isEmpty {
+                defaults.removeObject(forKey: "recentEmojis")
+            } else {
+                defaults.set(normalized, forKey: "recentEmojis")
+            }
+        }
+    }
+
+    private static func normalizedEmojiList(_ values: [String]) -> [String] {
+        var result: [String] = []
+        for value in values {
+            let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, !result.contains(trimmed) else { continue }
+            result.append(trimmed)
+            if result.count == 10 { break }
+        }
+        return result
     }
 
     private static func normalizedHexColor(_ hex: String?) -> String? {

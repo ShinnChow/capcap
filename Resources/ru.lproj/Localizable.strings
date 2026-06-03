@@ -144,6 +144,7 @@
 "tipNumbered" = "Нумерация";
 "tipText" = "Текст";
 "tipEmoji" = "Эмодзи";
+"tipMoreEmoji" = "Больше эмодзи";
 "tipInsertImage" = "Вставить изображение";
 "tipColorPicker" = "Пипетка";
 "tipPickedInkBottle" = "Взять цвет пипеткой в чернильницу";

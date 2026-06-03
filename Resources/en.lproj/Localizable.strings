@@ -144,6 +144,7 @@
 "tipNumbered" = "Numbered";
 "tipText" = "Text";
 "tipEmoji" = "Emoji";
+"tipMoreEmoji" = "More Emoji";
 "tipInsertImage" = "Insert Image";
 "tipColorPicker" = "Color Picker";
 "tipPickedInkBottle" = "Use the color picker to fill the ink bottle";

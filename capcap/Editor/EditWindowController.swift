@@ -82,6 +82,8 @@ class EditWindowController {
     private var currentMarkerColor: NSColor = EditorStyleDefaults.markerColor
     private var currentMarkerLineWidth: CGFloat = EditorStyleDefaults.markerLineWidth
     private var currentEmoji: String?
+    private var recentEmojis: [String] = Defaults.recentEmojis
+    private var emojiPopover: NSPopover?
     /// Last color sampled from the toolbar eyedropper. Persisted locally and
     /// shown as an ink-bottle control for color-capable annotation tools.
     private var pickedColorSwatch: NSColor?
@@ -444,6 +446,7 @@ class EditWindowController {
     }
 
     private func showSubToolbar(for tool: EditTool) {
+        dismissEmojiPopover()
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
 
@@ -685,24 +688,79 @@ class EditWindowController {
 
         let view = EmojiSubToolbar(
             frame: subRect,
-            emojis: Self.quickEmojiChoices,
+            emojis: Self.recentEmojiChoices(from: recentEmojis),
             selectedEmoji: currentEmoji
         )
         view.onEmojiSelected = { [weak self, weak view] emoji in
-            self?.currentEmoji = emoji
-            self?.canvasView?.currentEmoji = emoji
-            view?.selectedEmoji = emoji
-            self?.bringEditorToFront()
+            self?.selectEmoji(emoji, subToolbar: view, promotesToRecent: false)
+        }
+        view.onMoreRequested = { [weak self, weak view] anchor in
+            self?.showEmojiPicker(anchoredTo: anchor, subToolbar: view)
         }
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
         subToolbarView = view
     }
 
+    private func selectEmoji(_ emoji: String, subToolbar: EmojiSubToolbar?, promotesToRecent: Bool) {
+        currentEmoji = emoji
+        canvasView?.currentEmoji = emoji
+        let visibleEmojis = Self.recentEmojiChoices(from: recentEmojis)
+        if promotesToRecent, !visibleEmojis.contains(emoji) {
+            promoteRecentEmoji(emoji)
+            subToolbar?.emojis = Self.recentEmojiChoices(from: recentEmojis)
+        }
+        subToolbar?.selectedEmoji = emoji
+        dismissEmojiPopover()
+        bringEditorToFront()
+    }
+
+    private func showEmojiPicker(anchoredTo anchor: NSView, subToolbar: EmojiSubToolbar?) {
+        dismissEmojiPopover()
+
+        let picker = EmojiPickerView(
+            frame: NSRect(origin: .zero, size: EmojiPickerView.preferredSize),
+            emojis: Self.emojiPickerChoices,
+            selectedEmoji: currentEmoji
+        )
+        picker.onEmojiSelected = { [weak self, weak subToolbar] emoji in
+            self?.selectEmoji(emoji, subToolbar: subToolbar, promotesToRecent: true)
+        }
+
+        let viewController = NSViewController()
+        viewController.view = picker
+
+        let popover = NSPopover()
+        popover.behavior = .transient
+        popover.animates = true
+        popover.contentSize = EmojiPickerView.preferredSize
+        popover.contentViewController = viewController
+        popover.show(relativeTo: anchor.bounds, of: anchor, preferredEdge: .maxY)
+        emojiPopover = popover
+    }
+
+    private func dismissEmojiPopover() {
+        emojiPopover?.performClose(nil)
+        emojiPopover = nil
+    }
+
+    private func promoteRecentEmoji(_ emoji: String) {
+        var next = [emoji]
+        for existing in Self.recentEmojiChoices(from: recentEmojis) where existing != emoji {
+            next.append(existing)
+        }
+        for fallback in Self.defaultRecentEmojiChoices where !next.contains(fallback) {
+            next.append(fallback)
+        }
+        recentEmojis = Array(next.prefix(Self.recentEmojiLimit))
+        Defaults.recentEmojis = recentEmojis
+    }
+
     private func handleEmojiStamped() {
         currentEmoji = nil
         canvasView?.currentEmoji = nil
         (subToolbarView as? EmojiSubToolbar)?.selectedEmoji = nil
+        dismissEmojiPopover()
         NSCursor.arrow.set()
     }
 
@@ -1091,6 +1149,7 @@ class EditWindowController {
         activeTool = .none
         canvasView?.activeTool = .none
         toolbars.forEach { $0.updateSelection(tool: .none) }
+        dismissEmojiPopover()
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
         toolbars.forEach { $0.setScrollCaptureActive(true) }
@@ -1572,12 +1631,30 @@ class EditWindowController {
         return NSImage(contentsOf: url)
     }
 
-    private static let quickEmojiChoices = [
-        "😀", "😄", "😂", "😊", "😍", "😎",
-        "👍", "👏", "🙏", "💪", "👀", "🤔",
-        "🔥", "✨", "🎉", "🚀", "💡", "📌",
-        "⭐️", "❤️", "✅", "❌", "⚠️", "❓",
+    private static let recentEmojiLimit = 10
+
+    private static let defaultRecentEmojiChoices = [
+        "⭐️", "❤️", "👍", "👎", "🚀",
+        "😀", "😂", "😍", "🔥", "✅",
     ]
+
+    private static let emojiPickerChoices = [
+        "😀", "😄", "😂", "🤣", "😍", "🤔", "😎", "🤯", "😱",
+        "😤", "🥳", "🤡", "💩", "👻", "🤖", "👽", "😈",
+        "🙈", "🙉", "🙊", "💪", "👏", "🙌", "🤝", "🫡",
+        "⭐️", "❤️", "👍", "👎", "🚀", "✅", "❌", "⚠️", "❓",
+        "🔥", "✨", "🎉", "💡", "📌", "🚩", "☝️",
+    ]
+
+    private static func recentEmojiChoices(from stored: [String]) -> [String] {
+        var result: [String] = []
+        for emoji in stored + defaultRecentEmojiChoices {
+            guard !emoji.isEmpty, !result.contains(emoji) else { continue }
+            result.append(emoji)
+            if result.count == recentEmojiLimit { break }
+        }
+        return result
+    }
 
     private func cancelActiveColorSampler() {
         guard activeColorSampler != nil else { return }
@@ -1722,6 +1799,7 @@ class EditWindowController {
         toolbars.forEach { $0.isHidden = false; $0.removeFromSuperview() }
         toolbarView = nil
         sideToolbarView = nil
+        dismissEmojiPopover()
         subToolbarView?.removeFromSuperview()
         subToolbarView = nil
         beautifySubToolbarView?.removeFromSuperview()
@@ -2759,22 +2837,36 @@ private final class ScrollPreviewWindow: NSPanel {
 // MARK: - Emoji Sub-toolbar
 
 private final class EmojiSubToolbar: NSView {
-    static let preferredVisibleWidth: CGFloat = 420
-    static let minimumVisibleWidth: CGFloat = 220
+    static let preferredVisibleWidth: CGFloat = horizontalPad * 2
+        + moreButtonSize
+        + moreSeparatorGap
+        + separatorWidth
+        + emojiSeparatorGap
+        + CGFloat(visibleEmojiCount) * itemSize
+        + CGFloat(visibleEmojiCount - 1) * itemGap
+    static let minimumVisibleWidth: CGFloat = preferredVisibleWidth
 
+    var emojis: [String] {
+        didSet { rebuildEmojiViews() }
+    }
     var selectedEmoji: String? {
         didSet { updateSelection() }
     }
     var onEmojiSelected: ((String) -> Void)?
+    var onMoreRequested: ((NSView) -> Void)?
 
-    private let emojis: [String]
-    private let scrollView = HorizontalWheelScrollView()
-    private let contentView = NSView()
+    private let moreButton = EmojiMoreButton(frame: .zero)
+    private let separatorView = NSView()
     private var emojiViews: [EmojiChoiceView] = []
 
+    private static let visibleEmojiCount = 10
     private static let itemSize: CGFloat = 30
     private static let itemGap: CGFloat = 4
-    private static let horizontalPad: CGFloat = 10
+    private static let horizontalPad: CGFloat = 8
+    private static let moreButtonSize: CGFloat = 30
+    private static let moreSeparatorGap: CGFloat = 8
+    private static let emojiSeparatorGap: CGFloat = 8
+    private static let separatorWidth: CGFloat = 1
 
     init(frame: NSRect, emojis: [String], selectedEmoji: String?) {
         self.emojis = emojis
@@ -2790,54 +2882,79 @@ private final class EmojiSubToolbar: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     private func setup() {
-        let scrollFrame = bounds.insetBy(dx: 8, dy: 5)
-        scrollView.frame = scrollFrame
-        scrollView.autoresizingMask = [.width, .height]
-        scrollView.drawsBackground = false
-        scrollView.borderType = .noBorder
-        scrollView.hasHorizontalScroller = false
-        scrollView.hasVerticalScroller = false
-        scrollView.scrollerStyle = .overlay
-        scrollView.autohidesScrollers = true
+        moreButton.target = self
+        moreButton.action = #selector(showMoreEmojiPicker)
+        addSubview(moreButton)
 
-        let contentWidth = Self.horizontalPad * 2
-            + CGFloat(emojis.count) * Self.itemSize
-            + CGFloat(max(0, emojis.count - 1)) * Self.itemGap
-        contentView.frame = NSRect(
-            x: 0,
-            y: 0,
-            width: max(contentWidth, scrollFrame.width),
-            height: scrollFrame.height
+        separatorView.wantsLayer = true
+        separatorView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.18).cgColor
+        addSubview(separatorView)
+
+        rebuildEmojiViews()
+    }
+
+    override func layout() {
+        super.layout()
+
+        let centerY = bounds.midY
+        var x = Self.horizontalPad
+        for view in emojiViews {
+            view.frame = NSRect(
+                x: x,
+                y: centerY - Self.itemSize / 2,
+                width: Self.itemSize,
+                height: Self.itemSize
+            )
+            x += Self.itemSize + Self.itemGap
+        }
+
+        moreButton.frame = NSRect(
+            x: bounds.maxX - Self.horizontalPad - Self.moreButtonSize,
+            y: centerY - Self.moreButtonSize / 2,
+            width: Self.moreButtonSize,
+            height: Self.moreButtonSize
         )
 
-        var x = Self.horizontalPad
-        for emoji in emojis {
+        let separatorX = moreButton.frame.minX - Self.moreSeparatorGap - Self.separatorWidth
+        separatorView.frame = NSRect(
+            x: separatorX,
+            y: 8,
+            width: Self.separatorWidth,
+            height: max(1, bounds.height - 16)
+        )
+    }
+
+    private func rebuildEmojiViews() {
+        for view in emojiViews {
+            view.removeFromSuperview()
+        }
+        emojiViews.removeAll()
+
+        for emoji in emojis.prefix(Self.visibleEmojiCount) {
             let item = EmojiChoiceView(
-                frame: NSRect(
-                    x: x,
-                    y: (contentView.bounds.height - Self.itemSize) / 2,
-                    width: Self.itemSize,
-                    height: Self.itemSize
-                ),
+                frame: .zero,
                 emoji: emoji,
-                isSelected: emoji == selectedEmoji
+                isSelected: emoji == selectedEmoji,
+                fontSize: 19
             )
             item.onSelect = { [weak self] emoji in
                 self?.onEmojiSelected?(emoji)
             }
-            contentView.addSubview(item)
+            addSubview(item)
             emojiViews.append(item)
-            x += Self.itemSize + Self.itemGap
         }
 
-        scrollView.documentView = contentView
-        addSubview(scrollView)
+        needsLayout = true
     }
 
     private func updateSelection() {
         for view in emojiViews {
             view.isSelected = view.emoji == selectedEmoji
         }
+    }
+
+    @objc private func showMoreEmojiPicker() {
+        onMoreRequested?(moreButton)
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -2847,16 +2964,109 @@ private final class EmojiSubToolbar: NSView {
     }
 }
 
+private final class EmojiPickerView: NSView {
+    static let preferredSize = NSSize(width: 520, height: 226)
+
+    var selectedEmoji: String? {
+        didSet { updateSelection() }
+    }
+    var onEmojiSelected: ((String) -> Void)?
+
+    private let emojis: [String]
+    private var choiceViews: [EmojiChoiceView] = []
+
+    private static let gridColumns = 8
+    private static let gridItemSize: CGFloat = 32
+    private static let gridColumnGap: CGFloat = 25
+    private static let gridRowGap: CGFloat = 8
+    private static let topPad: CGFloat = 16
+    private static let maxGridItems = 40
+
+    init(frame: NSRect, emojis: [String], selectedEmoji: String?) {
+        self.emojis = emojis
+        self.selectedEmoji = selectedEmoji
+        super.init(frame: frame)
+        setup()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func setup() {
+        wantsLayer = true
+
+        let gridWidth = CGFloat(Self.gridColumns) * Self.gridItemSize
+            + CGFloat(Self.gridColumns - 1) * Self.gridColumnGap
+        let gridLeft = (bounds.width - gridWidth) / 2
+        let gridTopY = bounds.maxY - Self.topPad - Self.gridItemSize
+
+        for (index, emoji) in emojis.prefix(Self.maxGridItems).enumerated() {
+            let row = index / Self.gridColumns
+            let column = index % Self.gridColumns
+            addChoice(
+                emoji: emoji,
+                frame: NSRect(
+                    x: gridLeft + CGFloat(column) * (Self.gridItemSize + Self.gridColumnGap),
+                    y: gridTopY - CGFloat(row) * (Self.gridItemSize + Self.gridRowGap),
+                    width: Self.gridItemSize,
+                    height: Self.gridItemSize
+                ),
+                fontSize: 23
+            )
+        }
+    }
+
+    private func addChoice(emoji: String, frame: NSRect, fontSize: CGFloat) {
+        let item = EmojiChoiceView(
+            frame: frame,
+            emoji: emoji,
+            isSelected: emoji == selectedEmoji,
+            fontSize: fontSize
+        )
+        item.onSelect = { [weak self] emoji in
+            self?.onEmojiSelected?(emoji)
+        }
+        addSubview(item)
+        choiceViews.append(item)
+    }
+
+    private func updateSelection() {
+        for view in choiceViews {
+            view.isSelected = view.emoji == selectedEmoji
+        }
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let rect = bounds.insetBy(dx: 1, dy: 1)
+        let path = NSBezierPath(roundedRect: rect, xRadius: 14, yRadius: 14)
+        NSColor(calibratedWhite: 0.23, alpha: 0.98).setFill()
+        path.fill()
+
+        NSColor.white.withAlphaComponent(0.15).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+    }
+}
+
 private final class EmojiChoiceView: NSView {
     let emoji: String
     var onSelect: ((String) -> Void)?
     var isSelected: Bool {
         didSet { needsDisplay = true }
     }
+    private let fontSize: CGFloat
+    private var hoverTrackingArea: NSTrackingArea?
+    private var isHovering = false {
+        didSet { needsDisplay = true }
+    }
 
-    init(frame: NSRect, emoji: String, isSelected: Bool) {
+    init(frame: NSRect, emoji: String, isSelected: Bool, fontSize: CGFloat) {
         self.emoji = emoji
         self.isSelected = isSelected
+        self.fontSize = fontSize
         super.init(frame: frame)
         wantsLayer = true
     }
@@ -2867,22 +3077,52 @@ private final class EmojiChoiceView: NSView {
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = hoverTrackingArea {
+            removeTrackingArea(area)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+    }
+
     override func mouseDown(with event: NSEvent) {
         onSelect?(emoji)
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        if isSelected {
+        if isSelected || isHovering {
             let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
-            NSColor.white.withAlphaComponent(0.16).setFill()
+            NSColor.white.withAlphaComponent(isSelected ? 0.16 : 0.08).setFill()
             bg.fill()
-            accentGreen.setStroke()
-            bg.lineWidth = 1.4
-            bg.stroke()
+            if isSelected {
+                accentGreen.setStroke()
+                bg.lineWidth = 1.4
+                bg.stroke()
+            }
         }
 
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.systemFont(ofSize: 19)
+            .font: NSFont.systemFont(ofSize: fontSize)
         ]
         let size = (emoji as NSString).size(withAttributes: attributes)
         let point = NSPoint(
@@ -2893,22 +3133,78 @@ private final class EmojiChoiceView: NSView {
     }
 }
 
-private final class HorizontalWheelScrollView: NSScrollView {
-    override func scrollWheel(with event: NSEvent) {
-        guard let documentView else {
-            super.scrollWheel(with: event)
-            return
+private final class EmojiMoreButton: NSButton {
+    private var hoverTrackingArea: NSTrackingArea?
+    private var isHovering = false {
+        didSet { needsDisplay = true }
+    }
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        commonInit()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        commonInit()
+    }
+
+    private func commonInit() {
+        bezelStyle = .regularSquare
+        isBordered = false
+        setButtonType(.momentaryPushIn)
+        imagePosition = .imageOnly
+        toolTip = L10n.tipMoreEmoji
+        contentTintColor = NSColor.white.withAlphaComponent(0.78)
+        wantsLayer = true
+        (cell as? NSButtonCell)?.highlightsBy = []
+
+        if let image = NSImage(systemSymbolName: "ellipsis.circle", accessibilityDescription: L10n.tipMoreEmoji) {
+            self.image = image.withSymbolConfiguration(
+                NSImage.SymbolConfiguration(pointSize: 17, weight: .medium)
+            )
         }
+    }
 
-        let dominantDelta = abs(event.scrollingDeltaX) >= abs(event.scrollingDeltaY)
-            ? event.scrollingDeltaX
-            : -event.scrollingDeltaY
-        guard dominantDelta != 0 else { return }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
-        let maxX = max(0, documentView.bounds.width - contentView.bounds.width)
-        let nextX = min(max(contentView.bounds.origin.x + dominantDelta, 0), maxX)
-        contentView.scroll(to: NSPoint(x: nextX, y: 0))
-        reflectScrolledClipView(contentView)
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area = hoverTrackingArea {
+            removeTrackingArea(area)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(area)
+        hoverTrackingArea = area
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let active = isHovering || isHighlighted
+        contentTintColor = active ? .white : NSColor.white.withAlphaComponent(0.78)
+        if active {
+            let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
+            NSColor.white.withAlphaComponent(0.10).setFill()
+            bg.fill()
+        }
+        super.draw(dirtyRect)
     }
 }
 

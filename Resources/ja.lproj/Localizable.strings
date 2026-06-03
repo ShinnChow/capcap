@@ -144,6 +144,7 @@
 "tipNumbered" = "番号";
 "tipText" = "テキスト";
 "tipEmoji" = "絵文字";
+"tipMoreEmoji" = "その他の絵文字";
 "tipInsertImage" = "画像を挿入";
 "tipColorPicker" = "カラーピッカー";
 "tipPickedInkBottle" = "カラーピッカーでインク瓶に色を抽出";

@@ -144,6 +144,7 @@
 "tipNumbered" = "序号";
 "tipText" = "文字";
 "tipEmoji" = "表情";
+"tipMoreEmoji" = "更多表情";
 "tipInsertImage" = "插入图片";
 "tipColorPicker" = "取色器";
 "tipPickedInkBottle" = "使用取色器提取颜色到墨水瓶";

@@ -144,6 +144,7 @@
 "tipNumbered" = "Đánh số";
 "tipText" = "Văn bản";
 "tipEmoji" = "Emoji";
+"tipMoreEmoji" = "Thêm emoji";
 "tipInsertImage" = "Chèn ảnh";
 "tipColorPicker" = "Chọn màu";
 "tipPickedInkBottle" = "Dùng công cụ chọn màu để đổ màu vào lọ mực";

@@ -144,6 +144,7 @@
 "tipNumbered" = "번호";
 "tipText" = "텍스트";
 "tipEmoji" = "이모지";
+"tipMoreEmoji" = "이모지 더 보기";
 "tipInsertImage" = "이미지 삽입";
 "tipColorPicker" = "색상 추출기";
 "tipPickedInkBottle" = "색상 추출기로 잉크병에 색상 추출";
