@@ -42,6 +42,7 @@
 "clipboardImagePinNoImage" = "В буфере нет изображения для закрепления";
 "pinFromFinderHint" = "Изображение Finder закреплено, нажмите X, чтобы закрыть";
 "pinFromClipboardHint" = "Изображение из буфера закреплено, нажмите X, чтобы закрыть";
+"pinToolbarEdit" = "Редактировать закрепленное изображение";
 
 /* Image-edit shortcuts */
 "selectedImageEditShortcutHeader" = "Редактировать выбранное изображение";
@@ -109,6 +110,7 @@
 "scrollCaptureHint" = "Нажмите любую клавишу, чтобы остановить прокрутку";
 "finderEditExitHint" = "Редактирование из Finder. Нажмите X, чтобы выйти из редактирования";
 "clipboardEditExitHint" = "Редактирование из буфера обмена. Нажмите X, чтобы выйти из редактирования";
+"pinEditExitHint" = "Редактирование закрепленного изображения. Нажмите X, чтобы выйти";
 "fullScreenEditExitHint" = "Редактирование снимка всего экрана. Нажмите X, чтобы выйти";
 "fullScreenScreenshotFailed" = "Не удалось сделать снимок всего экрана";
 "selectedImageEditNoImage" = "В Finder не выбрано одно изображение";

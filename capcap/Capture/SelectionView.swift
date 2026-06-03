@@ -56,7 +56,9 @@ class SelectionView: NSView {
 
     // When false, the selection frame becomes a fixed viewport.
     var selectionInteractionEnabled = true
-    var selectionSizeLabelOverride: String?
+    var selectionSizeLabelOverride: String? {
+        didSet { needsDisplay = true }
+    }
 
     // MARK: - Pre-captured Snapshot
 

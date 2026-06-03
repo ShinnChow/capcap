@@ -42,6 +42,7 @@
 "clipboardImagePinNoImage" = "クリップボードにピン留めできる画像がありません";
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
+"pinToolbarEdit" = "ピン留め画像を編集";
 
 /* Image-edit shortcuts */
 "selectedImageEditShortcutHeader" = "選択画像を編集";
@@ -109,6 +110,7 @@
 "scrollCaptureHint" = "任意のキーでスクロールを終了";
 "finderEditExitHint" = "Finder から編集中。X キーで編集を終了";
 "clipboardEditExitHint" = "クリップボードから編集中。X キーで編集を終了";
+"pinEditExitHint" = "ピン留め画像を編集中。X キーで編集を終了";
 "fullScreenEditExitHint" = "フルスクリーンショットを編集中です。X キーで編集を終了";
 "fullScreenScreenshotFailed" = "フルスクリーンショットに失敗しました";
 "selectedImageEditNoImage" = "Finder で画像が 1 枚選択されていません";

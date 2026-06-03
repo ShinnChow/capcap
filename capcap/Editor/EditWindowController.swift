@@ -1206,11 +1206,8 @@ class EditWindowController {
     /// Skips crop mode and drops the image straight into the editor — only
     /// used when there is no host view to host the crop overlay.
     private func finishCropFallback(with image: NSImage) {
-        canvasView?.loadPreviewImage(image)
-        beautifyContainerView?.canvasSizeDidChange()
-        canvasScrollView?.scrollToTop()
+        loadScrollCaptureImageIntoEditor(image)
         toolbars.forEach { $0.isHidden = false }
-        updateEditorInteractionState()
         bringEditorToFront()
     }
 
@@ -1222,11 +1219,22 @@ class EditWindowController {
 
         let cropped = cropView.croppedImage()
         exitCropMode()
-        canvasView?.loadPreviewImage(cropped)
+        loadScrollCaptureImageIntoEditor(cropped)
+        ToastWindow.show(message: L10n.mergedLongScreenshot, on: screen)
+    }
+
+    private func loadScrollCaptureImageIntoEditor(_ image: NSImage) {
+        canvasView?.loadPreviewImage(image)
+        hostSelectionView?.selectionSizeLabelOverride = Self.sizeLabelText(for: image.size)
         beautifyContainerView?.canvasSizeDidChange()
+        updateCanvasScrollAvailability()
         canvasScrollView?.scrollToTop()
         updateEditorInteractionState()
-        ToastWindow.show(message: L10n.mergedLongScreenshot, on: screen)
+    }
+
+    private static func sizeLabelText(for size: NSSize) -> String? {
+        guard size.width > 0, size.height > 0 else { return nil }
+        return "\(Int(size.width.rounded())) x \(Int(size.height.rounded()))"
     }
 
     private func exitCropMode() {

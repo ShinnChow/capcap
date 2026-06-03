@@ -120,6 +120,7 @@ enum L10n {
     static var clipboardImagePinNoImage: String { s("clipboardImagePinNoImage") }
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
+    static var pinToolbarEdit: String { s("pinToolbarEdit") }
 
     // Image-edit shortcuts
     static var selectedImageEditShortcutHeader: String { s("selectedImageEditShortcutHeader") }
@@ -191,6 +192,7 @@ enum L10n {
     static var scrollCaptureHint: String { s("scrollCaptureHint") }
     static var finderEditExitHint: String { s("finderEditExitHint") }
     static var clipboardEditExitHint: String { s("clipboardEditExitHint") }
+    static var pinEditExitHint: String { s("pinEditExitHint") }
     static var fullScreenEditExitHint: String { s("fullScreenEditExitHint") }
     static var fullScreenScreenshotFailed: String { s("fullScreenScreenshotFailed") }
     static var selectedImageEditNoImage: String { s("selectedImageEditNoImage") }

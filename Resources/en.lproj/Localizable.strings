@@ -42,6 +42,7 @@
 "clipboardImagePinNoImage" = "No image on the clipboard";
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
+"pinToolbarEdit" = "Edit pinned image";
 
 /* Image-edit shortcuts */
 "selectedImageEditShortcutHeader" = "Edit Selected Image";
@@ -109,6 +110,7 @@
 "scrollCaptureHint" = "Press any key to finish scrolling";
 "finderEditExitHint" = "Editing from Finder. Press X to exit editing";
 "clipboardEditExitHint" = "Editing from clipboard. Press X to exit editing";
+"pinEditExitHint" = "Editing pinned image. Press X to exit editing";
 "fullScreenEditExitHint" = "Editing full-screen screenshot. Press X to exit editing";
 "fullScreenScreenshotFailed" = "Full-screen screenshot failed";
 "selectedImageEditNoImage" = "No single Finder image selected";

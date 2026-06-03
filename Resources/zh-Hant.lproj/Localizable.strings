@@ -42,6 +42,7 @@
 "clipboardImagePinNoImage" = "剪貼簿中沒有圖片";
 "pinFromFinderHint" = "已釘選 Finder 中的圖片，按 X 關閉";
 "pinFromClipboardHint" = "已釘選剪貼簿圖片，按 X 關閉";
+"pinToolbarEdit" = "編輯釘圖";
 
 /* Image-edit shortcuts */
 "selectedImageEditShortcutHeader" = "編輯所選圖片";
@@ -109,6 +110,7 @@
 "scrollCaptureHint" = "按任意鍵結束捲動";
 "finderEditExitHint" = "正在編輯 Finder 圖片。按 X 結束編輯";
 "clipboardEditExitHint" = "正在編輯剪貼簿圖片。按 X 結束編輯";
+"pinEditExitHint" = "正在編輯釘圖。按 X 結束編輯";
 "fullScreenEditExitHint" = "正在編輯全螢幕截圖，按 X 結束編輯";
 "fullScreenScreenshotFailed" = "截全螢幕失敗";
 "selectedImageEditNoImage" = "Finder 中沒有選取單張圖片";

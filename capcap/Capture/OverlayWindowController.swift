@@ -12,6 +12,7 @@ class OverlayWindowController {
     enum PresetSource {
         case finder
         case clipboard
+        case pin
         case merge
         case fullScreen
     }
@@ -273,6 +274,8 @@ class OverlayWindowController {
         switch presetSource {
         case .clipboard:
             hint = L10n.clipboardEditExitHint
+        case .pin:
+            hint = L10n.pinEditExitHint
         case .fullScreen:
             hint = L10n.fullScreenEditExitHint
         case .merge:

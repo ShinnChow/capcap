@@ -304,6 +304,9 @@ final class PinContentView: NSView {
         navigator.alphaValue = 0
         navigator.isHidden = true
 
+        toolbar.onEdit = { [weak self] in
+            self?.editPinnedImage()
+        }
         toolbar.onMoveMouseDown = { [weak self] event in
             self?.pinWindow?.performDrag(with: event)
         }
@@ -327,6 +330,20 @@ final class PinContentView: NSView {
         }
         addSubview(navigator)
         addSubview(toolbar)
+    }
+
+    private func editPinnedImage() {
+        guard let image,
+              let pinWindow,
+              let appDelegate = NSApp.delegate as? AppDelegate
+        else {
+            return
+        }
+
+        let imageForEditing = image.copy() as? NSImage ?? image
+        appDelegate.handlePinnedImageEditRequest(imageForEditing) {
+            pinWindow.dismiss()
+        }
     }
 
     override func layout() {
@@ -1193,10 +1210,11 @@ private final class PinNavigatorView: NSView {
 // MARK: - Pin Toolbar
 
 private final class PinToolbarView: NSView {
-    static let preferredWidth: CGFloat = 186
-    static let minimumWidth: CGFloat = 142
+    static let preferredWidth: CGFloat = 226
+    static let minimumWidth: CGFloat = 188
     static let preferredHeight: CGFloat = 34
 
+    var onEdit: (() -> Void)?
     var onMoveMouseDown: ((NSEvent) -> Void)?
     var onZoomOut: (() -> Void)?
     var onZoomIn: (() -> Void)?
@@ -1208,6 +1226,7 @@ private final class PinToolbarView: NSView {
         }
     }
 
+    private let editButton = PinToolbarIconButton(symbolName: "pencil", accessibilityLabel: L10n.pinToolbarEdit)
     private let moveButton = PinToolbarMoveButton(symbolName: "arrow.up.and.down.and.arrow.left.and.right",
                                                   accessibilityLabel: "Move pinned image")
     private let zoomOutButton = PinToolbarIconButton(symbolName: "minus", accessibilityLabel: "Zoom out")
@@ -1229,6 +1248,9 @@ private final class PinToolbarView: NSView {
         wantsLayer = true
         layer?.masksToBounds = false
 
+        editButton.toolTip = L10n.pinToolbarEdit
+        editButton.target = self
+        editButton.action = #selector(editTapped)
         moveButton.onMouseDown = { [weak self] event in
             self?.onMoveMouseDown?(event)
         }
@@ -1249,6 +1271,7 @@ private final class PinToolbarView: NSView {
         zoomLabel.isSelectable = false
 
         addSubview(moveButton)
+        addSubview(editButton)
         addSubview(zoomOutButton)
         addSubview(zoomLabel)
         addSubview(zoomInButton)
@@ -1262,6 +1285,7 @@ private final class PinToolbarView: NSView {
         let buttonY = (bounds.height - buttonSide) / 2
         let horizontalInset: CGFloat = 4
         let gap: CGFloat = 8
+        let buttonGap: CGFloat = 4
 
         closeButton.frame = NSRect(x: horizontalInset, y: buttonY, width: buttonSide, height: buttonSide)
         moveButton.frame = NSRect(
@@ -1270,9 +1294,15 @@ private final class PinToolbarView: NSView {
             width: buttonSide,
             height: buttonSide
         )
+        editButton.frame = NSRect(
+            x: moveButton.frame.minX - buttonGap - buttonSide,
+            y: buttonY,
+            width: buttonSide,
+            height: buttonSide
+        )
 
         let centerX = closeButton.frame.maxX + gap
-        let centerWidth = max(72, moveButton.frame.minX - gap - centerX)
+        let centerWidth = max(76, editButton.frame.minX - gap - centerX)
         let stepWidth = min(24, max(20, centerWidth * 0.22))
         let labelWidth = max(36, centerWidth - stepWidth * 2)
 
@@ -1312,6 +1342,10 @@ private final class PinToolbarView: NSView {
     override func mouseDragged(with event: NSEvent) {}
 
     override func mouseUp(with event: NSEvent) {}
+
+    @objc private func editTapped() {
+        onEdit?()
+    }
 
     @objc private func zoomOutTapped() {
         onZoomOut?()

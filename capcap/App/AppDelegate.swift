@@ -360,6 +360,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         applyHotkeyState()
     }
 
+    @discardableResult
+    func handlePinnedImageEditRequest(_ image: NSImage, beforePresent: () -> Void) -> Bool {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return false }
+        beforePresent()
+
+        guard let controller = ImageEditLauncher.launch(
+            generatedImage: image,
+            source: .pin,
+            onComplete: { [weak self] finalImage in
+                self?.handleEditCompletion(finalImage)
+            }
+        ) else {
+            return false
+        }
+
+        overlayController = controller
+        applyHotkeyState()
+        return true
+    }
+
     func handleTextRecognitionTrigger() {
         guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         startCapture(postCaptureAction: .textRecognition)
