@@ -412,6 +412,26 @@ enum L10n {
     static var uploadCurrentDefault: String { s("uploadCurrentDefault") }
     static var uploadMarkdownToggleTitle: String { s("uploadMarkdownToggleTitle") }
     static var uploadMarkdownToggleSubtitle: String { s("uploadMarkdownToggleSubtitle") }
+    static var filenameRuleTitle: String { s("filenameRuleTitle") }
+    static var filenameRuleSubtitle: String { s("filenameRuleSubtitle") }
+    static var filenameRulePresetLabel: String { s("filenameRulePresetLabel") }
+    static var filenameRulePresetCustom: String { s("filenameRulePresetCustom") }
+    static var filenameRulePresetShort: String { s("filenameRulePresetShort") }
+    static var filenameRulePresetCompact: String { s("filenameRulePresetCompact") }
+    static var filenameRulePresetUnique: String { s("filenameRulePresetUnique") }
+    static var filenameRulePresetCounter: String { s("filenameRulePresetCounter") }
+    static var filenameRulePresetRestore: String { s("filenameRulePresetRestore") }
+    static var filenameRuleImageLabel: String { s("filenameRuleImageLabel") }
+    static var filenameRuleRecordingLabel: String { s("filenameRuleRecordingLabel") }
+    static var filenameRuleVariablesLabel: String { s("filenameRuleVariablesLabel") }
+    static var filenameRuleVariableDate: String { s("filenameRuleVariableDate") }
+    static var filenameRuleVariableTime: String { s("filenameRuleVariableTime") }
+    static var filenameRuleVariableDaily: String { s("filenameRuleVariableDaily") }
+    static var filenameRuleVariableRandom: String { s("filenameRuleVariableRandom") }
+    static var filenameRuleVariableSize: String { s("filenameRuleVariableSize") }
+    static func filenameRulePreview(_ value: String) -> String {
+        String(format: s("filenameRulePreview"), value)
+    }
 
     // Upload — provider field labels
     static var uploadFieldBucket: String { s("uploadFieldBucket") }
@@ -893,6 +913,66 @@ struct Defaults {
         set {
             defaults.set(newValue.rawValue, forKey: "recordingSaveFormat")
         }
+    }
+
+    static let defaultImageFilenameTemplate = "capcap-{date}-{time}"
+    static let defaultRecordingFilenameTemplate = "capcap-rec-{date}-{time}"
+
+    static var imageFilenameTemplate: String {
+        get {
+            normalizedFilenameTemplate(
+                defaults.string(forKey: "imageFilenameTemplate"),
+                fallback: defaultImageFilenameTemplate
+            )
+        }
+        set {
+            defaults.set(
+                normalizedFilenameTemplate(newValue, fallback: defaultImageFilenameTemplate),
+                forKey: "imageFilenameTemplate"
+            )
+        }
+    }
+
+    static var recordingFilenameTemplate: String {
+        get {
+            normalizedFilenameTemplate(
+                defaults.string(forKey: "recordingFilenameTemplate"),
+                fallback: defaultRecordingFilenameTemplate
+            )
+        }
+        set {
+            defaults.set(
+                normalizedFilenameTemplate(newValue, fallback: defaultRecordingFilenameTemplate),
+                forKey: "recordingFilenameTemplate"
+            )
+        }
+    }
+
+    private static func normalizedFilenameTemplate(_ value: String?, fallback: String) -> String {
+        let trimmed = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    static func filenameSequenceValue(scope: String, dayStamp: String?, consume: Bool) -> Int {
+        if let dayStamp {
+            let counterKey = "filenameDailyCounter.\(scope)"
+            let dayKey = "filenameDailyCounterDay.\(scope)"
+            let currentDay = defaults.string(forKey: dayKey)
+            let currentValue = currentDay == dayStamp ? defaults.integer(forKey: counterKey) : 0
+            let nextValue = currentValue + 1
+            if consume {
+                defaults.set(dayStamp, forKey: dayKey)
+                defaults.set(nextValue, forKey: counterKey)
+            }
+            return nextValue
+        }
+
+        let key = "filenameCounter.\(scope)"
+        let nextValue = defaults.integer(forKey: key) + 1
+        if consume {
+            defaults.set(nextValue, forKey: key)
+        }
+        return nextValue
     }
 
     // Custom copy-to-clipboard hotkey used inside the editor overlay to

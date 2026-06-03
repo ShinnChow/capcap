@@ -31,7 +31,7 @@ final class UploadManager {
         }
 
         inFlight = true
-        let fileName = Self.makeFileName()
+        let fileName = FilenameTemplate.imageFileName(for: image)
 
         let window = UploadProgressWindow(provider: kind.displayName)
         window.show(on: screen)
@@ -73,12 +73,4 @@ final class UploadManager {
         )
     }
 
-    private static func makeFileName() -> String {
-        let fmt = DateFormatter()
-        fmt.locale = Locale(identifier: "en_US_POSIX")
-        fmt.dateFormat = "yyyyMMdd-HHmmss"
-        let stamp = fmt.string(from: Date())
-        let suffix = String(UUID().uuidString.prefix(6)).lowercased()
-        return "capcap-\(stamp)-\(suffix).png"
-    }
 }

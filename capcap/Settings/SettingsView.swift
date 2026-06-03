@@ -229,6 +229,7 @@ class SettingsView: NSView {
     private var paneContainer: NSView!
     private var paneViews: [SettingsTab: NSView] = [:]
     private var uploadPane: UploadSettingsPane?
+    private var filenameRuleCard: FilenameRuleCard?
 
     private var refreshTimer: Timer?
     private var gradientLayer: CAGradientLayer?
@@ -575,6 +576,11 @@ class SettingsView: NSView {
         buildWindowShadowCard(into: stack)
 
         buildHistoryAndCountdownCards(into: stack)
+
+        let filenameCard = FilenameRuleCard()
+        filenameRuleCard = filenameCard
+        stack.addArrangedSubview(filenameCard)
+        filenameCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         return wrapPane(stack)
     }
@@ -3380,6 +3386,7 @@ class SettingsView: NSView {
         demoModeTitleLabel?.stringValue = L10n.demoMode
         demoModeSubtitleLabel?.stringValue = L10n.demoModeHint
         langTitleLabel?.stringValue = L10n.languageHeader
+        filenameRuleCard?.refreshLocalization()
         accessibilityNameLabel?.stringValue = L10n.accessibilityPermission
         accessibilityDescLabel?.stringValue = L10n.accessibilityDescription
         screenRecordingNameLabel?.stringValue = L10n.screenRecordingPermission

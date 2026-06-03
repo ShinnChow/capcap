@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "目前預設";
 "uploadMarkdownToggleTitle" = "複製為 Markdown 連結";
 "uploadMarkdownToggleSubtitle" = "開啟後，上傳完成會複製 Markdown 圖片標籤（![](url)）；關閉則複製純網址。在歷史記錄中，按住 ⌘ 點選已上傳的圖片可複製 Markdown 連結，直接點選則複製純網址。";
+"filenameRuleTitle" = "檔名規則";
+"filenameRuleSubtitle" = "控制圖片上傳、圖片儲存預設檔名和錄製儲存預設檔名。副檔名會自動加入。";
+"filenameRulePresetLabel" = "預設：";
+"filenameRulePresetCustom" = "自訂";
+"filenameRulePresetShort" = "簡短";
+"filenameRulePresetCompact" = "超短連結";
+"filenameRulePresetUnique" = "避免重名";
+"filenameRulePresetCounter" = "每日計數";
+"filenameRulePresetRestore" = "還原預設";
+"filenameRuleImageLabel" = "圖片：";
+"filenameRuleRecordingLabel" = "錄製：";
+"filenameRuleVariablesLabel" = "變數：";
+"filenameRuleVariableDate" = "日期";
+"filenameRuleVariableTime" = "時間";
+"filenameRuleVariableDaily" = "每日編號";
+"filenameRuleVariableRandom" = "隨機碼";
+"filenameRuleVariableSize" = "尺寸";
+"filenameRulePreview" = "預覽：%@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "Bucket";

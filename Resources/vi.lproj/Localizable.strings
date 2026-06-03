@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "Mặc định hiện tại";
 "uploadMarkdownToggleTitle" = "Sao chép dưới dạng liên kết Markdown";
 "uploadMarkdownToggleSubtitle" = "Khi bật, sau khi tải lên sẽ sao chép thẻ ảnh Markdown (![](url)); khi tắt, sao chép URL thuần. Trong Lịch sử, ⌘-nhấp ảnh đã tải lên để sao chép liên kết Markdown, hoặc nhấp trực tiếp để sao chép URL thuần.";
+"filenameRuleTitle" = "Quy tắc tên tệp";
+"filenameRuleSubtitle" = "Điều khiển tên khi tải ảnh lên, tên mặc định khi lưu ảnh và khi lưu bản ghi. Phần mở rộng được tự động thêm.";
+"filenameRulePresetLabel" = "Mẫu:";
+"filenameRulePresetCustom" = "Tùy chỉnh";
+"filenameRulePresetShort" = "Ngắn";
+"filenameRulePresetCompact" = "Liên kết ngắn";
+"filenameRulePresetUnique" = "Tránh trùng";
+"filenameRulePresetCounter" = "Đếm theo ngày";
+"filenameRulePresetRestore" = "Khôi phục";
+"filenameRuleImageLabel" = "Ảnh:";
+"filenameRuleRecordingLabel" = "Bản ghi:";
+"filenameRuleVariablesLabel" = "Biến:";
+"filenameRuleVariableDate" = "Ngày";
+"filenameRuleVariableTime" = "Giờ";
+"filenameRuleVariableDaily" = "Số ngày";
+"filenameRuleVariableRandom" = "Ngẫu nhiên";
+"filenameRuleVariableSize" = "Kích thước";
+"filenameRulePreview" = "Xem trước: %@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "Bucket";

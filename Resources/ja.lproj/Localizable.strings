@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "現在のデフォルト";
 "uploadMarkdownToggleTitle" = "Markdown リンクとしてコピー";
 "uploadMarkdownToggleSubtitle" = "オンにすると、アップロード後に Markdown 画像タグ（![](url)）をコピーします。オフの場合は通常の URL をコピーします。履歴では、⌘ を押しながらアップロード済み画像をクリックすると Markdown リンクを、そのままクリックすると通常の URL をコピーします。";
+"filenameRuleTitle" = "ファイル名ルール";
+"filenameRuleSubtitle" = "画像アップロード、画像保存の既定名、録画保存の既定名を制御します。拡張子は自動で追加されます。";
+"filenameRulePresetLabel" = "プリセット:";
+"filenameRulePresetCustom" = "カスタム";
+"filenameRulePresetShort" = "短め";
+"filenameRulePresetCompact" = "短いリンク";
+"filenameRulePresetUnique" = "重複を避ける";
+"filenameRulePresetCounter" = "日次カウンター";
+"filenameRulePresetRestore" = "既定に戻す";
+"filenameRuleImageLabel" = "画像:";
+"filenameRuleRecordingLabel" = "録画:";
+"filenameRuleVariablesLabel" = "変数:";
+"filenameRuleVariableDate" = "日付";
+"filenameRuleVariableTime" = "時刻";
+"filenameRuleVariableDaily" = "日次番号";
+"filenameRuleVariableRandom" = "ランダム";
+"filenameRuleVariableSize" = "サイズ";
+"filenameRulePreview" = "プレビュー: %@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "バケット";

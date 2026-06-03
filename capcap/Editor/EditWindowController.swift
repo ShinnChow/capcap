@@ -1375,7 +1375,7 @@ class EditWindowController {
 
         let savePanel = NSSavePanel()
         savePanel.allowedContentTypes = [.png]
-        savePanel.nameFieldStringValue = defaultImageSaveFilename()
+        savePanel.nameFieldStringValue = FilenameTemplate.imageFileName(for: finalImage)
 
         if savePanel.runModal() == .OK, let url = savePanel.url {
             if let pngData = finalImage.pngDataPreservingBacking() {
@@ -1383,13 +1383,6 @@ class EditWindowController {
             }
         }
         requestFocusReturn()
-    }
-
-    private func defaultImageSaveFilename(date: Date = Date()) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyMMdd-HHmmss"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return "capcap-\(formatter.string(from: date)).png"
     }
 
     private func upload() {
