@@ -93,6 +93,7 @@
 "historyEmpty" = "No history yet";
 "historyClear" = "Clear History";
 "historyShowInFinder" = "Show in Finder";
+"historyCloudMarkdownTip" = "Hold ⌘ and click the preview image to copy a Markdown image link.";
 
 /* Cursor chip */
 "dragToScreenshot" = "Click window or drag to screenshot";

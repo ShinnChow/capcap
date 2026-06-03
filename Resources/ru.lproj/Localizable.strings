@@ -93,6 +93,7 @@
 "historyEmpty" = "История пуста";
 "historyClear" = "Очистить историю";
 "historyShowInFinder" = "Показать в Finder";
+"historyCloudMarkdownTip" = "Удерживайте ⌘ и щёлкните миниатюру, чтобы скопировать ссылку на изображение в формате Markdown.";
 
 /* Cursor chip */
 "dragToScreenshot" = "Нажмите на окно или перетащите для снимка";

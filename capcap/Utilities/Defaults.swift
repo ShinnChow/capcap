@@ -175,6 +175,7 @@ enum L10n {
     static var historyEmpty: String { s("historyEmpty") }
     static var historyClear: String { s("historyClear") }
     static var historyShowInFinder: String { s("historyShowInFinder") }
+    static var historyCloudMarkdownTip: String { s("historyCloudMarkdownTip") }
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }

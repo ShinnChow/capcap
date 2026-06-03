@@ -93,6 +93,7 @@
 "historyEmpty" = "履歴がありません";
 "historyClear" = "履歴を消去";
 "historyShowInFinder" = "Finder に表示";
+"historyCloudMarkdownTip" = "⌘ を押しながらプレビュー画像をクリックすると、Markdown 形式の画像リンクをコピーできます。";
 
 /* Cursor chip */
 "dragToScreenshot" = "ウィンドウをクリックまたはドラッグして撮影";

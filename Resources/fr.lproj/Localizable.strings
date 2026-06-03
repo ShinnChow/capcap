@@ -93,6 +93,7 @@
 "historyEmpty" = "Aucun historique";
 "historyClear" = "Effacer l'historique";
 "historyShowInFinder" = "Afficher dans le Finder";
+"historyCloudMarkdownTip" = "Maintenez ⌘ et cliquez sur l'aperçu pour copier un lien d'image Markdown.";
 
 /* Cursor chip */
 "dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";

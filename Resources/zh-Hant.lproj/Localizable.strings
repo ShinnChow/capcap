@@ -93,6 +93,7 @@
 "historyEmpty" = "尚無歷史記錄";
 "historyClear" = "清除歷史記錄";
 "historyShowInFinder" = "在 Finder 中顯示";
+"historyCloudMarkdownTip" = "按住 ⌘ 並點選預覽圖，可直接複製 Markdown 格式圖片連結。";
 
 /* Cursor chip */
 "dragToScreenshot" = "點選視窗或拖曳以截圖";
