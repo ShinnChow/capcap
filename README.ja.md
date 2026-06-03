@@ -81,6 +81,22 @@ brew tap realskyrin/tap
 brew install --cask realskyrin/tap/capcap
 ```
 
+## macOS の検証警告
+
+macOS に `Appleは "capcap" にマルウェアが含まれていないことを検証できません` のような警告が表示される場合は、信頼できるアプリバンドルから quarantine フラグを削除してから、もう一度開いてください。
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+`/Applications` 内のアプリではなくローカルでビルドしたコピーを実行している場合は、実際の場所にパスを置き換えてください。例：
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+このコマンドは、このリポジトリからダウンロードしたビルドや自分でビルドしたものなど、信頼できるビルドに対してのみ実行してください。
+
 ## ソースからビルド
 
 ```bash
@@ -115,6 +131,10 @@ bash scripts/rebuild-and-open.sh
 ## 設定
 
 設定では、言語、メニューバーアイコン、ログイン時起動、デモモード、ショートカット、履歴サイズ、画像ホスト、権限ショートカットを変更できます。UI 言語は简体中文、繁體中文、English、日本語、한국어、Français、Русский、Tiếng Việt に対応しています。
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## ライセンス
 

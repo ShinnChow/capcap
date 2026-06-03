@@ -81,6 +81,22 @@ brew tap realskyrin/tap
 brew install --cask realskyrin/tap/capcap
 ```
 
+## Avertissement de vérification macOS
+
+Si macOS affiche un avertissement du type `Apple ne peut pas vérifier que "capcap" est exempt de logiciels malveillants`, supprimez l'attribut quarantine du bundle d'app que vous jugez fiable, puis ouvrez-le à nouveau :
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+Si vous exécutez une version compilée localement au lieu de l'app dans `/Applications`, remplacez le chemin par son emplacement réel, par exemple :
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+N'exécutez cette commande que pour des builds en lesquels vous avez confiance, par exemple une version téléchargée depuis ce dépôt ou compilée vous-même.
+
 ## Compilation depuis les sources
 
 ```bash
@@ -115,6 +131,10 @@ bash scripts/rebuild-and-open.sh
 ## Réglages
 
 Les réglages couvrent la langue, l'icône de barre des menus, le lancement à l'ouverture de session, le mode démo, les raccourcis, la taille de l'historique, l'hébergeur d'images et les accès rapides aux permissions. L'interface prend en charge 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский et Tiếng Việt.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## Licence
 

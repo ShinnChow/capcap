@@ -126,6 +126,22 @@ brew install --cask realskyrin/tap/capcap
 
 Tap 維護流程見 [homebrew-tap](https://github.com/realskyrin/homebrew-tap)。
 
+## macOS 驗證攔截
+
+如果 macOS 彈出類似 `Apple 無法驗證「capcap」是否包含惡意軟體` 的提示，可以對你信任的應用程式套件移除 quarantine 標記後再重新開啟：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+如果你執行的是本機建置版本，而不是 `/Applications` 裡的副本，把路徑替換成實際位置即可，例如：
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+只應對你信任的建置版本執行這個指令，例如本存放庫下載的版本或你本機自行建置的版本。
+
 ## 從原始碼建置
 
 ```bash
@@ -196,22 +212,6 @@ scripts/package-dmg.sh
 
 選單列 **歷程** 子選單會把最近截圖和取色記錄儲存在 `~/Library/Application Support/capcap/History`。點擊圖片項目會重新複製該截圖，點擊顏色項目會複製對應色值，也可以從子選單清除全部歷程。
 
-## macOS 驗證攔截
-
-如果 macOS 彈出類似 `Apple 無法驗證「capcap」是否包含惡意軟體` 的提示，可以對你信任的應用程式套件移除 quarantine 標記後再重新開啟：
-
-```bash
-xattr -dr com.apple.quarantine /Applications/capcap.app
-```
-
-如果你執行的是本機建置版本，而不是 `/Applications` 裡的副本，把路徑替換成實際位置即可，例如：
-
-```bash
-xattr -dr com.apple.quarantine ./build/capcap.app
-```
-
-只應對你信任的建置版本執行這個指令，例如本存放庫下載的版本或你本機自行建置的版本。
-
 ## 專案結構
 
 - `capcap/App/`：應用程式進入點、AppDelegate 和套件中繼資料
@@ -241,6 +241,10 @@ bash scripts/rebuild-and-open.sh
 ## 第三方授權條款
 
 - [PermissionFlow](https://github.com/jaywcjlove/PermissionFlow) 使用 MIT License。詳見 [ThirdParty/PermissionFlow/LICENSE](ThirdParty/PermissionFlow/LICENSE)。
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## License
 

@@ -81,6 +81,22 @@ brew tap realskyrin/tap
 brew install --cask realskyrin/tap/capcap
 ```
 
+## macOS 확인 경고
+
+macOS에서 `Apple에서 "capcap"에 악성 소프트웨어가 있는지 확인할 수 없음` 같은 경고가 표시되면 신뢰하는 앱 번들에서 quarantine 플래그를 제거한 뒤 다시 여세요.
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+`/Applications`의 앱이 아니라 로컬에서 빌드한 사본을 실행 중이라면 실제 앱 위치로 경로를 바꾸세요. 예:
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+이 명령은 이 저장소에서 다운로드한 빌드나 직접 빌드한 사본처럼 신뢰할 수 있는 빌드에만 실행하세요.
+
 ## 소스에서 빌드
 
 ```bash
@@ -115,6 +131,10 @@ bash scripts/rebuild-and-open.sh
 ## 설정
 
 설정에서 언어, 메뉴 막대 아이콘, 로그인 시 실행, 데모 모드, 단축키, 기록 크기, 이미지 호스트, 권한 바로가기를 조정할 수 있습니다. UI 언어는 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский, Tiếng Việt을 지원합니다.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## 라이선스
 

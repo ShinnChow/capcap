@@ -81,6 +81,22 @@ brew tap realskyrin/tap
 brew install --cask realskyrin/tap/capcap
 ```
 
+## Cảnh báo xác minh macOS
+
+Nếu macOS hiện cảnh báo như `Apple không thể xác minh "capcap" không chứa phần mềm độc hại`, hãy gỡ cờ quarantine khỏi gói ứng dụng mà bạn tin cậy rồi mở lại:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+Nếu bạn đang chạy bản tự biên dịch thay vì ứng dụng trong `/Applications`, hãy thay đường dẫn bằng vị trí thực tế, ví dụ:
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+Chỉ chạy lệnh này với các bản build bạn tin cậy, chẳng hạn bản tải từ kho này hoặc bản bạn tự biên dịch.
+
 ## Biên dịch từ mã nguồn
 
 ```bash
@@ -115,6 +131,10 @@ bash scripts/rebuild-and-open.sh
 ## Cài đặt
 
 Bạn có thể đổi ngôn ngữ, biểu tượng thanh menu, khởi chạy khi đăng nhập, chế độ demo, phím tắt, kích thước lịch sử, dịch vụ tải ảnh và lối tắt quyền hệ thống. Giao diện hỗ trợ 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский và Tiếng Việt.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## Giấy phép
 

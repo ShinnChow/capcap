@@ -126,6 +126,22 @@ brew install --cask realskyrin/tap/capcap
 
 Tap 维护流程见 [homebrew-tap](https://github.com/realskyrin/homebrew-tap)。
 
+## macOS 校验拦截
+
+如果 macOS 弹出类似 `Apple 无法验证 “capcap” 是否包含恶意软件` 的提示，可以对你信任的应用包移除 quarantine 标记后再重新打开：
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+如果你运行的是本地构建版本，而不是 `/Applications` 里的副本，把路径替换成实际位置即可，例如：
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+只应对你信任的构建执行这个命令，例如本仓库下载的版本或你本地自行构建的版本。
+
 ## 从源码构建
 
 ```bash
@@ -196,22 +212,6 @@ scripts/package-dmg.sh
 
 菜单栏 **历史** 子菜单会把最近截图和取色记录保存在 `~/Library/Application Support/capcap/History`。点击图片条目会重新复制该截图，点击颜色条目会复制对应色值，也可以从子菜单清空全部历史。
 
-## macOS 校验拦截
-
-如果 macOS 弹出类似 `Apple 无法验证 “capcap” 是否包含恶意软件` 的提示，可以对你信任的应用包移除 quarantine 标记后再重新打开：
-
-```bash
-xattr -dr com.apple.quarantine /Applications/capcap.app
-```
-
-如果你运行的是本地构建版本，而不是 `/Applications` 里的副本，把路径替换成实际位置即可，例如：
-
-```bash
-xattr -dr com.apple.quarantine ./build/capcap.app
-```
-
-只应对你信任的构建执行这个命令，例如本仓库下载的版本或你本地自行构建的版本。
-
 ## 项目结构
 
 - `capcap/App/`：应用入口、AppDelegate 和 bundle 元数据
@@ -241,6 +241,10 @@ bash scripts/rebuild-and-open.sh
 ## 第三方许可证
 
 - [PermissionFlow](https://github.com/jaywcjlove/PermissionFlow) 使用 MIT License。详见 [ThirdParty/PermissionFlow/LICENSE](ThirdParty/PermissionFlow/LICENSE)。
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## License
 

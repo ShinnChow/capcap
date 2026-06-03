@@ -126,6 +126,22 @@ brew install --cask realskyrin/tap/capcap
 
 See the [homebrew-tap README](https://github.com/realskyrin/homebrew-tap) for tap maintenance.
 
+## macOS Verification Warning
+
+If macOS shows a warning like `Apple cannot verify "capcap" is free of malware`, remove the quarantine flag from the app bundle you trust, then open it again:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+If you are running a locally built copy instead of the app in `/Applications`, replace the path with your actual app location, for example:
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+Only do this for builds downloaded from this repository or ones you built yourself.
+
 ## Build from Source
 
 ```bash
@@ -196,22 +212,6 @@ Open Settings from the menu bar to configure:
 
 The menu bar **History** submenu stores recent screenshots and picked colors in `~/Library/Application Support/capcap/History`. Click an image entry to copy it back to the clipboard, click a color entry to copy its hex value, or clear the full history from the submenu.
 
-## macOS Verification Warning
-
-If macOS shows a warning like `Apple cannot verify "capcap" is free of malware`, remove the quarantine flag from the app bundle you trust, then open it again:
-
-```bash
-xattr -dr com.apple.quarantine /Applications/capcap.app
-```
-
-If you are running a locally built copy instead of the app in `/Applications`, replace the path with your actual app location, for example:
-
-```bash
-xattr -dr com.apple.quarantine ./build/capcap.app
-```
-
-Only do this for builds downloaded from this repository or ones you built yourself.
-
 ## Project Structure
 
 - `capcap/App/` — app entry point, delegate, and bundle metadata
@@ -241,6 +241,10 @@ Thanks to the [Linux.do](https://linux.do) community for testing, feedback, and 
 ## Third-Party Licenses
 
 - [PermissionFlow](https://github.com/jaywcjlove/PermissionFlow) is licensed under the MIT License. See [ThirdParty/PermissionFlow/LICENSE](ThirdParty/PermissionFlow/LICENSE).
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## License
 

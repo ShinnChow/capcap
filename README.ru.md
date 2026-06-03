@@ -81,6 +81,22 @@ brew tap realskyrin/tap
 brew install --cask realskyrin/tap/capcap
 ```
 
+## Предупреждение проверки macOS
+
+Если macOS показывает предупреждение вроде `Apple не может проверить, что "capcap" не содержит вредоносного ПО`, удалите флаг quarantine у доверенного app bundle и откройте его снова:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/capcap.app
+```
+
+Если вы запускаете локально собранную копию, а не приложение из `/Applications`, замените путь на фактическое расположение, например:
+
+```bash
+xattr -dr com.apple.quarantine ./build/capcap.app
+```
+
+Выполняйте эту команду только для сборок, которым доверяете: загруженных из этого репозитория или собранных вами локально.
+
 ## Сборка из исходников
 
 ```bash
@@ -115,6 +131,10 @@ bash scripts/rebuild-and-open.sh
 ## Настройки
 
 В настройках можно выбрать язык, значок строки меню, запуск при входе, демо-режим, шорткаты, размер истории, хостинг изображений и быстрые переходы к системным разрешениям. Интерфейс поддерживает 简体中文, 繁體中文, English, 日本語, 한국어, Français, Русский и Tiếng Việt.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=realskyrin/capcap&type=Date)](https://star-history.com/#realskyrin/capcap&Date)
 
 ## Лицензия
 
