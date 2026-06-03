@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.28] - 2026-06-03
+
+### Added
+- Add full-screen screenshot shortcut and menu entry (07372ed)
+
+### Fixed
+- Fix shape resize handle flipping (a55374f)
+- Disable history cache slider when caching is off (72fa110)
+
+### Changed
+- Support Shift resizing and endpoint snapping in editor (246c8de)
+- Show instant Markdown hint on cloud history items (e3f8e80)
+- Move history actions to top of menu (0e6015d)
+
 ## [1.3.27] - 2026-06-02
 
 ### Fixed
