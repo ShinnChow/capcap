@@ -2592,7 +2592,7 @@ class EditCanvasView: NSView {
                     anchor: anchor,
                     currentMouse: currentMouse,
                     minimumSize: 12,
-                    constraint: shiftIsDown ? .preserveAspectRatio : .none
+                    constraint: shiftIsDown ? .square : .none
                 )
                 guard newRect.width >= 12, newRect.height >= 12 else { return }
                 annotations[state.index] = emoji.withRect(newRect)
