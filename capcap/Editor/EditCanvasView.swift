@@ -275,6 +275,12 @@ class EditCanvasView: NSView {
         }
     }
 
+    private enum ResizeConstraint {
+        case none
+        case preserveAspectRatio
+        case square
+    }
+
     /// Active drag on a selection handle (rotate / curve / number tip /
     /// resize). The original annotation is captured so escape-style
     /// cancellations (e.g. tool switch mid-drag) can restore it cleanly.
@@ -898,8 +904,7 @@ class EditCanvasView: NSView {
         // Selection handles (rotate / curve / tip) take priority over body
         // drags so the user can grab a handle that visually overlaps the
         // annotation it controls.
-        if !isShiftSelecting,
-           let kind = hitTestSelectionHandle(at: point),
+        if let kind = hitTestSelectionHandle(at: point),
            let idx = selectedIndex {
             activeTextField?.commit()
             let original = annotations[idx]
@@ -2459,20 +2464,36 @@ class EditCanvasView: NSView {
 
         case .arrowStart:
             if let arrow = state.original as? ArrowAnnotation {
-                annotations[state.index] = arrow.withStartPoint(currentMouse)
+                let newStart = constrainedEndpoint(
+                    currentMouse,
+                    fixedPoint: arrow.endPoint
+                )
+                annotations[state.index] = arrow.withStartPoint(newStart)
             } else if let line = state.original as? LineAnnotation {
-                annotations[state.index] = line.withStartPoint(currentMouse)
+                let newStart = constrainedEndpoint(
+                    currentMouse,
+                    fixedPoint: line.endPoint
+                )
+                annotations[state.index] = line.withStartPoint(newStart)
             }
 
         case .arrowEnd:
             if let arrow = state.original as? ArrowAnnotation {
-                annotations[state.index] = arrow.withEndPoint(currentMouse)
+                let newEnd = constrainedEndpoint(
+                    currentMouse,
+                    fixedPoint: arrow.startPoint
+                )
+                annotations[state.index] = arrow.withEndPoint(newEnd)
             } else if let line = state.original as? LineAnnotation {
-                annotations[state.index] = line.withEndPoint(currentMouse)
+                let newEnd = constrainedEndpoint(
+                    currentMouse,
+                    fixedPoint: line.startPoint
+                )
+                annotations[state.index] = line.withEndPoint(newEnd)
             }
 
         case .resize(let anchor):
-            let preserveAspectRatio = NSEvent.modifierFlags
+            let shiftIsDown = NSEvent.modifierFlags
                 .intersection(.deviceIndependentFlagsMask)
                 .contains(.shift)
             if let magnifier = state.original as? MagnifierAnnotation {
@@ -2499,7 +2520,7 @@ class EditCanvasView: NSView {
                     anchor: anchor,
                     currentMouse: currentMouse,
                     minimumSize: 4,
-                    preserveAspectRatio: preserveAspectRatio
+                    constraint: shiftIsDown ? .preserveAspectRatio : .none
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 // Re-pixelate from the untouched base image so the mosaic
@@ -2526,7 +2547,7 @@ class EditCanvasView: NSView {
                     anchor: anchor,
                     currentMouse: currentMouse,
                     minimumSize: 4,
-                    preserveAspectRatio: preserveAspectRatio
+                    constraint: shiftIsDown ? .square : .none
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 annotations[state.index] = RectAnnotation(
@@ -2543,7 +2564,7 @@ class EditCanvasView: NSView {
                     anchor: anchor,
                     currentMouse: currentMouse,
                     minimumSize: 4,
-                    preserveAspectRatio: preserveAspectRatio
+                    constraint: shiftIsDown ? .square : .none
                 )
                 guard newRect.width >= 4, newRect.height >= 4 else { return }
                 annotations[state.index] = EllipseAnnotation(
@@ -2560,7 +2581,7 @@ class EditCanvasView: NSView {
                     anchor: anchor,
                     currentMouse: currentMouse,
                     minimumSize: 12,
-                    preserveAspectRatio: preserveAspectRatio
+                    constraint: shiftIsDown ? .preserveAspectRatio : .none
                 )
                 guard newRect.width >= 12, newRect.height >= 12 else { return }
                 annotations[state.index] = image.withRect(newRect)
@@ -2571,7 +2592,7 @@ class EditCanvasView: NSView {
                     anchor: anchor,
                     currentMouse: currentMouse,
                     minimumSize: 12,
-                    preserveAspectRatio: preserveAspectRatio
+                    constraint: shiftIsDown ? .preserveAspectRatio : .none
                 )
                 guard newRect.width >= 12, newRect.height >= 12 else { return }
                 annotations[state.index] = emoji.withRect(newRect)
@@ -2586,16 +2607,16 @@ class EditCanvasView: NSView {
         anchor: ResizeAnchor,
         currentMouse: NSPoint,
         minimumSize: CGFloat,
-        preserveAspectRatio: Bool = false
+        constraint: ResizeConstraint = .none
     ) -> NSRect {
-        if preserveAspectRatio {
+        if constraint != .none {
             return resizedRotatedRect(
                 from: original,
                 rotation: 0,
                 anchor: anchor,
                 currentMouse: currentMouse,
                 minimumSize: minimumSize,
-                preserveAspectRatio: true
+                constraint: constraint
             )
         }
 
@@ -2629,7 +2650,7 @@ class EditCanvasView: NSView {
         anchor: ResizeAnchor,
         currentMouse: NSPoint,
         minimumSize: CGFloat,
-        preserveAspectRatio: Bool = false
+        constraint: ResizeConstraint = .none
     ) -> NSRect {
         let originalHalfWidth = original.width / 2
         let originalHalfHeight = original.height / 2
@@ -2649,7 +2670,7 @@ class EditCanvasView: NSView {
 
         var halfWidth = originalHalfWidth
         var halfHeight = originalHalfHeight
-        if preserveAspectRatio, xSign != nil || ySign != nil {
+        if constraint == .preserveAspectRatio, xSign != nil || ySign != nil {
             let proposedWidth = xSign.map { $0 * deltaLocal.x } ?? original.width
             let proposedHeight = ySign.map { $0 * deltaLocal.y } ?? original.height
             let scale: CGFloat
@@ -2670,6 +2691,23 @@ class EditCanvasView: NSView {
             halfWidth = originalHalfWidth * scale
             halfHeight = originalHalfHeight * scale
             guard halfWidth >= minHalfSize, halfHeight >= minHalfSize else { return original }
+        } else if constraint == .square, xSign != nil || ySign != nil {
+            let proposedWidth = xSign.map { $0 * deltaLocal.x } ?? original.width
+            let proposedHeight = ySign.map { $0 * deltaLocal.y } ?? original.height
+            let side: CGFloat
+            switch (xSign, ySign) {
+            case (.some, .some):
+                side = max(proposedWidth, proposedHeight)
+            case (.some, .none):
+                side = proposedWidth
+            case (.none, .some):
+                side = proposedHeight
+            case (.none, .none):
+                side = min(original.width, original.height)
+            }
+            guard side.isFinite, side >= minimumSize else { return original }
+            halfWidth = side / 2
+            halfHeight = side / 2
         } else {
             if let xSign {
                 halfWidth = xSign * deltaLocal.x / 2
@@ -2692,6 +2730,17 @@ class EditCanvasView: NSView {
             width: halfWidth * 2,
             height: halfHeight * 2
         )
+    }
+
+    private func constrainedEndpoint(
+        _ currentMouse: NSPoint,
+        fixedPoint: NSPoint
+    ) -> NSPoint {
+        guard NSEvent.modifierFlags
+                  .intersection(.deviceIndependentFlagsMask)
+                  .contains(.shift)
+        else { return currentMouse }
+        return axisLockedEnd(from: fixedPoint, to: currentMouse)
     }
 
     private func rotatedVector(_ vector: NSPoint, by rotation: CGFloat) -> NSPoint {
