@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "Défaut actuel";
 "uploadMarkdownToggleTitle" = "Copier en lien Markdown";
 "uploadMarkdownToggleSubtitle" = "Si activé, copie une balise d'image Markdown (![](url)) après l'envoi ; sinon, copie une URL simple. Dans l'historique, ⌘-cliquez sur une image envoyée pour copier un lien Markdown, ou cliquez simplement dessus pour une URL simple.";
+"filenameRuleTitle" = "Règles de nom de fichier";
+"filenameRuleSubtitle" = "Contrôle les téléversements d'image, les noms par défaut des images enregistrées et ceux des enregistrements. Les extensions sont ajoutées automatiquement.";
+"filenameRulePresetLabel" = "Préréglage :";
+"filenameRulePresetCustom" = "Personnalisé";
+"filenameRulePresetShort" = "Court";
+"filenameRulePresetCompact" = "Lien très court";
+"filenameRulePresetUnique" = "Éviter les doublons";
+"filenameRulePresetCounter" = "Compteur quotidien";
+"filenameRulePresetRestore" = "Restaurer";
+"filenameRuleImageLabel" = "Image :";
+"filenameRuleRecordingLabel" = "Enregistrement :";
+"filenameRuleVariablesLabel" = "Variables :";
+"filenameRuleVariableDate" = "Date";
+"filenameRuleVariableTime" = "Heure";
+"filenameRuleVariableDaily" = "No quotidien";
+"filenameRuleVariableRandom" = "Aléatoire";
+"filenameRuleVariableSize" = "Taille";
+"filenameRulePreview" = "Aperçu : %@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "Bucket";

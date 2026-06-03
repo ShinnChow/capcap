@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "현재 기본값";
 "uploadMarkdownToggleTitle" = "Markdown 링크로 복사";
 "uploadMarkdownToggleSubtitle" = "켜면 업로드 후 Markdown 이미지 태그(![](url))를 복사하고, 끄면 일반 URL을 복사합니다. 기록에서 ⌘ 를 누른 채 업로드된 이미지를 클릭하면 Markdown 링크를, 그냥 클릭하면 일반 URL을 복사합니다.";
+"filenameRuleTitle" = "파일 이름 규칙";
+"filenameRuleSubtitle" = "이미지 업로드, 이미지 저장 기본 이름, 녹화 저장 기본 이름을 제어합니다. 확장자는 자동으로 추가됩니다.";
+"filenameRulePresetLabel" = "프리셋:";
+"filenameRulePresetCustom" = "사용자 지정";
+"filenameRulePresetShort" = "짧게";
+"filenameRulePresetCompact" = "짧은 링크";
+"filenameRulePresetUnique" = "중복 방지";
+"filenameRulePresetCounter" = "일일 카운터";
+"filenameRulePresetRestore" = "기본값 복원";
+"filenameRuleImageLabel" = "이미지:";
+"filenameRuleRecordingLabel" = "녹화:";
+"filenameRuleVariablesLabel" = "변수:";
+"filenameRuleVariableDate" = "날짜";
+"filenameRuleVariableTime" = "시간";
+"filenameRuleVariableDaily" = "일일 번호";
+"filenameRuleVariableRandom" = "랜덤";
+"filenameRuleVariableSize" = "크기";
+"filenameRulePreview" = "미리보기: %@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "버킷";

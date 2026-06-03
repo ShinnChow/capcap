@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "Current default";
 "uploadMarkdownToggleTitle" = "Copy as Markdown link";
 "uploadMarkdownToggleSubtitle" = "When on, copies a Markdown image tag (![](url)) after upload; when off, copies a plain URL. In History, ⌘-click an uploaded image to copy a Markdown link, or click it directly for a plain URL.";
+"filenameRuleTitle" = "File name rules";
+"filenameRuleSubtitle" = "Controls image uploads, image save defaults, and recording save defaults. Extensions are added automatically.";
+"filenameRulePresetLabel" = "Preset:";
+"filenameRulePresetCustom" = "Custom";
+"filenameRulePresetShort" = "Short";
+"filenameRulePresetCompact" = "Tiny link";
+"filenameRulePresetUnique" = "Avoid duplicates";
+"filenameRulePresetCounter" = "Daily counter";
+"filenameRulePresetRestore" = "Restore default";
+"filenameRuleImageLabel" = "Image:";
+"filenameRuleRecordingLabel" = "Recording:";
+"filenameRuleVariablesLabel" = "Variables:";
+"filenameRuleVariableDate" = "Date";
+"filenameRuleVariableTime" = "Time";
+"filenameRuleVariableDaily" = "Daily #";
+"filenameRuleVariableRandom" = "Random";
+"filenameRuleVariableSize" = "Size";
+"filenameRulePreview" = "Preview: %@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "Bucket";

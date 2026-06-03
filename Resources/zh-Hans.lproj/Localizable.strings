@@ -295,6 +295,24 @@
 "uploadCurrentDefault" = "当前默认";
 "uploadMarkdownToggleTitle" = "复制为 Markdown 链接";
 "uploadMarkdownToggleSubtitle" = "开启后上传完成自动复制 Markdown 图片格式（![](链接)），关闭则复制普通 URL。在历史记录中，按住 ⌘ 点击已上传到图床的图片复制 Markdown 链接，直接点击则复制普通链接。";
+"filenameRuleTitle" = "文件名规则";
+"filenameRuleSubtitle" = "控制图片上传、图片保存默认名和录制保存默认名。扩展名会自动添加。";
+"filenameRulePresetLabel" = "预设：";
+"filenameRulePresetCustom" = "自定义";
+"filenameRulePresetShort" = "简短";
+"filenameRulePresetCompact" = "超短链接";
+"filenameRulePresetUnique" = "防重名";
+"filenameRulePresetCounter" = "每日计数";
+"filenameRulePresetRestore" = "恢复默认";
+"filenameRuleImageLabel" = "图片：";
+"filenameRuleRecordingLabel" = "录制：";
+"filenameRuleVariablesLabel" = "变量：";
+"filenameRuleVariableDate" = "日期";
+"filenameRuleVariableTime" = "时间";
+"filenameRuleVariableDaily" = "每日编号";
+"filenameRuleVariableRandom" = "随机码";
+"filenameRuleVariableSize" = "尺寸";
+"filenameRulePreview" = "预览：%@";
 
 /* Upload — provider field labels */
 "uploadFieldBucket" = "存储桶";

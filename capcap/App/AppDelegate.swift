@@ -655,7 +655,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         var selectedFormat = Defaults.recordingSaveFormat
         panel.title = L10n.saveRecording
         panel.prompt = L10n.saveRecordingPrompt
-        panel.nameFieldStringValue = defaultRecordingFilename(format: selectedFormat)
+        panel.nameFieldStringValue = FilenameTemplate.recordingFileName(fileExtension: selectedFormat.fileExtension)
         panel.canCreateDirectories = true
         panel.isExtensionHidden = false
         panel.allowedContentTypes = [selectedFormat.contentType]
@@ -677,13 +677,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             Defaults.recordingSaveFormat = selectedFormat
             self?.saveRecording(tmpURL: tmpURL, destination: destination, format: selectedFormat)
         }
-    }
-
-    private func defaultRecordingFilename(format: ScreenRecordingFormat) -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd-HHmmss"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return "capcap-recording-\(formatter.string(from: Date())).\(format.fileExtension)"
     }
 
     private static func recordingFilename(_ currentName: String, withFormat format: ScreenRecordingFormat) -> String {

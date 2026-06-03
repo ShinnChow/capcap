@@ -994,7 +994,7 @@ private func dispatchEditingShortcut(_ event: NSEvent) -> Bool {
     return NSApp.sendAction(action, to: nil, from: nil)
 }
 
-private final class PasteableTextField: NSTextField {
+final class PasteableTextField: NSTextField {
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if dispatchEditingShortcut(event) { return true }
         return super.performKeyEquivalent(with: event)
