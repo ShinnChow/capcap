@@ -235,7 +235,7 @@ private final class OCRPreviewView: NSView, ImageAnalysisOverlayViewDelegate {
     ) {}
 }
 
-private final class OCRLineSelectionOverlayView: NSView {
+final class OCRLineSelectionOverlayView: NSView {
     private struct TokenRef: Hashable {
         let lineIndex: Int
         let tokenIndex: Int
