@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-06-04
+
+### Added
+- Add copy image text shortcut (30b1eb6)
+
+### Fixed
+- Fix popup capture timing and hover detection (744ecf2)
+
+### Changed
+- Install minimal Edit menu for save panel shortcuts (3be14cf)
+
+### Documentation
+- Add Star History to READMEs (a071b56)
+- Refresh README with multilingual intro and Chinese default (8d7f1e1)
+
 ## [1.3.29] - 2026-06-03
 
 ### Added
