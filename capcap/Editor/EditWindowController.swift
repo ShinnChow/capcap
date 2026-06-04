@@ -390,6 +390,7 @@ class EditWindowController {
         case is PenAnnotation: return .pen
         case is MarkerAnnotation: return .marker
         case is MosaicAnnotation: return .mosaic
+        case is MagnifierAnnotation: return .magnifier
         case is NumberAnnotation: return .numbered
         case is EmojiAnnotation: return .emoji
         default: return nil
@@ -414,6 +415,9 @@ class EditWindowController {
         case let mosaic as MosaicAnnotation:
             currentMosaicBlockSize = mosaic.blockSize
             canvasView?.currentMosaicBlockSize = mosaic.blockSize
+        case let magnifier as MagnifierAnnotation:
+            currentColor = magnifier.color
+            currentLineWidth = magnifier.lineWidth
         case let r as RectAnnotation:
             currentColor = r.color
             currentLineWidth = r.lineWidth
@@ -492,6 +496,15 @@ class EditWindowController {
                 fillEnabled: currentShapeFill,
                 onFill: { [weak self] enabled in
                     self?.setShapeFillEnabled(enabled)
+                }
+            )
+        case .magnifier:
+            showColorSizeSubToolbar(
+                sizes: EditorStyleDefaults.standardLineSizes,
+                dynamicColor: pickedColorSwatch,
+                currentSize: currentLineWidth,
+                onSize: { [weak self] size in
+                    self?.setCurrentDrawingLineWidth(size)
                 }
             )
         case .marker:
