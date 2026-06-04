@@ -132,6 +132,7 @@ class EditCanvasView: NSView {
     /// one.
     private var pendingTextCreate: PendingTextCreate?
     private var emojiPreviewPoint: NSPoint?
+    private var hoveredAnnotationIndex: Int?
     /// Active eraser drag rectangle. Matching annotations are removed as
     /// soon as they intersect the rectangle.
     private var eraserSelection: EraserSelection?
@@ -282,10 +283,14 @@ class EditCanvasView: NSView {
     }
 
     /// Active drag on a selection handle (rotate / curve / number tip /
-    /// resize). The original annotation is captured so escape-style
-    /// cancellations (e.g. tool switch mid-drag) can restore it cleanly.
+    /// magnifier source / resize). The original annotation is captured so
+    /// escape-style cancellations (e.g. tool switch mid-drag) can restore it
+    /// cleanly.
     private struct HandleDragState {
-        enum Kind { case rotate, curve, tip, arrowStart, arrowEnd, resize(ResizeAnchor) }
+        enum Kind {
+            case rotate, curve, tip, magnifierSource, arrowStart, arrowEnd
+            case resize(ResizeAnchor)
+        }
         let kind: Kind
         let index: Int
         let original: Annotation
@@ -301,12 +306,15 @@ class EditCanvasView: NSView {
     private static let rotateHandleOffset: CGFloat = 22
     private static let curveHandleSize: CGFloat = 14
     private static let tipHandleSize: CGFloat = 14
+    private static let magnifierSourceHandleSize: CGFloat = 14
     private static let endpointHandleSize: CGFloat = 12
     private static let resizeHandleSize: CGFloat = 10
     private static let actionButtonSize: CGFloat = 22
     /// Small +/- stepper buttons shown under a selected numbered badge.
     private static let numberStepButtonSize: CGFloat = 20
     private static let selectionBoxPad: CGFloat = 6
+    private static let hoverBoxPad: CGFloat = 5
+    private static let hoverColor = NSColor(calibratedRed: 0.0, green: 0.56, blue: 1.0, alpha: 1.0)
 
     private var trackingArea: NSTrackingArea?
 
@@ -847,6 +855,12 @@ class EditCanvasView: NSView {
         if let a = a as? MosaicAnnotation, let b = b as? MosaicAnnotation {
             return a.rect == b.rect && a.blockSize == b.blockSize
         }
+        if let a = a as? MagnifierAnnotation, let b = b as? MagnifierAnnotation {
+            return a.center == b.center && a.radius == b.radius
+                && a.color == b.color && a.lineWidth == b.lineWidth
+                && a.zoom == b.zoom && a.sourceImage === b.sourceImage
+                && a.sourceCenter == b.sourceCenter
+        }
         if let a = a as? ImageAnnotation, let b = b as? ImageAnnotation {
             return a.image === b.image && a.rect == b.rect && a.rotation == b.rotation
         }
@@ -860,6 +874,7 @@ class EditCanvasView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        setHoveredAnnotationIndex(nil)
         let isShiftSelecting = event.modifierFlags
             .intersection(.deviceIndependentFlagsMask)
             .contains(.shift)
@@ -886,6 +901,16 @@ class EditCanvasView: NSView {
                 mutateSelectedAnnotationAtomic { annotation in
                     guard let n = annotation as? NumberAnnotation else { return annotation }
                     return n.withNumber(max(1, n.number - 1))
+                }
+            case .zoomInMagnifier:
+                mutateSelectedAnnotationAtomic { annotation in
+                    guard let magnifier = annotation as? MagnifierAnnotation else { return annotation }
+                    return magnifier.withZoom(magnifier.zoom + MagnifierAnnotation.zoomStep)
+                }
+            case .zoomOutMagnifier:
+                mutateSelectedAnnotationAtomic { annotation in
+                    guard let magnifier = annotation as? MagnifierAnnotation else { return annotation }
+                    return magnifier.withZoom(magnifier.zoom - MagnifierAnnotation.zoomStep)
                 }
             }
             return
@@ -1006,6 +1031,7 @@ class EditCanvasView: NSView {
 
     override func mouseDragged(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        setHoveredAnnotationIndex(nil)
 
         if let state = handleDragState {
             // First mutation of the handle drag — commit the pre-drag snapshot
@@ -1219,6 +1245,8 @@ class EditCanvasView: NSView {
                     annotations.append(MagnifierAnnotation(
                         center: start,
                         radius: radius,
+                        color: currentColor,
+                        lineWidth: currentLineWidth,
                         zoom: MagnifierAnnotation.defaultZoom,
                         sourceImage: baseImage
                     ))
@@ -1339,8 +1367,14 @@ class EditCanvasView: NSView {
             annotation.drawApplyingTransforms(in: context, bounds: bounds)
         }
 
-        // Selection chrome — drawn on top so it's always reachable.
         let selected = validSelectedIndexes
+        if let idx = hoveredAnnotationIndex,
+           annotations.indices.contains(idx),
+           !selected.contains(idx) {
+            drawHoverHighlight(for: annotations[idx], in: context)
+        }
+
+        // Selection chrome — drawn on top so it's always reachable.
         if selected.count == 1, let idx = selected.first {
             drawSelectionHandles(for: annotations[idx], in: context)
         } else {
@@ -1432,6 +1466,8 @@ class EditCanvasView: NSView {
                     MagnifierAnnotation(
                         center: start,
                         radius: radius,
+                        color: currentColor,
+                        lineWidth: currentLineWidth,
                         zoom: MagnifierAnnotation.defaultZoom,
                         sourceImage: baseImage
                     ).draw(in: context, bounds: bounds)
@@ -1646,6 +1682,7 @@ class EditCanvasView: NSView {
         pendingNumberCreate = nil
         pendingTextCreate = nil
         emojiPreviewPoint = nil
+        hoveredAnnotationIndex = nil
         if eraserSelection?.didDelete != true {
             discardPendingUndo()
         }
@@ -1673,6 +1710,34 @@ class EditCanvasView: NSView {
             }
         }
         return nil
+    }
+
+    private var canShowHoverHighlight: Bool {
+        activeTextField == nil
+            && activeTool != .eraser
+            && dragState == nil
+            && handleDragState == nil
+            && eraserSelection == nil
+            && currentPenPoints == nil
+            && currentMarkerPoints == nil
+            && shapeStart == nil
+            && pendingNumberCreate == nil
+            && pendingTextCreate == nil
+    }
+
+    private func setHoveredAnnotationIndex(_ index: Int?) {
+        let resolved = index.flatMap { annotations.indices.contains($0) ? $0 : nil }
+        guard hoveredAnnotationIndex != resolved else { return }
+        hoveredAnnotationIndex = resolved
+        needsDisplay = true
+    }
+
+    private func updateHoverHighlight(at point: NSPoint) {
+        guard canShowHoverHighlight, bounds.contains(point) else {
+            setHoveredAnnotationIndex(nil)
+            return
+        }
+        setHoveredAnnotationIndex(hitTestAnnotation(at: point))
     }
 
     private func updateEraserSelection(to point: NSPoint) {
@@ -2022,6 +2087,13 @@ class EditCanvasView: NSView {
         )
     }
 
+    /// Center source control for a magnifier. It starts in the middle of the
+    /// lens, then follows the detached sample point after the user drags it.
+    private func magnifierSourceHandleCenter(for annotation: Annotation) -> NSPoint? {
+        guard let magnifier = annotation as? MagnifierAnnotation else { return nil }
+        return magnifier.sourceCenter ?? magnifier.center
+    }
+
     /// Start (tail) endpoint handle for a straight/curved arrow or a line —
     /// sits at the `startPoint` so the user can re-anchor that end.
     private func arrowStartHandleCenter(for annotation: Annotation) -> NSPoint? {
@@ -2077,6 +2149,95 @@ class EditCanvasView: NSView {
             ? number.center.x + gap / 2 + s / 2
             : number.center.x - gap / 2 - s / 2
         return NSRect(x: centerX - s / 2, y: centerY - s / 2, width: s, height: s)
+    }
+
+    /// +/- buttons under a selected magnifier. Uses the same visual language
+    /// as numbered-badge steppers, but controls the lens' sampling scale.
+    private func magnifierZoomButtonRect(for annotation: Annotation, increment: Bool) -> NSRect? {
+        guard let magnifier = annotation as? MagnifierAnnotation else { return nil }
+        let s = EditCanvasView.numberStepButtonSize
+        let gap: CGFloat = 4
+        let dropBelow: CGFloat = 9
+        let centerY = magnifier.center.y - magnifier.radius - dropBelow - s / 2
+        let centerX = increment
+            ? magnifier.center.x + gap / 2 + s / 2
+            : magnifier.center.x - gap / 2 - s / 2
+        return NSRect(x: centerX - s / 2, y: centerY - s / 2, width: s, height: s)
+    }
+
+    private func drawHoverHighlight(for annotation: Annotation, in context: CGContext) {
+        if drawsHoverBody(for: annotation) {
+            context.saveGState()
+            context.setAlpha(0.96)
+            context.setShadow(
+                offset: .zero,
+                blur: 5,
+                color: EditCanvasView.hoverColor.withAlphaComponent(0.45).cgColor
+            )
+            annotation
+                .withColor(EditCanvasView.hoverColor)
+                .drawApplyingTransforms(in: context, bounds: bounds)
+            context.restoreGState()
+        } else {
+            drawHoverFrame(for: annotation, in: context)
+        }
+    }
+
+    private func drawsHoverBody(for annotation: Annotation) -> Bool {
+        switch annotation {
+        case let rect as RectAnnotation:
+            return !rect.filled
+        case let ellipse as EllipseAnnotation:
+            return !ellipse.filled
+        case is PenAnnotation,
+             is MarkerAnnotation,
+             is ArrowAnnotation,
+             is LineAnnotation,
+             is NumberAnnotation,
+             is MagnifierAnnotation:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func drawHoverFrame(for annotation: Annotation, in context: CGContext) {
+        let box = annotation.boundingRect.insetBy(
+            dx: -EditCanvasView.hoverBoxPad,
+            dy: -EditCanvasView.hoverBoxPad
+        )
+        guard box.width > 0, box.height > 0 else { return }
+
+        let needsRotation = annotation.supportsRotation && annotation.rotation != 0
+        context.saveGState()
+        if needsRotation {
+            let rect = annotation.boundingRect
+            context.translateBy(x: rect.midX, y: rect.midY)
+            context.rotate(by: annotation.rotation)
+            context.translateBy(x: -rect.midX, y: -rect.midY)
+        }
+
+        let cornerRadius = min(7, max(3, min(box.width, box.height) * 0.18))
+        let path = CGPath(
+            roundedRect: box,
+            cornerWidth: cornerRadius,
+            cornerHeight: cornerRadius,
+            transform: nil
+        )
+        context.setFillColor(EditCanvasView.hoverColor.withAlphaComponent(0.10).cgColor)
+        context.addPath(path)
+        context.fillPath()
+        context.setStrokeColor(EditCanvasView.hoverColor.cgColor)
+        context.setLineWidth(3)
+        context.setLineJoin(.round)
+        context.setShadow(
+            offset: .zero,
+            blur: 4,
+            color: EditCanvasView.hoverColor.withAlphaComponent(0.35).cgColor
+        )
+        context.addPath(path)
+        context.strokePath()
+        context.restoreGState()
     }
 
     private func drawSelectionOutline(for annotation: Annotation, in context: CGContext) {
@@ -2165,6 +2326,18 @@ class EditCanvasView: NSView {
             )
         }
 
+        // 4a. Magnifier source handle — starts at the lens center and can be
+        // pulled out to magnify another part of the captured image.
+        if let source = magnifierSourceHandleCenter(for: annotation) {
+            drawHandleDot(
+                at: source,
+                size: EditCanvasView.magnifierSourceHandleSize,
+                fill: NSColor.white.withAlphaComponent(0.95),
+                stroke: accentGreen,
+                in: context
+            )
+        }
+
         // 4b. Arrow endpoint handles — re-anchor the tail / redirect the tip.
         if let start = arrowStartHandleCenter(for: annotation) {
             drawHandleDot(
@@ -2220,6 +2393,27 @@ class EditCanvasView: NSView {
                 in: incRect,
                 symbolName: "plus",
                 symbolPointSize: 9,
+                in: context
+            )
+        }
+
+        // 8. Magnifier zoom stepper — small +/- buttons under the lens so
+        // the user can tune the sampled region without re-creating it.
+        if let magnifier = annotation as? MagnifierAnnotation,
+           let decRect = magnifierZoomButtonRect(for: annotation, increment: false),
+           let incRect = magnifierZoomButtonRect(for: annotation, increment: true) {
+            drawActionButton(
+                in: decRect,
+                symbolName: "minus",
+                symbolPointSize: 9,
+                enabled: magnifier.zoom > MagnifierAnnotation.minZoom,
+                in: context
+            )
+            drawActionButton(
+                in: incRect,
+                symbolName: "plus",
+                symbolPointSize: 9,
+                enabled: magnifier.zoom < MagnifierAnnotation.maxZoom,
                 in: context
             )
         }
@@ -2306,7 +2500,11 @@ class EditCanvasView: NSView {
         )
     }
 
-    enum SelectionAction { case delete, edit, incrementNumber, decrementNumber }
+    enum SelectionAction {
+        case delete, edit
+        case incrementNumber, decrementNumber
+        case zoomInMagnifier, zoomOutMagnifier
+    }
 
     /// Top-right action buttons (delete, edit) — clicked, not dragged.
     private func hitTestSelectionAction(at point: NSPoint) -> SelectionAction? {
@@ -2330,6 +2528,14 @@ class EditCanvasView: NSView {
         if let incRect = numberStepButtonRect(for: annotation, increment: true),
            incRect.contains(point) {
             return .incrementNumber
+        }
+        if let decRect = magnifierZoomButtonRect(for: annotation, increment: false),
+           decRect.contains(point) {
+            return .zoomOutMagnifier
+        }
+        if let incRect = magnifierZoomButtonRect(for: annotation, increment: true),
+           incRect.contains(point) {
+            return .zoomInMagnifier
         }
         return nil
     }
@@ -2356,8 +2562,15 @@ class EditCanvasView: NSView {
         else { return nil }
         let annotation = annotations[idx]
 
-        // Resize grips — checked first so a corner grip wins over a body
-        // drag on the same pixels.
+        if let source = magnifierSourceHandleCenter(for: annotation) {
+            let r = EditCanvasView.magnifierSourceHandleSize / 2 + 5
+            if hypot(point.x - source.x, point.y - source.y) <= r {
+                return .magnifierSource
+            }
+        }
+
+        // Resize grips — checked before body drags so a corner grip wins on
+        // the same pixels.
         if isResizable(annotation) {
             let r = EditCanvasView.resizeHandleSize / 2 + 4
             for anchor in ResizeAnchor.allCases {
@@ -2411,6 +2624,13 @@ class EditCanvasView: NSView {
         return nil
     }
 
+    private func clampedToCanvas(_ point: NSPoint) -> NSPoint {
+        NSPoint(
+            x: min(max(point.x, bounds.minX), bounds.maxX),
+            y: min(max(point.y, bounds.minY), bounds.maxY)
+        )
+    }
+
     private func applyHandleDrag(state: HandleDragState, currentMouse: NSPoint) {
         guard state.index < annotations.count else { return }
 
@@ -2462,6 +2682,13 @@ class EditCanvasView: NSView {
                 annotations[state.index] = number.withTip(currentMouse)
             }
 
+        case .magnifierSource:
+            guard let magnifier = state.original as? MagnifierAnnotation else { return }
+            let point = clampedToCanvas(currentMouse)
+            let dist = hypot(point.x - magnifier.center.x, point.y - magnifier.center.y)
+            let source = dist < MagnifierAnnotation.sourceResetDistance ? nil : point
+            annotations[state.index] = magnifier.withSourceCenter(source)
+
         case .arrowStart:
             if let arrow = state.original as? ArrowAnnotation {
                 let newStart = constrainedEndpoint(
@@ -2505,12 +2732,7 @@ class EditCanvasView: NSView {
                     currentMouse.y - magnifier.center.y
                 )
                 guard r >= MagnifierAnnotation.minRadius else { return }
-                annotations[state.index] = MagnifierAnnotation(
-                    center: magnifier.center,
-                    radius: r,
-                    zoom: magnifier.zoom,
-                    sourceImage: magnifier.sourceImage
-                )
+                annotations[state.index] = magnifier.withRadius(r)
             } else if let mosaic = state.original as? MosaicAnnotation {
                 // Move only the edge(s) this grip owns; the opposite edge(s)
                 // stay pinned. min/abs keep the rect valid if the user drags a
@@ -2903,17 +3125,20 @@ class EditCanvasView: NSView {
 
     override func mouseMoved(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        updateHoverHighlight(at: point)
         updateEmojiPreview(at: point)
         updateCursor(at: point)
     }
 
     override func mouseEntered(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        updateHoverHighlight(at: point)
         updateEmojiPreview(at: point)
         updateCursor(at: point)
     }
 
     override func mouseExited(with event: NSEvent) {
+        setHoveredAnnotationIndex(nil)
         if emojiPreviewPoint != nil {
             emojiPreviewPoint = nil
             needsDisplay = true
@@ -2949,8 +3174,9 @@ class EditCanvasView: NSView {
             NSCursor.pointingHand.set()
             return
         }
-        // Drag handles (rotate / curve / number tip / resize): resize grips
-        // get a directional cursor; the rest get an open hand.
+        // Drag handles (rotate / curve / number tip / magnifier source /
+        // resize): resize grips get a directional cursor; the rest get an
+        // open hand.
         if let kind = hitTestSelectionHandle(at: point) {
             if case .resize(let anchor) = kind {
                 switch anchor {
@@ -2990,7 +3216,11 @@ class EditCanvasView: NSView {
         let mouseInScreen = NSEvent.mouseLocation
         let mouseInWindow = window.convertPoint(fromScreen: mouseInScreen)
         let local = convert(mouseInWindow, from: nil)
-        guard bounds.contains(local) else { return }
+        guard bounds.contains(local) else {
+            setHoveredAnnotationIndex(nil)
+            return
+        }
+        updateHoverHighlight(at: local)
         updateCursor(at: local)
     }
 
