@@ -3,7 +3,7 @@ import AppKit
 /// Editable cards for the three image-host providers. Lives inside the Settings
 /// "Upload" tab built by SettingsView.
 final class UploadSettingsPane: NSView {
-    private var defaultBadges: [UploadProviderKind: NSTextField] = [:]
+    private var defaultBadges: [UploadProviderKind: DefaultProviderBadge] = [:]
     private var setDefaultButtons: [UploadProviderKind: NSButton] = [:]
     private var providerCards: [UploadProviderKind: ProviderCard] = [:]
     private let markdownSwitch = NSSwitch()
@@ -286,7 +286,7 @@ private enum TestStatus {
 
 private final class ProviderCard: NSView {
     let kind: UploadProviderKind
-    let defaultBadge = NSTextField(labelWithString: "")
+    let defaultBadge = DefaultProviderBadge()
     let setDefaultButton = NSButton(title: L10n.uploadSetDefaultButton, target: nil, action: nil)
     let enableSwitch = NSSwitch()
 
@@ -378,15 +378,7 @@ private final class ProviderCard: NSView {
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
 
         defaultBadge.stringValue = L10n.uploadCurrentDefault
-        defaultBadge.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
-        defaultBadge.textColor = NSColor.systemGreen
-        defaultBadge.wantsLayer = true
-        defaultBadge.layer?.backgroundColor = NSColor.systemGreen.withAlphaComponent(0.16).cgColor
-        defaultBadge.layer?.cornerRadius = 4
-        defaultBadge.layer?.cornerCurve = .continuous
-        defaultBadge.alignment = .center
         defaultBadge.isHidden = true
-        defaultBadge.translatesAutoresizingMaskIntoConstraints = false
 
         enableSwitch.controlSize = .small
         enableSwitch.target = self
@@ -703,6 +695,54 @@ private final class ProviderCard: NSView {
             bytesPerRow: 0, bitsPerPixel: 0
         )
         return rep?.representation(using: .png, properties: [:])
+    }
+}
+
+// MARK: - Default provider badge
+
+private final class DefaultProviderBadge: NSView {
+    private let label = NSTextField(labelWithString: "")
+
+    var stringValue: String {
+        get { label.stringValue }
+        set {
+            label.stringValue = newValue
+            invalidateIntrinsicContentSize()
+        }
+    }
+
+    init() {
+        super.init(frame: .zero)
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.systemGreen.withAlphaComponent(0.16).cgColor
+        layer?.cornerRadius = 4
+        layer?.cornerCurve = .continuous
+
+        label.font = NSFont.systemFont(ofSize: 10, weight: .semibold)
+        label.textColor = NSColor.systemGreen
+        label.alignment = .center
+        label.lineBreakMode = .byClipping
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 8),
+            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -8),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+        ])
+
+        setContentHuggingPriority(.required, for: .horizontal)
+        setContentCompressionResistancePriority(.required, for: .horizontal)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let labelSize = label.intrinsicContentSize
+        return NSSize(width: ceil(labelSize.width) + 16, height: 16)
     }
 }
 
