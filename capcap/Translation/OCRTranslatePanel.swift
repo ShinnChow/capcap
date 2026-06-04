@@ -298,6 +298,7 @@ private final class OCRLineSelectionOverlayView: NSView {
         guard !copyableRects.isEmpty else { return }
 
         drawDimMask(excluding: copyableRects)
+        drawCopyableTextBackplates(copyableRects)
 
         for rect in selectedTextRects(in: imageRect) {
             drawSelectedTextRect(rect)
@@ -669,6 +670,15 @@ private final class OCRLineSelectionOverlayView: NSView {
             NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5).fill()
         }
         NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func drawCopyableTextBackplates(_ rects: [NSRect]) {
+        let path = NSBezierPath()
+        for rect in rects where rect.width > 1 && rect.height > 1 {
+            path.append(NSBezierPath(roundedRect: rect, xRadius: 5, yRadius: 5))
+        }
+        NSColor.white.withAlphaComponent(0.24).setFill()
+        path.fill()
     }
 
     private func drawSelectedTextRect(_ rect: NSRect) {
