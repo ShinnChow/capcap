@@ -152,7 +152,8 @@ enum PinLauncher {
     }
 
     private static func loadImage(from url: URL) -> NSImage? {
-        guard let image = NSImage(contentsOf: url),
+        guard let data = try? Data(contentsOf: url),
+              let image = NSImage.imagePreservingPixelDimensions(from: data),
               image.size.width > 0, image.size.height > 0
         else { return nil }
         return image

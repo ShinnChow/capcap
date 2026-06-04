@@ -345,11 +345,13 @@ class OverlayWindowController {
             return nil
         }
         let ratio = min(displaySize.width / imageSize.width, displaySize.height / imageSize.height)
-        guard ratio < 0.999 else { return nil }
         let width = Int(round(imageSize.width))
         let height = Int(round(imageSize.height))
+        guard ratio < 0.999 else {
+            return "\(width) x \(height)"
+        }
         let percent = max(1, Int(round(ratio * 100)))
-        return "\(width)x\(height)(\(percent)%)"
+        return "\(width) x \(height) (\(percent)%)"
     }
 
     private struct PresetDisplayMetrics {
