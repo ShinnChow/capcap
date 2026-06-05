@@ -185,6 +185,11 @@
 "textStrokeEffect" = "描邊";
 "textCalloutEffect" = "標註";
 "shapeFillEffect" = "填充";
+"shapeFillNone" = "線框";
+"shapeFillOpaque" = "填充";
+"shapeFillTranslucent" = "半透明填充";
+"shapeStyleStandard" = "預設樣式";
+"shapeStyleHandDrawn" = "手繪圓角";
 "insertImageFromClipboard" = "從剪貼簿插入";
 "insertImageFromFile" = "從本機檔案插入...";
 "insertImageChooseFile" = "選擇圖片";

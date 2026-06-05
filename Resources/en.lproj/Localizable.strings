@@ -185,6 +185,11 @@
 "textStrokeEffect" = "Stroke";
 "textCalloutEffect" = "Callout";
 "shapeFillEffect" = "Fill";
+"shapeFillNone" = "Outline";
+"shapeFillOpaque" = "Fill";
+"shapeFillTranslucent" = "Translucent fill";
+"shapeStyleStandard" = "Default style";
+"shapeStyleHandDrawn" = "Hand-drawn rounded style";
 "insertImageFromClipboard" = "From Clipboard";
 "insertImageFromFile" = "From File...";
 "insertImageChooseFile" = "Choose Image";

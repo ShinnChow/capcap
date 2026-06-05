@@ -185,6 +185,11 @@
 "textStrokeEffect" = "Viền chữ";
 "textCalloutEffect" = "Chú thích";
 "shapeFillEffect" = "Tô màu";
+"shapeFillNone" = "Viền";
+"shapeFillOpaque" = "Tô màu";
+"shapeFillTranslucent" = "Tô bán trong suốt";
+"shapeStyleStandard" = "Kiểu mặc định";
+"shapeStyleHandDrawn" = "Kiểu vẽ tay bo góc";
 "insertImageFromClipboard" = "Từ clipboard";
 "insertImageFromFile" = "Từ tệp...";
 "insertImageChooseFile" = "Chọn ảnh";

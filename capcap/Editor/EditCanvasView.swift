@@ -74,8 +74,10 @@ class EditCanvasView: NSView {
     var currentTextCallout: Bool = Defaults.lastTextCallout {
         didSet { activeTextField?.hasCallout = currentTextCallout }
     }
-    /// Whether newly drawn rectangles/ellipses should be filled.
-    var currentShapeFill: Bool = Defaults.lastShapeFill
+    /// Fill mode for newly drawn rectangles/ellipses.
+    var currentShapeFillMode: ShapeFillMode = Defaults.lastShapeFillMode
+    /// Border style for newly drawn rectangles/ellipses.
+    var currentShapeStrokeStyle: ShapeStrokeStyle = Defaults.lastShapeStrokeStyle
     var currentLineWidth: CGFloat = EditorStyleDefaults.standardLineWidth
     var currentArrowStyle: ArrowStyle = Defaults.lastArrowStyle
     /// Base width for the marker brush. Drawn at `× MarkerAnnotation.brushScale`.
@@ -850,11 +852,13 @@ class EditCanvasView: NSView {
         }
         if let a = a as? RectAnnotation, let b = b as? RectAnnotation {
             return a.rect == b.rect && a.lineWidth == b.lineWidth
-                && a.filled == b.filled && a.rotation == b.rotation && a.color == b.color
+                && a.fillMode == b.fillMode && a.strokeStyle == b.strokeStyle
+                && a.rotation == b.rotation && a.color == b.color
         }
         if let a = a as? EllipseAnnotation, let b = b as? EllipseAnnotation {
             return a.rect == b.rect && a.lineWidth == b.lineWidth
-                && a.filled == b.filled && a.rotation == b.rotation && a.color == b.color
+                && a.fillMode == b.fillMode && a.strokeStyle == b.strokeStyle
+                && a.rotation == b.rotation && a.color == b.color
         }
         if let a = a as? ArrowAnnotation, let b = b as? ArrowAnnotation {
             return a.startPoint == b.startPoint && a.endPoint == b.endPoint
@@ -1285,7 +1289,8 @@ class EditCanvasView: NSView {
                         rect: rect,
                         color: currentColor,
                         lineWidth: currentLineWidth,
-                        filled: currentShapeFill
+                        fillMode: currentShapeFillMode,
+                        strokeStyle: currentShapeStrokeStyle
                     ))
                 }
             }
@@ -1302,7 +1307,8 @@ class EditCanvasView: NSView {
                         rect: rect,
                         color: currentColor,
                         lineWidth: currentLineWidth,
-                        filled: currentShapeFill
+                        fillMode: currentShapeFillMode,
+                        strokeStyle: currentShapeStrokeStyle
                     ))
                 }
             }
@@ -1442,18 +1448,22 @@ class EditCanvasView: NSView {
             switch activeTool {
             case .rectangle:
                 let rect = rectFromTwoPoints(start, current)
-                if currentShapeFill {
-                    context.setFillColor(currentColor.cgColor)
-                    context.fill(rect)
-                }
-                context.stroke(rect)
+                RectAnnotation(
+                    rect: rect,
+                    color: currentColor,
+                    lineWidth: currentLineWidth,
+                    fillMode: currentShapeFillMode,
+                    strokeStyle: currentShapeStrokeStyle
+                ).draw(in: context, bounds: bounds)
             case .ellipse:
                 let rect = rectFromTwoPoints(start, current)
-                if currentShapeFill {
-                    context.setFillColor(currentColor.cgColor)
-                    context.fillEllipse(in: rect)
-                }
-                context.strokeEllipse(in: rect)
+                EllipseAnnotation(
+                    rect: rect,
+                    color: currentColor,
+                    lineWidth: currentLineWidth,
+                    fillMode: currentShapeFillMode,
+                    strokeStyle: currentShapeStrokeStyle
+                ).draw(in: context, bounds: bounds)
             case .mosaic:
                 // Mosaic preview: a semi-transparent gray fill marking the
                 // region that will be pixelated on mouseUp.
@@ -2842,7 +2852,8 @@ class EditCanvasView: NSView {
                     rect: newRect,
                     color: rect.color,
                     lineWidth: rect.lineWidth,
-                    filled: rect.filled,
+                    fillMode: rect.fillMode,
+                    strokeStyle: rect.strokeStyle,
                     rotation: rect.rotation
                 )
             } else if let ellipse = state.original as? EllipseAnnotation {
@@ -2859,7 +2870,8 @@ class EditCanvasView: NSView {
                     rect: newRect,
                     color: ellipse.color,
                     lineWidth: ellipse.lineWidth,
-                    filled: ellipse.filled,
+                    fillMode: ellipse.fillMode,
+                    strokeStyle: ellipse.strokeStyle,
                     rotation: ellipse.rotation
                 )
             } else if let image = state.original as? ImageAnnotation {

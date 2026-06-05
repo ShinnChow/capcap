@@ -79,7 +79,8 @@ class EditWindowController {
     /// Whether new text annotations render as callout bubbles with an arrow handle.
     private var currentTextCallout: Bool = Defaults.lastTextCallout
     /// Whether new rectangle/ellipse annotations are filled.
-    private var currentShapeFill: Bool = Defaults.lastShapeFill
+    private var currentShapeFillMode: ShapeFillMode = Defaults.lastShapeFillMode
+    private var currentShapeStrokeStyle: ShapeStrokeStyle = Defaults.lastShapeStrokeStyle
     /// Marker keeps its own color/size slot so toggling between pen and
     /// marker preserves each tool's last-used choice.
     private var currentMarkerColor: NSColor = EditorStyleDefaults.markerColor
@@ -378,7 +379,8 @@ class EditWindowController {
         canvasView?.currentFontSize = currentFontSize
         canvasView?.currentTextStroke = currentTextStroke
         canvasView?.currentTextCallout = currentTextCallout
-        canvasView?.currentShapeFill = currentShapeFill
+        canvasView?.currentShapeFillMode = currentShapeFillMode
+        canvasView?.currentShapeStrokeStyle = currentShapeStrokeStyle
         canvasView?.currentEmoji = currentEmoji
         canvasView?.currentMarkerColor = currentMarkerColor
         canvasView?.currentMarkerLineWidth = currentMarkerLineWidth
@@ -426,11 +428,13 @@ class EditWindowController {
         case let r as RectAnnotation:
             currentColor = r.color
             currentLineWidth = r.lineWidth
-            currentShapeFill = r.filled
+            currentShapeFillMode = r.fillMode
+            currentShapeStrokeStyle = r.strokeStyle
         case let e as EllipseAnnotation:
             currentColor = e.color
             currentLineWidth = e.lineWidth
-            currentShapeFill = e.filled
+            currentShapeFillMode = e.fillMode
+            currentShapeStrokeStyle = e.strokeStyle
         case let a as ArrowAnnotation:
             currentColor = a.color
             currentLineWidth = a.lineWidth
@@ -474,7 +478,7 @@ class EditWindowController {
                 width: ColorSizeSubToolbar.preferredWidth(
                     sizes: EditorStyleDefaults.standardLineSizes,
                     dynamicColor: pickedColorSwatch,
-                    showsFillCheckbox: false,
+                    showsShapeFillModes: false,
                     showsArrowStyles: true
                 ),
                 onSize: { [weak self] size in
@@ -493,14 +497,20 @@ class EditWindowController {
                 width: ColorSizeSubToolbar.preferredWidth(
                     sizes: EditorStyleDefaults.standardLineSizes,
                     dynamicColor: pickedColorSwatch,
-                    showsFillCheckbox: true
+                    showsShapeFillModes: true,
+                    showsShapeStrokeStyles: true
                 ),
                 onSize: { [weak self] size in
                     self?.setCurrentDrawingLineWidth(size)
                 },
-                fillEnabled: currentShapeFill,
-                onFill: { [weak self] enabled in
-                    self?.setShapeFillEnabled(enabled)
+                shapeFillMode: currentShapeFillMode,
+                onShapeFillMode: { [weak self] mode in
+                    self?.setShapeFillMode(mode)
+                },
+                shapeStrokeStyle: currentShapeStrokeStyle,
+                shapeStrokePreviewShape: tool == .ellipse ? .ellipse : .rectangle,
+                onShapeStrokeStyle: { [weak self] style in
+                    self?.setShapeStrokeStyle(style)
                 }
             )
         case .magnifier:
@@ -557,8 +567,11 @@ class EditWindowController {
         sizeMaxValue: CGFloat = CGFloat(Defaults.editorLineWidthMax),
         onColor: ((NSColor) -> Void)? = nil,
         onSize: ((CGFloat) -> Void)? = nil,
-        fillEnabled: Bool? = nil,
-        onFill: ((Bool) -> Void)? = nil,
+        shapeFillMode: ShapeFillMode? = nil,
+        onShapeFillMode: ((ShapeFillMode) -> Void)? = nil,
+        shapeStrokeStyle: ShapeStrokeStyle? = nil,
+        shapeStrokePreviewShape: ShapeStrokePreviewShape = .rectangle,
+        onShapeStrokeStyle: ((ShapeStrokeStyle) -> Void)? = nil,
         arrowStyle: ArrowStyle? = nil,
         onArrowStyle: ((ArrowStyle) -> Void)? = nil
     ) {
@@ -567,8 +580,9 @@ class EditWindowController {
         let resolvedWidth = width ?? ColorSizeSubToolbar.preferredWidth(
             sizes: sizes,
             dynamicColor: dynamicColor,
-            showsFillCheckbox: fillEnabled != nil,
-            showsArrowStyles: arrowStyle != nil
+            showsShapeFillModes: shapeFillMode != nil,
+            showsArrowStyles: arrowStyle != nil,
+            showsShapeStrokeStyles: shapeStrokeStyle != nil
         )
         let subRect = subToolbarRect(
             width: resolvedWidth,
@@ -587,7 +601,9 @@ class EditWindowController {
             currentSize: currentSize,
             sizeMinValue: sizeMinValue,
             sizeMaxValue: sizeMaxValue,
-            fillEnabled: fillEnabled,
+            shapeFillMode: shapeFillMode,
+            shapeStrokeStyle: shapeStrokeStyle,
+            shapeStrokePreviewShape: shapeStrokePreviewShape,
             arrowStyle: arrowStyle
         )
         view.onColorChanged = { [weak self] color in
@@ -611,7 +627,8 @@ class EditWindowController {
         view.onSizeEnded = { [weak self] in
             self?.canvasView?.commitSelectionAdjustment()
         }
-        view.onFillChanged = onFill
+        view.onShapeFillModeChanged = onShapeFillMode
+        view.onShapeStrokeStyleChanged = onShapeStrokeStyle
         view.onArrowStyleChanged = onArrowStyle
         styleFloatingHUD(view)
         hostSelectionView.addSubview(view)
@@ -1493,11 +1510,18 @@ class EditWindowController {
         }
     }
 
-    private func setShapeFillEnabled(_ enabled: Bool) {
-        currentShapeFill = enabled
-        canvasView?.currentShapeFill = enabled
-        Defaults.lastShapeFill = enabled
-        canvasView?.mutateSelectedAnnotationAtomic { $0.withFill(enabled) }
+    private func setShapeFillMode(_ mode: ShapeFillMode) {
+        currentShapeFillMode = mode
+        canvasView?.currentShapeFillMode = mode
+        Defaults.lastShapeFillMode = mode
+        canvasView?.mutateSelectedAnnotationAtomic { $0.withShapeFillMode(mode) }
+    }
+
+    private func setShapeStrokeStyle(_ style: ShapeStrokeStyle) {
+        currentShapeStrokeStyle = style
+        canvasView?.currentShapeStrokeStyle = style
+        Defaults.lastShapeStrokeStyle = style
+        canvasView?.mutateSelectedAnnotationAtomic { $0.withShapeStrokeStyle(style) }
     }
 
     private func setCurrentDrawingColor(_ color: NSColor) {
@@ -1775,7 +1799,16 @@ class EditWindowController {
 
     private func toggleShapeFillFromKeyboard() -> Bool {
         guard activeTool == .rectangle || activeTool == .ellipse else { return false }
-        setShapeFillEnabled(!currentShapeFill)
+        let nextMode: ShapeFillMode
+        switch currentShapeFillMode {
+        case .none:
+            nextMode = .opaque
+        case .opaque:
+            nextMode = .translucent
+        case .translucent:
+            nextMode = .none
+        }
+        setShapeFillMode(nextMode)
         showSubToolbar(for: activeTool)
         return true
     }
@@ -3239,28 +3272,38 @@ private final class EmojiMoreButton: NSButton {
 
 // MARK: - Color + Size Sub-toolbar
 
+private enum ShapeStrokePreviewShape {
+    case rectangle
+    case ellipse
+}
+
 private class ColorSizeSubToolbar: NSView {
     var currentColor: NSColor = EditorStyleDefaults.primaryColor
     var currentSize: CGFloat = 3.0
-    var fillEnabled: Bool = false
     var currentArrowStyle: ArrowStyle?
+    var currentShapeFillMode: ShapeFillMode?
+    var currentShapeStrokeStyle: ShapeStrokeStyle?
     var onColorChanged: ((NSColor) -> Void)?
     var onSizeBegan: (() -> Void)?
     var onSizeChanged: ((CGFloat) -> Void)?
     var onSizeEnded: (() -> Void)?
-    var onFillChanged: ((Bool) -> Void)?
     var onArrowStyleChanged: ((ArrowStyle) -> Void)?
+    var onShapeFillModeChanged: ((ShapeFillMode) -> Void)?
+    var onShapeStrokeStyleChanged: ((ShapeStrokeStyle) -> Void)?
 
     private var sizeSlider: HUDSlider?
     private var colorButtons: [NSView] = []
     private var arrowStyleButtons: [ArrowStyleButtonView] = []
-    private var fillCheckbox: HUDCheckboxButton?
+    private var shapeFillModeControl: ShapeFillModeSegmentedControl?
+    private var shapeStrokeStyleButtons: [ShapeStrokeStyleButtonView] = []
 
     private let sizes: [CGFloat]
     private let sizeMinValue: CGFloat
     private let sizeMaxValue: CGFloat
     private let dynamicColor: NSColor?
-    private let showsFillCheckbox: Bool
+    private let showsShapeFillModes: Bool
+    private let showsShapeStrokeStyles: Bool
+    private let shapeStrokePreviewShape: ShapeStrokePreviewShape
     private let baseColors: [NSColor] = EditorStyleDefaults.paletteColors
     private var colors: [NSColor] {
         guard let dynamicColor else { return baseColors }
@@ -3272,25 +3315,21 @@ private class ColorSizeSubToolbar: NSView {
     private static let swatchSize: CGFloat = 18
     private static let swatchGap: CGFloat = 5
     private static let separatorGap: CGFloat = 6
-    private static let checkboxGap: CGFloat = 8
     private static let arrowStyleGap: CGFloat = 8
     private static let arrowStyleButtonWidth: CGFloat = 27
     private static let arrowStyleButtonHeight: CGFloat = 20
     private static let arrowStyleButtonGap: CGFloat = 4
+    private static let shapeButtonWidth: CGFloat = 27
+    private static let shapeButtonHeight: CGFloat = 20
     private static let trailingPad: CGFloat = 12
     private static var baseColorCount: CGFloat { CGFloat(EditorStyleDefaults.paletteColors.count) }
-
-    private static func fillCheckboxWidth() -> CGFloat {
-        let font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        let textWidth = ceil((L10n.shapeFillEffect as NSString).size(withAttributes: [.font: font]).width)
-        return 16 + 8 + textWidth
-    }
 
     static func preferredWidth(
         sizes: [CGFloat],
         dynamicColor: NSColor?,
-        showsFillCheckbox: Bool,
-        showsArrowStyles: Bool = false
+        showsShapeFillModes: Bool,
+        showsArrowStyles: Bool = false,
+        showsShapeStrokeStyles: Bool = false
     ) -> CGFloat {
         var x = leadingPad
         if !sizes.isEmpty {
@@ -3307,8 +3346,15 @@ private class ColorSizeSubToolbar: NSView {
             x += styleCount * arrowStyleButtonWidth + max(styleCount - 1, 0) * arrowStyleButtonGap
         }
 
-        if showsFillCheckbox {
-            x += separatorGap + 1 + checkboxGap + fillCheckboxWidth()
+        if showsShapeFillModes {
+            x += separatorGap + 1 + arrowStyleGap
+            x += ShapeFillModeSegmentedControl.preferredWidth()
+        }
+
+        if showsShapeStrokeStyles {
+            let styleCount = CGFloat(ShapeStrokeStyle.allCases.count)
+            x += separatorGap + 1 + arrowStyleGap
+            x += styleCount * shapeButtonWidth + max(styleCount - 1, 0) * arrowStyleButtonGap
         }
 
         return ceil(x + trailingPad)
@@ -3322,7 +3368,9 @@ private class ColorSizeSubToolbar: NSView {
         currentSize: CGFloat = 3.0,
         sizeMinValue: CGFloat = CGFloat(Defaults.editorLineWidthMin),
         sizeMaxValue: CGFloat = CGFloat(Defaults.editorLineWidthMax),
-        fillEnabled: Bool? = nil,
+        shapeFillMode: ShapeFillMode? = nil,
+        shapeStrokeStyle: ShapeStrokeStyle? = nil,
+        shapeStrokePreviewShape: ShapeStrokePreviewShape = .rectangle,
         arrowStyle: ArrowStyle? = nil
     ) {
         self.sizes = sizes
@@ -3331,9 +3379,12 @@ private class ColorSizeSubToolbar: NSView {
         self.currentColor = currentColor
         self.dynamicColor = dynamicColor
         self.currentSize = min(max(currentSize, sizeMinValue), max(sizeMinValue, sizeMaxValue))
-        self.fillEnabled = fillEnabled ?? false
+        self.currentShapeFillMode = shapeFillMode
+        self.currentShapeStrokeStyle = shapeStrokeStyle
         self.currentArrowStyle = arrowStyle
-        self.showsFillCheckbox = fillEnabled != nil
+        self.showsShapeFillModes = shapeFillMode != nil
+        self.showsShapeStrokeStyles = shapeStrokeStyle != nil
+        self.shapeStrokePreviewShape = shapeStrokePreviewShape
         super.init(frame: frame)
         setup()
     }
@@ -3434,29 +3485,59 @@ private class ColorSizeSubToolbar: NSView {
             lastSectionRightEdge = x - ColorSizeSubToolbar.arrowStyleButtonGap
         }
 
-        if showsFillCheckbox {
+        if showsShapeFillModes {
             let fillSepX = lastSectionRightEdge + ColorSizeSubToolbar.separatorGap
             let fillSep = NSView(frame: NSRect(x: fillSepX, y: 6, width: 1, height: bounds.height - 12))
             fillSep.wantsLayer = true
             fillSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
             addSubview(fillSep)
 
-            let checkboxHeight: CGFloat = 20
-            let checkbox = HUDCheckboxButton(
+            x = fillSepX + 1 + ColorSizeSubToolbar.arrowStyleGap
+            let controlWidth = ShapeFillModeSegmentedControl.preferredWidth()
+            let control = ShapeFillModeSegmentedControl(
                 frame: NSRect(
-                    x: fillSepX + 1 + ColorSizeSubToolbar.checkboxGap,
-                    y: midY - checkboxHeight / 2,
-                    width: ColorSizeSubToolbar.fillCheckboxWidth(),
-                    height: checkboxHeight
+                    x: x,
+                    y: midY - ShapeFillModeSegmentedControl.preferredHeight / 2,
+                    width: controlWidth,
+                    height: ShapeFillModeSegmentedControl.preferredHeight
                 ),
-                title: L10n.shapeFillEffect,
-                target: self,
-                action: #selector(fillCheckboxChanged(_:))
+                selectedMode: currentShapeFillMode ?? .none
             )
-            checkbox.state = fillEnabled ? .on : .off
-            checkbox.toolTip = "\(L10n.shapeFillEffect) (F)"
-            addSubview(checkbox)
-            fillCheckbox = checkbox
+            control.onSelect = { [weak self] mode in
+                self?.currentShapeFillMode = mode
+                self?.onShapeFillModeChanged?(mode)
+            }
+            addSubview(control)
+            shapeFillModeControl = control
+            lastSectionRightEdge = control.frame.maxX
+        }
+
+        if showsShapeStrokeStyles {
+            let styleSepX = lastSectionRightEdge + ColorSizeSubToolbar.separatorGap
+            let styleSep = NSView(frame: NSRect(x: styleSepX, y: 6, width: 1, height: bounds.height - 12))
+            styleSep.wantsLayer = true
+            styleSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            addSubview(styleSep)
+
+            x = styleSepX + 1 + ColorSizeSubToolbar.arrowStyleGap
+            for style in ShapeStrokeStyle.allCases {
+                let button = ShapeStrokeStyleButtonView(
+                    frame: NSRect(
+                        x: x,
+                        y: midY - ColorSizeSubToolbar.shapeButtonHeight / 2,
+                        width: ColorSizeSubToolbar.shapeButtonWidth,
+                        height: ColorSizeSubToolbar.shapeButtonHeight
+                    ),
+                    style: style,
+                    previewShape: shapeStrokePreviewShape,
+                    isSelected: currentShapeStrokeStyle == style
+                )
+                let click = NSClickGestureRecognizer(target: self, action: #selector(shapeStrokeStyleTapped(_:)))
+                button.addGestureRecognizer(click)
+                addSubview(button)
+                shapeStrokeStyleButtons.append(button)
+                x += ColorSizeSubToolbar.shapeButtonWidth + ColorSizeSubToolbar.arrowStyleButtonGap
+            }
         }
     }
 
@@ -3475,16 +3556,18 @@ private class ColorSizeSubToolbar: NSView {
         updateColorSelection()
     }
 
-    @objc private func fillCheckboxChanged(_ sender: HUDCheckboxButton) {
-        fillEnabled = sender.state == .on
-        onFillChanged?(fillEnabled)
-    }
-
     @objc private func arrowStyleTapped(_ gesture: NSGestureRecognizer) {
         guard let view = gesture.view as? ArrowStyleButtonView else { return }
         currentArrowStyle = view.style
         onArrowStyleChanged?(view.style)
         updateArrowStyleSelection()
+    }
+
+    @objc private func shapeStrokeStyleTapped(_ gesture: NSGestureRecognizer) {
+        guard let view = gesture.view as? ShapeStrokeStyleButtonView else { return }
+        currentShapeStrokeStyle = view.style
+        onShapeStrokeStyleChanged?(view.style)
+        updateShapeStrokeStyleSelection()
     }
 
     private func updateColorSelection() {
@@ -3497,6 +3580,16 @@ private class ColorSizeSubToolbar: NSView {
     private func updateArrowStyleSelection() {
         for view in arrowStyleButtons {
             view.isSelected = view.style == currentArrowStyle
+        }
+    }
+
+    private func updateShapeFillModeSelection() {
+        shapeFillModeControl?.selectedMode = currentShapeFillMode ?? .none
+    }
+
+    private func updateShapeStrokeStyleSelection() {
+        for view in shapeStrokeStyleButtons {
+            view.isSelected = view.style == currentShapeStrokeStyle
         }
     }
 
@@ -4399,6 +4492,273 @@ final class HUDSlider: NSControl {
 
     private func displayText(for rawValue: Double) -> String {
         "\(Int(rawValue.rounded()))"
+    }
+}
+
+private final class ShapeFillModeSegmentedControl: NSView {
+    static let preferredHeight: CGFloat = 24
+    private static let minSegmentWidth: CGFloat = 54
+    private static let segmentHorizontalPadding: CGFloat = 18
+    private static let font = NSFont.systemFont(ofSize: 12, weight: .semibold)
+    private static let modes = ShapeFillMode.allCases
+
+    var selectedMode: ShapeFillMode {
+        didSet { needsDisplay = true }
+    }
+    var onSelect: ((ShapeFillMode) -> Void)?
+
+    init(frame: NSRect, selectedMode: ShapeFillMode) {
+        self.selectedMode = selectedMode
+        super.init(frame: frame)
+        toolTip = "\(L10n.shapeFillEffect) (F)"
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    static func preferredWidth() -> CGFloat {
+        segmentWidths().reduce(0, +)
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        guard let mode = mode(atX: point.x) else { return }
+        selectedMode = mode
+        onSelect?(mode)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let rect = bounds.insetBy(dx: 0.5, dy: 0.5)
+        let background = NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7)
+        NSColor(white: 0.18, alpha: 0.96).setFill()
+        background.fill()
+
+        let widths = Self.segmentWidths()
+        var x = rect.minX
+        for (index, mode) in Self.modes.enumerated() {
+            let width = widths[index]
+            let segmentRect = NSRect(x: x, y: rect.minY, width: width, height: rect.height)
+            if mode == selectedMode {
+                let selected = NSBezierPath(roundedRect: segmentRect.insetBy(dx: 0.5, dy: 0.5), xRadius: 7, yRadius: 7)
+                accentGreen.setFill()
+                selected.fill()
+            } else if index > 0 {
+                NSColor.white.withAlphaComponent(0.06).setStroke()
+                let sep = NSBezierPath()
+                sep.move(to: NSPoint(x: x, y: rect.minY + 4))
+                sep.line(to: NSPoint(x: x, y: rect.maxY - 4))
+                sep.lineWidth = 1
+                sep.stroke()
+            }
+            drawTitle(for: mode, in: segmentRect)
+            x += width
+        }
+
+        NSColor.white.withAlphaComponent(0.06).setStroke()
+        background.lineWidth = 1
+        background.stroke()
+    }
+
+    private static func segmentWidths() -> [CGFloat] {
+        modes.map { mode in
+            let textWidth = ceil((title(for: mode) as NSString).size(withAttributes: [.font: font]).width)
+            return max(minSegmentWidth, textWidth + segmentHorizontalPadding)
+        }
+    }
+
+    private static func title(for mode: ShapeFillMode) -> String {
+        switch mode {
+        case .none: return L10n.shapeFillNone
+        case .opaque: return L10n.shapeFillOpaque
+        case .translucent: return L10n.shapeFillTranslucent
+        }
+    }
+
+    private func mode(atX targetX: CGFloat) -> ShapeFillMode? {
+        let widths = Self.segmentWidths()
+        var x: CGFloat = 0
+        for (index, width) in widths.enumerated() {
+            if targetX >= x && targetX <= x + width {
+                return Self.modes[index]
+            }
+            x += width
+        }
+        return nil
+    }
+
+    private func drawTitle(for mode: ShapeFillMode, in rect: NSRect) {
+        let selected = mode == selectedMode
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: Self.font,
+            .foregroundColor: selected ? NSColor.white : NSColor.white.withAlphaComponent(0.84),
+        ]
+        let title = Self.title(for: mode) as NSString
+        let size = title.size(withAttributes: attributes)
+        let point = NSPoint(
+            x: rect.midX - size.width / 2,
+            y: rect.midY - size.height / 2
+        )
+        title.draw(at: point, withAttributes: attributes)
+    }
+}
+
+private final class ShapeStrokeStyleButtonView: NSView {
+    let style: ShapeStrokeStyle
+    let previewShape: ShapeStrokePreviewShape
+    var isSelected: Bool {
+        didSet { needsDisplay = true }
+    }
+
+    init(frame: NSRect, style: ShapeStrokeStyle, previewShape: ShapeStrokePreviewShape, isSelected: Bool) {
+        self.style = style
+        self.previewShape = previewShape
+        self.isSelected = isSelected
+        super.init(frame: frame)
+        toolTip = style == .standard ? L10n.shapeStyleStandard : L10n.shapeStyleHandDrawn
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let color = isSelected ? accentGreen : NSColor.white.withAlphaComponent(0.68)
+
+        if isSelected {
+            let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
+            accentGreen.withAlphaComponent(0.12).setFill()
+            bg.fill()
+        }
+
+        switch style {
+        case .standard:
+            drawStandardIcon(color: color)
+        case .handDrawn:
+            switch previewShape {
+            case .rectangle:
+                drawHandDrawnRectangleIcon(color: color)
+            case .ellipse:
+                drawHandDrawnCircleIcon(color: color)
+            }
+        }
+    }
+
+    private func drawStandardIcon(color: NSColor) {
+        color.setStroke()
+        switch previewShape {
+        case .rectangle:
+            let rect = bounds.insetBy(dx: 6, dy: 4.5)
+            let path = NSBezierPath(rect: rect)
+            path.lineWidth = 1.9
+            path.stroke()
+        case .ellipse:
+            let side = min(bounds.width, bounds.height) - 8
+            let rect = NSRect(
+                x: bounds.midX - side / 2,
+                y: bounds.midY - side / 2,
+                width: side,
+                height: side
+            )
+            let path = NSBezierPath(ovalIn: rect)
+            path.lineWidth = 1.9
+            path.stroke()
+        }
+    }
+
+    private func drawHandDrawnRectangleIcon(color: NSColor) {
+        let rect = bounds.insetBy(dx: 5.5, dy: 4.8)
+        color.setStroke()
+
+        let top = NSBezierPath()
+        top.move(to: NSPoint(x: rect.minX + 1.2, y: rect.maxY - 0.2))
+        top.curve(
+            to: NSPoint(x: rect.maxX - 1.1, y: rect.maxY + 0.1),
+            controlPoint1: NSPoint(x: rect.midX - 4, y: rect.maxY + 0.7),
+            controlPoint2: NSPoint(x: rect.midX + 4, y: rect.maxY - 0.45)
+        )
+        top.lineCapStyle = .round
+        top.lineWidth = 2.05
+        top.stroke()
+
+        let right = NSBezierPath()
+        right.move(to: NSPoint(x: rect.maxX - 0.5, y: rect.maxY - 0.4))
+        right.curve(
+            to: NSPoint(x: rect.maxX - 0.1, y: rect.minY + 0.8),
+            controlPoint1: NSPoint(x: rect.maxX + 0.35, y: rect.midY + 2.0),
+            controlPoint2: NSPoint(x: rect.maxX - 0.45, y: rect.midY - 2.0)
+        )
+        right.lineCapStyle = .round
+        right.lineWidth = 1.55
+        right.stroke()
+
+        let bottom = NSBezierPath()
+        bottom.move(to: NSPoint(x: rect.maxX - 0.4, y: rect.minY + 0.5))
+        bottom.curve(
+            to: NSPoint(x: rect.minX + 0.8, y: rect.minY + 0.2),
+            controlPoint1: NSPoint(x: rect.midX + 4.0, y: rect.minY - 0.55),
+            controlPoint2: NSPoint(x: rect.midX - 4.0, y: rect.minY + 0.55)
+        )
+        bottom.lineCapStyle = .round
+        bottom.lineWidth = 2.3
+        bottom.stroke()
+
+        let left = NSBezierPath()
+        left.move(to: NSPoint(x: rect.minX + 0.5, y: rect.minY + 0.8))
+        left.curve(
+            to: NSPoint(x: rect.minX + 1.1, y: rect.maxY - 0.2),
+            controlPoint1: NSPoint(x: rect.minX - 0.35, y: rect.midY - 1.6),
+            controlPoint2: NSPoint(x: rect.minX + 0.45, y: rect.midY + 1.6)
+        )
+        left.lineCapStyle = .round
+        left.lineWidth = 1.75
+        left.stroke()
+    }
+
+    private func drawHandDrawnCircleIcon(color: NSColor) {
+        let side = min(bounds.width, bounds.height) - 8
+        let center = NSPoint(x: bounds.midX, y: bounds.midY)
+        let radius = side / 2
+        let segments: [(CGFloat, CGFloat, CGFloat)] = [
+            (214, 332, 2.0),
+            (332, 455, 1.55),
+            (455, 516, 2.25),
+        ]
+
+        color.setStroke()
+        for (startDegrees, endDegrees, width) in segments {
+            let path = NSBezierPath()
+            let steps = max(8, Int((endDegrees - startDegrees) / 10))
+            for index in 0...steps {
+                let fraction = CGFloat(index) / CGFloat(steps)
+                let degrees = startDegrees + (endDegrees - startDegrees) * fraction
+                let t = degrees * .pi / 180
+                let wobble = sin(t * 2.7) * 0.6 + cos(t * 4.1) * 0.35
+                let point = NSPoint(
+                    x: center.x + (radius + wobble) * cos(t),
+                    y: center.y + (radius + wobble) * sin(t)
+                )
+                if index == 0 {
+                    path.move(to: point)
+                } else {
+                    path.line(to: point)
+                }
+            }
+            path.lineCapStyle = .round
+            path.lineJoinStyle = .round
+            path.lineWidth = width
+            path.stroke()
+        }
     }
 }
 
