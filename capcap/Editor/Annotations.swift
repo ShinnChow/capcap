@@ -483,25 +483,12 @@ struct MagnifierAnnotation: Annotation {
         _ geometry: (source: NSPoint, start: NSPoint, end: NSPoint, indicatorRadius: CGFloat),
         in context: CGContext
     ) {
-        let dx = geometry.source.x - center.x
-        let dy = geometry.source.y - center.y
-        let distance = hypot(dx, dy)
-        guard distance > 0 else { return }
-
-        let ux = dx / distance
-        let uy = dy / distance
-        let indicatorInset = max(1, lineWidth / 2)
-        let lineStart = NSPoint(x: center.x + ux * radius, y: center.y + uy * radius)
-        let lineEnd = NSPoint(
-            x: geometry.source.x - ux * max(0, geometry.indicatorRadius - indicatorInset),
-            y: geometry.source.y - uy * max(0, geometry.indicatorRadius - indicatorInset)
-        )
         context.saveGState()
         context.setStrokeColor(color.cgColor)
         context.setLineWidth(lineWidth)
-        context.setLineCap(.round)
-        context.move(to: lineStart)
-        context.addLine(to: lineEnd)
+        context.setLineCap(.butt)
+        context.move(to: geometry.start)
+        context.addLine(to: geometry.end)
         context.strokePath()
         context.restoreGState()
     }
@@ -543,6 +530,18 @@ struct MagnifierAnnotation: Annotation {
             zoom: zoom,
             sourceImage: sourceImage,
             sourceCenter: sourceCenter
+        )
+    }
+
+    func translatedPreservingSourceFocus(by delta: NSPoint) -> MagnifierAnnotation {
+        MagnifierAnnotation(
+            center: NSPoint(x: center.x + delta.x, y: center.y + delta.y),
+            radius: radius,
+            color: color,
+            lineWidth: lineWidth,
+            zoom: zoom,
+            sourceImage: sourceImage,
+            sourceCenter: effectiveSourceCenter
         )
     }
 

@@ -241,6 +241,13 @@ class EditCanvasView: NSView {
         var didDrag: Bool
     }
 
+    private func annotationForBodyDrag(_ annotation: Annotation, by delta: NSPoint) -> Annotation {
+        if let magnifier = annotation as? MagnifierAnnotation {
+            return magnifier.translatedPreservingSourceFocus(by: delta)
+        }
+        return annotation.translated(by: delta)
+    }
+
     private struct PendingTextCreate {
         let point: NSPoint
         let wasEditing: Bool
@@ -1055,7 +1062,7 @@ class EditCanvasView: NSView {
             )
             var didMove = false
             for (idx, original) in state.originals where idx < annotations.count {
-                annotations[idx] = original.translated(by: delta)
+                annotations[idx] = annotationForBodyDrag(original, by: delta)
                 didMove = true
             }
             if didMove {
