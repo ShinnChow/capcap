@@ -1097,6 +1097,7 @@ struct Defaults {
 
     static let editorLineWidthMin: Double = 1
     static let editorLineWidthMax: Double = 24
+    static let markerLineWidthMax: Double = 10
 
     static var lastEditorColorHex: String? {
         get {
@@ -1141,10 +1142,10 @@ struct Defaults {
             if defaults.object(forKey: "lastMarkerLineWidth") == nil {
                 return 5.0
             }
-            return clampedEditorLineWidth(defaults.double(forKey: "lastMarkerLineWidth"))
+            return clampedMarkerLineWidth(defaults.double(forKey: "lastMarkerLineWidth"))
         }
         set {
-            defaults.set(clampedEditorLineWidth(newValue), forKey: "lastMarkerLineWidth")
+            defaults.set(clampedMarkerLineWidth(newValue), forKey: "lastMarkerLineWidth")
         }
     }
 
@@ -1259,6 +1260,10 @@ struct Defaults {
 
     private static func clampedEditorLineWidth(_ width: Double) -> Double {
         min(max(width, editorLineWidthMin), editorLineWidthMax)
+    }
+
+    private static func clampedMarkerLineWidth(_ width: Double) -> Double {
+        min(max(width, editorLineWidthMin), markerLineWidthMax)
     }
 
     static var lastBeautifyPresetID: String? {

@@ -73,7 +73,7 @@ class SettingsView: NSView {
 
     // Window-capture shadow card
     private var windowShadowSwitch: NSSwitch!
-    private var windowShadowSlider: NSSlider!
+    private var windowShadowSlider: HUDSlider!
     private var windowShadowSizeValueLabel: NSTextField!
     private var windowShadowPreview: ShadowPreviewView!
     private var windowShadowTitleLabel: NSTextField!
@@ -643,7 +643,7 @@ class SettingsView: NSView {
         header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
         // Size slider
-        let slider = NSSlider(
+        let slider = HUDSlider(
             value: Defaults.windowShadowSize,
             minValue: Defaults.windowShadowSizeMin,
             maxValue: Defaults.windowShadowSizeMax,
@@ -651,6 +651,7 @@ class SettingsView: NSView {
             action: #selector(windowShadowSizeChanged(_:))
         )
         slider.controlSize = .small
+        slider.isContinuous = true
         slider.translatesAutoresizingMaskIntoConstraints = false
         windowShadowSlider = slider
         inner.addArrangedSubview(slider)
@@ -2086,7 +2087,7 @@ class SettingsView: NSView {
         updateWindowShadowControlsEnabled()
     }
 
-    @objc private func windowShadowSizeChanged(_ sender: NSSlider) {
+    @objc private func windowShadowSizeChanged(_ sender: HUDSlider) {
         Defaults.windowShadowSize = sender.doubleValue
         windowShadowSizeValueLabel?.stringValue = "\(Int(Defaults.windowShadowSize.rounded()))"
         windowShadowPreview?.shadowSize = CGFloat(Defaults.windowShadowSize)

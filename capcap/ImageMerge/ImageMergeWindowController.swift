@@ -22,9 +22,9 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
     private let canvasView = ImageMergeCanvasView(frame: .zero)
     private let thumbnailListView = ImageMergeThumbnailListView(frame: NSRect(x: 0, y: 0, width: 260, height: 120))
     private var templateButtons: [ImageMergeTemplateChipButton] = []
-    private let spacingSlider = NSSlider(value: 12, minValue: 0, maxValue: 80, target: nil, action: nil)
-    private let marginSlider = NSSlider(value: 24, minValue: 0, maxValue: 120, target: nil, action: nil)
-    private let cornerSlider = NSSlider(value: 0, minValue: 0, maxValue: 80, target: nil, action: nil)
+    private let spacingSlider = HUDSlider(value: 12, minValue: 0, maxValue: 80, target: nil, action: nil)
+    private let marginSlider = HUDSlider(value: 24, minValue: 0, maxValue: 120, target: nil, action: nil)
+    private let cornerSlider = HUDSlider(value: 0, minValue: 0, maxValue: 80, target: nil, action: nil)
     private let spacingValueLabel = NSTextField(labelWithString: "12")
     private let marginValueLabel = NSTextField(labelWithString: "24")
     private let cornerValueLabel = NSTextField(labelWithString: "0")
@@ -204,6 +204,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
             slider.target = self
             slider.action = #selector(layoutSliderChanged)
             slider.controlSize = .small
+            slider.isContinuous = true
         }
 
         backgroundMode.segmentCount = 2
@@ -314,7 +315,7 @@ final class ImageMergeWindowController: NSWindowController, NSWindowDelegate {
         return footer
     }
 
-    private func sliderRow(title: String, slider: NSSlider, valueLabel: NSTextField) -> NSView {
+    private func sliderRow(title: String, slider: HUDSlider, valueLabel: NSTextField) -> NSView {
         let stack = NSStackView()
         stack.orientation = .vertical
         stack.alignment = .leading
