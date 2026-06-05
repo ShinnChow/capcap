@@ -1096,7 +1096,7 @@ struct Defaults {
     }
 
     static let editorLineWidthMin: Double = 1
-    static let editorLineWidthMax: Double = 24
+    static let editorLineWidthMax: Double = 16
     static let markerLineWidthMax: Double = 10
 
     static var lastEditorColorHex: String? {
