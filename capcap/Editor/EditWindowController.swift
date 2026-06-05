@@ -4677,52 +4677,22 @@ private final class ShapeStrokeStyleButtonView: NSView {
     }
 
     private func drawHandDrawnRectangleIcon(color: NSColor) {
-        let rect = bounds.insetBy(dx: 5.5, dy: 4.8)
-        color.setStroke()
+        let rect = bounds.insetBy(dx: 5.4, dy: 4.8)
+        let sideOut: CGFloat = 1.1
+        let outerRect = rect.insetBy(dx: -sideOut, dy: -sideOut)
+        let outerRadius: CGFloat = 5.2
+        let innerRect = rect.insetBy(dx: 1.75, dy: 1.75)
+        let innerRadius: CGFloat = 2.2
+        NSGraphicsContext.current?.cgContext.setShouldAntialias(true)
 
-        let top = NSBezierPath()
-        top.move(to: NSPoint(x: rect.minX + 1.2, y: rect.maxY - 0.2))
-        top.curve(
-            to: NSPoint(x: rect.maxX - 1.1, y: rect.maxY + 0.1),
-            controlPoint1: NSPoint(x: rect.midX - 4, y: rect.maxY + 0.7),
-            controlPoint2: NSPoint(x: rect.midX + 4, y: rect.maxY - 0.45)
-        )
-        top.lineCapStyle = .round
-        top.lineWidth = 2.05
-        top.stroke()
-
-        let right = NSBezierPath()
-        right.move(to: NSPoint(x: rect.maxX - 0.5, y: rect.maxY - 0.4))
-        right.curve(
-            to: NSPoint(x: rect.maxX - 0.1, y: rect.minY + 0.8),
-            controlPoint1: NSPoint(x: rect.maxX + 0.35, y: rect.midY + 2.0),
-            controlPoint2: NSPoint(x: rect.maxX - 0.45, y: rect.midY - 2.0)
-        )
-        right.lineCapStyle = .round
-        right.lineWidth = 1.55
-        right.stroke()
-
-        let bottom = NSBezierPath()
-        bottom.move(to: NSPoint(x: rect.maxX - 0.4, y: rect.minY + 0.5))
-        bottom.curve(
-            to: NSPoint(x: rect.minX + 0.8, y: rect.minY + 0.2),
-            controlPoint1: NSPoint(x: rect.midX + 4.0, y: rect.minY - 0.55),
-            controlPoint2: NSPoint(x: rect.midX - 4.0, y: rect.minY + 0.55)
-        )
-        bottom.lineCapStyle = .round
-        bottom.lineWidth = 2.3
-        bottom.stroke()
-
-        let left = NSBezierPath()
-        left.move(to: NSPoint(x: rect.minX + 0.5, y: rect.minY + 0.8))
-        left.curve(
-            to: NSPoint(x: rect.minX + 1.1, y: rect.maxY - 0.2),
-            controlPoint1: NSPoint(x: rect.minX - 0.35, y: rect.midY - 1.6),
-            controlPoint2: NSPoint(x: rect.minX + 0.45, y: rect.midY + 1.6)
-        )
-        left.lineCapStyle = .round
-        left.lineWidth = 1.75
-        left.stroke()
+        let outer = NSBezierPath(roundedRect: outerRect, xRadius: outerRadius, yRadius: outerRadius)
+        let inner = NSBezierPath(roundedRect: innerRect, xRadius: innerRadius, yRadius: innerRadius)
+        let shape = NSBezierPath()
+        shape.append(outer)
+        shape.append(inner)
+        shape.windingRule = .evenOdd
+        color.setFill()
+        shape.fill()
     }
 
     private func drawHandDrawnCircleIcon(color: NSColor) {

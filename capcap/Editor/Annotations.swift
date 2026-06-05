@@ -137,12 +137,7 @@ private enum ShapeDrawing {
         case .standard:
             context.fill(rect)
         case .handDrawn:
-            context.addPath(CGPath(
-                roundedRect: rect,
-                cornerWidth: roundedRectRadius(for: rect, lineWidth: lineWidth),
-                cornerHeight: roundedRectRadius(for: rect, lineWidth: lineWidth),
-                transform: nil
-            ))
+            context.addPath(rectPath(rect, lineWidth: lineWidth, strokeStyle: strokeStyle))
             context.fillPath()
         }
         context.restoreGState()
@@ -184,7 +179,17 @@ private enum ShapeDrawing {
 
     private static func roundedRectRadius(for rect: NSRect, lineWidth: CGFloat) -> CGFloat {
         let shortest = max(1, min(rect.width, rect.height))
-        return min(shortest * 0.18, max(10, lineWidth * 2.6))
+        return min(shortest * 0.2, max(12, lineWidth * 3.2))
+    }
+
+    static func rectPath(_ rect: NSRect, lineWidth: CGFloat, strokeStyle: ShapeStrokeStyle) -> CGPath {
+        switch strokeStyle {
+        case .standard:
+            return CGPath(rect: rect, transform: nil)
+        case .handDrawn:
+            let radius = roundedRectRadius(for: rect, lineWidth: lineWidth)
+            return CGPath(roundedRect: rect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        }
     }
 
     private struct VariableStrokeSample {
@@ -193,14 +198,24 @@ private enum ShapeDrawing {
     }
 
     private static func strokeHandDrawnRoundedRect(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, in context: CGContext) {
+        guard rect.width > 0, rect.height > 0 else { return }
         let radius = roundedRectRadius(for: rect, lineWidth: lineWidth)
         let wobble = min(max(lineWidth * 0.18, 0.6), 2.0)
-        drawVariableStroke(
-            samples: handDrawnRoundedRectSamples(rect, radius: radius, wobble: wobble, lineWidth: lineWidth),
-            color: color,
-            closed: true,
-            in: context
-        )
+        let outerPath = handDrawnRoundedRectOuterPath(rect, radius: radius, wobble: wobble, lineWidth: lineWidth)
+        let innerPath = handDrawnRoundedRectInnerPath(rect, radius: radius, lineWidth: lineWidth)
+
+        context.saveGState()
+        context.setAllowsAntialiasing(true)
+        context.setShouldAntialias(true)
+        context.setFillColor(color.cgColor)
+        context.addPath(outerPath)
+        if let innerPath {
+            context.addPath(innerPath)
+            context.fillPath(using: .evenOdd)
+        } else {
+            context.fillPath()
+        }
+        context.restoreGState()
     }
 
     private static func strokeHandDrawnEllipse(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, in context: CGContext) {
@@ -292,64 +307,89 @@ private enum ShapeDrawing {
         return CGVector(dx: -dy / length, dy: dx / length)
     }
 
-    private static func handDrawnRoundedRectSamples(
-        _ rect: NSRect,
-        radius: CGFloat,
-        wobble: CGFloat,
-        lineWidth: CGFloat
-    ) -> [VariableStrokeSample] {
-        var points: [CGPoint] = []
+    private static func handDrawnRoundedRectOuterPath(_ rect: NSRect, radius: CGFloat, wobble: CGFloat, lineWidth: CGFloat) -> CGPath {
+        let sideOut = max(1.2, lineWidth * 0.36)
+        let cornerOut = max(sideOut + 1.2, lineWidth * 0.9)
+        let outerRect = rect.insetBy(dx: -sideOut, dy: -sideOut)
+        let r = min(radius + cornerOut * 0.58, outerRect.width / 2, outerRect.height / 2)
+        let k: CGFloat = 0.5522847498307936
 
-        func appendLine(from start: CGPoint, to end: CGPoint, steps: Int) {
+        let path = CGMutablePath()
+        let topLeft = CGPoint(x: outerRect.minX + r, y: outerRect.maxY)
+        let topRight = CGPoint(x: outerRect.maxX - r, y: outerRect.maxY)
+        let rightTop = CGPoint(x: outerRect.maxX, y: outerRect.maxY - r)
+        let rightBottom = CGPoint(x: outerRect.maxX, y: outerRect.minY + r)
+        let bottomRight = CGPoint(x: outerRect.maxX - r, y: outerRect.minY)
+        let bottomLeft = CGPoint(x: outerRect.minX + r, y: outerRect.minY)
+        let leftBottom = CGPoint(x: outerRect.minX, y: outerRect.minY + r)
+        let leftTop = CGPoint(x: outerRect.minX, y: outerRect.maxY - r)
+
+        func addHorizontalSide(from start: CGPoint, to end: CGPoint, bow: CGFloat) {
+            let mid = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 + bow)
             let dx = end.x - start.x
-            let dy = end.y - start.y
-            let length = max(0.001, hypot(dx, dy))
-            let normal = CGPoint(x: -dy / length, y: dx / length)
-            for step in 0..<steps {
-                let t = CGFloat(step) / CGFloat(steps)
-                let x = start.x + (end.x - start.x) * t
-                let y = start.y + (end.y - start.y) * t
-                let nudge = sin(CGFloat(points.count) * 0.77) * wobble * 0.18
-                points.append(CGPoint(x: x + normal.x * nudge, y: y + normal.y * nudge))
-            }
-        }
-
-        func appendArc(center: CGPoint, radius: CGFloat, start: CGFloat, end: CGFloat, steps: Int) {
-            for step in 0..<steps {
-                let t = CGFloat(step) / CGFloat(steps)
-                let angle = (start + (end - start) * t) * .pi / 180
-                let radial = sin(angle * 2.4) * wobble * 0.22 + cos(angle * 3.8) * wobble * 0.12
-                points.append(CGPoint(
-                    x: center.x + (radius + radial) * cos(angle),
-                    y: center.y + (radius + radial) * sin(angle)
-                ))
-            }
-        }
-
-        let horizontalSteps = max(8, Int(rect.width / 18))
-        let verticalSteps = max(8, Int(rect.height / 18))
-        let arcSteps = 10
-        let tl = CGPoint(x: rect.minX + radius, y: rect.maxY - radius)
-        let tr = CGPoint(x: rect.maxX - radius, y: rect.maxY - radius)
-        let br = CGPoint(x: rect.maxX - radius, y: rect.minY + radius)
-        let bl = CGPoint(x: rect.minX + radius, y: rect.minY + radius)
-
-        appendLine(from: CGPoint(x: rect.minX + radius, y: rect.maxY), to: CGPoint(x: rect.maxX - radius, y: rect.maxY), steps: horizontalSteps)
-        appendArc(center: tr, radius: radius, start: 90, end: 0, steps: arcSteps)
-        appendLine(from: CGPoint(x: rect.maxX, y: rect.maxY - radius), to: CGPoint(x: rect.maxX, y: rect.minY + radius), steps: verticalSteps)
-        appendArc(center: br, radius: radius, start: 0, end: -90, steps: arcSteps)
-        appendLine(from: CGPoint(x: rect.maxX - radius, y: rect.minY), to: CGPoint(x: rect.minX + radius, y: rect.minY), steps: horizontalSteps)
-        appendArc(center: bl, radius: radius, start: -90, end: -180, steps: arcSteps)
-        appendLine(from: CGPoint(x: rect.minX, y: rect.minY + radius), to: CGPoint(x: rect.minX, y: rect.maxY - radius), steps: verticalSteps)
-        appendArc(center: tl, radius: radius, start: 180, end: 90, steps: arcSteps)
-
-        let count = max(1, points.count)
-        return points.enumerated().map { index, point in
-            VariableStrokeSample(
-                point: point,
-                width: pressureWidth(lineWidth, progress: CGFloat(index) / CGFloat(count), phase: 0.2)
+            path.addCurve(
+                to: mid,
+                control1: CGPoint(x: start.x + dx * 0.22, y: start.y),
+                control2: CGPoint(x: mid.x - dx * 0.18, y: mid.y)
+            )
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: mid.x + dx * 0.18, y: mid.y),
+                control2: CGPoint(x: end.x - dx * 0.22, y: end.y)
             )
         }
+
+        func addVerticalSide(from start: CGPoint, to end: CGPoint, bow: CGFloat) {
+            let mid = CGPoint(x: (start.x + end.x) / 2 + bow, y: (start.y + end.y) / 2)
+            let dy = end.y - start.y
+            path.addCurve(
+                to: mid,
+                control1: CGPoint(x: start.x, y: start.y + dy * 0.22),
+                control2: CGPoint(x: mid.x, y: mid.y - dy * 0.18)
+            )
+            path.addCurve(
+                to: end,
+                control1: CGPoint(x: mid.x, y: mid.y + dy * 0.18),
+                control2: CGPoint(x: end.x, y: end.y - dy * 0.22)
+            )
+        }
+
+        path.move(to: topLeft)
+        addHorizontalSide(from: topLeft, to: topRight, bow: wobble * 0.12)
+        path.addCurve(
+            to: rightTop,
+            control1: CGPoint(x: topRight.x + k * r, y: topRight.y),
+            control2: CGPoint(x: rightTop.x, y: rightTop.y + k * r)
+        )
+        addVerticalSide(from: rightTop, to: rightBottom, bow: wobble * 0.08)
+        path.addCurve(
+            to: bottomRight,
+            control1: CGPoint(x: rightBottom.x, y: rightBottom.y - k * r),
+            control2: CGPoint(x: bottomRight.x + k * r, y: bottomRight.y)
+        )
+        addHorizontalSide(from: bottomRight, to: bottomLeft, bow: -wobble * 0.1)
+        path.addCurve(
+            to: leftBottom,
+            control1: CGPoint(x: bottomLeft.x - k * r, y: bottomLeft.y),
+            control2: CGPoint(x: leftBottom.x, y: leftBottom.y - k * r)
+        )
+        addVerticalSide(from: leftBottom, to: leftTop, bow: -wobble * 0.07)
+        path.addCurve(
+            to: topLeft,
+            control1: CGPoint(x: leftTop.x, y: leftTop.y + k * r),
+            control2: CGPoint(x: topLeft.x - k * r, y: topLeft.y)
+        )
+        path.closeSubpath()
+        return path
+    }
+
+    private static func handDrawnRoundedRectInnerPath(_ rect: NSRect, radius: CGFloat, lineWidth: CGFloat) -> CGPath? {
+        let maxInset = max(0, min(rect.width, rect.height) / 2 - 0.5)
+        let innerInset = min(maxInset, max(1, lineWidth * 0.48))
+        let innerRect = rect.insetBy(dx: innerInset, dy: innerInset)
+        guard innerRect.width > 1, innerRect.height > 1 else { return nil }
+        let innerRadius = min(max(2, radius - innerInset * 0.35), innerRect.width / 2, innerRect.height / 2)
+        return CGPath(roundedRect: innerRect, cornerWidth: innerRadius, cornerHeight: innerRadius, transform: nil)
     }
 
     private static func handDrawnEllipseSamples(
@@ -930,7 +970,7 @@ struct RectAnnotation: Annotation {
 
     func containsPoint(_ point: NSPoint) -> Bool {
         let p = unrotate(point)
-        let path = CGPath(rect: rect, transform: nil)
+        let path = ShapeDrawing.rectPath(rect, lineWidth: lineWidth, strokeStyle: strokeStyle)
         if filled, path.contains(p) {
             return true
         }
