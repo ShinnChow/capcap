@@ -1631,6 +1631,8 @@ struct TextAnnotation: Annotation {
     static let calloutHandleOffset: CGFloat = 18
     static let calloutArrowMinDistance: CGFloat = 18
     static let calloutArrowLineWidth: CGFloat = 3
+    private static let calloutTailBaseWidth: CGFloat = 30
+    private static let calloutTailTipMaxRadius: CGFloat = 3.2
 
     /// Outline pen width for the silhouette pass, as the percentage-of-font
     /// unit `NSAttributedString.Key.strokeWidth` expects. The fill pass on top
@@ -1767,12 +1769,8 @@ struct TextAnnotation: Annotation {
 
     var boundingRect: NSRect {
         guard hasCallout else { return textBounds }
-        var rect = calloutBodyRect
-        if hasCalloutArrow, let tip = calloutTip {
-            rect = rect.union(NSRect(x: tip.x, y: tip.y, width: 0, height: 0))
-                .insetBy(dx: -TextAnnotation.calloutArrowLineWidth * 2, dy: -TextAnnotation.calloutArrowLineWidth * 2)
-        }
-        return rect
+        return calloutBackgroundPath().boundingBoxOfPath
+            .insetBy(dx: -TextAnnotation.calloutArrowLineWidth, dy: -TextAnnotation.calloutArrowLineWidth)
     }
     var supportsRotation: Bool { true }
 
@@ -1838,67 +1836,318 @@ struct TextAnnotation: Annotation {
     }
 
     private func drawCalloutBackground(in context: CGContext) {
-        if hasCalloutArrow, let tip = calloutTip {
-            drawCalloutArrow(to: tip, in: context)
-        }
-
         context.saveGState()
-        let path = CGPath(
-            roundedRect: calloutBodyRect,
-            cornerWidth: TextAnnotation.calloutCornerRadius,
-            cornerHeight: TextAnnotation.calloutCornerRadius,
-            transform: nil
-        )
         context.setFillColor(color.cgColor)
-        context.addPath(path)
+        context.addPath(calloutBackgroundPath())
         context.fillPath()
         context.restoreGState()
     }
 
-    private func drawCalloutArrow(to tip: NSPoint, in context: CGContext) {
-        let anchor = calloutAnchorPoint(for: tip)
-        let dx = tip.x - anchor.x
-        let dy = tip.y - anchor.y
+    private func calloutBackgroundPath() -> CGPath {
+        guard hasCalloutArrow, let tip = calloutTip else {
+            return CGPath(
+                roundedRect: calloutBodyRect,
+                cornerWidth: TextAnnotation.calloutCornerRadius,
+                cornerHeight: TextAnnotation.calloutCornerRadius,
+                transform: nil
+            )
+        }
+        return calloutBubblePath(to: tip)
+    }
+
+    private func calloutBubblePath(to tip: NSPoint) -> CGPath {
+        let rect = calloutBodyRect
+        let radius = min(TextAnnotation.calloutCornerRadius, rect.width / 2, rect.height / 2)
+        guard radius > 0 else {
+            return CGPath(
+                rect: rect,
+                transform: nil
+            )
+        }
+
+        let base = calloutTailBase(for: tip)
+        let path = CGMutablePath()
+        let kappa: CGFloat = 0.552_284_749_830_793_6
+        let k = radius * kappa
+
+        let minX = rect.minX
+        let maxX = rect.maxX
+        let minY = rect.minY
+        let maxY = rect.maxY
+
+        path.move(to: NSPoint(x: minX + radius, y: minY))
+        addBottomEdge(to: path, rect: rect, radius: radius, base: base, tip: tip)
+        path.addCurve(
+            to: NSPoint(x: maxX, y: minY + radius),
+            control1: NSPoint(x: maxX - radius + k, y: minY),
+            control2: NSPoint(x: maxX, y: minY + radius - k)
+        )
+        addRightEdge(to: path, rect: rect, radius: radius, base: base, tip: tip)
+        path.addCurve(
+            to: NSPoint(x: maxX - radius, y: maxY),
+            control1: NSPoint(x: maxX, y: maxY - radius + k),
+            control2: NSPoint(x: maxX - radius + k, y: maxY)
+        )
+        addTopEdge(to: path, rect: rect, radius: radius, base: base, tip: tip)
+        path.addCurve(
+            to: NSPoint(x: minX, y: maxY - radius),
+            control1: NSPoint(x: minX + radius - k, y: maxY),
+            control2: NSPoint(x: minX, y: maxY - radius + k)
+        )
+        addLeftEdge(to: path, rect: rect, radius: radius, base: base, tip: tip)
+        path.addCurve(
+            to: NSPoint(x: minX + radius, y: minY),
+            control1: NSPoint(x: minX, y: minY + radius - k),
+            control2: NSPoint(x: minX + radius - k, y: minY)
+        )
+        path.closeSubpath()
+        return path
+    }
+
+    private func addBottomEdge(
+        to path: CGMutablePath,
+        rect: NSRect,
+        radius: CGFloat,
+        base: CalloutTailBase,
+        tip: NSPoint
+    ) {
+        if base.side == .bottom {
+            path.addLine(to: base.start)
+            appendCalloutTail(to: tip, base: base, in: path)
+        }
+        path.addLine(to: NSPoint(x: rect.maxX - radius, y: rect.minY))
+    }
+
+    private func addRightEdge(
+        to path: CGMutablePath,
+        rect: NSRect,
+        radius: CGFloat,
+        base: CalloutTailBase,
+        tip: NSPoint
+    ) {
+        if base.side == .right {
+            path.addLine(to: base.start)
+            appendCalloutTail(to: tip, base: base, in: path)
+        }
+        path.addLine(to: NSPoint(x: rect.maxX, y: rect.maxY - radius))
+    }
+
+    private func addTopEdge(
+        to path: CGMutablePath,
+        rect: NSRect,
+        radius: CGFloat,
+        base: CalloutTailBase,
+        tip: NSPoint
+    ) {
+        if base.side == .top {
+            path.addLine(to: base.start)
+            appendCalloutTail(to: tip, base: base, in: path)
+        }
+        path.addLine(to: NSPoint(x: rect.minX + radius, y: rect.maxY))
+    }
+
+    private func addLeftEdge(
+        to path: CGMutablePath,
+        rect: NSRect,
+        radius: CGFloat,
+        base: CalloutTailBase,
+        tip: NSPoint
+    ) {
+        if base.side == .left {
+            path.addLine(to: base.start)
+            appendCalloutTail(to: tip, base: base, in: path)
+        }
+        path.addLine(to: NSPoint(x: rect.minX, y: rect.minY + radius))
+    }
+
+    private func appendCalloutTail(to tip: NSPoint, base: CalloutTailBase, in path: CGMutablePath) {
+        let dx = tip.x - base.center.x
+        let dy = tip.y - base.center.y
         let distance = hypot(dx, dy)
         guard distance >= TextAnnotation.calloutArrowMinDistance else { return }
         let unitX = dx / distance
         let unitY = dy / distance
-        let headLength = min(NumberArrowShape.headLength, distance * 0.45)
-        let headWidth = min(NumberArrowShape.headWidth, max(6, distance * 0.5))
-        let shaftEnd = NSPoint(x: tip.x - unitX * headLength, y: tip.y - unitY * headLength)
-
-        context.saveGState()
-        context.setStrokeColor(color.cgColor)
-        context.setFillColor(color.cgColor)
-        context.setLineWidth(TextAnnotation.calloutArrowLineWidth)
-        context.setLineCap(.round)
-        context.move(to: anchor)
-        context.addLine(to: shaftEnd)
-        context.strokePath()
-        NumberArrowShape.drawHead(
-            tip: tip,
-            unitX: unitX,
-            unitY: unitY,
-            length: headLength,
-            width: headWidth,
-            in: context
+        let perpX = -unitY
+        let perpY = unitX
+        let tipRadius = min(
+            TextAnnotation.calloutTailTipMaxRadius,
+            max(1.25, fontSize * 0.05),
+            distance * 0.08
         )
-        context.restoreGState()
+        let rootRound = min(max(5, fontSize * 0.22), base.halfWidth * 0.72, distance * 0.22)
+        let sideControl = max(rootRound, distance * 0.32)
+
+        let tipBack = NSPoint(x: tip.x - unitX * tipRadius, y: tip.y - unitY * tipRadius)
+        let negativePerpTip = NSPoint(x: tipBack.x - perpX * tipRadius, y: tipBack.y - perpY * tipRadius)
+        let positivePerpTip = NSPoint(x: tipBack.x + perpX * tipRadius, y: tipBack.y + perpY * tipRadius)
+        let tangentDotPerp = base.tangent.dx * perpX + base.tangent.dy * perpY
+        let startTip: NSPoint
+        let endTip: NSPoint
+        let startTipSide: CGVector
+        let endTipSide: CGVector
+        if tangentDotPerp >= 0 {
+            startTip = negativePerpTip
+            endTip = positivePerpTip
+            startTipSide = CGVector(dx: -perpX, dy: -perpY)
+            endTipSide = CGVector(dx: perpX, dy: perpY)
+        } else {
+            startTip = positivePerpTip
+            endTip = negativePerpTip
+            startTipSide = CGVector(dx: perpX, dy: perpY)
+            endTipSide = CGVector(dx: -perpX, dy: -perpY)
+        }
+        let roundedTipControl = tipRadius * 0.55
+
+        path.addCurve(
+            to: startTip,
+            control1: NSPoint(
+                x: base.start.x + base.tangent.dx * rootRound,
+                y: base.start.y + base.tangent.dy * rootRound
+            ),
+            control2: NSPoint(
+                x: startTip.x - unitX * sideControl,
+                y: startTip.y - unitY * sideControl
+            )
+        )
+        path.addCurve(
+            to: tip,
+            control1: NSPoint(
+                x: startTip.x + unitX * roundedTipControl,
+                y: startTip.y + unitY * roundedTipControl
+            ),
+            control2: NSPoint(
+                x: tip.x + startTipSide.dx * roundedTipControl,
+                y: tip.y + startTipSide.dy * roundedTipControl
+            )
+        )
+        path.addCurve(
+            to: endTip,
+            control1: NSPoint(
+                x: tip.x + endTipSide.dx * roundedTipControl,
+                y: tip.y + endTipSide.dy * roundedTipControl
+            ),
+            control2: NSPoint(
+                x: endTip.x + unitX * roundedTipControl,
+                y: endTip.y + unitY * roundedTipControl
+            )
+        )
+        path.addCurve(
+            to: base.end,
+            control1: NSPoint(
+                x: endTip.x - unitX * sideControl,
+                y: endTip.y - unitY * sideControl
+            ),
+            control2: NSPoint(
+                x: base.end.x - base.tangent.dx * rootRound,
+                y: base.end.y - base.tangent.dy * rootRound
+            )
+        )
+    }
+
+    private struct CalloutTailBase {
+        let center: NSPoint
+        let start: NSPoint
+        let end: NSPoint
+        let tangent: CGVector
+        let halfWidth: CGFloat
+        let side: CalloutTailSide
+    }
+
+    private enum CalloutTailSide {
+        case top
+        case right
+        case bottom
+        case left
+    }
+
+    private func calloutTailBase(for tip: NSPoint) -> CalloutTailBase {
+        let rect = calloutBodyRect
+        let anchor = calloutAnchorPoint(for: tip)
+        let side = calloutTailSide(for: anchor, tip: tip)
+        let desiredWidth = min(
+            TextAnnotation.calloutTailBaseWidth,
+            max(18, fontSize * 0.78)
+        )
+        let inset = TextAnnotation.calloutCornerRadius + 1
+
+        let rawTangent: CGVector
+        let availableSpan: CGFloat
+        let center: NSPoint
+        switch side {
+        case .top:
+            rawTangent = CGVector(dx: -1, dy: 0)
+            availableSpan = max(2, rect.width - inset * 2)
+            let half = min(desiredWidth / 2, availableSpan / 2)
+            center = NSPoint(
+                x: min(max(anchor.x, rect.minX + inset + half), rect.maxX - inset - half),
+                y: rect.maxY
+            )
+        case .bottom:
+            rawTangent = CGVector(dx: 1, dy: 0)
+            availableSpan = max(2, rect.width - inset * 2)
+            let half = min(desiredWidth / 2, availableSpan / 2)
+            center = NSPoint(
+                x: min(max(anchor.x, rect.minX + inset + half), rect.maxX - inset - half),
+                y: rect.minY
+            )
+        case .left:
+            rawTangent = CGVector(dx: 0, dy: -1)
+            availableSpan = max(2, rect.height - inset * 2)
+            let half = min(desiredWidth / 2, availableSpan / 2)
+            center = NSPoint(
+                x: rect.minX,
+                y: min(max(anchor.y, rect.minY + inset + half), rect.maxY - inset - half)
+            )
+        case .right:
+            rawTangent = CGVector(dx: 0, dy: 1)
+            availableSpan = max(2, rect.height - inset * 2)
+            let half = min(desiredWidth / 2, availableSpan / 2)
+            center = NSPoint(
+                x: rect.maxX,
+                y: min(max(anchor.y, rect.minY + inset + half), rect.maxY - inset - half)
+            )
+        }
+
+        let halfWidth = min(desiredWidth / 2, availableSpan / 2)
+
+        return CalloutTailBase(
+            center: center,
+            start: NSPoint(x: center.x - rawTangent.dx * halfWidth, y: center.y - rawTangent.dy * halfWidth),
+            end: NSPoint(x: center.x + rawTangent.dx * halfWidth, y: center.y + rawTangent.dy * halfWidth),
+            tangent: rawTangent,
+            halfWidth: halfWidth,
+            side: side
+        )
+    }
+
+    private func calloutTailSide(for anchor: NSPoint, tip: NSPoint) -> CalloutTailSide {
+        let rect = calloutBodyRect
+        let distances: [(CalloutTailSide, CGFloat)] = [
+            (.top, abs(anchor.y - rect.maxY)),
+            (.right, abs(anchor.x - rect.maxX)),
+            (.bottom, abs(anchor.y - rect.minY)),
+            (.left, abs(anchor.x - rect.minX))
+        ]
+        let minDistance = distances.map(\.1).min() ?? 0
+        let candidates = distances.filter { abs($0.1 - minDistance) < 0.5 }.map(\.0)
+        guard candidates.count > 1 else {
+            return candidates.first ?? .bottom
+        }
+
+        let center = NSPoint(x: rect.midX, y: rect.midY)
+        let dx = tip.x - center.x
+        let dy = tip.y - center.y
+        if abs(dx) > abs(dy) {
+            return dx >= 0 ? .right : .left
+        }
+        return dy >= 0 ? .top : .bottom
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
         let p = unrotate(point)
         if hasCallout {
-            if calloutBodyRect.insetBy(dx: -4, dy: -4).contains(p) {
-                return true
-            }
-            if hasCalloutArrow, let tip = calloutTip {
-                let path = CGMutablePath()
-                path.move(to: calloutAnchorPoint(for: tip))
-                path.addLine(to: tip)
-                return strokedPathContains(path, point: p, lineWidth: TextAnnotation.calloutArrowLineWidth)
-            }
-            return false
+            return calloutBackgroundPath().contains(p)
+                || calloutBodyRect.insetBy(dx: -4, dy: -4).contains(p)
         }
         return hitBounds.contains(p)
     }
