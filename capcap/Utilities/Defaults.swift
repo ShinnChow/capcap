@@ -277,6 +277,7 @@ enum L10n {
 
     // Text tool
     static var textStrokeEffect: String { s("textStrokeEffect") }
+    static var textCalloutEffect: String { s("textCalloutEffect") }
 
     // Shape tool
     static var shapeFillEffect: String { s("shapeFillEffect") }
@@ -1181,6 +1182,12 @@ struct Defaults {
     static var lastTextStroke: Bool {
         get { defaults.bool(forKey: "lastTextStroke") }
         set { defaults.set(newValue, forKey: "lastTextStroke") }
+    }
+
+    /// Whether the text tool's callout checkbox was last left on.
+    static var lastTextCallout: Bool {
+        get { defaults.bool(forKey: "lastTextCallout") }
+        set { defaults.set(newValue, forKey: "lastTextCallout") }
     }
 
     /// Whether the rectangle/ellipse tool's fill checkbox was last left on.

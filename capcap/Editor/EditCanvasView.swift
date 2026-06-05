@@ -64,11 +64,15 @@ class EditCanvasView: NSView {
 
     // Current drawing properties (set by toolbar)
     var currentColor: NSColor = EditorStyleDefaults.primaryColor {
-        didSet { activeTextField?.textColor = currentColor }
+        didSet { activeTextField?.annotationColor = currentColor }
     }
     /// Whether new text annotations get a contrast outline.
     var currentTextStroke: Bool = Defaults.lastTextStroke {
         didSet { activeTextField?.hasStroke = currentTextStroke }
+    }
+    /// Whether new text annotations render as callout bubbles with an arrow handle.
+    var currentTextCallout: Bool = Defaults.lastTextCallout {
+        didSet { activeTextField?.hasCallout = currentTextCallout }
     }
     /// Whether newly drawn rectangles/ellipses should be filled.
     var currentShapeFill: Bool = Defaults.lastShapeFill
@@ -245,6 +249,9 @@ class EditCanvasView: NSView {
         if let magnifier = annotation as? MagnifierAnnotation {
             return magnifier.translatedPreservingSourceFocus(by: delta)
         }
+        if let text = annotation as? TextAnnotation {
+            return text.translatedBodyPreservingCalloutTip(by: delta)
+        }
         return annotation.translated(by: delta)
     }
 
@@ -295,7 +302,7 @@ class EditCanvasView: NSView {
     /// cleanly.
     private struct HandleDragState {
         enum Kind {
-            case rotate, curve, tip, magnifierSource, arrowStart, arrowEnd
+            case rotate, curve, tip, textCalloutTip, magnifierSource, arrowStart, arrowEnd
             case resize(ResizeAnchor)
         }
         let kind: Kind
@@ -313,6 +320,7 @@ class EditCanvasView: NSView {
     private static let rotateHandleOffset: CGFloat = 22
     private static let curveHandleSize: CGFloat = 14
     private static let tipHandleSize: CGFloat = 14
+    private static let textCalloutHandleSize: CGFloat = 13
     private static let magnifierSourceHandleSize: CGFloat = 14
     private static let endpointHandleSize: CGFloat = 12
     private static let resizeHandleSize: CGFloat = 10
@@ -386,6 +394,8 @@ class EditCanvasView: NSView {
                 fontSize: annotation.fontSize,
                 color: annotation.color,
                 hasStroke: annotation.hasStroke,
+                hasCallout: annotation.hasCallout,
+                calloutTip: annotation.calloutTip,
                 initialText: annotation.text,
                 rotation: annotation.rotation,
                 replacingIndex: index
@@ -828,6 +838,7 @@ class EditCanvasView: NSView {
             return a.text == b.text && a.origin == b.origin
                 && a.fontSize == b.fontSize && a.rotation == b.rotation
                 && a.color == b.color && a.hasStroke == b.hasStroke
+                && a.hasCallout == b.hasCallout && a.calloutTip == b.calloutTip
         }
         if let a = a as? PenAnnotation, let b = b as? PenAnnotation {
             return a.path === b.path && a.lineWidth == b.lineWidth
@@ -1184,7 +1195,8 @@ class EditCanvasView: NSView {
                     bottomLeft: newTextOrigin(forClickAt: pending.point, fontSize: currentFontSize),
                     fontSize: currentFontSize,
                     color: currentColor,
-                    hasStroke: currentTextStroke
+                    hasStroke: currentTextStroke,
+                    hasCallout: currentTextCallout
                 )
             }
             return
@@ -1819,6 +1831,8 @@ class EditCanvasView: NSView {
         fontSize: CGFloat,
         color: NSColor,
         hasStroke: Bool,
+        hasCallout: Bool,
+        calloutTip: NSPoint? = nil,
         initialText: String = "",
         rotation: CGFloat = 0,
         replacingIndex: Int? = nil
@@ -1854,8 +1868,10 @@ class EditCanvasView: NSView {
 
         let field = EditableTextField(frame: fieldRect)
         field.font = font
-        field.textColor = color
+        field.annotationColor = color
         field.hasStroke = hasStroke
+        field.hasCallout = hasCallout
+        field.calloutTip = calloutTip
         field.rotation = rotation
         field.stringValue = initialText
         field.onCommit = { [weak self, weak field] text in
@@ -1899,10 +1915,12 @@ class EditCanvasView: NSView {
             let newAnnotation = TextAnnotation(
                 text: text,
                 origin: NSPoint(x: field.frame.minX, y: field.frame.minY),
-                color: field.textColor ?? currentColor,
+                color: field.annotationColor,
                 fontSize: font.pointSize,
                 rotation: field.rotation,
-                hasStroke: field.hasStroke
+                hasStroke: field.hasStroke,
+                hasCallout: field.hasCallout,
+                calloutTip: field.calloutTip
             )
             if let idx = editingOriginalIndex {
                 let safeIdx = min(idx, annotations.count)
@@ -2092,6 +2110,13 @@ class EditCanvasView: NSView {
             x: number.center.x,
             y: number.center.y + NumberAnnotation.arrowMinDistance + 4
         )
+    }
+
+    /// Text callout handle. It starts below the bubble, then moves to the arrow
+    /// tip once the user has pulled one out.
+    private func textCalloutHandleCenter(for annotation: Annotation) -> NSPoint? {
+        guard let text = annotation as? TextAnnotation, text.hasCallout else { return nil }
+        return rotated(text.calloutHandlePoint, for: annotation)
     }
 
     /// Center source control for a magnifier. It starts in the middle of the
@@ -2333,7 +2358,19 @@ class EditCanvasView: NSView {
             )
         }
 
-        // 4a. Magnifier source handle — starts at the lens center and can be
+        // 4a. Text callout handle — pulls an arrow out from the bubble.
+        if let tip = textCalloutHandleCenter(for: annotation) {
+            let fill = (annotation as? TextAnnotation)?.color ?? NSColor.white
+            drawHandleDot(
+                at: tip,
+                size: EditCanvasView.textCalloutHandleSize,
+                fill: fill,
+                stroke: NSColor.white.withAlphaComponent(0.95),
+                in: context
+            )
+        }
+
+        // 4b. Magnifier source handle — starts at the lens center and can be
         // pulled out to magnify another part of the captured image.
         if let source = magnifierSourceHandleCenter(for: annotation) {
             drawHandleDot(
@@ -2345,7 +2382,7 @@ class EditCanvasView: NSView {
             )
         }
 
-        // 4b. Arrow endpoint handles — re-anchor the tail / redirect the tip.
+        // 4c. Arrow endpoint handles — re-anchor the tail / redirect the tip.
         if let start = arrowStartHandleCenter(for: annotation) {
             drawHandleDot(
                 at: start,
@@ -2606,6 +2643,13 @@ class EditCanvasView: NSView {
             }
         }
 
+        if let tip = textCalloutHandleCenter(for: annotation) {
+            let r = EditCanvasView.textCalloutHandleSize / 2 + 4
+            if hypot(point.x - tip.x, point.y - tip.y) <= r {
+                return .textCalloutTip
+            }
+        }
+
         // Arrow endpoint handles — checked before the curve handle so the
         // user can grab the tip even if it visually overlaps another handle.
         if let end = arrowEndHandleCenter(for: annotation) {
@@ -2687,6 +2731,21 @@ class EditCanvasView: NSView {
                 annotations[state.index] = number.withTip(nil)
             } else {
                 annotations[state.index] = number.withTip(currentMouse)
+            }
+
+        case .textCalloutTip:
+            guard let text = state.original as? TextAnnotation, text.hasCallout else { return }
+            let point = text.unrotate(currentMouse)
+            if text.calloutBodyRect.insetBy(dx: -2, dy: -2).contains(point) {
+                annotations[state.index] = text.withCalloutTip(nil)
+                break
+            }
+            let anchor = text.calloutAnchorPoint(for: point)
+            let dist = hypot(point.x - anchor.x, point.y - anchor.y)
+            if dist <= TextAnnotation.calloutArrowMinDistance {
+                annotations[state.index] = text.withCalloutTip(nil)
+            } else {
+                annotations[state.index] = text.withCalloutTip(point)
             }
 
         case .magnifierSource:
@@ -3305,6 +3364,13 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// shows plain text; the outline is rendered on the committed
     /// `TextAnnotation`, which adds it without shifting the glyphs.
     var hasStroke: Bool = false
+    var annotationColor: NSColor = EditorStyleDefaults.primaryColor {
+        didSet { updateAppearanceForCurrentMode() }
+    }
+    var hasCallout: Bool = false {
+        didSet { updateAppearanceForCurrentMode() }
+    }
+    var calloutTip: NSPoint?
     /// Rotation carried by an existing text annotation while it is being edited.
     /// The live editor stays horizontal, but the committed annotation keeps the
     /// original angle instead of snapping back to zero.
@@ -3348,6 +3414,18 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
         layer?.borderWidth = 1
         layer?.cornerRadius = 2
         layer?.backgroundColor = NSColor.black.withAlphaComponent(0.15).cgColor
+    }
+
+    private func updateAppearanceForCurrentMode() {
+        if hasCallout {
+            textColor = TextAnnotation.contrastingTextColor(for: annotationColor)
+            layer?.backgroundColor = annotationColor.cgColor
+            layer?.cornerRadius = TextAnnotation.calloutCornerRadius
+        } else {
+            textColor = annotationColor
+            layer?.backgroundColor = NSColor.black.withAlphaComponent(0.15).cgColor
+            layer?.cornerRadius = 2
+        }
     }
 
     @objc private func commitFromAction() {

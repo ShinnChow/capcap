@@ -1616,9 +1616,21 @@ struct TextAnnotation: Annotation {
     /// When true the glyphs get a black-or-white outline picked for maximum
     /// contrast against `color`, so the text reads against any background.
     var hasStroke: Bool = false
+    /// Callout mode turns `color` into the bubble/arrow fill and renders glyphs
+    /// in black or white for contrast.
+    var hasCallout: Bool = false
+    /// Optional arrow tip pulled out from the callout bubble via the selection
+    /// handle. nil means bubble only.
+    var calloutTip: NSPoint? = nil
 
     static let trailingCaretPadding: CGFloat = 12
     static let minimumEditorWidth: CGFloat = 32
+    static let calloutHorizontalPadding: CGFloat = 10
+    static let calloutVerticalPadding: CGFloat = 4
+    static let calloutCornerRadius: CGFloat = 7
+    static let calloutHandleOffset: CGFloat = 18
+    static let calloutArrowMinDistance: CGFloat = 18
+    static let calloutArrowLineWidth: CGFloat = 3
 
     /// Outline pen width for the silhouette pass, as the percentage-of-font
     /// unit `NSAttributedString.Key.strokeWidth` expects. The fill pass on top
@@ -1642,6 +1654,10 @@ struct TextAnnotation: Annotation {
             || matches(1.0, 0.8, 0.0)              // Yellow
             || matches(0.0, 0.83, 0.42)            // Green
         return blackStroke ? .black : .white
+    }
+
+    static func contrastingTextColor(for background: NSColor) -> NSColor {
+        strokeColor(for: background)
     }
 
     static func lineHeight(for font: NSFont) -> CGFloat {
@@ -1712,24 +1728,93 @@ struct TextAnnotation: Annotation {
         return NSRect(x: origin.x, y: origin.y, width: width, height: blockHeight)
     }
 
+    var textBlockRect: NSRect {
+        let font = TextAnnotation.font(forSize: fontSize)
+        let attrs: [NSAttributedString.Key: Any] = [.font: font]
+        let lines = TextAnnotation.lines(for: text)
+        let measuredWidth = lines
+            .map { TextAnnotation.measuredLineWidth($0, attributes: attrs) }
+            .max() ?? 0
+        let blockHeight = TextAnnotation.lineHeight(for: font) * CGFloat(lines.count)
+        let width = max(measuredWidth, TextAnnotation.minimumEditorWidth - TextAnnotation.trailingCaretPadding)
+        return NSRect(x: origin.x, y: origin.y, width: width, height: blockHeight)
+    }
+
+    var calloutBodyRect: NSRect {
+        textBlockRect.insetBy(
+            dx: -TextAnnotation.calloutHorizontalPadding,
+            dy: -TextAnnotation.calloutVerticalPadding
+        )
+    }
+
+    var calloutHandlePoint: NSPoint {
+        calloutTip ?? NSPoint(
+            x: calloutBodyRect.midX,
+            y: calloutBodyRect.minY - TextAnnotation.calloutHandleOffset
+        )
+    }
+
+    var hasCalloutArrow: Bool {
+        guard hasCallout, let tip = calloutTip else { return false }
+        guard !calloutBodyRect.insetBy(dx: -2, dy: -2).contains(tip) else { return false }
+        let anchor = calloutAnchorPoint(for: tip)
+        return hypot(tip.x - anchor.x, tip.y - anchor.y) >= TextAnnotation.calloutArrowMinDistance
+    }
+
     var hitBounds: NSRect {
         textBounds.insetBy(dx: -10, dy: -max(10, fontSize * 0.75))
     }
 
-    var boundingRect: NSRect { textBounds }
+    var boundingRect: NSRect {
+        guard hasCallout else { return textBounds }
+        var rect = calloutBodyRect
+        if hasCalloutArrow, let tip = calloutTip {
+            rect = rect.union(NSRect(x: tip.x, y: tip.y, width: 0, height: 0))
+                .insetBy(dx: -TextAnnotation.calloutArrowLineWidth * 2, dy: -TextAnnotation.calloutArrowLineWidth * 2)
+        }
+        return rect
+    }
     var supportsRotation: Bool { true }
+
+    func calloutAnchorPoint(for tip: NSPoint?) -> NSPoint {
+        let rect = calloutBodyRect
+        guard let tip else {
+            return NSPoint(x: rect.midX, y: rect.minY)
+        }
+        let center = NSPoint(x: rect.midX, y: rect.midY)
+        let dx = tip.x - center.x
+        let dy = tip.y - center.y
+        guard dx != 0 || dy != 0 else {
+            return NSPoint(x: rect.midX, y: rect.minY)
+        }
+
+        let tx: CGFloat = dx > 0
+            ? (rect.maxX - center.x) / dx
+            : (dx < 0 ? (rect.minX - center.x) / dx : .greatestFiniteMagnitude)
+        let ty: CGFloat = dy > 0
+            ? (rect.maxY - center.y) / dy
+            : (dy < 0 ? (rect.minY - center.y) / dy : .greatestFiniteMagnitude)
+        let t = min(tx, ty)
+        guard t.isFinite, t > 0 else {
+            return NSPoint(x: rect.midX, y: rect.minY)
+        }
+        return NSPoint(x: center.x + dx * t, y: center.y + dy * t)
+    }
 
     func draw(in context: CGContext, bounds: NSRect) {
         let font = TextAnnotation.font(forSize: fontSize)
         let lines = TextAnnotation.lines(for: text)
         let lineHeight = TextAnnotation.lineHeight(for: font)
         NSGraphicsContext.saveGraphicsState()
+        if hasCallout {
+            drawCalloutBackground(in: context)
+        }
         let fillAttributes: [NSAttributedString.Key: Any] = [
-            .foregroundColor: color,
+            .foregroundColor: hasCallout ? TextAnnotation.contrastingTextColor(for: color) : color,
             .font: font
         ]
         let strokeAttributes: [NSAttributedString.Key: Any]? = {
-            guard hasStroke else { return nil }
+            guard hasStroke, !hasCallout else { return nil }
             let stroke = TextAnnotation.strokeColor(for: color)
             return [
                 .foregroundColor: stroke,
@@ -1752,8 +1837,69 @@ struct TextAnnotation: Annotation {
         NSGraphicsContext.restoreGraphicsState()
     }
 
+    private func drawCalloutBackground(in context: CGContext) {
+        if hasCalloutArrow, let tip = calloutTip {
+            drawCalloutArrow(to: tip, in: context)
+        }
+
+        context.saveGState()
+        let path = CGPath(
+            roundedRect: calloutBodyRect,
+            cornerWidth: TextAnnotation.calloutCornerRadius,
+            cornerHeight: TextAnnotation.calloutCornerRadius,
+            transform: nil
+        )
+        context.setFillColor(color.cgColor)
+        context.addPath(path)
+        context.fillPath()
+        context.restoreGState()
+    }
+
+    private func drawCalloutArrow(to tip: NSPoint, in context: CGContext) {
+        let anchor = calloutAnchorPoint(for: tip)
+        let dx = tip.x - anchor.x
+        let dy = tip.y - anchor.y
+        let distance = hypot(dx, dy)
+        guard distance >= TextAnnotation.calloutArrowMinDistance else { return }
+        let unitX = dx / distance
+        let unitY = dy / distance
+        let headLength = min(NumberArrowShape.headLength, distance * 0.45)
+        let headWidth = min(NumberArrowShape.headWidth, max(6, distance * 0.5))
+        let shaftEnd = NSPoint(x: tip.x - unitX * headLength, y: tip.y - unitY * headLength)
+
+        context.saveGState()
+        context.setStrokeColor(color.cgColor)
+        context.setFillColor(color.cgColor)
+        context.setLineWidth(TextAnnotation.calloutArrowLineWidth)
+        context.setLineCap(.round)
+        context.move(to: anchor)
+        context.addLine(to: shaftEnd)
+        context.strokePath()
+        NumberArrowShape.drawHead(
+            tip: tip,
+            unitX: unitX,
+            unitY: unitY,
+            length: headLength,
+            width: headWidth,
+            in: context
+        )
+        context.restoreGState()
+    }
+
     func containsPoint(_ point: NSPoint) -> Bool {
         let p = unrotate(point)
+        if hasCallout {
+            if calloutBodyRect.insetBy(dx: -4, dy: -4).contains(p) {
+                return true
+            }
+            if hasCalloutArrow, let tip = calloutTip {
+                let path = CGMutablePath()
+                path.move(to: calloutAnchorPoint(for: tip))
+                path.addLine(to: tip)
+                return strokedPathContains(path, point: p, lineWidth: TextAnnotation.calloutArrowLineWidth)
+            }
+            return false
+        }
         return hitBounds.contains(p)
     }
 
@@ -1764,7 +1910,24 @@ struct TextAnnotation: Annotation {
             color: color,
             fontSize: fontSize,
             rotation: rotation,
-            hasStroke: hasStroke
+            hasStroke: hasStroke,
+            hasCallout: hasCallout,
+            calloutTip: calloutTip.map { NSPoint(x: $0.x + delta.x, y: $0.y + delta.y) }
+        )
+    }
+
+    func translatedBodyPreservingCalloutTip(by delta: NSPoint) -> TextAnnotation {
+        TextAnnotation(
+            text: text,
+            origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
+            color: color,
+            fontSize: fontSize,
+            rotation: rotation,
+            hasStroke: hasStroke,
+            hasCallout: hasCallout,
+            calloutTip: hasCalloutArrow ? calloutTip : calloutTip.map {
+                NSPoint(x: $0.x + delta.x, y: $0.y + delta.y)
+            }
         )
     }
 
@@ -1781,7 +1944,9 @@ struct TextAnnotation: Annotation {
             color: color,
             fontSize: fontSize,
             rotation: rotation,
-            hasStroke: hasStroke
+            hasStroke: hasStroke,
+            hasCallout: hasCallout,
+            calloutTip: calloutTip
         )
     }
 
@@ -1789,6 +1954,18 @@ struct TextAnnotation: Annotation {
     func withStroke(_ hasStroke: Bool) -> TextAnnotation {
         var copy = self
         copy.hasStroke = hasStroke
+        return copy
+    }
+
+    func withCallout(_ hasCallout: Bool) -> TextAnnotation {
+        var copy = self
+        copy.hasCallout = hasCallout
+        return copy
+    }
+
+    func withCalloutTip(_ tip: NSPoint?) -> TextAnnotation {
+        var copy = self
+        copy.calloutTip = tip
         return copy
     }
 
@@ -1807,7 +1984,9 @@ struct TextAnnotation: Annotation {
             color: color,
             fontSize: fontSize,
             rotation: rotation,
-            hasStroke: hasStroke
+            hasStroke: hasStroke,
+            hasCallout: hasCallout,
+            calloutTip: calloutTip
         )
     }
 }

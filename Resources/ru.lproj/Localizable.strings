@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "Обои";
 "beautifyShadowEffect" = "Тень";
 "textStrokeEffect" = "Обводка";
+"textCalloutEffect" = "Выноска";
 "shapeFillEffect" = "Заливка";
 "insertImageFromClipboard" = "Из буфера обмена";
 "insertImageFromFile" = "Из файла...";

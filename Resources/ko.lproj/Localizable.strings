@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "배경화면";
 "beautifyShadowEffect" = "그림자";
 "textStrokeEffect" = "테두리";
+"textCalloutEffect" = "콜아웃";
 "shapeFillEffect" = "채우기";
 "insertImageFromClipboard" = "클립보드에서";
 "insertImageFromFile" = "파일에서...";

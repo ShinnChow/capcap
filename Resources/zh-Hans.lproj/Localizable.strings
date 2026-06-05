@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "壁纸";
 "beautifyShadowEffect" = "阴影效果";
 "textStrokeEffect" = "描边";
+"textCalloutEffect" = "标注";
 "shapeFillEffect" = "填充";
 "insertImageFromClipboard" = "从剪贴板插入";
 "insertImageFromFile" = "从本地文件插入...";

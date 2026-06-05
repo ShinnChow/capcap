@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "壁紙";
 "beautifyShadowEffect" = "影効果";
 "textStrokeEffect" = "縁取り";
+"textCalloutEffect" = "吹き出し";
 "shapeFillEffect" = "塗りつぶし";
 "insertImageFromClipboard" = "クリップボードから";
 "insertImageFromFile" = "ファイルから...";

@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "Hình nền";
 "beautifyShadowEffect" = "Hiệu ứng bóng";
 "textStrokeEffect" = "Viền chữ";
+"textCalloutEffect" = "Chú thích";
 "shapeFillEffect" = "Tô màu";
 "insertImageFromClipboard" = "Từ clipboard";
 "insertImageFromFile" = "Từ tệp...";

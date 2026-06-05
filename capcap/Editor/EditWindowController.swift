@@ -75,6 +75,8 @@ class EditWindowController {
     private var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
     /// Whether new text annotations get a contrast outline.
     private var currentTextStroke: Bool = Defaults.lastTextStroke
+    /// Whether new text annotations render as callout bubbles with an arrow handle.
+    private var currentTextCallout: Bool = Defaults.lastTextCallout
     /// Whether new rectangle/ellipse annotations are filled.
     private var currentShapeFill: Bool = Defaults.lastShapeFill
     /// Marker keeps its own color/size slot so toggling between pen and
@@ -374,6 +376,7 @@ class EditWindowController {
         canvasView?.currentMosaicBlockSize = currentMosaicBlockSize
         canvasView?.currentFontSize = currentFontSize
         canvasView?.currentTextStroke = currentTextStroke
+        canvasView?.currentTextCallout = currentTextCallout
         canvasView?.currentShapeFill = currentShapeFill
         canvasView?.currentEmoji = currentEmoji
         canvasView?.currentMarkerColor = currentMarkerColor
@@ -406,6 +409,7 @@ class EditWindowController {
             currentColor = t.color
             currentFontSize = t.fontSize
             currentTextStroke = t.hasStroke
+            currentTextCallout = t.hasCallout
         case let p as PenAnnotation:
             currentColor = p.color
             currentLineWidth = p.lineWidth
@@ -612,7 +616,8 @@ class EditWindowController {
             currentColor: currentColor,
             currentFontSize: currentFontSize,
             dynamicColor: pickedColorSwatch,
-            strokeEnabled: currentTextStroke
+            strokeEnabled: currentTextStroke,
+            calloutEnabled: currentTextCallout
         )
         view.onColorChanged = { [weak self] color in
             self?.setCurrentDrawingColor(color)
@@ -626,6 +631,14 @@ class EditWindowController {
             // types carry no outline, so the transform leaves them untouched.
             self?.canvasView?.mutateSelectedAnnotationAtomic { annotation in
                 (annotation as? TextAnnotation)?.withStroke(enabled) ?? annotation
+            }
+        }
+        view.onCalloutChanged = { [weak self] enabled in
+            self?.currentTextCallout = enabled
+            self?.canvasView?.currentTextCallout = enabled
+            Defaults.lastTextCallout = enabled
+            self?.canvasView?.mutateSelectedAnnotationAtomic { annotation in
+                (annotation as? TextAnnotation)?.withCallout(enabled) ?? annotation
             }
         }
         view.onFontSizeBegan = { [weak self] in
@@ -3585,6 +3598,7 @@ private class TextSubToolbar: NSView {
     var currentColor: NSColor = .red
     var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize)
     var strokeEnabled: Bool = false
+    var calloutEnabled: Bool = false
     var onColorChanged: ((NSColor) -> Void)?
     /// Fired when the user grabs the slider thumb (mouseDown phase).
     var onFontSizeBegan: (() -> Void)?
@@ -3594,11 +3608,14 @@ private class TextSubToolbar: NSView {
     var onFontSizeEnded: (() -> Void)?
     /// Fired when the outline checkbox is toggled.
     var onStrokeChanged: ((Bool) -> Void)?
+    /// Fired when the callout checkbox is toggled.
+    var onCalloutChanged: ((Bool) -> Void)?
 
     private var colorButtons: [NSView] = []
     private var slider: NSSlider!
     private var sizeLabel: NSTextField!
     private var strokeCheckbox: HUDCheckboxButton!
+    private var calloutCheckbox: HUDCheckboxButton!
 
     private let dynamicColor: NSColor?
     private let baseColors: [NSColor] = EditorStyleDefaults.paletteColors
@@ -3626,15 +3643,25 @@ private class TextSubToolbar: NSView {
             + colorCount * swatchSize + max(colorCount - 1, 0) * swatchGap
     }
 
-    private static func checkboxWidth() -> CGFloat {
+    private static func checkboxWidth(title: String) -> CGFloat {
         let font = NSFont.systemFont(ofSize: 12, weight: .medium)
-        let textWidth = ceil((L10n.textStrokeEffect as NSString).size(withAttributes: [.font: font]).width)
+        let textWidth = ceil((title as NSString).size(withAttributes: [.font: font]).width)
         return 16 + 8 + textWidth
+    }
+
+    private static var strokeCheckboxWidth: CGFloat {
+        checkboxWidth(title: L10n.textStrokeEffect)
+    }
+
+    private static var calloutCheckboxWidth: CGFloat {
+        checkboxWidth(title: L10n.textCalloutEffect)
     }
 
     static func preferredWidth(dynamicColor: NSColor?) -> CGFloat {
         swatchRowEnd(hasDynamicColor: dynamicColor != nil)
-            + separatorGap + 1 + checkboxGap + checkboxWidth() + trailingPad
+            + separatorGap + 1 + checkboxGap
+            + strokeCheckboxWidth + checkboxGap + calloutCheckboxWidth
+            + trailingPad
     }
 
     init(
@@ -3642,12 +3669,14 @@ private class TextSubToolbar: NSView {
         currentColor: NSColor,
         currentFontSize: CGFloat,
         dynamicColor: NSColor? = nil,
-        strokeEnabled: Bool
+        strokeEnabled: Bool,
+        calloutEnabled: Bool
     ) {
         self.currentColor = currentColor
         self.currentFontSize = currentFontSize
         self.dynamicColor = dynamicColor
         self.strokeEnabled = strokeEnabled
+        self.calloutEnabled = calloutEnabled
         super.init(frame: frame)
         setup()
     }
@@ -3734,7 +3763,7 @@ private class TextSubToolbar: NSView {
             frame: NSRect(
                 x: strokeSepX + 1 + TextSubToolbar.checkboxGap,
                 y: midY - checkboxHeight / 2,
-                width: TextSubToolbar.checkboxWidth(),
+                width: TextSubToolbar.strokeCheckboxWidth,
                 height: checkboxHeight
             ),
             title: L10n.textStrokeEffect,
@@ -3745,12 +3774,33 @@ private class TextSubToolbar: NSView {
         addSubview(checkbox)
         strokeCheckbox = checkbox
 
+        let calloutX = checkbox.frame.maxX + TextSubToolbar.checkboxGap
+        let calloutCheckbox = HUDCheckboxButton(
+            frame: NSRect(
+                x: calloutX,
+                y: midY - checkboxHeight / 2,
+                width: TextSubToolbar.calloutCheckboxWidth,
+                height: checkboxHeight
+            ),
+            title: L10n.textCalloutEffect,
+            target: self,
+            action: #selector(calloutCheckboxChanged(_:))
+        )
+        calloutCheckbox.state = calloutEnabled ? .on : .off
+        addSubview(calloutCheckbox)
+        self.calloutCheckbox = calloutCheckbox
+
         updateSizeLabel()
     }
 
     @objc private func strokeCheckboxChanged(_ sender: HUDCheckboxButton) {
         strokeEnabled = sender.state == .on
         onStrokeChanged?(strokeEnabled)
+    }
+
+    @objc private func calloutCheckboxChanged(_ sender: HUDCheckboxButton) {
+        calloutEnabled = sender.state == .on
+        onCalloutChanged?(calloutEnabled)
     }
 
     @objc private func sliderChanged(_ sender: NSSlider) {

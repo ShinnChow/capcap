@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "Wallpaper";
 "beautifyShadowEffect" = "Shadow Effect";
 "textStrokeEffect" = "Stroke";
+"textCalloutEffect" = "Callout";
 "shapeFillEffect" = "Fill";
 "insertImageFromClipboard" = "From Clipboard";
 "insertImageFromFile" = "From File...";

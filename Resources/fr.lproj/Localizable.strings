@@ -183,6 +183,7 @@
 "beautifyPresetWallpaper" = "Fond d'écran";
 "beautifyShadowEffect" = "Ombre";
 "textStrokeEffect" = "Contour";
+"textCalloutEffect" = "Annotation";
 "shapeFillEffect" = "Remplir";
 "insertImageFromClipboard" = "Depuis le presse-papiers";
 "insertImageFromFile" = "Depuis un fichier...";
