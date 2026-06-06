@@ -109,6 +109,57 @@ enum ShapeStrokeStyle: String, CaseIterable {
     case handDrawn
 }
 
+struct RoughShapeStyle: Equatable {
+    let seed: UInt64
+    let roughness: CGFloat
+    let passes: Int
+
+    init(seed: UInt64 = RoughShapeStyle.randomSeed(), roughness: CGFloat, passes: Int = 1) {
+        self.seed = seed == 0 ? Self.fallbackSeed : seed
+        self.roughness = min(max(roughness, 0), 4)
+        self.passes = max(1, min(passes, 3))
+    }
+
+    static func make(seed: UInt64 = RoughShapeStyle.randomSeed(), rect: NSRect, lineWidth: CGFloat) -> RoughShapeStyle {
+        RoughShapeStyle(seed: seed, roughness: defaultRoughness(for: rect, lineWidth: lineWidth), passes: 1)
+    }
+
+    func tuned(for rect: NSRect, lineWidth: CGFloat) -> RoughShapeStyle {
+        RoughShapeStyle(seed: seed, roughness: Self.defaultRoughness(for: rect, lineWidth: lineWidth), passes: passes)
+    }
+
+    static func randomSeed() -> UInt64 {
+        UInt64.random(in: 1...UInt64.max)
+    }
+
+    private static let fallbackSeed: UInt64 = 0x9E3779B97F4A7C15
+
+    private static func defaultRoughness(for rect: NSRect, lineWidth: CGFloat) -> CGFloat {
+        let sizeDriven = min(rect.width, rect.height) * 0.001
+        let widthDriven = lineWidth * 0.04
+        return max(0.15, min(0.55, max(sizeDriven, widthDriven)))
+    }
+}
+
+private struct SeededRandom {
+    private var state: UInt64
+
+    init(seed: UInt64) {
+        state = seed == 0 ? 0x123456789ABCDEF : seed
+    }
+
+    mutating func next() -> CGFloat {
+        state ^= state << 13
+        state ^= state >> 7
+        state ^= state << 17
+        return CGFloat(state % 10_000) / 10_000
+    }
+
+    mutating func range(_ min: CGFloat, _ max: CGFloat) -> CGFloat {
+        min + (max - min) * next()
+    }
+}
+
 private func strokedPathContains(_ path: CGPath, point: NSPoint, lineWidth: CGFloat) -> Bool {
     let width = max(strokeHitTolerance, lineWidth + 4)
     let stroked = path.copy(strokingWithWidth: width, lineCap: .round, lineJoin: .round, miterLimit: 10)
@@ -129,7 +180,7 @@ private func distanceFrom(_ point: NSPoint, toSegmentFrom start: NSPoint, to end
 }
 
 private enum ShapeDrawing {
-    static func fillRect(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, fillMode: ShapeFillMode, strokeStyle: ShapeStrokeStyle, in context: CGContext) {
+    static func fillRect(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, fillMode: ShapeFillMode, strokeStyle: ShapeStrokeStyle, roughStyle: RoughShapeStyle, in context: CGContext) {
         guard fillMode.isFilled else { return }
         context.saveGState()
         context.setFillColor(color.withAlphaComponent(fillMode.alpha).cgColor)
@@ -137,21 +188,27 @@ private enum ShapeDrawing {
         case .standard:
             context.fill(rect)
         case .handDrawn:
-            context.addPath(rectPath(rect, lineWidth: lineWidth, strokeStyle: strokeStyle))
+            context.addPath(roughRoundedRectPath(rect, lineWidth: lineWidth, style: roughStyle, pass: 0))
             context.fillPath()
         }
         context.restoreGState()
     }
 
-    static func fillEllipse(_ rect: NSRect, color: NSColor, fillMode: ShapeFillMode, in context: CGContext) {
+    static func fillEllipse(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, fillMode: ShapeFillMode, strokeStyle: ShapeStrokeStyle, roughStyle: RoughShapeStyle, in context: CGContext) {
         guard fillMode.isFilled else { return }
         context.saveGState()
         context.setFillColor(color.withAlphaComponent(fillMode.alpha).cgColor)
-        context.fillEllipse(in: rect)
+        switch strokeStyle {
+        case .standard:
+            context.fillEllipse(in: rect)
+        case .handDrawn:
+            context.addPath(roughEllipsePath(rect, style: roughStyle, pass: 0))
+            context.fillPath()
+        }
         context.restoreGState()
     }
 
-    static func strokeRect(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, strokeStyle: ShapeStrokeStyle, in context: CGContext) {
+    static func strokeRect(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, strokeStyle: ShapeStrokeStyle, roughStyle: RoughShapeStyle, in context: CGContext) {
         switch strokeStyle {
         case .standard:
             context.saveGState()
@@ -160,11 +217,18 @@ private enum ShapeDrawing {
             context.stroke(rect)
             context.restoreGState()
         case .handDrawn:
-            strokeHandDrawnRoundedRect(rect, color: color, lineWidth: lineWidth, in: context)
+            let drawingRect = rect.insetBy(dx: strokeInset(for: rect, lineWidth: lineWidth), dy: strokeInset(for: rect, lineWidth: lineWidth))
+            drawRoughStroke(
+                color: color,
+                style: roughStyle,
+                in: context
+            ) { pass in
+                roughRoundedRectStrokeSamples(drawingRect, lineWidth: lineWidth, style: roughStyle, pass: pass)
+            }
         }
     }
 
-    static func strokeEllipse(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, strokeStyle: ShapeStrokeStyle, in context: CGContext) {
+    static func strokeEllipse(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, strokeStyle: ShapeStrokeStyle, roughStyle: RoughShapeStyle, in context: CGContext) {
         switch strokeStyle {
         case .standard:
             context.saveGState()
@@ -173,7 +237,14 @@ private enum ShapeDrawing {
             context.strokeEllipse(in: rect)
             context.restoreGState()
         case .handDrawn:
-            strokeHandDrawnEllipse(rect, color: color, lineWidth: lineWidth, in: context)
+            let drawingRect = rect.insetBy(dx: strokeInset(for: rect, lineWidth: lineWidth), dy: strokeInset(for: rect, lineWidth: lineWidth))
+            drawRoughStroke(
+                color: color,
+                style: roughStyle,
+                in: context
+            ) { pass in
+                roughEllipseStrokeSamples(drawingRect, lineWidth: lineWidth, style: roughStyle, pass: pass)
+            }
         }
     }
 
@@ -197,107 +268,147 @@ private enum ShapeDrawing {
         let width: CGFloat
     }
 
-    private static func strokeHandDrawnRoundedRect(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, in context: CGContext) {
-        guard rect.width > 0, rect.height > 0 else { return }
-        let radius = roundedRectRadius(for: rect, lineWidth: lineWidth)
-        let wobble = min(max(lineWidth * 0.18, 0.6), 2.0)
-        let outerPath = handDrawnRoundedRectOuterPath(rect, radius: radius, wobble: wobble, lineWidth: lineWidth)
-        let innerPath = handDrawnRoundedRectInnerPath(rect, radius: radius, lineWidth: lineWidth)
-
+    private static func drawRoughStroke(color: NSColor, style: RoughShapeStyle, in context: CGContext, samplesForPass: (Int) -> [VariableStrokeSample]) {
         context.saveGState()
         context.setAllowsAntialiasing(true)
         context.setShouldAntialias(true)
-        context.setFillColor(color.cgColor)
-        context.addPath(outerPath)
-        if let innerPath {
-            context.addPath(innerPath)
-            context.fillPath(using: .evenOdd)
-        } else {
-            context.fillPath()
+
+        for pass in 0..<style.passes {
+            let alpha: CGFloat
+            let widthScale: CGFloat
+            switch pass {
+            case 0:
+                alpha = 1
+                widthScale = 1
+            case 1:
+                alpha = 0.62
+                widthScale = 0.86
+            default:
+                alpha = 0.38
+                widthScale = 0.68
+            }
+            drawVariableWidthStroke(
+                samples: samplesForPass(pass).map {
+                    VariableStrokeSample(point: $0.point, width: max(1, $0.width * widthScale))
+                },
+                color: colorByMultiplyingAlpha(color, by: alpha),
+                in: context
+            )
         }
+
         context.restoreGState()
     }
 
-    private static func strokeHandDrawnEllipse(_ rect: NSRect, color: NSColor, lineWidth: CGFloat, in context: CGContext) {
-        guard rect.width > 0, rect.height > 0 else { return }
-        let jitter = min(max(lineWidth * 0.12, 0.35), 1.4)
-        drawVariableStroke(
-            samples: handDrawnEllipseSamples(rect, startDegrees: 218, endDegrees: 598, jitter: jitter, lineWidth: lineWidth),
-            color: color,
-            closed: false,
-            in: context
-        )
+    private static func colorByMultiplyingAlpha(_ color: NSColor, by alpha: CGFloat) -> NSColor {
+        let rgb = color.usingColorSpace(.deviceRGB) ?? color
+        return rgb.withAlphaComponent(min(max(rgb.alphaComponent * alpha, 0), 1))
     }
 
-    private static func drawVariableStroke(samples: [VariableStrokeSample], color: NSColor, closed: Bool, in context: CGContext) {
-        guard samples.count >= 2 else { return }
+    private static func strokeInset(for rect: NSRect, lineWidth: CGFloat) -> CGFloat {
+        let maxInset = max(0, min(rect.width, rect.height) / 2 - 0.5)
+        return min(maxInset, max(0, lineWidth / 2))
+    }
+
+    private static func roughRoundedRectPath(_ rect: NSRect, lineWidth: CGFloat, style: RoughShapeStyle, pass: Int) -> CGPath {
+        guard rect.width > 0, rect.height > 0 else { return CGMutablePath() }
+        var rng = SeededRandom(seed: passSeed(style.seed, pass: pass))
+        let radius = roundedRectRadius(for: rect, lineWidth: lineWidth)
+        let points = roundedRectPoints(
+            rect: rect,
+            radius: radius,
+            step: roughSampleStep,
+            bowAmount: 0,
+            rng: &rng
+        )
+        return smoothClosedPath(points: points)
+    }
+
+    private static func roughEllipsePath(_ rect: NSRect, style _: RoughShapeStyle, pass _: Int) -> CGPath {
+        guard rect.width > 0, rect.height > 0 else { return CGMutablePath() }
+        return smoothClosedPath(points: ellipsePoints(rect: rect, step: roughSampleStep))
+    }
+
+    private static func roughRoundedRectStrokeSamples(_ rect: NSRect, lineWidth: CGFloat, style: RoughShapeStyle, pass: Int) -> [VariableStrokeSample] {
+        guard rect.width > 0, rect.height > 0 else { return [] }
+        var rng = SeededRandom(seed: passSeed(style.seed, pass: pass))
+        let radius = roundedRectRadius(for: rect, lineWidth: lineWidth)
+        let points = roundedRectPoints(
+            rect: rect,
+            radius: radius,
+            step: roughSampleStep,
+            bowAmount: 0,
+            rng: &rng
+        )
+        return pressureSamples(points: points, lineWidth: lineWidth, style: style, rng: &rng)
+    }
+
+    private static func roughEllipseStrokeSamples(_ rect: NSRect, lineWidth: CGFloat, style: RoughShapeStyle, pass: Int) -> [VariableStrokeSample] {
+        guard rect.width > 0, rect.height > 0 else { return [] }
+        var rng = SeededRandom(seed: passSeed(style.seed, pass: pass))
+        return pressureSamples(points: ellipsePoints(rect: rect, step: roughSampleStep), lineWidth: lineWidth, style: style, rng: &rng)
+    }
+
+    private static func pressureSamples(points: [CGPoint], lineWidth: CGFloat, style: RoughShapeStyle, rng: inout SeededRandom) -> [VariableStrokeSample] {
+        guard !points.isEmpty else { return [] }
+        let phaseA = rng.range(0, .pi * 2)
+        let phaseB = rng.range(0, .pi * 2)
+        let phaseC = rng.range(0, .pi * 2)
+        let variation = max(0.12, min(0.24, 0.14 + style.roughness * 0.08))
+        let count = CGFloat(points.count)
+
+        return points.enumerated().map { index, point in
+            let progress = CGFloat(index) / count
+            let t = progress * .pi * 2
+            let pressure = 1
+                + variation * sin(t + phaseA)
+                + variation * 0.45 * sin(t * 2.3 + phaseB)
+                + variation * 0.24 * cos(t * 4.1 + phaseC)
+            return VariableStrokeSample(
+                point: point,
+                width: max(1, lineWidth * min(max(pressure, 0.72), 1.28))
+            )
+        }
+    }
+
+    private static func drawVariableWidthStroke(samples: [VariableStrokeSample], color: NSColor, in context: CGContext) {
+        guard samples.count >= 3 else { return }
+
         var left: [CGPoint] = []
         var right: [CGPoint] = []
         left.reserveCapacity(samples.count)
         right.reserveCapacity(samples.count)
 
         for index in samples.indices {
-            let normal = strokeNormal(at: index, in: samples, closed: closed)
+            let normal = strokeNormal(at: index, in: samples)
             let halfWidth = samples[index].width / 2
             let point = samples[index].point
-            left.append(CGPoint(x: point.x + normal.dx * halfWidth, y: point.y + normal.dy * halfWidth))
-            right.append(CGPoint(x: point.x - normal.dx * halfWidth, y: point.y - normal.dy * halfWidth))
+            left.append(CGPoint(
+                x: point.x + normal.dx * halfWidth,
+                y: point.y + normal.dy * halfWidth
+            ))
+            right.append(CGPoint(
+                x: point.x - normal.dx * halfWidth,
+                y: point.y - normal.dy * halfWidth
+            ))
         }
+
+        let path = CGMutablePath()
+        addSmoothedClosedLoop(left, to: path)
+        addSmoothedClosedLoop(right.reversed(), to: path)
 
         context.saveGState()
         context.setFillColor(color.cgColor)
-        context.beginPath()
-        if closed {
-            context.move(to: left[0])
-            for point in left.dropFirst() {
-                context.addLine(to: point)
-            }
-            context.addLine(to: left[0])
-            context.addLine(to: right[0])
-            for point in right.dropFirst().reversed() {
-                context.addLine(to: point)
-            }
-            context.addLine(to: right[0])
-        } else {
-            context.move(to: left[0])
-            for point in left.dropFirst() {
-                context.addLine(to: point)
-            }
-            for point in right.reversed() {
-                context.addLine(to: point)
-            }
-        }
-        context.closePath()
-        context.fillPath()
-
-        if !closed {
-            if let first = samples.first {
-                context.fillEllipse(in: CGRect(
-                    x: first.point.x - first.width / 2,
-                    y: first.point.y - first.width / 2,
-                    width: first.width,
-                    height: first.width
-                ))
-            }
-            if let last = samples.last {
-                context.fillEllipse(in: CGRect(
-                    x: last.point.x - last.width / 2,
-                    y: last.point.y - last.width / 2,
-                    width: last.width,
-                    height: last.width
-                ))
-            }
-        }
-
+        context.addPath(path)
+        context.fillPath(using: .evenOdd)
         context.restoreGState()
     }
 
-    private static func strokeNormal(at index: Int, in samples: [VariableStrokeSample], closed: Bool) -> CGVector {
+    private static func strokeNormal(at index: Int, in samples: [VariableStrokeSample]) -> CGVector {
         let previousIndex = index == samples.startIndex
-            ? (closed ? samples.index(before: samples.endIndex) : index)
+            ? samples.index(before: samples.endIndex)
             : samples.index(before: index)
         let nextIndex = index == samples.index(before: samples.endIndex)
-            ? (closed ? samples.startIndex : index)
+            ? samples.startIndex
             : samples.index(after: index)
         let previous = samples[previousIndex].point
         let next = samples[nextIndex].point
@@ -307,125 +418,197 @@ private enum ShapeDrawing {
         return CGVector(dx: -dy / length, dy: dx / length)
     }
 
-    private static func handDrawnRoundedRectOuterPath(_ rect: NSRect, radius: CGFloat, wobble: CGFloat, lineWidth: CGFloat) -> CGPath {
-        let sideOut = max(1.2, lineWidth * 0.36)
-        let cornerOut = max(sideOut + 1.2, lineWidth * 0.9)
-        let outerRect = rect.insetBy(dx: -sideOut, dy: -sideOut)
-        let r = min(radius + cornerOut * 0.58, outerRect.width / 2, outerRect.height / 2)
-        let k: CGFloat = 0.5522847498307936
+    private static func addSmoothedClosedLoop<S: Sequence>(_ points: S, to path: CGMutablePath) where S.Element == CGPoint {
+        let points = Array(points)
+        guard points.count > 2 else { return }
 
-        let path = CGMutablePath()
-        let topLeft = CGPoint(x: outerRect.minX + r, y: outerRect.maxY)
-        let topRight = CGPoint(x: outerRect.maxX - r, y: outerRect.maxY)
-        let rightTop = CGPoint(x: outerRect.maxX, y: outerRect.maxY - r)
-        let rightBottom = CGPoint(x: outerRect.maxX, y: outerRect.minY + r)
-        let bottomRight = CGPoint(x: outerRect.maxX - r, y: outerRect.minY)
-        let bottomLeft = CGPoint(x: outerRect.minX + r, y: outerRect.minY)
-        let leftBottom = CGPoint(x: outerRect.minX, y: outerRect.minY + r)
-        let leftTop = CGPoint(x: outerRect.minX, y: outerRect.maxY - r)
-
-        func addHorizontalSide(from start: CGPoint, to end: CGPoint, bow: CGFloat) {
-            let mid = CGPoint(x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 + bow)
-            let dx = end.x - start.x
-            path.addCurve(
-                to: mid,
-                control1: CGPoint(x: start.x + dx * 0.22, y: start.y),
-                control2: CGPoint(x: mid.x - dx * 0.18, y: mid.y)
-            )
-            path.addCurve(
-                to: end,
-                control1: CGPoint(x: mid.x + dx * 0.18, y: mid.y),
-                control2: CGPoint(x: end.x - dx * 0.22, y: end.y)
-            )
+        func mid(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+            CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
         }
 
-        func addVerticalSide(from start: CGPoint, to end: CGPoint, bow: CGFloat) {
-            let mid = CGPoint(x: (start.x + end.x) / 2 + bow, y: (start.y + end.y) / 2)
-            let dy = end.y - start.y
-            path.addCurve(
-                to: mid,
-                control1: CGPoint(x: start.x, y: start.y + dy * 0.22),
-                control2: CGPoint(x: mid.x, y: mid.y - dy * 0.18)
-            )
-            path.addCurve(
-                to: end,
-                control1: CGPoint(x: mid.x, y: mid.y + dy * 0.18),
-                control2: CGPoint(x: end.x, y: end.y - dy * 0.22)
-            )
+        let count = points.count
+        path.move(to: mid(points[0], points[1]))
+        for index in 1...count {
+            let current = points[index % count]
+            let next = points[(index + 1) % count]
+            path.addQuadCurve(to: mid(current, next), control: current)
         }
-
-        path.move(to: topLeft)
-        addHorizontalSide(from: topLeft, to: topRight, bow: wobble * 0.12)
-        path.addCurve(
-            to: rightTop,
-            control1: CGPoint(x: topRight.x + k * r, y: topRight.y),
-            control2: CGPoint(x: rightTop.x, y: rightTop.y + k * r)
-        )
-        addVerticalSide(from: rightTop, to: rightBottom, bow: wobble * 0.08)
-        path.addCurve(
-            to: bottomRight,
-            control1: CGPoint(x: rightBottom.x, y: rightBottom.y - k * r),
-            control2: CGPoint(x: bottomRight.x + k * r, y: bottomRight.y)
-        )
-        addHorizontalSide(from: bottomRight, to: bottomLeft, bow: -wobble * 0.1)
-        path.addCurve(
-            to: leftBottom,
-            control1: CGPoint(x: bottomLeft.x - k * r, y: bottomLeft.y),
-            control2: CGPoint(x: leftBottom.x, y: leftBottom.y - k * r)
-        )
-        addVerticalSide(from: leftBottom, to: leftTop, bow: -wobble * 0.07)
-        path.addCurve(
-            to: topLeft,
-            control1: CGPoint(x: leftTop.x, y: leftTop.y + k * r),
-            control2: CGPoint(x: topLeft.x - k * r, y: topLeft.y)
-        )
         path.closeSubpath()
-        return path
     }
 
-    private static func handDrawnRoundedRectInnerPath(_ rect: NSRect, radius: CGFloat, lineWidth: CGFloat) -> CGPath? {
-        let maxInset = max(0, min(rect.width, rect.height) / 2 - 0.5)
-        let innerInset = min(maxInset, max(1, lineWidth * 0.48))
-        let innerRect = rect.insetBy(dx: innerInset, dy: innerInset)
-        guard innerRect.width > 1, innerRect.height > 1 else { return nil }
-        let innerRadius = min(max(2, radius - innerInset * 0.35), innerRect.width / 2, innerRect.height / 2)
-        return CGPath(roundedRect: innerRect, cornerWidth: innerRadius, cornerHeight: innerRadius, transform: nil)
+    private static func passSeed(_ seed: UInt64, pass: Int) -> UInt64 {
+        seed &+ (UInt64(pass + 1) &* 0x9E3779B97F4A7C15)
     }
 
-    private static func handDrawnEllipseSamples(
-        _ rect: NSRect,
-        startDegrees: CGFloat,
-        endDegrees: CGFloat,
-        jitter: CGFloat,
-        lineWidth: CGFloat
-    ) -> [VariableStrokeSample] {
+    private static let roughSampleStep: CGFloat = 10
+    private static let roughArcStep: CGFloat = .pi / 12
+
+    private static func roundedRectPoints(rect: NSRect, radius: CGFloat, step: CGFloat, bowAmount: CGFloat, rng: inout SeededRandom) -> [CGPoint] {
+        let r = min(radius, rect.width / 2, rect.height / 2)
+        var points: [CGPoint] = []
+
+        sampleRoughLine(
+            from: CGPoint(x: rect.minX + r, y: rect.minY),
+            to: CGPoint(x: rect.maxX - r, y: rect.minY),
+            step: step,
+            bowAmount: bowAmount,
+            rng: &rng,
+            points: &points
+        )
+        sampleArc(
+            center: CGPoint(x: rect.maxX - r, y: rect.minY + r),
+            radius: r,
+            startAngle: -.pi / 2,
+            endAngle: 0,
+            stepAngle: roughArcStep,
+            points: &points
+        )
+        sampleRoughLine(
+            from: CGPoint(x: rect.maxX, y: rect.minY + r),
+            to: CGPoint(x: rect.maxX, y: rect.maxY - r),
+            step: step,
+            bowAmount: bowAmount,
+            rng: &rng,
+            points: &points
+        )
+        sampleArc(
+            center: CGPoint(x: rect.maxX - r, y: rect.maxY - r),
+            radius: r,
+            startAngle: 0,
+            endAngle: .pi / 2,
+            stepAngle: roughArcStep,
+            points: &points
+        )
+        sampleRoughLine(
+            from: CGPoint(x: rect.maxX - r, y: rect.maxY),
+            to: CGPoint(x: rect.minX + r, y: rect.maxY),
+            step: step,
+            bowAmount: bowAmount,
+            rng: &rng,
+            points: &points
+        )
+        sampleArc(
+            center: CGPoint(x: rect.minX + r, y: rect.maxY - r),
+            radius: r,
+            startAngle: .pi / 2,
+            endAngle: .pi,
+            stepAngle: roughArcStep,
+            points: &points
+        )
+        sampleRoughLine(
+            from: CGPoint(x: rect.minX, y: rect.maxY - r),
+            to: CGPoint(x: rect.minX, y: rect.minY + r),
+            step: step,
+            bowAmount: bowAmount,
+            rng: &rng,
+            points: &points
+        )
+        sampleArc(
+            center: CGPoint(x: rect.minX + r, y: rect.minY + r),
+            radius: r,
+            startAngle: .pi,
+            endAngle: .pi * 1.5,
+            stepAngle: roughArcStep,
+            points: &points
+        )
+
+        return points
+    }
+
+    private static func ellipsePoints(rect: NSRect, step: CGFloat) -> [CGPoint] {
         let center = CGPoint(x: rect.midX, y: rect.midY)
         let rx = rect.width / 2
         let ry = rect.height / 2
-        let steps = max(24, Int(abs(endDegrees - startDegrees) / 4))
-        return (0...steps).map { index in
-            let fraction = CGFloat(index) / CGFloat(steps)
-            let degrees = startDegrees + (endDegrees - startDegrees) * fraction
-            let t = degrees * .pi / 180
-            let radialJitter = sin(t * 2.8) * jitter + cos(t * 4.1) * jitter * 0.45
-            let point = CGPoint(
-                x: center.x + (rx + radialJitter) * cos(t),
-                y: center.y + (ry + radialJitter) * sin(t)
-            )
-            return VariableStrokeSample(
-                point: point,
-                width: pressureWidth(lineWidth, progress: fraction, phase: 0.65)
+        let circumference = .pi * (3 * (rx + ry) - sqrt((3 * rx + ry) * (rx + 3 * ry)))
+        let count = max(24, Int(ceil(circumference / step)))
+        return (0..<count).map { index in
+            let angle = .pi * 2 * CGFloat(index) / CGFloat(count)
+            return CGPoint(
+                x: center.x + rx * cos(angle),
+                y: center.y + ry * sin(angle)
             )
         }
     }
 
-    private static func pressureWidth(_ lineWidth: CGFloat, progress: CGFloat, phase: CGFloat) -> CGFloat {
-        let t = progress * .pi * 2
-        let pressure = 0.98
-            + 0.13 * sin(t + phase)
-            + 0.07 * sin(t * 2.7 + phase * 2.0)
-            + 0.04 * cos(t * 4.2 - phase)
-        return max(1, lineWidth * pressure)
+    private static func sampleRoughLine(
+        from start: CGPoint,
+        to end: CGPoint,
+        step: CGFloat,
+        bowAmount: CGFloat,
+        rng: inout SeededRandom,
+        points: inout [CGPoint]
+    ) {
+        let dx = end.x - start.x
+        let dy = end.y - start.y
+        let distance = hypot(dx, dy)
+        guard distance > 0 else {
+            appendPoint(start, to: &points)
+            return
+        }
+
+        let count = max(1, Int(ceil(distance / step)))
+        let nx = -dy / distance
+        let ny = dx / distance
+        let bowDirection = rng.range(-1, 1)
+        for index in 0...count {
+            if !points.isEmpty && index == 0 { continue }
+            let t = CGFloat(index) / CGFloat(count)
+            let bow = sin(t * .pi) * bowAmount * bowDirection
+            points.append(CGPoint(
+                x: start.x + dx * t + nx * bow,
+                y: start.y + dy * t + ny * bow
+            ))
+        }
+    }
+
+    private static func sampleArc(
+        center: CGPoint,
+        radius: CGFloat,
+        startAngle: CGFloat,
+        endAngle: CGFloat,
+        stepAngle: CGFloat,
+        points: inout [CGPoint]
+    ) {
+        guard radius > 0 else {
+            appendPoint(center, to: &points)
+            return
+        }
+
+        let total = abs(endAngle - startAngle)
+        let count = max(3, Int(ceil(total / stepAngle)))
+        for index in 0...count {
+            if !points.isEmpty && index == 0 { continue }
+            let t = CGFloat(index) / CGFloat(count)
+            let angle = startAngle + (endAngle - startAngle) * t
+            points.append(CGPoint(
+                x: center.x + cos(angle) * radius,
+                y: center.y + sin(angle) * radius
+            ))
+        }
+    }
+
+    private static func appendPoint(_ point: CGPoint, to points: inout [CGPoint]) {
+        guard points.last != point else { return }
+        points.append(point)
+    }
+
+    private static func smoothClosedPath(points: [CGPoint]) -> CGPath {
+        let path = CGMutablePath()
+        guard points.count > 2 else { return path }
+
+        func mid(_ a: CGPoint, _ b: CGPoint) -> CGPoint {
+            CGPoint(x: (a.x + b.x) / 2, y: (a.y + b.y) / 2)
+        }
+
+        let count = points.count
+        path.move(to: mid(points[0], points[1]))
+        for index in 1...count {
+            let current = points[index % count]
+            let next = points[(index + 1) % count]
+            path.addQuadCurve(to: mid(current, next), control: current)
+        }
+        path.closeSubpath()
+        return path
     }
 }
 
@@ -940,6 +1123,7 @@ struct RectAnnotation: Annotation {
     let lineWidth: CGFloat
     let fillMode: ShapeFillMode
     let strokeStyle: ShapeStrokeStyle
+    let roughStyle: RoughShapeStyle
     var rotation: CGFloat = 0
 
     init(
@@ -949,6 +1133,7 @@ struct RectAnnotation: Annotation {
         filled: Bool = false,
         fillMode: ShapeFillMode? = nil,
         strokeStyle: ShapeStrokeStyle = .standard,
+        roughStyle: RoughShapeStyle? = nil,
         rotation: CGFloat = 0
     ) {
         self.rect = rect
@@ -956,6 +1141,7 @@ struct RectAnnotation: Annotation {
         self.lineWidth = lineWidth
         self.fillMode = fillMode ?? (filled ? .opaque : .none)
         self.strokeStyle = strokeStyle
+        self.roughStyle = roughStyle ?? RoughShapeStyle.make(rect: rect, lineWidth: lineWidth)
         self.rotation = rotation
     }
 
@@ -964,8 +1150,8 @@ struct RectAnnotation: Annotation {
     var filled: Bool { fillMode.isFilled }
 
     func draw(in context: CGContext, bounds: NSRect) {
-        ShapeDrawing.fillRect(rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, in: context)
-        ShapeDrawing.strokeRect(rect, color: color, lineWidth: lineWidth, strokeStyle: strokeStyle, in: context)
+        ShapeDrawing.fillRect(rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, in: context)
+        ShapeDrawing.strokeRect(rect, color: color, lineWidth: lineWidth, strokeStyle: strokeStyle, roughStyle: roughStyle, in: context)
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
@@ -984,6 +1170,7 @@ struct RectAnnotation: Annotation {
             lineWidth: lineWidth,
             fillMode: fillMode,
             strokeStyle: strokeStyle,
+            roughStyle: roughStyle,
             rotation: rotation
         )
     }
@@ -995,23 +1182,23 @@ struct RectAnnotation: Annotation {
     }
 
     func withColor(_ color: NSColor) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 
     func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle.tuned(for: rect, lineWidth: lineWidth), rotation: rotation)
     }
 
     func withFill(_ filled: Bool) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, strokeStyle: strokeStyle, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 
     func withShapeFillMode(_ fillMode: ShapeFillMode) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 
     func withShapeStrokeStyle(_ strokeStyle: ShapeStrokeStyle) -> Annotation {
-        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        RectAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 }
 
@@ -1023,6 +1210,7 @@ struct EllipseAnnotation: Annotation {
     let lineWidth: CGFloat
     let fillMode: ShapeFillMode
     let strokeStyle: ShapeStrokeStyle
+    let roughStyle: RoughShapeStyle
     var rotation: CGFloat = 0
 
     init(
@@ -1032,6 +1220,7 @@ struct EllipseAnnotation: Annotation {
         filled: Bool = false,
         fillMode: ShapeFillMode? = nil,
         strokeStyle: ShapeStrokeStyle = .standard,
+        roughStyle: RoughShapeStyle? = nil,
         rotation: CGFloat = 0
     ) {
         self.rect = rect
@@ -1039,6 +1228,7 @@ struct EllipseAnnotation: Annotation {
         self.lineWidth = lineWidth
         self.fillMode = fillMode ?? (filled ? .opaque : .none)
         self.strokeStyle = strokeStyle
+        self.roughStyle = roughStyle ?? RoughShapeStyle.make(rect: rect, lineWidth: lineWidth)
         self.rotation = rotation
     }
 
@@ -1047,8 +1237,8 @@ struct EllipseAnnotation: Annotation {
     var filled: Bool { fillMode.isFilled }
 
     func draw(in context: CGContext, bounds: NSRect) {
-        ShapeDrawing.fillEllipse(rect, color: color, fillMode: fillMode, in: context)
-        ShapeDrawing.strokeEllipse(rect, color: color, lineWidth: lineWidth, strokeStyle: strokeStyle, in: context)
+        ShapeDrawing.fillEllipse(rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, in: context)
+        ShapeDrawing.strokeEllipse(rect, color: color, lineWidth: lineWidth, strokeStyle: strokeStyle, roughStyle: roughStyle, in: context)
     }
 
     func containsPoint(_ point: NSPoint) -> Bool {
@@ -1067,6 +1257,7 @@ struct EllipseAnnotation: Annotation {
             lineWidth: lineWidth,
             fillMode: fillMode,
             strokeStyle: strokeStyle,
+            roughStyle: roughStyle,
             rotation: rotation
         )
     }
@@ -1078,23 +1269,23 @@ struct EllipseAnnotation: Annotation {
     }
 
     func withColor(_ color: NSColor) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 
     func withLineWidth(_ lineWidth: CGFloat) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle.tuned(for: rect, lineWidth: lineWidth), rotation: rotation)
     }
 
     func withFill(_ filled: Bool) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, strokeStyle: strokeStyle, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, filled: filled, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 
     func withShapeFillMode(_ fillMode: ShapeFillMode) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 
     func withShapeStrokeStyle(_ strokeStyle: ShapeStrokeStyle) -> Annotation {
-        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, rotation: rotation)
+        EllipseAnnotation(rect: rect, color: color, lineWidth: lineWidth, fillMode: fillMode, strokeStyle: strokeStyle, roughStyle: roughStyle, rotation: rotation)
     }
 }
 

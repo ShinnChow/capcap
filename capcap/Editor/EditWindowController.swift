@@ -4677,58 +4677,49 @@ private final class ShapeStrokeStyleButtonView: NSView {
     }
 
     private func drawHandDrawnRectangleIcon(color: NSColor) {
-        let rect = bounds.insetBy(dx: 5.4, dy: 4.8)
-        let sideOut: CGFloat = 1.1
-        let outerRect = rect.insetBy(dx: -sideOut, dy: -sideOut)
-        let outerRadius: CGFloat = 5.2
-        let innerRect = rect.insetBy(dx: 1.75, dy: 1.75)
-        let innerRadius: CGFloat = 2.2
         NSGraphicsContext.current?.cgContext.setShouldAntialias(true)
 
+        let outerRect = bounds.insetBy(dx: 4.4, dy: 3.4)
+        let innerRect = NSRect(
+            x: outerRect.minX + 4.2,
+            y: outerRect.minY + 3.2,
+            width: outerRect.width - 7.4,
+            height: outerRect.height - 5.5
+        )
+        let outerRadius: CGFloat = 5.2
+        let innerRadius: CGFloat = 2.6
         let outer = NSBezierPath(roundedRect: outerRect, xRadius: outerRadius, yRadius: outerRadius)
         let inner = NSBezierPath(roundedRect: innerRect, xRadius: innerRadius, yRadius: innerRadius)
+        fillHandDrawnPreviewRing(outer: outer, inner: inner, color: color)
+    }
+
+    private func drawHandDrawnCircleIcon(color: NSColor) {
+        NSGraphicsContext.current?.cgContext.setShouldAntialias(true)
+
+        let outerRect = NSRect(
+            x: bounds.midX - 9.4,
+            y: bounds.midY - 6.9,
+            width: 18.8,
+            height: 13.8
+        )
+        let innerRect = NSRect(
+            x: outerRect.minX + 3.0,
+            y: outerRect.minY + 2.35,
+            width: outerRect.width - 5.7,
+            height: outerRect.height - 5.25
+        )
+        let outer = NSBezierPath(ovalIn: outerRect)
+        let inner = NSBezierPath(ovalIn: innerRect)
+        fillHandDrawnPreviewRing(outer: outer, inner: inner, color: color)
+    }
+
+    private func fillHandDrawnPreviewRing(outer: NSBezierPath, inner: NSBezierPath, color: NSColor) {
         let shape = NSBezierPath()
         shape.append(outer)
         shape.append(inner)
         shape.windingRule = .evenOdd
         color.setFill()
         shape.fill()
-    }
-
-    private func drawHandDrawnCircleIcon(color: NSColor) {
-        let side = min(bounds.width, bounds.height) - 8
-        let center = NSPoint(x: bounds.midX, y: bounds.midY)
-        let radius = side / 2
-        let segments: [(CGFloat, CGFloat, CGFloat)] = [
-            (214, 332, 2.0),
-            (332, 455, 1.55),
-            (455, 516, 2.25),
-        ]
-
-        color.setStroke()
-        for (startDegrees, endDegrees, width) in segments {
-            let path = NSBezierPath()
-            let steps = max(8, Int((endDegrees - startDegrees) / 10))
-            for index in 0...steps {
-                let fraction = CGFloat(index) / CGFloat(steps)
-                let degrees = startDegrees + (endDegrees - startDegrees) * fraction
-                let t = degrees * .pi / 180
-                let wobble = sin(t * 2.7) * 0.6 + cos(t * 4.1) * 0.35
-                let point = NSPoint(
-                    x: center.x + (radius + wobble) * cos(t),
-                    y: center.y + (radius + wobble) * sin(t)
-                )
-                if index == 0 {
-                    path.move(to: point)
-                } else {
-                    path.line(to: point)
-                }
-            }
-            path.lineCapStyle = .round
-            path.lineJoinStyle = .round
-            path.lineWidth = width
-            path.stroke()
-        }
     }
 }
 

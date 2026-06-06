@@ -18,6 +18,8 @@ enum EditTool {
 }
 
 class EditCanvasView: NSView {
+    private static let fallbackShapePreviewSeed: UInt64 = 0xC0DEC0DEC0DEC0DE
+
     var captureRect: CGRect?
     var captureScreen: NSScreen?
     var preSnapshot: CGImage?
@@ -42,6 +44,9 @@ class EditCanvasView: NSView {
             }
             if activeTool != .emoji {
                 emojiPreviewPoint = nil
+            }
+            if activeTool != .rectangle && activeTool != .ellipse {
+                shapeRoughSeed = nil
             }
             // Tool change can affect what counts as "interactive area" — refresh
             // cursor immediately under the current mouse position.
@@ -111,6 +116,7 @@ class EditCanvasView: NSView {
     private var currentMarkerPoints: [NSPoint]?
     private var shapeStart: NSPoint?
     private var shapeCurrent: NSPoint?
+    private var shapeRoughSeed: UInt64?
     /// Base image snapshot captured when a magnifier drag begins, reused for
     /// both the live preview and the committed lens so the (possibly
     /// expensive) base-image lookup happens only once per drag.
@@ -853,11 +859,13 @@ class EditCanvasView: NSView {
         if let a = a as? RectAnnotation, let b = b as? RectAnnotation {
             return a.rect == b.rect && a.lineWidth == b.lineWidth
                 && a.fillMode == b.fillMode && a.strokeStyle == b.strokeStyle
+                && a.roughStyle == b.roughStyle
                 && a.rotation == b.rotation && a.color == b.color
         }
         if let a = a as? EllipseAnnotation, let b = b as? EllipseAnnotation {
             return a.rect == b.rect && a.lineWidth == b.lineWidth
                 && a.fillMode == b.fillMode && a.strokeStyle == b.strokeStyle
+                && a.roughStyle == b.roughStyle
                 && a.rotation == b.rotation && a.color == b.color
         }
         if let a = a as? ArrowAnnotation, let b = b as? ArrowAnnotation {
@@ -1030,13 +1038,20 @@ class EditCanvasView: NSView {
         case .marker:
             currentMarkerPoints = [point]
 
-        case .rectangle, .ellipse, .arrow, .line, .mosaic:
+        case .rectangle, .ellipse:
             shapeStart = point
             shapeCurrent = point
+            shapeRoughSeed = RoughShapeStyle.randomSeed()
+
+        case .arrow, .line, .mosaic:
+            shapeStart = point
+            shapeCurrent = point
+            shapeRoughSeed = nil
 
         case .magnifier:
             shapeStart = point
             shapeCurrent = point
+            shapeRoughSeed = nil
             // Resolve the base image once; both the live preview and the
             // committed lens sample it.
             magnifierBaseImage = resolveBaseImageForEditing()
@@ -1290,7 +1305,12 @@ class EditCanvasView: NSView {
                         color: currentColor,
                         lineWidth: currentLineWidth,
                         fillMode: currentShapeFillMode,
-                        strokeStyle: currentShapeStrokeStyle
+                        strokeStyle: currentShapeStrokeStyle,
+                        roughStyle: RoughShapeStyle.make(
+                            seed: shapeRoughSeed ?? RoughShapeStyle.randomSeed(),
+                            rect: rect,
+                            lineWidth: currentLineWidth
+                        )
                     ))
                 }
             }
@@ -1308,7 +1328,12 @@ class EditCanvasView: NSView {
                         color: currentColor,
                         lineWidth: currentLineWidth,
                         fillMode: currentShapeFillMode,
-                        strokeStyle: currentShapeStrokeStyle
+                        strokeStyle: currentShapeStrokeStyle,
+                        roughStyle: RoughShapeStyle.make(
+                            seed: shapeRoughSeed ?? RoughShapeStyle.randomSeed(),
+                            rect: rect,
+                            lineWidth: currentLineWidth
+                        )
                     ))
                 }
             }
@@ -1351,6 +1376,7 @@ class EditCanvasView: NSView {
             shapeCurrent = nil
         }
 
+        shapeRoughSeed = nil
         needsDisplay = true
         refreshCursorAtCurrentLocation()
     }
@@ -1453,7 +1479,8 @@ class EditCanvasView: NSView {
                     color: currentColor,
                     lineWidth: currentLineWidth,
                     fillMode: currentShapeFillMode,
-                    strokeStyle: currentShapeStrokeStyle
+                    strokeStyle: currentShapeStrokeStyle,
+                    roughStyle: previewRoughStyle(for: rect)
                 ).draw(in: context, bounds: bounds)
             case .ellipse:
                 let rect = rectFromTwoPoints(start, current)
@@ -1462,7 +1489,8 @@ class EditCanvasView: NSView {
                     color: currentColor,
                     lineWidth: currentLineWidth,
                     fillMode: currentShapeFillMode,
-                    strokeStyle: currentShapeStrokeStyle
+                    strokeStyle: currentShapeStrokeStyle,
+                    roughStyle: previewRoughStyle(for: rect)
                 ).draw(in: context, bounds: bounds)
             case .mosaic:
                 // Mosaic preview: a semi-transparent gray fill marking the
@@ -1705,6 +1733,7 @@ class EditCanvasView: NSView {
         currentMarkerPoints = nil
         shapeStart = nil
         shapeCurrent = nil
+        shapeRoughSeed = nil
         magnifierBaseImage = nil
         dragState = nil
         handleDragState = nil
@@ -1980,6 +2009,14 @@ class EditCanvasView: NSView {
             y: min(a.y, b.y),
             width: abs(b.x - a.x),
             height: abs(b.y - a.y)
+        )
+    }
+
+    private func previewRoughStyle(for rect: NSRect) -> RoughShapeStyle {
+        RoughShapeStyle.make(
+            seed: shapeRoughSeed ?? Self.fallbackShapePreviewSeed,
+            rect: rect,
+            lineWidth: currentLineWidth
         )
     }
 
@@ -2854,6 +2891,7 @@ class EditCanvasView: NSView {
                     lineWidth: rect.lineWidth,
                     fillMode: rect.fillMode,
                     strokeStyle: rect.strokeStyle,
+                    roughStyle: rect.roughStyle.tuned(for: newRect, lineWidth: rect.lineWidth),
                     rotation: rect.rotation
                 )
             } else if let ellipse = state.original as? EllipseAnnotation {
@@ -2872,6 +2910,7 @@ class EditCanvasView: NSView {
                     lineWidth: ellipse.lineWidth,
                     fillMode: ellipse.fillMode,
                     strokeStyle: ellipse.strokeStyle,
+                    roughStyle: ellipse.roughStyle.tuned(for: newRect, lineWidth: ellipse.lineWidth),
                     rotation: ellipse.rotation
                 )
             } else if let image = state.original as? ImageAnnotation {
