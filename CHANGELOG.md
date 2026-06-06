@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-06-06
+
+### Added
+- Add OCR in Pin image (8964612)
+- Add annotation hover highlighting (fffa7a7)
+- Add unified save path and Finder reveal settings (4ad8402)
+
+### Fixed
+- Fix default upload badge vertical centering (5e94ea5)
+- Fix magnifier connector and preserve focus on drag (102104d)
+- Prevent filename fields from auto-focusing in Settings (680a9e0)
+
+### Changed
+- Refine OCR overlay highlighting (5a26808)
+- Add OCR copyable text backplates (f3a7b7e)
+- Persist editor color and line width choices (d59866f)
+- Unify active button accents to green (4a490cf)
+- Preserve pinned image pixel size and show edit resolution (3b3196c)
+- Refine text callout dragging and labels (0bc1ad1)
+- Refine HUD sliders for integer values and marker limit (41e685d)
+- Narrow the slider's right edge (16fffa8)
+- Refine text callout bubble geometry (5f591cd)
+- Reduce editor line width maximum to 16 (b3083da)
+- Refine shape fill and hand-drawn stroke rendering (321cf48)
+- Refine hand-drawn rectangle rendering (f9c9df4)
+- Refine hand-drawn shape previews and stroke rendering (e50131d)
+- Refine filename rule layout and variable insertion (2b82626)
+
 ## [1.4.0] - 2026-06-04
 
 ### Added
