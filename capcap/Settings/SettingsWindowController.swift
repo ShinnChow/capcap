@@ -56,6 +56,7 @@ class SettingsWindowController: NSWindowController {
             self?.onLaunch?()
         }
         window.contentView = settingsView
+        window.initialFirstResponder = settingsView
         window.delegate = self
     }
 
@@ -68,7 +69,9 @@ class SettingsWindowController: NSWindowController {
         settingsView.setStartupMode(true)
         resizeWindow(height: 600)
         window?.center()
+        resetInitialFocus()
         showWindow(nil)
+        resetInitialFocus()
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -80,8 +83,15 @@ class SettingsWindowController: NSWindowController {
             settingsView.showPermissionsTab()
         }
         resizeWindow(height: 560)
+        resetInitialFocus()
         showWindow(nil)
+        resetInitialFocus()
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    private func resetInitialFocus() {
+        window?.initialFirstResponder = settingsView
+        window?.makeFirstResponder(settingsView)
     }
 
     private func resizeWindow(height: CGFloat) {

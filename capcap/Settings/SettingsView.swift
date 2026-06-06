@@ -312,6 +312,8 @@ class SettingsView: NSView {
         gradientLayer?.frame = bounds
     }
 
+    override var acceptsFirstResponder: Bool { true }
+
     // MARK: - Background
 
     private func setupBackground() {
