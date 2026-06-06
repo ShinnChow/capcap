@@ -1423,20 +1423,36 @@ class EditWindowController {
     private func save() {
         canvasView?.commitActiveTextEditing()
         guard let finalImage = currentCompositeImage() else { return }
+        let targetScreen = screen
 
         tearDown()
         onComplete(nil)
 
-        let savePanel = NSSavePanel()
-        savePanel.allowedContentTypes = [.png]
-        savePanel.nameFieldStringValue = FilenameTemplate.imageFileName(for: finalImage)
-
-        if savePanel.runModal() == .OK, let url = savePanel.url {
-            if let pngData = finalImage.pngDataPreservingBacking() {
-                try? pngData.write(to: url)
+        var shouldReturnFocus = true
+        do {
+            guard let pngData = finalImage.pngDataPreservingBacking() else {
+                throw NSError(
+                    domain: "capcap.screenshotSave",
+                    code: 1,
+                    userInfo: [NSLocalizedDescriptionKey: "Could not encode PNG data."]
+                )
             }
+            let filename = FilenameTemplate.imageFileName(for: finalImage)
+            let destination = try SaveDestination.uniqueFile(in: Defaults.screenshotSaveDirectory, fileName: filename)
+            try pngData.write(to: destination, options: .atomic)
+            let directoryPath = SaveDestination.displayPath(destination.deletingLastPathComponent())
+            ToastWindow.show(message: L10n.screenshotSaved(to: directoryPath), on: targetScreen)
+            if Defaults.autoRevealSavedFiles {
+                NSWorkspace.shared.activateFileViewerSelecting([destination])
+                shouldReturnFocus = false
+            }
+        } catch {
+            ToastWindow.show(message: L10n.screenshotSaveFailed(error.localizedDescription), on: targetScreen, duration: 3.5)
         }
-        requestFocusReturn()
+
+        if shouldReturnFocus {
+            requestFocusReturn()
+        }
     }
 
     private func upload() {

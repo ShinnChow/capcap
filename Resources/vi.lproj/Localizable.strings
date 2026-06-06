@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "Lưu vào tệp";
-"fileSaveShortcutHint" = "Nhấn trong trình chỉnh sửa để mở hộp thoại lưu và lưu ảnh chụp dưới dạng tệp PNG. Mặc định là ⌘S.";
+"fileSaveShortcutHint" = "Nhấn trong trình chỉnh sửa để lưu ảnh chụp dạng PNG vào thư mục ảnh chụp đã đặt. Mặc định là ⌘S.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Phím tắt đã được dùng";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "Chụp toàn màn hình thất bại";
 "selectedImageEditNoImage" = "Chưa chọn đúng một ảnh trong Finder";
 "clipboardImageEditNoImage" = "Không có ảnh có thể chỉnh sửa trong clipboard";
-"recordingSaved" = "Đã lưu bản ghi";
+"recordingSaved" = "Đã lưu bản ghi vào %@";
 "recordingCancelled" = "Đã hủy ghi";
 "recordingExportingGIF" = "Đang tạo GIF...";
 "recordingFailed" = "Ghi thất bại: %@";
 "saveRecording" = "Lưu bản ghi";
 "saveRecordingPrompt" = "Lưu";
 "recordingFormatLabel" = "Định dạng:";
-"recordingFormatMP4" = "Video MP4";
+"recordingFormatManual" = "Chọn mỗi lần";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "Chọn định dạng bản ghi";
+"recordingFormatChoiceMessage" = "Bản ghi sẽ được lưu vào thư mục ghi đã đặt.";
+"screenshotSaved" = "Đã lưu ảnh chụp vào %@";
+"screenshotSaveFailed" = "Lưu ảnh chụp thất bại: %@";
 "recordingStop" = "Dừng ghi";
 "recordingPause" = "Tạm dừng";
 "recordingResume" = "Tiếp tục";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "Thả ảnh để ghép";
 "imageMergeEmptyBody" = "Thêm tệp, dán từ clipboard hoặc kéo ảnh vào đây";
 "imageMergeClipboardSourceName" = "Ảnh clipboard";
+
+/* Save paths */
+"savePathTitle" = "Đường dẫn lưu";
+"savePathSubtitle" = "Ảnh chụp và bản ghi được lưu tại đây mà không hỏi vị trí đích.";
+"autoRevealSavedFilesLabel" = "Hiển thị trong Finder";
+"autoRevealSavedFilesHint" = "Chọn ảnh chụp hoặc bản ghi đã lưu trong Finder sau khi lưu thành công.";
+"recordingSavePathLabel" = "Đường dẫn lưu bản ghi";
+"recordingSaveFormatSettingLabel" = "Định dạng bản ghi";
+"screenshotSavePathLabel" = "Đường dẫn lưu ảnh chụp";
+"savePathChoose" = "Chọn...";
+"savePathReveal" = "Hiện";
+"chooseRecordingSavePathTitle" = "Chọn đường dẫn lưu bản ghi";
+"chooseScreenshotSavePathTitle" = "Chọn đường dẫn lưu ảnh chụp";

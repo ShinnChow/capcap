@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "ファイルへ保存";
-"fileSaveShortcutHint" = "エディター内で押すと保存ダイアログを開き、スクリーンショットを PNG として保存します。既定は ⌘S。";
+"fileSaveShortcutHint" = "エディター内で押すと、設定したスクリーンショット保存先へ PNG として保存します。既定は ⌘S。";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "ショートカットは既に使用中です";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "フルスクリーンショットに失敗しました";
 "selectedImageEditNoImage" = "Finder で画像が 1 枚選択されていません";
 "clipboardImageEditNoImage" = "クリップボードに編集できる画像がありません";
-"recordingSaved" = "録画を保存しました";
+"recordingSaved" = "録画を %@ に保存しました";
 "recordingCancelled" = "録画をキャンセルしました";
 "recordingExportingGIF" = "GIF を作成中…";
 "recordingFailed" = "録画に失敗しました: %@";
 "saveRecording" = "録画を保存";
 "saveRecordingPrompt" = "保存";
 "recordingFormatLabel" = "形式:";
-"recordingFormatMP4" = "動画 MP4";
+"recordingFormatManual" = "毎回選択";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "録画形式を選択";
+"recordingFormatChoiceMessage" = "録画は設定した録画保存先に保存されます。";
+"screenshotSaved" = "スクリーンショットを %@ に保存しました";
+"screenshotSaveFailed" = "スクリーンショットの保存に失敗しました: %@";
 "recordingStop" = "録画を停止";
 "recordingPause" = "一時停止";
 "recordingResume" = "再開";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "結合する画像をドロップ";
 "imageMergeEmptyBody" = "ファイル追加、クリップボード追加、または画像をここにドラッグ";
 "imageMergeClipboardSourceName" = "クリップボード画像";
+
+/* Save paths */
+"savePathTitle" = "保存先";
+"savePathSubtitle" = "スクリーンショットと録画は保存先を確認せず、ここへ保存されます。";
+"autoRevealSavedFilesLabel" = "Finder に表示";
+"autoRevealSavedFilesHint" = "保存に成功したスクリーンショットまたは録画を Finder で選択します。";
+"recordingSavePathLabel" = "録画の保存先";
+"recordingSaveFormatSettingLabel" = "録画形式";
+"screenshotSavePathLabel" = "スクリーンショットの保存先";
+"savePathChoose" = "選択...";
+"savePathReveal" = "表示";
+"chooseRecordingSavePathTitle" = "録画の保存先を選択";
+"chooseScreenshotSavePathTitle" = "スクリーンショットの保存先を選択";

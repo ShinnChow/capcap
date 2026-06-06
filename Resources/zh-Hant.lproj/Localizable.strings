@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "儲存為檔案";
-"fileSaveShortcutHint" = "在編輯器中按下即可開啟儲存對話框，將截圖儲存為 PNG 檔。預設為 ⌘S。";
+"fileSaveShortcutHint" = "在編輯器中按下後，將截圖以 PNG 儲存到設定的截圖儲存路徑。預設為 ⌘S。";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "快捷鍵已被使用";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "截全螢幕失敗";
 "selectedImageEditNoImage" = "Finder 中沒有選取單張圖片";
 "clipboardImageEditNoImage" = "剪貼簿中沒有可編輯的圖片";
-"recordingSaved" = "錄製已儲存";
+"recordingSaved" = "錄製已儲存到 %@";
 "recordingCancelled" = "錄製已取消";
 "recordingExportingGIF" = "正在建立 GIF...";
 "recordingFailed" = "錄製失敗：%@";
 "saveRecording" = "儲存錄製";
 "saveRecordingPrompt" = "儲存";
 "recordingFormatLabel" = "格式：";
-"recordingFormatMP4" = "MP4 影片";
+"recordingFormatManual" = "手動選擇";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "選擇錄製格式";
+"recordingFormatChoiceMessage" = "錄製會儲存到設定的錄製儲存路徑。";
+"screenshotSaved" = "截圖已儲存到 %@";
+"screenshotSaveFailed" = "截圖儲存失敗：%@";
 "recordingStop" = "停止錄製";
 "recordingPause" = "暫停";
 "recordingResume" = "繼續";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "拖入圖片開始合併";
 "imageMergeEmptyBody" = "加入檔案、從剪貼簿加入，或直接把圖片拖到這裡";
 "imageMergeClipboardSourceName" = "剪貼簿圖片";
+
+/* Save paths */
+"savePathTitle" = "儲存路徑";
+"savePathSubtitle" = "截圖和錄製會直接儲存到這些路徑，不再詢問儲存位置。";
+"autoRevealSavedFilesLabel" = "在 Finder 中顯示";
+"autoRevealSavedFilesHint" = "儲存成功後，在 Finder 中選取剛儲存的截圖或錄製。";
+"recordingSavePathLabel" = "錄製儲存路徑";
+"recordingSaveFormatSettingLabel" = "錄製格式";
+"screenshotSavePathLabel" = "截圖儲存路徑";
+"savePathChoose" = "選擇...";
+"savePathReveal" = "顯示";
+"chooseRecordingSavePathTitle" = "選擇錄製儲存路徑";
+"chooseScreenshotSavePathTitle" = "選擇截圖儲存路徑";

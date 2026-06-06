@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "Сохранить в файл";
-"fileSaveShortcutHint" = "Нажмите в редакторе, чтобы открыть диалог сохранения и записать снимок в PNG-файл. По умолчанию — ⌘S.";
+"fileSaveShortcutHint" = "Нажмите в редакторе, чтобы сохранить снимок PNG в заданную папку снимков. По умолчанию — ⌘S.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Сочетание уже используется";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "Не удалось сделать снимок всего экрана";
 "selectedImageEditNoImage" = "В Finder не выбрано одно изображение";
 "clipboardImageEditNoImage" = "В буфере обмена нет изображения для редактирования";
-"recordingSaved" = "Запись сохранена";
+"recordingSaved" = "Запись сохранена в %@";
 "recordingCancelled" = "Запись отменена";
 "recordingExportingGIF" = "Создание GIF…";
 "recordingFailed" = "Не удалось записать: %@";
 "saveRecording" = "Сохранить запись";
 "saveRecordingPrompt" = "Сохранить";
 "recordingFormatLabel" = "Формат:";
-"recordingFormatMP4" = "Видео MP4";
+"recordingFormatManual" = "Выбирать каждый раз";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "Выберите формат записи";
+"recordingFormatChoiceMessage" = "Запись будет сохранена в заданную папку записей.";
+"screenshotSaved" = "Снимок сохранён в %@";
+"screenshotSaveFailed" = "Не удалось сохранить снимок: %@";
 "recordingStop" = "Остановить запись";
 "recordingPause" = "Пауза";
 "recordingResume" = "Продолжить";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "Перетащите изображения для объединения";
 "imageMergeEmptyBody" = "Добавьте файлы, вставьте из буфера или перетащите изображения сюда";
 "imageMergeClipboardSourceName" = "Изображение из буфера";
+
+/* Save paths */
+"savePathTitle" = "Пути сохранения";
+"savePathSubtitle" = "Снимки и записи сохраняются сюда без запроса папки назначения.";
+"autoRevealSavedFilesLabel" = "Показать в Finder";
+"autoRevealSavedFilesHint" = "Выбирать сохранённый снимок или запись в Finder после успешного сохранения.";
+"recordingSavePathLabel" = "Путь для записей";
+"recordingSaveFormatSettingLabel" = "Формат записи";
+"screenshotSavePathLabel" = "Путь для снимков";
+"savePathChoose" = "Выбрать...";
+"savePathReveal" = "Показать";
+"chooseRecordingSavePathTitle" = "Выберите путь для записей";
+"chooseScreenshotSavePathTitle" = "Выберите путь для снимков";

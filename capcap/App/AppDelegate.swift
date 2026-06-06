@@ -1,5 +1,4 @@
 import AppKit
-import UniformTypeIdentifiers
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusBarController: StatusBarController!
@@ -665,38 +664,45 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func promptToSaveRecording(tmpURL: URL) {
-        let panel = NSSavePanel()
+        if let format = Defaults.recordingSavePreference.format {
+            saveRecordingToConfiguredDirectory(tmpURL: tmpURL, format: format)
+            return
+        }
+
+        promptToChooseRecordingFormat(tmpURL: tmpURL)
+    }
+
+    private func promptToChooseRecordingFormat(tmpURL: URL) {
         var selectedFormat = Defaults.recordingSaveFormat
-        panel.title = L10n.saveRecording
-        panel.prompt = L10n.saveRecordingPrompt
-        panel.nameFieldStringValue = FilenameTemplate.recordingFileName(fileExtension: selectedFormat.fileExtension)
-        panel.canCreateDirectories = true
-        panel.isExtensionHidden = false
-        panel.allowedContentTypes = [selectedFormat.contentType]
-        panel.accessoryView = RecordingSaveAccessoryView(initialFormat: selectedFormat) { [weak panel] format in
+        let alert = NSAlert()
+        alert.messageText = L10n.recordingFormatChoiceTitle
+        alert.informativeText = L10n.recordingFormatChoiceMessage
+        alert.alertStyle = .informational
+        alert.addButton(withTitle: L10n.saveRecordingPrompt)
+        alert.addButton(withTitle: L10n.shortcutCancel)
+        alert.accessoryView = RecordingSaveAccessoryView(initialFormat: selectedFormat) { format in
             selectedFormat = format
-            panel?.allowedContentTypes = [format.contentType]
-            if let currentName = panel?.nameFieldStringValue {
-                panel?.nameFieldStringValue = Self.recordingFilename(currentName, withFormat: format)
-            }
         }
 
         NSApp.activate(ignoringOtherApps: true)
-        panel.begin { [weak self] response in
-            guard response == .OK, let destination = panel.url else {
-                try? FileManager.default.removeItem(at: tmpURL)
-                return
-            }
-
-            Defaults.recordingSaveFormat = selectedFormat
-            self?.saveRecording(tmpURL: tmpURL, destination: destination, format: selectedFormat)
+        guard alert.runModal() == .alertFirstButtonReturn else {
+            try? FileManager.default.removeItem(at: tmpURL)
+            return
         }
+
+        Defaults.recordingSaveFormat = selectedFormat
+        saveRecordingToConfiguredDirectory(tmpURL: tmpURL, format: selectedFormat)
     }
 
-    private static func recordingFilename(_ currentName: String, withFormat format: ScreenRecordingFormat) -> String {
-        let base = (currentName as NSString).deletingPathExtension
-        let safeBase = base.isEmpty ? "capcap-recording" : base
-        return "\(safeBase).\(format.fileExtension)"
+    private func saveRecordingToConfiguredDirectory(tmpURL: URL, format: ScreenRecordingFormat) {
+        do {
+            let filename = FilenameTemplate.recordingFileName(fileExtension: format.fileExtension)
+            let destination = try SaveDestination.uniqueFile(in: Defaults.recordingSaveDirectory, fileName: filename)
+            saveRecording(tmpURL: tmpURL, destination: destination, format: format)
+        } catch {
+            try? FileManager.default.removeItem(at: tmpURL)
+            ToastWindow.show(message: L10n.recordingFailed(error.localizedDescription), duration: 3.5)
+        }
     }
 
     private func saveRecording(tmpURL: URL, destination: URL, format: ScreenRecordingFormat) {
@@ -726,8 +732,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSavedRecording(_ destination: URL) {
-        ToastWindow.show(message: L10n.recordingSaved)
-        NSWorkspace.shared.activateFileViewerSelecting([destination])
+        let directoryPath = SaveDestination.displayPath(destination.deletingLastPathComponent())
+        ToastWindow.show(message: L10n.recordingSaved(to: directoryPath))
+        if Defaults.autoRevealSavedFiles {
+            NSWorkspace.shared.activateFileViewerSelecting([destination])
+        }
     }
 
     private func openSettings() {
@@ -781,14 +790,5 @@ private final class RecordingSaveAccessoryView: NSView {
             return
         }
         onFormatChanged(format)
-    }
-}
-
-private extension ScreenRecordingFormat {
-    var contentType: UTType {
-        switch self {
-        case .mp4: return .mpeg4Movie
-        case .gif: return .gif
-        }
     }
 }

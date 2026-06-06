@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "Save to File";
-"fileSaveShortcutHint" = "Pressed inside the editor to open the save dialog and save the screenshot as a PNG file. Defaults to ⌘S.";
+"fileSaveShortcutHint" = "Pressed inside the editor to save the screenshot as a PNG in the configured screenshot folder. Defaults to ⌘S.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Shortcut Already in Use";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "Full-screen screenshot failed";
 "selectedImageEditNoImage" = "No single Finder image selected";
 "clipboardImageEditNoImage" = "No editable image on the clipboard";
-"recordingSaved" = "Recording saved";
+"recordingSaved" = "Recording saved to %@";
 "recordingCancelled" = "Recording cancelled";
 "recordingExportingGIF" = "Creating GIF...";
 "recordingFailed" = "Recording failed: %@";
 "saveRecording" = "Save Recording";
 "saveRecordingPrompt" = "Save";
 "recordingFormatLabel" = "Format:";
-"recordingFormatMP4" = "Video MP4";
+"recordingFormatManual" = "Choose each time";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "Choose Recording Format";
+"recordingFormatChoiceMessage" = "The recording will be saved to the configured recording folder.";
+"screenshotSaved" = "Screenshot saved to %@";
+"screenshotSaveFailed" = "Screenshot save failed: %@";
 "recordingStop" = "Stop Recording";
 "recordingPause" = "Pause";
 "recordingResume" = "Resume";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "Drop images to merge";
 "imageMergeEmptyBody" = "Add files, paste from clipboard, or drag images here";
 "imageMergeClipboardSourceName" = "Clipboard Image";
+
+/* Save paths */
+"savePathTitle" = "Save paths";
+"savePathSubtitle" = "Screenshots and recordings save here without asking for a destination.";
+"autoRevealSavedFilesLabel" = "Show in Finder";
+"autoRevealSavedFilesHint" = "Select the saved screenshot or recording in Finder after a successful save.";
+"recordingSavePathLabel" = "Recording save path";
+"recordingSaveFormatSettingLabel" = "Recording format";
+"screenshotSavePathLabel" = "Screenshot save path";
+"savePathChoose" = "Choose...";
+"savePathReveal" = "Reveal";
+"chooseRecordingSavePathTitle" = "Choose Recording Save Path";
+"chooseScreenshotSavePathTitle" = "Choose Screenshot Save Path";

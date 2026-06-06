@@ -19,6 +19,28 @@ enum ScreenRecordingFormat: String, CaseIterable {
     }
 }
 
+enum RecordingSavePreference: String, CaseIterable {
+    case manual
+    case gif
+    case mp4
+
+    var displayName: String {
+        switch self {
+        case .manual: return L10n.recordingFormatManual
+        case .gif: return L10n.recordingFormatGIF
+        case .mp4: return L10n.recordingFormatMP4
+        }
+    }
+
+    var format: ScreenRecordingFormat? {
+        switch self {
+        case .manual: return nil
+        case .gif: return .gif
+        case .mp4: return .mp4
+        }
+    }
+}
+
 typealias RecordingProgressCallback = (_ seconds: Int) -> Void
 typealias RecordingCompletionCallback = (_ url: URL?, _ error: Error?) -> Void
 

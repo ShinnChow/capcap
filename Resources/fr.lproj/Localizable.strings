@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "Enregistrer dans un fichier";
-"fileSaveShortcutHint" = "Appuyez dessus dans l'éditeur pour ouvrir la fenêtre d'enregistrement et sauvegarder la capture en PNG. ⌘S par défaut.";
+"fileSaveShortcutHint" = "Appuyez dessus dans l'éditeur pour enregistrer la capture en PNG dans le dossier de captures configuré. ⌘S par défaut.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Raccourci déjà utilisé";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "Échec de la capture plein écran";
 "selectedImageEditNoImage" = "Aucune image unique sélectionnée dans le Finder";
 "clipboardImageEditNoImage" = "Aucune image modifiable dans le presse-papiers";
-"recordingSaved" = "Enregistrement sauvegardé";
+"recordingSaved" = "Enregistrement sauvegardé dans %@";
 "recordingCancelled" = "Enregistrement annulé";
 "recordingExportingGIF" = "Création du GIF…";
 "recordingFailed" = "Échec de l'enregistrement : %@";
 "saveRecording" = "Sauvegarder l'enregistrement";
 "saveRecordingPrompt" = "Sauvegarder";
 "recordingFormatLabel" = "Format :";
-"recordingFormatMP4" = "Vidéo MP4";
+"recordingFormatManual" = "Choisir à chaque fois";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "Choisir le format d'enregistrement";
+"recordingFormatChoiceMessage" = "L'enregistrement sera sauvegardé dans le dossier d'enregistrement configuré.";
+"screenshotSaved" = "Capture enregistrée dans %@";
+"screenshotSaveFailed" = "Échec de l'enregistrement de la capture : %@";
 "recordingStop" = "Arrêter l'enregistrement";
 "recordingPause" = "Pause";
 "recordingResume" = "Reprendre";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "Déposez des images à fusionner";
 "imageMergeEmptyBody" = "Ajoutez des fichiers, collez depuis le presse-papiers ou glissez des images ici";
 "imageMergeClipboardSourceName" = "Image du presse-papiers";
+
+/* Save paths */
+"savePathTitle" = "Emplacements d'enregistrement";
+"savePathSubtitle" = "Les captures et enregistrements sont sauvegardés ici sans demander de destination.";
+"autoRevealSavedFilesLabel" = "Afficher dans le Finder";
+"autoRevealSavedFilesHint" = "Sélectionner la capture ou l'enregistrement sauvegardé dans Finder après un enregistrement réussi.";
+"recordingSavePathLabel" = "Chemin d'enregistrement";
+"recordingSaveFormatSettingLabel" = "Format d'enregistrement";
+"screenshotSavePathLabel" = "Chemin des captures";
+"savePathChoose" = "Choisir...";
+"savePathReveal" = "Afficher";
+"chooseRecordingSavePathTitle" = "Choisir le chemin d'enregistrement";
+"chooseScreenshotSavePathTitle" = "Choisir le chemin des captures";

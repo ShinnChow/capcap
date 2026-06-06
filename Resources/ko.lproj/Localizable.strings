@@ -71,7 +71,7 @@
 
 /* Save-to-file shortcut (editor save) */
 "fileSaveShortcutHeader" = "파일로 저장";
-"fileSaveShortcutHint" = "편집기에서 누르면 저장 대화상자를 열어 스크린샷을 PNG로 저장합니다. 기본값은 ⌘S입니다.";
+"fileSaveShortcutHint" = "편집기에서 누르면 설정된 스크린샷 폴더에 PNG로 저장합니다. 기본값은 ⌘S입니다.";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "단축키가 이미 사용 중입니다";
@@ -124,15 +124,20 @@
 "fullScreenScreenshotFailed" = "전체 화면 스크린샷 실패";
 "selectedImageEditNoImage" = "Finder에서 단일 이미지가 선택되지 않았습니다";
 "clipboardImageEditNoImage" = "클립보드에 편집할 이미지가 없습니다";
-"recordingSaved" = "녹화가 저장되었습니다";
+"recordingSaved" = "녹화가 %@에 저장되었습니다";
 "recordingCancelled" = "녹화가 취소되었습니다";
 "recordingExportingGIF" = "GIF 생성 중…";
 "recordingFailed" = "녹화 실패: %@";
 "saveRecording" = "녹화 저장";
 "saveRecordingPrompt" = "저장";
 "recordingFormatLabel" = "형식:";
-"recordingFormatMP4" = "동영상 MP4";
+"recordingFormatManual" = "매번 선택";
+"recordingFormatMP4" = "MP4";
 "recordingFormatGIF" = "GIF";
+"recordingFormatChoiceTitle" = "녹화 형식 선택";
+"recordingFormatChoiceMessage" = "녹화는 설정된 녹화 폴더에 저장됩니다.";
+"screenshotSaved" = "스크린샷이 %@에 저장되었습니다";
+"screenshotSaveFailed" = "스크린샷 저장 실패: %@";
 "recordingStop" = "녹화 중지";
 "recordingPause" = "일시 정지";
 "recordingResume" = "재개";
@@ -465,3 +470,16 @@
 "imageMergeEmptyTitle" = "병합할 이미지를 놓으세요";
 "imageMergeEmptyBody" = "파일을 추가하거나 클립보드에서 가져오거나 이미지를 여기로 드래그";
 "imageMergeClipboardSourceName" = "클립보드 이미지";
+
+/* Save paths */
+"savePathTitle" = "저장 경로";
+"savePathSubtitle" = "스크린샷과 녹화는 저장 위치를 묻지 않고 여기에 저장됩니다.";
+"autoRevealSavedFilesLabel" = "Finder에 표시";
+"autoRevealSavedFilesHint" = "저장 성공 후 Finder에서 저장된 스크린샷 또는 녹화를 선택합니다.";
+"recordingSavePathLabel" = "녹화 저장 경로";
+"recordingSaveFormatSettingLabel" = "녹화 형식";
+"screenshotSavePathLabel" = "스크린샷 저장 경로";
+"savePathChoose" = "선택...";
+"savePathReveal" = "보기";
+"chooseRecordingSavePathTitle" = "녹화 저장 경로 선택";
+"chooseScreenshotSavePathTitle" = "스크린샷 저장 경로 선택";

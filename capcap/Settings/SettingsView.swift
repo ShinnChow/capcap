@@ -237,6 +237,21 @@ class SettingsView: NSView {
     private var paneViews: [SettingsTab: NSView] = [:]
     private var uploadPane: UploadSettingsPane?
     private var filenameRuleCard: FilenameRuleCard?
+    private var savePathTitleLabel: NSTextField!
+    private var savePathSubtitleLabel: NSTextField!
+    private var autoRevealSavedFilesTitleLabel: NSTextField!
+    private var autoRevealSavedFilesHintLabel: NSTextField?
+    private var autoRevealSavedFilesSwitch: NSSwitch!
+    private var recordingSavePathTitleLabel: NSTextField!
+    private var recordingSavePathValueLabel: NSTextField!
+    private var recordingSavePathChooseButton: NSButton!
+    private var recordingSavePathRevealButton: NSButton!
+    private var recordingSaveFormatTitleLabel: NSTextField!
+    private var recordingSaveFormatPopup: NSPopUpButton!
+    private var screenshotSavePathTitleLabel: NSTextField!
+    private var screenshotSavePathValueLabel: NSTextField!
+    private var screenshotSavePathChooseButton: NSButton!
+    private var screenshotSavePathRevealButton: NSButton!
 
     private var refreshTimer: Timer?
     private var gradientLayer: CAGradientLayer?
@@ -591,6 +606,8 @@ class SettingsView: NSView {
         stack.addArrangedSubview(filenameCard)
         filenameCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        buildSavePathCard(into: stack)
+
         return wrapPane(stack)
     }
 
@@ -691,6 +708,25 @@ class SettingsView: NSView {
         historyCacheTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
         historyCacheValueLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.88 : 0.4)
         historyCacheHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
+    }
+
+    private func refreshSavePathControls() {
+        recordingSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.recordingSaveDirectory)
+        screenshotSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.screenshotSaveDirectory)
+        refreshRecordingSaveFormatPopup()
+    }
+
+    private func refreshRecordingSaveFormatPopup() {
+        guard let popup = recordingSaveFormatPopup else { return }
+        let selected = Defaults.recordingSavePreference
+        popup.removeAllItems()
+        for preference in RecordingSavePreference.allCases {
+            popup.addItem(withTitle: preference.displayName)
+            popup.lastItem?.representedObject = preference.rawValue
+        }
+        if let index = RecordingSavePreference.allCases.firstIndex(of: selected) {
+            popup.selectItem(at: index)
+        }
     }
 
     private func buildShortcutsPane() -> NSView {
@@ -1019,6 +1055,154 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(countdownCard)
         countdownCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func buildSavePathCard(into stack: NSStackView) {
+        let card = CardView()
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 10
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
+
+        let header = NSStackView()
+        header.orientation = .vertical
+        header.alignment = .leading
+        header.spacing = 3
+        header.translatesAutoresizingMaskIntoConstraints = false
+
+        savePathTitleLabel = primaryLabel(L10n.savePathTitle)
+        savePathSubtitleLabel = secondaryLabel(L10n.savePathSubtitle, wrapping: true)
+        header.addArrangedSubview(savePathTitleLabel)
+        header.addArrangedSubview(savePathSubtitleLabel)
+        inner.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        savePathSubtitleLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
+
+        let topDivider = rowDivider()
+        inner.addArrangedSubview(topDivider)
+        topDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let autoReveal = makeToggleRow(
+            title: L10n.autoRevealSavedFilesLabel,
+            subtitle: L10n.autoRevealSavedFilesHint,
+            isOn: Defaults.autoRevealSavedFiles,
+            action: #selector(autoRevealSavedFilesToggled(_:))
+        )
+        autoRevealSavedFilesTitleLabel = autoReveal.title
+        autoRevealSavedFilesHintLabel = autoReveal.subtitle
+        autoRevealSavedFilesSwitch = autoReveal.toggle
+        inner.addArrangedSubview(autoReveal.row)
+        autoReveal.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let autoRevealDivider = rowDivider()
+        inner.addArrangedSubview(autoRevealDivider)
+        autoRevealDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let recordingPath = makeSavePathRow(
+            title: L10n.recordingSavePathLabel,
+            chooseAction: #selector(chooseRecordingSavePathClicked),
+            revealAction: #selector(revealRecordingSavePathClicked)
+        )
+        recordingSavePathTitleLabel = recordingPath.title
+        recordingSavePathValueLabel = recordingPath.value
+        recordingSavePathChooseButton = recordingPath.chooseButton
+        recordingSavePathRevealButton = recordingPath.revealButton
+        inner.addArrangedSubview(recordingPath.row)
+        recordingPath.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let formatDivider = rowDivider()
+        inner.addArrangedSubview(formatDivider)
+        formatDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let formatRow = NSStackView()
+        formatRow.orientation = .horizontal
+        formatRow.alignment = .centerY
+        formatRow.spacing = 10
+        formatRow.translatesAutoresizingMaskIntoConstraints = false
+
+        recordingSaveFormatTitleLabel = primaryLabel(L10n.recordingSaveFormatSettingLabel)
+        formatRow.addArrangedSubview(recordingSaveFormatTitleLabel)
+        formatRow.addArrangedSubview(flexSpacer())
+
+        recordingSaveFormatPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        recordingSaveFormatPopup.controlSize = .small
+        recordingSaveFormatPopup.font = NSFont.systemFont(ofSize: 12)
+        recordingSaveFormatPopup.target = self
+        recordingSaveFormatPopup.action = #selector(recordingSaveFormatPreferenceChanged(_:))
+        recordingSaveFormatPopup.translatesAutoresizingMaskIntoConstraints = false
+        recordingSaveFormatPopup.widthAnchor.constraint(greaterThanOrEqualToConstant: 150).isActive = true
+        formatRow.addArrangedSubview(recordingSaveFormatPopup)
+        inner.addArrangedSubview(formatRow)
+        formatRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let bottomDivider = rowDivider()
+        inner.addArrangedSubview(bottomDivider)
+        bottomDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let screenshotPath = makeSavePathRow(
+            title: L10n.screenshotSavePathLabel,
+            chooseAction: #selector(chooseScreenshotSavePathClicked),
+            revealAction: #selector(revealScreenshotSavePathClicked)
+        )
+        screenshotSavePathTitleLabel = screenshotPath.title
+        screenshotSavePathValueLabel = screenshotPath.value
+        screenshotSavePathChooseButton = screenshotPath.chooseButton
+        screenshotSavePathRevealButton = screenshotPath.revealButton
+        inner.addArrangedSubview(screenshotPath.row)
+        screenshotPath.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        refreshSavePathControls()
+
+        stack.addArrangedSubview(card)
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func makeSavePathRow(
+        title: String,
+        chooseAction: Selector,
+        revealAction: Selector
+    ) -> (row: NSView, title: NSTextField, value: NSTextField, chooseButton: NSButton, revealButton: NSButton) {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 10
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let labelStack = NSStackView()
+        labelStack.orientation = .vertical
+        labelStack.alignment = .leading
+        labelStack.spacing = 3
+        labelStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = primaryLabel(title)
+        let valueLabel = secondaryLabel("", wrapping: false)
+        valueLabel.lineBreakMode = .byTruncatingMiddle
+        valueLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+
+        labelStack.addArrangedSubview(titleLabel)
+        labelStack.addArrangedSubview(valueLabel)
+        row.addArrangedSubview(labelStack)
+        labelStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
+        row.addArrangedSubview(flexSpacer())
+
+        let chooseButton = NSButton(title: L10n.savePathChoose, target: self, action: chooseAction)
+        chooseButton.bezelStyle = .rounded
+        chooseButton.controlSize = .small
+        chooseButton.font = NSFont.systemFont(ofSize: 11)
+        chooseButton.setContentHuggingPriority(.required, for: .horizontal)
+        row.addArrangedSubview(chooseButton)
+
+        let revealButton = NSButton(title: L10n.savePathReveal, target: self, action: revealAction)
+        revealButton.bezelStyle = .rounded
+        revealButton.controlSize = .small
+        revealButton.font = NSFont.systemFont(ofSize: 11)
+        revealButton.setContentHuggingPriority(.required, for: .horizontal)
+        row.addArrangedSubview(revealButton)
+
+        return (row, titleLabel, valueLabel, chooseButton, revealButton)
     }
 
     private func buildToolbarPane() -> NSView {
@@ -2057,6 +2241,89 @@ class SettingsView: NSView {
         let index = sender.indexOfSelectedItem
         guard cases.indices.contains(index) else { return }
         Defaults.language = cases[index]
+    }
+
+    @objc private func recordingSaveFormatPreferenceChanged(_ sender: NSPopUpButton) {
+        guard let raw = sender.selectedItem?.representedObject as? String,
+              let preference = RecordingSavePreference(rawValue: raw)
+        else {
+            return
+        }
+        Defaults.recordingSavePreference = preference
+    }
+
+    @objc private func autoRevealSavedFilesToggled(_ sender: NSSwitch) {
+        Defaults.autoRevealSavedFiles = sender.state == .on
+    }
+
+    @objc private func chooseRecordingSavePathClicked() {
+        chooseSaveDirectory(
+            title: L10n.chooseRecordingSavePathTitle,
+            currentURL: Defaults.recordingSaveDirectory
+        ) { url in
+            Defaults.recordingSaveDirectory = url
+            self.refreshSavePathControls()
+        }
+    }
+
+    @objc private func chooseScreenshotSavePathClicked() {
+        chooseSaveDirectory(
+            title: L10n.chooseScreenshotSavePathTitle,
+            currentURL: Defaults.screenshotSaveDirectory
+        ) { url in
+            Defaults.screenshotSaveDirectory = url
+            self.refreshSavePathControls()
+        }
+    }
+
+    @objc private func revealRecordingSavePathClicked() {
+        revealSaveDirectory(Defaults.recordingSaveDirectory)
+    }
+
+    @objc private func revealScreenshotSavePathClicked() {
+        revealSaveDirectory(Defaults.screenshotSaveDirectory)
+    }
+
+    private func chooseSaveDirectory(
+        title: String,
+        currentURL: URL,
+        completion: @escaping (URL) -> Void
+    ) {
+        let panel = NSOpenPanel()
+        panel.title = title
+        panel.prompt = L10n.savePathChoose
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = directoryURLForPanel(currentURL)
+
+        let handle: (NSApplication.ModalResponse) -> Void = { response in
+            guard response == .OK, let url = panel.url else { return }
+            completion(url)
+        }
+
+        if let window {
+            panel.beginSheetModal(for: window, completionHandler: handle)
+        } else {
+            panel.begin(completionHandler: handle)
+        }
+    }
+
+    private func directoryURLForPanel(_ url: URL) -> URL {
+        if FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
+        let parent = url.deletingLastPathComponent()
+        if FileManager.default.fileExists(atPath: parent.path) {
+            return parent
+        }
+        return Defaults.defaultScreenshotSaveDirectory.deletingLastPathComponent()
+    }
+
+    private func revealSaveDirectory(_ url: URL) {
+        try? FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
     @objc private func historyCacheSliderChanged(_ sender: SettingsTickSlider) {
@@ -3502,6 +3769,19 @@ class SettingsView: NSView {
         demoModeSubtitleLabel?.stringValue = L10n.demoModeHint
         langTitleLabel?.stringValue = L10n.languageHeader
         filenameRuleCard?.refreshLocalization()
+        savePathTitleLabel?.stringValue = L10n.savePathTitle
+        savePathSubtitleLabel?.stringValue = L10n.savePathSubtitle
+        autoRevealSavedFilesTitleLabel?.stringValue = L10n.autoRevealSavedFilesLabel
+        autoRevealSavedFilesHintLabel?.stringValue = L10n.autoRevealSavedFilesHint
+        autoRevealSavedFilesSwitch?.state = Defaults.autoRevealSavedFiles ? .on : .off
+        recordingSavePathTitleLabel?.stringValue = L10n.recordingSavePathLabel
+        recordingSaveFormatTitleLabel?.stringValue = L10n.recordingSaveFormatSettingLabel
+        screenshotSavePathTitleLabel?.stringValue = L10n.screenshotSavePathLabel
+        recordingSavePathChooseButton?.title = L10n.savePathChoose
+        recordingSavePathRevealButton?.title = L10n.savePathReveal
+        screenshotSavePathChooseButton?.title = L10n.savePathChoose
+        screenshotSavePathRevealButton?.title = L10n.savePathReveal
+        refreshSavePathControls()
         accessibilityNameLabel?.stringValue = L10n.accessibilityPermission
         accessibilityDescLabel?.stringValue = L10n.accessibilityDescription
         screenRecordingNameLabel?.stringValue = L10n.screenRecordingPermission

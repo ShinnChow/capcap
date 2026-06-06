@@ -99,6 +99,17 @@ enum L10n {
     static var windowShadowToggleHint: String { s("windowShadowToggleHint") }
     static var windowShadowSizeLabel: String { s("windowShadowSizeLabel") }
     static var windowShadowSizeHint: String { s("windowShadowSizeHint") }
+    static var savePathTitle: String { s("savePathTitle") }
+    static var savePathSubtitle: String { s("savePathSubtitle") }
+    static var autoRevealSavedFilesLabel: String { s("autoRevealSavedFilesLabel") }
+    static var autoRevealSavedFilesHint: String { s("autoRevealSavedFilesHint") }
+    static var recordingSavePathLabel: String { s("recordingSavePathLabel") }
+    static var recordingSaveFormatSettingLabel: String { s("recordingSaveFormatSettingLabel") }
+    static var screenshotSavePathLabel: String { s("screenshotSavePathLabel") }
+    static var savePathChoose: String { s("savePathChoose") }
+    static var savePathReveal: String { s("savePathReveal") }
+    static var chooseRecordingSavePathTitle: String { s("chooseRecordingSavePathTitle") }
+    static var chooseScreenshotSavePathTitle: String { s("chooseScreenshotSavePathTitle") }
 
     // Screenshot shortcut
     static var shortcutHeader: String { s("shortcutHeader") }
@@ -212,19 +223,30 @@ enum L10n {
     static var imageMergeNoClipboardImage: String { s("imageMergeNoClipboardImage") }
     static var imageMergeFailed: String { s("imageMergeFailed") }
     static var imageMergeSaved: String { s("imageMergeSaved") }
-    static var recordingSaved: String { s("recordingSaved") }
+    static func recordingSaved(to path: String) -> String {
+        String(format: s("recordingSaved"), path)
+    }
     static var recordingCancelled: String { s("recordingCancelled") }
     static var recordingExportingGIF: String { s("recordingExportingGIF") }
     static var saveRecording: String { s("saveRecording") }
     static var saveRecordingPrompt: String { s("saveRecordingPrompt") }
     static var recordingFormatLabel: String { s("recordingFormatLabel") }
+    static var recordingFormatManual: String { s("recordingFormatManual") }
     static var recordingFormatMP4: String { s("recordingFormatMP4") }
     static var recordingFormatGIF: String { s("recordingFormatGIF") }
+    static var recordingFormatChoiceTitle: String { s("recordingFormatChoiceTitle") }
+    static var recordingFormatChoiceMessage: String { s("recordingFormatChoiceMessage") }
+    static func screenshotSaved(to path: String) -> String {
+        String(format: s("screenshotSaved"), path)
+    }
     static var recordingStop: String { s("recordingStop") }
     static var recordingPause: String { s("recordingPause") }
     static var recordingResume: String { s("recordingResume") }
     static func recordingFailed(_ message: String) -> String {
         String(format: s("recordingFailed"), message)
+    }
+    static func screenshotSaveFailed(_ message: String) -> String {
+        String(format: s("screenshotSaveFailed"), message)
     }
     static func colorCopied(_ hex: String) -> String {
         String(format: s("colorCopied"), hex)
@@ -948,6 +970,64 @@ struct Defaults {
         }
     }
 
+    static var recordingSavePreference: RecordingSavePreference {
+        get {
+            guard let raw = defaults.string(forKey: "recordingSavePreference"),
+                  let preference = RecordingSavePreference(rawValue: raw)
+            else {
+                return .manual
+            }
+            return preference
+        }
+        set {
+            defaults.set(newValue.rawValue, forKey: "recordingSavePreference")
+        }
+    }
+
+    static var autoRevealSavedFiles: Bool {
+        get {
+            if defaults.object(forKey: "autoRevealSavedFiles") == nil {
+                return true
+            }
+            return defaults.bool(forKey: "autoRevealSavedFiles")
+        }
+        set {
+            defaults.set(newValue, forKey: "autoRevealSavedFiles")
+        }
+    }
+
+    static var defaultRecordingSaveDirectory: URL {
+        defaultDocumentsDirectory.appendingPathComponent("record", isDirectory: true)
+    }
+
+    static var defaultScreenshotSaveDirectory: URL {
+        defaultDocumentsDirectory.appendingPathComponent("screenshots", isDirectory: true)
+    }
+
+    static var recordingSaveDirectory: URL {
+        get {
+            normalizedDirectoryURL(
+                defaults.string(forKey: "recordingSaveDirectory"),
+                fallback: defaultRecordingSaveDirectory
+            )
+        }
+        set {
+            defaults.set(newValue.standardizedFileURL.path, forKey: "recordingSaveDirectory")
+        }
+    }
+
+    static var screenshotSaveDirectory: URL {
+        get {
+            normalizedDirectoryURL(
+                defaults.string(forKey: "screenshotSaveDirectory"),
+                fallback: defaultScreenshotSaveDirectory
+            )
+        }
+        set {
+            defaults.set(newValue.standardizedFileURL.path, forKey: "screenshotSaveDirectory")
+        }
+    }
+
     static let defaultImageFilenameTemplate = "capcap-{date}-{time}"
     static let defaultRecordingFilenameTemplate = "capcap-rec-{date}-{time}"
 
@@ -984,6 +1064,18 @@ struct Defaults {
     private static func normalizedFilenameTemplate(_ value: String?, fallback: String) -> String {
         let trimmed = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? fallback : trimmed
+    }
+
+    private static var defaultDocumentsDirectory: URL {
+        FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent("Documents", isDirectory: true)
+    }
+
+    private static func normalizedDirectoryURL(_ value: String?, fallback: URL) -> URL {
+        let trimmed = (value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return fallback.standardizedFileURL }
+        let expanded = (trimmed as NSString).expandingTildeInPath
+        return URL(fileURLWithPath: expanded, isDirectory: true).standardizedFileURL
     }
 
     static func filenameSequenceValue(scope: String, dayStamp: String?, consume: Bool) -> Int {
@@ -1058,7 +1150,7 @@ struct Defaults {
     }
 
     // Custom save-to-file hotkey used inside the editor overlay to invoke
-    // the NSSavePanel-backed file save. When absent, defaults to ⌘S.
+    // the configured-directory file save. When absent, defaults to ⌘S.
     // Matched locally against keyDown events, same as the clipboard hotkey.
 
     static var fileSaveHotkeyKeyCode: Int {
