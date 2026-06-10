@@ -1553,15 +1553,8 @@ struct Defaults {
     }
 
     static var pinAcrossSpaces: Bool {
-        get {
-            if defaults.object(forKey: "pinAcrossSpaces") == nil {
-                return false
-            }
-            return defaults.bool(forKey: "pinAcrossSpaces")
-        }
-        set {
-            defaults.set(newValue, forKey: "pinAcrossSpaces")
-        }
+        get { defaults.bool(forKey: "pinAcrossSpaces") }
+        set { defaults.set(newValue, forKey: "pinAcrossSpaces") }
     }
 
     // Window-capture drop shadow. When enabled, single-window screenshots get

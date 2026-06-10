@@ -1908,6 +1908,8 @@ class EditWindowController {
         guard let hostWindow = hostSelectionView?.window else { return }
         if keepsHostWindowAcrossSpaces {
             hostWindow.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        } else {
+            hostWindow.collectionBehavior = []
         }
         NSApp.activate(ignoringOtherApps: true)
         hostWindow.makeKeyAndOrderFront(nil)
