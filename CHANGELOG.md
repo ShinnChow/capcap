@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-06-11
+
+### Added
+- Add rounded rectangle shape style (2bdb5d4)
+- 支持贴图跨桌面显示 (48345a4)
+
+### Fixed
+- 处理贴图跨桌面审核意见 (a564a01)
+
+### Changed
+- Tone down selection outline contrast (c9150ee)
+
 ## [1.5.1] - 2026-06-10
 
 ### Added
