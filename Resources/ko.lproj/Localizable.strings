@@ -134,6 +134,8 @@
 "clipboardEditExitHint" = "클립보드에서 편집 중. X 키로 편집 종료";
 "pinEditExitHint" = "고정 이미지를 편집 중입니다. X 키로 편집 종료";
 "fullScreenEditExitHint" = "전체 화면 스크린샷 편집 중입니다. X 키로 편집 종료";
+"editSuspendedToast" = "편집이 임시 저장됨, 다음 스크린샷 실행 시 계속";
+"editSuspendedResumeToast" = "임시 저장한 편집을 이어서 진행";
 "fullScreenScreenshotFailed" = "전체 화면 스크린샷 실패";
 "selectedImageEditNoImage" = "Finder에서 단일 이미지가 선택되지 않았습니다";
 "clipboardImageEditNoImage" = "클립보드에 편집할 이미지가 없습니다";

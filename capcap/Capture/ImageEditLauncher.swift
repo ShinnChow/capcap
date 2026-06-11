@@ -9,6 +9,7 @@ enum ImageEditLauncher {
     static func launch(
         sourceURL: URL,
         onRequestFocusReturn: (() -> Void)? = nil,
+        onSuspend: ((OverlayWindowController.SuspendedEditDraft) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         guard let copyURL = copyToTemp(sourceURL),
@@ -21,6 +22,7 @@ enum ImageEditLauncher {
             original,
             source: .finder,
             onRequestFocusReturn: onRequestFocusReturn,
+            onSuspend: onSuspend,
             onComplete: onComplete
         )
     }
@@ -31,6 +33,7 @@ enum ImageEditLauncher {
     static func launch(
         clipboardImage image: NSImage,
         onRequestFocusReturn: (() -> Void)? = nil,
+        onSuspend: ((OverlayWindowController.SuspendedEditDraft) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         guard image.size.width > 0, image.size.height > 0 else { return nil }
@@ -38,6 +41,7 @@ enum ImageEditLauncher {
             image,
             source: .clipboard,
             onRequestFocusReturn: onRequestFocusReturn,
+            onSuspend: onSuspend,
             onComplete: onComplete
         )
     }
@@ -50,6 +54,7 @@ enum ImageEditLauncher {
         source: OverlayWindowController.PresetSource = .merge,
         keepsEditorAcrossSpaces: Bool = false,
         onRequestFocusReturn: (() -> Void)? = nil,
+        onSuspend: ((OverlayWindowController.SuspendedEditDraft) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         guard image.size.width > 0, image.size.height > 0 else { return nil }
@@ -58,6 +63,7 @@ enum ImageEditLauncher {
             source: source,
             keepsEditorAcrossSpaces: keepsEditorAcrossSpaces,
             onRequestFocusReturn: onRequestFocusReturn,
+            onSuspend: onSuspend,
             onComplete: onComplete
         )
     }
@@ -67,6 +73,7 @@ enum ImageEditLauncher {
         source: OverlayWindowController.PresetSource,
         keepsEditorAcrossSpaces: Bool = false,
         onRequestFocusReturn: (() -> Void)?,
+        onSuspend: ((OverlayWindowController.SuspendedEditDraft) -> Void)?,
         onComplete: @escaping (NSImage?) -> Void
     ) -> OverlayWindowController? {
         let controller = OverlayWindowController(
@@ -74,6 +81,7 @@ enum ImageEditLauncher {
             presetSource: source,
             keepsEditorAcrossSpaces: keepsEditorAcrossSpaces,
             onRequestFocusReturn: onRequestFocusReturn,
+            onSuspend: onSuspend,
             onComplete: onComplete
         )
         controller.activate()

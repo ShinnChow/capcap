@@ -14,6 +14,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingCancelRequested = false
     private var countdownActive = false
     private var appInitialized = false
+    private var suspendedEditDraft: OverlayWindowController.SuspendedEditDraft?
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         return false
@@ -267,6 +268,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
         guard overlayController == nil, recordingEngine == nil else { return }
+        if resumeSuspendedEditIfAvailable() {
+            return
+        }
         if fromShortcut {
             UpdateChecker.shared.checkFromScreenshotShortcutIfDue()
         }
@@ -306,6 +310,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                onRequestFocusReturn: {
                    focusRestorer.restore()
                },
+               onSuspend: { [weak self] draft in
+                   self?.handleEditSuspension(draft)
+               },
                onComplete: onComplete
            ) {
             return controller
@@ -327,6 +334,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                clipboardImage: image,
                onRequestFocusReturn: {
                    focusRestorer.restore()
+               },
+               onSuspend: { [weak self] draft in
+                   self?.handleEditSuspension(draft)
                },
                onComplete: onComplete
            ) {
@@ -403,6 +413,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             generatedImage: image,
             source: .pin,
             keepsEditorAcrossSpaces: Defaults.pinAcrossSpaces,
+            onSuspend: { [weak self] draft in
+                self?.handleEditSuspension(draft)
+            },
             onComplete: { [weak self] finalImage in
                 self?.handleEditCompletion(finalImage)
             }
@@ -476,6 +489,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 onRequestFocusReturn: {
                     focusRestorer.restore()
                 },
+                onSuspend: { [weak self] draft in
+                    self?.handleEditSuspension(draft)
+                },
                 onComplete: { [weak self] finalImage in
                     self?.handleEditCompletion(finalImage)
                 }
@@ -500,6 +516,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onRequestFocusReturn: {
                 focusRestorer.restore()
             },
+            onSuspend: { [weak self] draft in
+                self?.handleEditSuspension(draft)
+            },
             onComplete: { [weak self] finalImage in
                 self?.handleEditCompletion(finalImage)
             }
@@ -518,6 +537,52 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         applyHotkeyState()
     }
 
+    private func handleEditSuspension(_ draft: OverlayWindowController.SuspendedEditDraft) {
+        suspendedEditDraft = draft
+        overlayController = nil
+        applyHotkeyState()
+        ToastWindow.show(
+            message: L10n.editSuspendedToast,
+            on: screen(for: draft),
+            duration: 3.0
+        )
+    }
+
+    private func resumeSuspendedEditIfAvailable() -> Bool {
+        guard let draft = suspendedEditDraft else { return false }
+        let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
+        let controller = OverlayWindowController(
+            suspendedDraft: draft,
+            onRecordingSelection: { [weak self] rect, screen in
+                self?.beginRecording(rect: rect, screen: screen)
+            },
+            onRequestFocusReturn: {
+                focusRestorer.restore()
+            },
+            onSuspend: { [weak self] draft in
+                self?.handleEditSuspension(draft)
+            },
+            onComplete: { [weak self] finalImage in
+                self?.handleEditCompletion(finalImage)
+            }
+        )
+        suspendedEditDraft = nil
+        overlayController = controller
+        controller.activate()
+        applyHotkeyState()
+        return true
+    }
+
+    private func screen(for draft: OverlayWindowController.SuspendedEditDraft) -> NSScreen? {
+        if let displayID = draft.screenDisplayID,
+           let screen = NSScreen.screens.first(where: {
+               ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == displayID
+           }) {
+            return screen
+        }
+        return NSScreen.screens.first(where: { $0.frame == draft.screenFrame }) ?? NSScreen.main
+    }
+
     private func continueEditingMergedImage(_ image: NSImage) {
         guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
         let focusRestorer = SourceAppFocusRestorer.captureFrontmostApplication()
@@ -526,6 +591,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             source: .merge,
             onRequestFocusReturn: {
                 focusRestorer.restore()
+            },
+            onSuspend: { [weak self] draft in
+                self?.handleEditSuspension(draft)
             },
             onComplete: { [weak self] finalImage in
                 self?.handleEditCompletion(finalImage)

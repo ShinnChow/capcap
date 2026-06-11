@@ -134,6 +134,8 @@
 "clipboardEditExitHint" = "Editing from clipboard. Press X to exit editing";
 "pinEditExitHint" = "Editing pinned image. Press X to exit editing";
 "fullScreenEditExitHint" = "Editing full-screen screenshot. Press X to exit editing";
+"editSuspendedToast" = "Edit suspended, trigger screenshot again to continue";
+"editSuspendedResumeToast" = "Continuing your suspended edit";
 "fullScreenScreenshotFailed" = "Full-screen screenshot failed";
 "selectedImageEditNoImage" = "No single Finder image selected";
 "clipboardImageEditNoImage" = "No editable image on the clipboard";

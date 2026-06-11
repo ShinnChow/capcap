@@ -9,10 +9,12 @@ protocol SelectionViewDelegate: AnyObject {
     ///   nil for free-drag / resize / preset selections.
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?)
     func selectionDidChange(rect: NSRect, inView view: NSView)
+    func selectionMaskDidDoubleClick(inView view: NSView)
 }
 
 extension SelectionViewDelegate {
     func selectionDidChange(rect: NSRect, inView view: NSView) {}
+    func selectionMaskDidDoubleClick(inView view: NSView) {}
 }
 
 class SelectionView: NSView {
@@ -157,12 +159,17 @@ class SelectionView: NSView {
     // MARK: - Mouse Events
 
     override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if shouldSuspendFromMaskDoubleClick(event: event, point: point) {
+            dragAction = .none
+            delegate?.selectionMaskDidDoubleClick(inView: self)
+            return
+        }
+
         guard selectionInteractionEnabled else {
             dragAction = .none
             return
         }
-
-        let point = convert(event.locationInWindow, from: nil)
 
         // On a highlighted window: defer confirmation until mouseUp.
         // If the user drags past the threshold, fall through to free-form drawing.
@@ -215,6 +222,15 @@ class SelectionView: NSView {
         dragAction = .drawNew
         delegate?.selectionDidStart()
         needsDisplay = true
+    }
+
+    private func shouldSuspendFromMaskDoubleClick(event: NSEvent, point: NSPoint) -> Bool {
+        guard event.clickCount >= 2,
+              state == .selected,
+              selectionLocked,
+              let rect = selectionRect
+        else { return false }
+        return !rect.contains(point)
     }
 
     override func mouseDragged(with event: NSEvent) {

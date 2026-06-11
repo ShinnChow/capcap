@@ -134,6 +134,8 @@
 "clipboardEditExitHint" = "Đang chỉnh sửa từ clipboard. Nhấn X để thoát chỉnh sửa";
 "pinEditExitHint" = "Đang sửa ảnh đã ghim. Nhấn X để thoát chỉnh sửa";
 "fullScreenEditExitHint" = "Đang chỉnh sửa ảnh chụp toàn màn hình. Nhấn X để thoát chỉnh sửa";
+"editSuspendedToast" = "Đã tạm lưu bản chỉnh sửa, kích hoạt chụp lại để tiếp tục";
+"editSuspendedResumeToast" = "Đang tiếp tục bản chỉnh sửa tạm lưu";
 "fullScreenScreenshotFailed" = "Chụp toàn màn hình thất bại";
 "selectedImageEditNoImage" = "Chưa chọn đúng một ảnh trong Finder";
 "clipboardImageEditNoImage" = "Không có ảnh có thể chỉnh sửa trong clipboard";

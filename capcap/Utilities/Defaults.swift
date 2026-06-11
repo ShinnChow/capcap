@@ -229,6 +229,8 @@ enum L10n {
     static var clipboardEditExitHint: String { s("clipboardEditExitHint") }
     static var pinEditExitHint: String { s("pinEditExitHint") }
     static var fullScreenEditExitHint: String { s("fullScreenEditExitHint") }
+    static var editSuspendedToast: String { s("editSuspendedToast") }
+    static var editSuspendedResumeToast: String { s("editSuspendedResumeToast") }
     static var fullScreenScreenshotFailed: String { s("fullScreenScreenshotFailed") }
     static var selectedImageEditNoImage: String { s("selectedImageEditNoImage") }
     static var clipboardImageEditNoImage: String { s("clipboardImageEditNoImage") }

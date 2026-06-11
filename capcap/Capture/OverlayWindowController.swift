@@ -40,6 +40,23 @@ class OverlayWindowController {
         }
     }
 
+    struct SuspendedEditDraft {
+        let captureRect: CGRect
+        let screenDisplayID: CGDirectDisplayID?
+        let screenFrame: NSRect
+        let selectionRect: NSRect
+        let selectionViewRect: NSRect
+        let selectionSizeLabelOverride: String?
+        let selectionLocked: Bool
+        let selectionInteractionEnabled: Bool
+        let preSnapshot: CGImage?
+        let overrideBaseImage: NSImage?
+        let windowBaseImage: NSImage?
+        let isWindowCapture: Bool
+        let editorState: EditWindowController.RestorableState
+        let keepsEditorAcrossSpaces: Bool
+    }
+
     private var windows: [NSWindow] = []
     private var chipWindow: CursorChipWindow?
     private var escLocalMonitor: Any?
@@ -59,6 +76,7 @@ class OverlayWindowController {
     private let onComplete: (NSImage?) -> Void
     private let onRequestFocusReturn: (() -> Void)?
     private let onRecordingSelection: ((NSRect, NSScreen) -> Void)?
+    private let onSuspend: ((SuspendedEditDraft) -> Void)?
     private let postCaptureAction: PostCaptureAction
 
     /// Image-edit mode: when set, `activate()` skips the user's drag-to-select
@@ -67,6 +85,7 @@ class OverlayWindowController {
     private let presetImage: NSImage?
     /// In image-edit mode, where `presetImage` came from. nil otherwise.
     private let presetSource: PresetSource?
+    private let suspendedDraft: SuspendedEditDraft?
     private let keepsEditorAcrossSpaces: Bool
     private var presentationScheduled = false
 
@@ -135,14 +154,17 @@ class OverlayWindowController {
         postCaptureAction: PostCaptureAction = .edit,
         onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
         onRequestFocusReturn: (() -> Void)? = nil,
+        onSuspend: ((SuspendedEditDraft) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.presetImage = nil
         self.presetSource = nil
+        self.suspendedDraft = nil
         self.keepsEditorAcrossSpaces = false
         self.postCaptureAction = postCaptureAction
         self.onRecordingSelection = onRecordingSelection
         self.onRequestFocusReturn = onRequestFocusReturn
+        self.onSuspend = onSuspend
         self.onComplete = onComplete
     }
 
@@ -151,14 +173,35 @@ class OverlayWindowController {
         presetSource: PresetSource,
         keepsEditorAcrossSpaces: Bool = false,
         onRequestFocusReturn: (() -> Void)? = nil,
+        onSuspend: ((SuspendedEditDraft) -> Void)? = nil,
         onComplete: @escaping (NSImage?) -> Void
     ) {
         self.presetImage = presetImage
         self.presetSource = presetSource
+        self.suspendedDraft = nil
         self.keepsEditorAcrossSpaces = keepsEditorAcrossSpaces
         self.postCaptureAction = .edit
         self.onRecordingSelection = nil
         self.onRequestFocusReturn = onRequestFocusReturn
+        self.onSuspend = onSuspend
+        self.onComplete = onComplete
+    }
+
+    init(
+        suspendedDraft: SuspendedEditDraft,
+        onRecordingSelection: ((NSRect, NSScreen) -> Void)? = nil,
+        onRequestFocusReturn: (() -> Void)? = nil,
+        onSuspend: ((SuspendedEditDraft) -> Void)? = nil,
+        onComplete: @escaping (NSImage?) -> Void
+    ) {
+        self.presetImage = nil
+        self.presetSource = nil
+        self.suspendedDraft = suspendedDraft
+        self.keepsEditorAcrossSpaces = suspendedDraft.keepsEditorAcrossSpaces
+        self.postCaptureAction = .edit
+        self.onRecordingSelection = onRecordingSelection
+        self.onRequestFocusReturn = onRequestFocusReturn
+        self.onSuspend = onSuspend
         self.onComplete = onComplete
     }
 
@@ -248,7 +291,7 @@ class OverlayWindowController {
         windows.first?.makeKey()
         CATransaction.commit()
 
-        if presetImage == nil {
+        if presetImage == nil, suspendedDraft == nil {
             for case let selectionView as SelectionView in windows.compactMap(\.contentView) {
                 selectionView.refreshHoverAtCurrentMouseLocation()
             }
@@ -318,7 +361,7 @@ class OverlayWindowController {
             self?.cancel()
         }
 
-        if presetImage == nil {
+        if presetImage == nil, suspendedDraft == nil {
             NSCursor.crosshair.push()
         } else {
             // Skip cursor push so tearDown's pop doesn't strip an unrelated cursor.
@@ -326,7 +369,11 @@ class OverlayWindowController {
             // The chip is a "drag to select" hint — irrelevant in image-edit mode.
             chipWindow?.dismiss()
             chipWindow = nil
-            enterPresetSelection()
+            if suspendedDraft != nil {
+                enterSuspendedSelection()
+            } else {
+                enterPresetSelection()
+            }
         }
     }
 
@@ -406,6 +453,64 @@ class OverlayWindowController {
         )
     }
 
+    private func enterSuspendedSelection() {
+        guard let suspendedDraft else { return }
+        let screen = screenForSuspendedDraft(suspendedDraft)
+        guard let window = windows.first(where: { $0.screen == screen }),
+              let selectionView = window.contentView as? SelectionView
+        else { return }
+
+        for existingWindow in windows where existingWindow != window {
+            existingWindow.orderOut(nil)
+        }
+
+        selectionView.updateSelectionRect(suspendedDraft.selectionViewRect)
+        selectionView.selectionSizeLabelOverride = suspendedDraft.selectionSizeLabelOverride
+        selectionView.selectionLocked = suspendedDraft.selectionLocked
+        selectionView.selectionInteractionEnabled = suspendedDraft.selectionInteractionEnabled
+
+        activeSelectionView = selectionView
+        activeScreen = screen
+
+        showEditor(
+            captureRect: suspendedDraft.captureRect,
+            screen: screen,
+            selectionRect: suspendedDraft.selectionRect,
+            selectionViewRect: suspendedDraft.selectionViewRect,
+            hostSelectionView: selectionView,
+            preSnapshot: suspendedDraft.preSnapshot,
+            overrideBaseImage: suspendedDraft.overrideBaseImage,
+            windowBaseImage: suspendedDraft.windowBaseImage,
+            isWindowCapture: suspendedDraft.isWindowCapture
+        )
+        editController?.restoreState(suspendedDraft.editorState)
+
+        let anchorRect = convertToScreenRect(suspendedDraft.selectionViewRect, view: selectionView)
+        ToastWindow.show(
+            message: L10n.editSuspendedResumeToast,
+            centerAnchor: NSPoint(x: anchorRect.midX, y: anchorRect.midY),
+            duration: 3.0
+        )
+    }
+
+    private func screenForSuspendedDraft(_ draft: SuspendedEditDraft) -> NSScreen {
+        if let displayID = draft.screenDisplayID,
+           let screen = NSScreen.screens.first(where: {
+               ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == displayID
+           }) {
+            return screen
+        }
+        if let screen = NSScreen.screens.first(where: { $0.frame == draft.screenFrame }) {
+            return screen
+        }
+        return screenForMouseLocation() ?? NSScreen.main ?? NSScreen.screens.first!
+    }
+
+    private func screenForMouseLocation() -> NSScreen? {
+        let cursorPoint = NSEvent.mouseLocation
+        return NSScreen.screens.first(where: { $0.frame.contains(cursorPoint) })
+    }
+
     private static func scaleLabelText(imageSize: NSSize, displaySize: NSSize) -> String? {
         guard imageSize.width > 0, imageSize.height > 0,
               displaySize.width > 0, displaySize.height > 0
@@ -468,6 +573,43 @@ class OverlayWindowController {
         onRequestFocusReturn?()
     }
 
+    private func suspendCurrentEditFromMask() {
+        guard let draft = makeSuspendedEditDraft() else { return }
+        editController?.tearDown()
+        editController = nil
+        tearDown()
+        onRequestFocusReturn?()
+        onSuspend?(draft)
+    }
+
+    private func makeSuspendedEditDraft() -> SuspendedEditDraft? {
+        guard let editController,
+              !editController.blocksHistoryNavigation,
+              let context = activeEditorContext,
+              let editorState = editController.restorableState()
+        else { return nil }
+
+        let selectionViewState = context.hostSelectionView.map { SelectionViewState(selectionView: $0) }
+            ?? context.selectionViewState
+        let displayID = context.screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        return SuspendedEditDraft(
+            captureRect: context.captureRect,
+            screenDisplayID: displayID,
+            screenFrame: context.screen.frame,
+            selectionRect: context.selectionRect,
+            selectionViewRect: context.selectionViewRect,
+            selectionSizeLabelOverride: selectionViewState.selectionSizeLabelOverride,
+            selectionLocked: selectionViewState.selectionLocked,
+            selectionInteractionEnabled: selectionViewState.selectionInteractionEnabled,
+            preSnapshot: context.preSnapshot,
+            overrideBaseImage: context.overrideBaseImage,
+            windowBaseImage: context.windowBaseImage,
+            isWindowCapture: editController.isWindowCapture,
+            editorState: editorState,
+            keepsEditorAcrossSpaces: keepsEditorAcrossSpaces
+        )
+    }
+
     private var cursorPopped = false
 
     private func tearDown() {
@@ -524,6 +666,10 @@ extension OverlayWindowController: SelectionViewDelegate {
     func selectionDidStart() {
         chipWindow?.dismiss()
         chipWindow = nil
+    }
+
+    func selectionMaskDidDoubleClick(inView view: NSView) {
+        suspendCurrentEditFromMask()
     }
 
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?) {

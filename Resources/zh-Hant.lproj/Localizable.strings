@@ -134,6 +134,8 @@
 "clipboardEditExitHint" = "正在編輯剪貼簿圖片。按 X 結束編輯";
 "pinEditExitHint" = "正在編輯釘圖。按 X 結束編輯";
 "fullScreenEditExitHint" = "正在編輯全螢幕截圖，按 X 結束編輯";
+"editSuspendedToast" = "已暫存編輯，下次觸發截圖時繼續";
+"editSuspendedResumeToast" = "已恢復上次未完成的編輯";
 "fullScreenScreenshotFailed" = "截全螢幕失敗";
 "selectedImageEditNoImage" = "Finder 中沒有選取單張圖片";
 "clipboardImageEditNoImage" = "剪貼簿中沒有可編輯的圖片";
