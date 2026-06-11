@@ -338,6 +338,7 @@ class EditCanvasView: NSView {
     private static let selectionBoxPad: CGFloat = 6
     private static let hoverBoxPad: CGFloat = 5
     private static let hoverColor = NSColor(calibratedRed: 0.0, green: 0.56, blue: 1.0, alpha: 1.0)
+    private static let selectionOutlineColor = NSColor(calibratedWhite: 0.36, alpha: 0.9)
 
     private var trackingArea: NSTrackingArea?
 
@@ -2368,7 +2369,7 @@ class EditCanvasView: NSView {
             context.rotate(by: annotation.rotation)
             context.translateBy(x: -rect.midX, y: -rect.midY)
         }
-        context.setStrokeColor(NSColor.white.withAlphaComponent(0.85).cgColor)
+        context.setStrokeColor(EditCanvasView.selectionOutlineColor.cgColor)
         context.setLineWidth(1)
         context.setLineDash(phase: 0, lengths: [4, 3])
         context.stroke(box)
