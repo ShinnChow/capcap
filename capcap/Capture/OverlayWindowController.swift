@@ -209,6 +209,17 @@ class OverlayWindowController {
         guard !presentationScheduled else { return }
         presentationScheduled = true
 
+        let delay = ToastWindow.dismissForCaptureIfNeeded() ? 0.12 : 0
+        if delay > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                self?.prepareAndPresentOverlay()
+            }
+        } else {
+            prepareAndPresentOverlay()
+        }
+    }
+
+    private func prepareAndPresentOverlay() {
         prepareScreenContext()
 
         if Self.isRunningEventTrackingMode {

@@ -650,7 +650,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let excludedWindows = [
             recordingBorderPanel.map { CGWindowID($0.windowNumber) },
             recordingHUDPanel.map { CGWindowID($0.windowNumber) },
-        ].compactMap { $0 }
+        ].compactMap { $0 } + ToastWindow.captureExcludedWindowNumbers
         engine.startRecording(rect: rect, screen: screen, excludeWindowNumbers: excludedWindows)
     }
 

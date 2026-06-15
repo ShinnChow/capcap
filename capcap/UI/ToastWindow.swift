@@ -3,6 +3,15 @@ import AppKit
 class ToastWindow: NSPanel {
     private static var current: ToastWindow?
 
+    static var captureExcludedWindowNumbers: [CGWindowID] {
+        if Thread.isMainThread {
+            return captureExcludedWindowNumbersOnMain()
+        }
+        return DispatchQueue.main.sync {
+            captureExcludedWindowNumbersOnMain()
+        }
+    }
+
     /// Shows a transient toast. When `topAnchor` is set (a point in screen
     /// coordinates), the toast hangs just below that point with its horizontal
     /// center aligned to it — used to pin the hint to the top-center of a
@@ -56,8 +65,34 @@ class ToastWindow: NSPanel {
 
     /// Immediately hides any visible toast. Safe to call when none is showing.
     static func dismiss() {
-        current?.orderOut(nil)
+        _ = dismissForCaptureIfNeeded()
+    }
+
+    @discardableResult
+    static func dismissForCaptureIfNeeded() -> Bool {
+        if Thread.isMainThread {
+            return dismissForCaptureIfNeededOnMain()
+        }
+        return DispatchQueue.main.sync {
+            dismissForCaptureIfNeededOnMain()
+        }
+    }
+
+    private static func captureExcludedWindowNumbersOnMain() -> [CGWindowID] {
+        guard let window = current, window.isVisible else { return [] }
+        let windowNumber = window.windowNumber
+        guard windowNumber > 0 else { return [] }
+        return [CGWindowID(windowNumber)]
+    }
+
+    private static func dismissForCaptureIfNeededOnMain() -> Bool {
+        guard let window = current, window.isVisible else {
+            current = nil
+            return false
+        }
+        window.orderOut(nil)
         current = nil
+        return true
     }
 
     private init(message: String) {
@@ -80,6 +115,8 @@ class ToastWindow: NSPanel {
         backgroundColor = .clear
         hasShadow = true
         ignoresMouseEvents = true
+        sharingType = .none
+        collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         let toastView = ToastContentView(frame: NSRect(origin: .zero, size: size), message: message)
         contentView = toastView

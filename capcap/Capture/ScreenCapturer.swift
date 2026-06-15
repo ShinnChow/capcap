@@ -11,6 +11,7 @@ struct ScreenCapturer {
         excludingWindowNumbers: [CGWindowID] = []
     ) -> NSImage? {
         guard rect.width > 0, rect.height > 0 else { return nil }
+        let excludedWindowNumbers = effectiveExcludedWindowNumbers(excludingWindowNumbers)
 
         var resultImage: NSImage?
         let semaphore = DispatchSemaphore(value: 0)
@@ -20,7 +21,7 @@ struct ScreenCapturer {
                 let image = try await captureAsync(
                     rect: rect,
                     screen: screen,
-                    excludingWindowNumbers: excludingWindowNumbers
+                    excludingWindowNumbers: excludedWindowNumbers
                 )
                 resultImage = image
             } catch {
@@ -31,6 +32,13 @@ struct ScreenCapturer {
 
         semaphore.wait()
         return resultImage
+    }
+
+    private static func effectiveExcludedWindowNumbers(_ windowNumbers: [CGWindowID]) -> [CGWindowID] {
+        var seen = Set<CGWindowID>()
+        return (windowNumbers + ToastWindow.captureExcludedWindowNumbers).filter { windowNumber in
+            windowNumber > 0 && seen.insert(windowNumber).inserted
+        }
     }
 
     /// Capture one WindowServer window directly, preserving its real alpha
