@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-06-20
+
+### Added
+- Add QR code recognition to the editor (42ee423)
+- Animate dictionary translation header (0a03adf)
+
+### Fixed
+- Exclude toast windows from capture (da145a1)
+
+### Changed
+- Show output shortcuts in toolbar tooltips (c956978)
+
 ## [1.5.3] - 2026-06-12
 
 ### Added
