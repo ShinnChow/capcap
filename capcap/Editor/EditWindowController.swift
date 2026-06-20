@@ -14,6 +14,8 @@ class EditWindowController {
     /// only when the user has assigned tools to it in settings.
     private var sideToolbarView: ToolbarView?
     private var subToolbarView: NSView?
+    private var qrCodeOverlayView: QRCodeChoiceOverlayView?
+    private var qrCodeDetectionGeneration = 0
     private var captureRect: CGRect
     private var screen: NSScreen
     private var selectionRect: NSRect
@@ -255,6 +257,7 @@ class EditWindowController {
         tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
         tv.onBeautify = { [weak self] in self?.toggleBeautify() }
         tv.onInsertImage = { [weak self] in self?.showInsertImageMenu() }
+        tv.onQRCode = { [weak self] in self?.performQRCodeRecognition() }
         tv.onOCR = { [weak self] in self?.performOCR() }
         tv.onScreenshotTranslate = { [weak self] in self?.performScreenshotTranslation() }
         tv.onSave = { [weak self] in self?.save() }
@@ -288,6 +291,7 @@ class EditWindowController {
     }
 
     func updateLayout(selectionRect: NSRect, selectionViewRect: NSRect, captureRect: CGRect) {
+        dismissQRCodeOverlay()
         self.selectionRect = selectionRect
         self.selectionViewRect = selectionViewRect
         self.captureRect = captureRect
@@ -353,6 +357,7 @@ class EditWindowController {
     private func selectTool(_ tool: EditTool) {
         // Beautify stays active — tools and beautify coexist so the user
         // can draw on top of the beautified live preview.
+        dismissQRCodeOverlay()
 
         if tool != .none {
             canvasView?.clearMultiSelection()
@@ -925,6 +930,7 @@ class EditWindowController {
     // MARK: - Beautify
 
     private func toggleBeautify() {
+        dismissQRCodeOverlay()
         if isBeautifyActive {
             deactivateBeautify()
         } else {
@@ -1505,6 +1511,124 @@ class EditWindowController {
         OCRTranslatePanel.presentTextRecognition(image: baseImage, anchorRect: anchorRect, screen: targetScreen)
     }
 
+    private func performQRCodeRecognition() {
+        canvasView?.commitActiveTextEditing()
+        dismissQRCodeOverlay()
+        clearActiveToolForQRCodeRecognition()
+
+        guard
+            let canvasView,
+            let hostSelectionView,
+            let image = canvasView.resolveBaseImageForEditing() ?? currentCompositeImage(),
+            let cgImage = image.cgImagePreservingBacking()
+        else {
+            ToastWindow.show(message: L10n.qrCodeNotFound, on: screen)
+            return
+        }
+
+        qrCodeDetectionGeneration += 1
+        let generation = qrCodeDetectionGeneration
+        toolbars.forEach { $0.setActive(true, for: .qrCode) }
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            let detections = QRCodeDetector.detect(in: cgImage)
+            DispatchQueue.main.async { [weak self, weak canvasView, weak hostSelectionView] in
+                guard let self,
+                      let canvasView,
+                      let hostSelectionView,
+                      generation == self.qrCodeDetectionGeneration
+                else { return }
+                self.handleQRCodeDetections(
+                    detections,
+                    canvasView: canvasView,
+                    hostSelectionView: hostSelectionView
+                )
+            }
+        }
+    }
+
+    private func clearActiveToolForQRCodeRecognition() {
+        activeTool = .none
+        canvasView?.activeTool = .none
+        canvasView?.clearMultiSelection()
+        toolbars.forEach { $0.updateSelection(tool: .none) }
+        dismissEmojiPopover()
+        subToolbarView?.removeFromSuperview()
+        subToolbarView = nil
+        updateEditorInteractionState()
+        bringEditorToFront()
+    }
+
+    private func handleQRCodeDetections(
+        _ detections: [QRCodeDetection],
+        canvasView: EditCanvasView,
+        hostSelectionView: SelectionView
+    ) {
+        guard !detections.isEmpty else {
+            dismissQRCodeOverlay()
+            ToastWindow.show(message: L10n.qrCodeNotFound, on: screen)
+            return
+        }
+
+        guard detections.count > 1 else {
+            copyQRCodePayload(detections[0].payload)
+            return
+        }
+
+        let choices = detections.map { detection in
+            let canvasRect = canvasRect(
+                fromNormalizedBoundingBox: detection.normalizedBoundingBox,
+                in: canvasView.bounds
+            )
+            return QRCodeChoice(
+                payload: detection.payload,
+                anchorRect: canvasView.convert(canvasRect, to: hostSelectionView)
+            )
+        }
+
+        let overlay = QRCodeChoiceOverlayView(
+            frame: hostSelectionView.bounds,
+            choices: choices
+        ) { [weak self] choice in
+            self?.copyQRCodePayload(choice.payload)
+        }
+        qrCodeOverlayView?.removeFromSuperview()
+        qrCodeOverlayView = overlay
+        hostSelectionView.addSubview(overlay)
+        toolbars.forEach { $0.setActive(true, for: .qrCode) }
+        bringEditorToFront()
+    }
+
+    private func copyQRCodePayload(_ payload: String) {
+        let targetScreen = screen
+        ClipboardManager.copyToClipboard(text: payload)
+        tearDown()
+        onComplete(nil)
+        ToastWindow.show(message: L10n.qrCodeCopied, on: targetScreen)
+        requestFocusReturn()
+    }
+
+    private func dismissQRCodeOverlay() {
+        qrCodeDetectionGeneration += 1
+        qrCodeOverlayView?.removeFromSuperview()
+        qrCodeOverlayView = nil
+        toolbars.forEach { $0.setActive(false, for: .qrCode) }
+    }
+
+    private func canvasRect(fromNormalizedBoundingBox box: CGRect, in bounds: NSRect) -> NSRect {
+        let standardized = box.standardized
+        let minX = max(0, min(1, standardized.minX))
+        let minY = max(0, min(1, standardized.minY))
+        let maxX = max(0, min(1, standardized.maxX))
+        let maxY = max(0, min(1, standardized.maxY))
+        return NSRect(
+            x: bounds.minX + minX * bounds.width,
+            y: bounds.minY + minY * bounds.height,
+            width: max(0, maxX - minX) * bounds.width,
+            height: max(0, maxY - minY) * bounds.height
+        )
+    }
+
     /// Screenshot-translation action: uses OCR internally, but only shows the
     /// translated result to the user.
     private func performScreenshotTranslation() {
@@ -1874,6 +1998,7 @@ class EditWindowController {
     }
 
     func tearDown() {
+        dismissQRCodeOverlay()
         cancelActiveColorSampler()
         isScrollCapturing = false
         autoScroller?.stop()
@@ -2335,6 +2460,7 @@ class ToolbarView: NSView {
     var onScrollCapture: (() -> Void)?
     var onBeautify: (() -> Void)?
     var onInsertImage: (() -> Void)?
+    var onQRCode: (() -> Void)?
     var onOCR: (() -> Void)?
     var onScreenshotTranslate: (() -> Void)?
     var onSave: (() -> Void)?
@@ -2481,6 +2607,7 @@ class ToolbarView: NSView {
         case .redo:          onRedo?()
         case .scrollCapture: onScrollCapture?()
         case .beautify:      onBeautify?()
+        case .qrCode:        onQRCode?()
         case .ocr:           onOCR?()
         case .screenshotTranslate: onScreenshotTranslate?()
         case .save:          onSave?()

@@ -157,6 +157,8 @@
 "recordingPause" = "Pause";
 "recordingResume" = "Reprendre";
 "colorCopied" = "Couleur %@ copiée";
+"qrCodeCopied" = "Contenu du QR code copié";
+"qrCodeNotFound" = "Aucun QR code détecté";
 
 /* Toolbar tooltips */
 "tipRectangle" = "Rectangle";
@@ -171,6 +173,7 @@
 "tipMagnifier" = "Loupe";
 "tipNumbered" = "Numéro";
 "tipText" = "Texte";
+"tipQRCode" = "QR code";
 "tipEmoji" = "Emoji";
 "tipMoreEmoji" = "Plus d’emojis";
 "tipInsertImage" = "Insérer une image";
@@ -189,6 +192,7 @@
 "tipCancel" = "Annuler";
 "tipConfirm" = "Copier dans le presse-papiers";
 "tipScrollCropConfirm" = "Enregistrer et modifier";
+"copyQRCodeContent" = "Copier le contenu du QR code";
 
 /* Beautify */
 "beautify" = "Embellir";

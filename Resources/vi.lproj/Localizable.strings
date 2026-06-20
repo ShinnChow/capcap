@@ -157,6 +157,8 @@
 "recordingPause" = "Tạm dừng";
 "recordingResume" = "Tiếp tục";
 "colorCopied" = "Đã sao chép màu %@";
+"qrCodeCopied" = "Đã sao chép nội dung mã QR";
+"qrCodeNotFound" = "Không tìm thấy mã QR";
 
 /* Toolbar tooltips */
 "tipRectangle" = "Hình chữ nhật";
@@ -171,6 +173,7 @@
 "tipMagnifier" = "Kính lúp";
 "tipNumbered" = "Đánh số";
 "tipText" = "Văn bản";
+"tipQRCode" = "Mã QR";
 "tipEmoji" = "Emoji";
 "tipMoreEmoji" = "Thêm emoji";
 "tipInsertImage" = "Chèn ảnh";
@@ -189,6 +192,7 @@
 "tipCancel" = "Hủy";
 "tipConfirm" = "Sao chép vào clipboard";
 "tipScrollCropConfirm" = "Lưu và chỉnh sửa";
+"copyQRCodeContent" = "Sao chép nội dung mã QR";
 
 /* Beautify */
 "beautify" = "Làm đẹp";

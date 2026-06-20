@@ -157,6 +157,8 @@
 "recordingPause" = "暂停";
 "recordingResume" = "继续";
 "colorCopied" = "已复制颜色 %@";
+"qrCodeCopied" = "已复制二维码内容";
+"qrCodeNotFound" = "未识别到二维码";
 
 /* Toolbar tooltips */
 "tipRectangle" = "矩形";
@@ -171,6 +173,7 @@
 "tipMagnifier" = "放大镜";
 "tipNumbered" = "序号";
 "tipText" = "文字";
+"tipQRCode" = "二维码";
 "tipEmoji" = "表情";
 "tipMoreEmoji" = "更多表情";
 "tipInsertImage" = "插入图片";
@@ -189,6 +192,7 @@
 "tipCancel" = "取消";
 "tipConfirm" = "复制到剪贴板";
 "tipScrollCropConfirm" = "保存并编辑";
+"copyQRCodeContent" = "复制二维码内容";
 
 /* Beautify */
 "beautify" = "美化";

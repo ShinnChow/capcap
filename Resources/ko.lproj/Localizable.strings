@@ -157,6 +157,8 @@
 "recordingPause" = "일시 정지";
 "recordingResume" = "재개";
 "colorCopied" = "색상 %@ 복사됨";
+"qrCodeCopied" = "QR 코드 내용을 복사함";
+"qrCodeNotFound" = "QR 코드를 찾을 수 없음";
 
 /* Toolbar tooltips */
 "tipRectangle" = "사각형";
@@ -171,6 +173,7 @@
 "tipMagnifier" = "돋보기";
 "tipNumbered" = "번호";
 "tipText" = "텍스트";
+"tipQRCode" = "QR 코드";
 "tipEmoji" = "이모지";
 "tipMoreEmoji" = "이모지 더 보기";
 "tipInsertImage" = "이미지 삽입";
@@ -189,6 +192,7 @@
 "tipCancel" = "취소";
 "tipConfirm" = "클립보드에 복사";
 "tipScrollCropConfirm" = "저장 후 편집";
+"copyQRCodeContent" = "QR 코드 내용 복사";
 
 /* Beautify */
 "beautify" = "꾸미기";

@@ -268,6 +268,8 @@ enum L10n {
     static func colorCopied(_ hex: String) -> String {
         String(format: s("colorCopied"), hex)
     }
+    static var qrCodeCopied: String { s("qrCodeCopied") }
+    static var qrCodeNotFound: String { s("qrCodeNotFound") }
 
     // Toolbar tooltips
     static var tipRectangle: String { s("tipRectangle") }
@@ -282,6 +284,7 @@ enum L10n {
     static var tipMagnifier: String { s("tipMagnifier") }
     static var tipNumbered: String { s("tipNumbered") }
     static var tipText: String { s("tipText") }
+    static var tipQRCode: String { s("tipQRCode") }
     static var tipEmoji: String { s("tipEmoji") }
     static var tipMoreEmoji: String { s("tipMoreEmoji") }
     static var tipInsertImage: String { s("tipInsertImage") }
@@ -300,6 +303,7 @@ enum L10n {
     static var tipCancel: String { s("tipCancel") }
     static var tipConfirm: String { s("tipConfirm") }
     static var tipScrollCropConfirm: String { s("tipScrollCropConfirm") }
+    static var copyQRCodeContent: String { s("copyQRCodeContent") }
 
     // Beautify
     static var beautify: String { s("beautify") }

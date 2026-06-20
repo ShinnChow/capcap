@@ -157,6 +157,8 @@
 "recordingPause" = "一時停止";
 "recordingResume" = "再開";
 "colorCopied" = "カラー %@ をコピーしました";
+"qrCodeCopied" = "QRコードの内容をコピーしました";
+"qrCodeNotFound" = "QRコードが見つかりません";
 
 /* Toolbar tooltips */
 "tipRectangle" = "長方形";
@@ -171,6 +173,7 @@
 "tipMagnifier" = "拡大鏡";
 "tipNumbered" = "番号";
 "tipText" = "テキスト";
+"tipQRCode" = "QRコード";
 "tipEmoji" = "絵文字";
 "tipMoreEmoji" = "その他の絵文字";
 "tipInsertImage" = "画像を挿入";
@@ -189,6 +192,7 @@
 "tipCancel" = "キャンセル";
 "tipConfirm" = "クリップボードへコピー";
 "tipScrollCropConfirm" = "保存して編集";
+"copyQRCodeContent" = "QRコードの内容をコピー";
 
 /* Beautify */
 "beautify" = "装飾";

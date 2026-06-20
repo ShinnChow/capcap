@@ -16,6 +16,7 @@ enum ToolbarItemID: String, Codable, CaseIterable {
     case magnifier
     case numbered
     case text
+    case qrCode
     case emoji
     case insertImage
     // Stateful actions
@@ -54,7 +55,7 @@ extension ToolbarItemID {
         switch self {
         case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
             return .toggleTool
-        case .scrollCapture, .beautify:
+        case .scrollCapture, .beautify, .qrCode:
             return .toggleAction
         case .moveSelection:
             return .dragHandle
@@ -95,6 +96,7 @@ extension ToolbarItemID {
         case .magnifier:     return "plus.magnifyingglass"
         case .numbered:      return "1.circle"
         case .text:          return "textformat"
+        case .qrCode:        return "qrcode.viewfinder"
         case .emoji:         return "face.smiling"
         case .insertImage:   return "photo"
         case .colorPicker:   return "eyedropper"
@@ -129,6 +131,7 @@ extension ToolbarItemID {
         case .magnifier:     title = L10n.tipMagnifier
         case .numbered:      title = L10n.tipNumbered
         case .text:          title = L10n.tipText
+        case .qrCode:        title = L10n.tipQRCode
         case .emoji:         title = L10n.tipEmoji
         case .insertImage:   title = L10n.tipInsertImage
         case .colorPicker:   title = L10n.tipColorPicker
@@ -209,7 +212,7 @@ struct ToolbarLayout: Equatable {
     /// recorded.
     static let canonicalOrder: [ToolbarItemID] = [
         .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text, .emoji, .insertImage,
-        .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .ocr,
+        .colorPicker, .magnifier, .undo, .redo, .moveSelection, .scrollCapture, .beautify, .qrCode, .ocr,
         .screenshotTranslate,
         .save, .upload, .pin, .record, .close, .confirm,
     ]
@@ -221,7 +224,7 @@ struct ToolbarLayout: Equatable {
         ToolbarLayout(
             primary: [
                 .rectangle, .ellipse, .line, .arrow, .pen, .marker, .mosaic, .eraser, .numbered, .text, .emoji, .insertImage,
-                .colorPicker, .magnifier, .beautify, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection,
+                .colorPicker, .magnifier, .beautify, .qrCode, .ocr, .screenshotTranslate, .undo, .redo, .moveSelection,
             ],
             side: [.scrollCapture, .upload, .save, .pin, .record, .close, .confirm],
             hidden: []

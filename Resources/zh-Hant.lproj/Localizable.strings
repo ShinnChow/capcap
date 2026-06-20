@@ -157,6 +157,8 @@
 "recordingPause" = "暫停";
 "recordingResume" = "繼續";
 "colorCopied" = "已複製色彩 %@";
+"qrCodeCopied" = "已複製二維碼內容";
+"qrCodeNotFound" = "未識別到二維碼";
 
 /* Toolbar tooltips */
 "tipRectangle" = "矩形";
@@ -171,6 +173,7 @@
 "tipMagnifier" = "放大鏡";
 "tipNumbered" = "編號";
 "tipText" = "文字";
+"tipQRCode" = "二維碼";
 "tipEmoji" = "表情";
 "tipMoreEmoji" = "更多表情";
 "tipInsertImage" = "插入圖片";
@@ -189,6 +192,7 @@
 "tipCancel" = "取消";
 "tipConfirm" = "複製到剪貼簿";
 "tipScrollCropConfirm" = "儲存並編輯";
+"copyQRCodeContent" = "複製二維碼內容";
 
 /* Beautify */
 "beautify" = "美化";
