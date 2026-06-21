@@ -67,12 +67,42 @@ enum WindowEffects {
     static func applyingAlphaMask(from maskImage: NSImage, to image: NSImage) -> NSImage? {
         guard let maskCG = maskImage.cgImagePreservingBacking(),
               hasAlpha(maskCG),
-              let alphaMask = alphaMask(from: maskCG, width: maskCG.width, height: maskCG.height)
+              let cg = image.cgImagePreservingBacking()
         else {
             return nil
         }
 
-        return applyMask(alphaMask, to: image)
+        let pw = cg.width
+        let ph = cg.height
+        guard pw > 0, ph > 0 else { return image }
+
+        // Keep the screenshot's own color space (often Display P3) so applying
+        // the WindowServer alpha silhouette does not shift the captured pixels.
+        let colorSpace: CGColorSpace = {
+            if let cs = cg.colorSpace, cs.model == .rgb { return cs }
+            return CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+        }()
+
+        guard let context = CGContext(
+            data: nil,
+            width: pw,
+            height: ph,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return nil
+        }
+
+        let rect = CGRect(x: 0, y: 0, width: pw, height: ph)
+        context.interpolationQuality = .high
+        context.draw(cg, in: rect)
+        context.setBlendMode(.destinationIn)
+        context.draw(maskCG, in: rect)
+
+        guard let out = context.makeImage() else { return nil }
+        return NSImage(cgImage: out, size: image.size)
     }
 
     private static func continuousCornerMask(

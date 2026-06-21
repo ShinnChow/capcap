@@ -16,6 +16,8 @@ class WindowDetector {
     private var windows: [DetectedWindow] = []
     private let ownPID = ProcessInfo.processInfo.processIdentifier
 
+    var detectedWindowCount: Int { windows.count }
+
     /// Snapshot all visible windows (excluding this app).
     func refresh() {
         guard let infoList = CGWindowListCopyWindowInfo(
@@ -23,6 +25,7 @@ class WindowDetector {
             kCGNullWindowID
         ) as? [[String: Any]] else {
             windows = []
+            CaptureDiagnostics.log("window-detector-refresh-failed")
             return
         }
 
@@ -68,6 +71,10 @@ class WindowDetector {
 
             return DetectedWindow(name: name, windowID: windowID, layer: layer, frame: rect)
         }
+        CaptureDiagnostics.log("window-detector-refresh-result", metadata: [
+            "rawWindowCount": infoList.count,
+            "filteredWindowCount": windows.count,
+        ])
     }
 
     /// High-layer system surfaces (menu bar, Dock, popups) are often only a
