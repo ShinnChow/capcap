@@ -754,8 +754,8 @@ private final class TranslationHeaderView: NSView {
     }
 }
 
-private final class AnimatedDictionaryWordLabel: NSView {
-    private static let animationKey = "dictionaryWordGradientSweep"
+private final class AnimatedGradientTextLabel: NSView {
+    private static let animationKey = "gradientTextSweep"
     private static let restingLocations = [0.0, 0.24, 0.48, 0.72, 1.0].map { NSNumber(value: $0) }
     private static let sweepStartLocations = [-0.42, -0.18, 0.04, 0.24, 0.46].map { NSNumber(value: $0) }
     private static let sweepEndLocations = [0.54, 0.76, 0.96, 1.18, 1.42].map { NSNumber(value: $0) }
@@ -862,7 +862,8 @@ private final class AnimatedDictionaryWordLabel: NSView {
 private final class TranslationResultView: NSView {
     let kind: TranslationProviderKind
 
-    private let statusLabel = NSTextField(labelWithString: "")
+    private let loadingStatusLabel = AnimatedGradientTextLabel()
+    private let errorStatusLabel = NSTextField(labelWithString: "")
     private let contentStack = NSStackView()
     private let textContainer = NSView()
     private let textView: PanelTextView
@@ -938,17 +939,25 @@ private final class TranslationResultView: NSView {
         stack.addArrangedSubview(contentStack)
         contentStack.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
-        statusLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        statusLabel.textColor = NSColor.white.withAlphaComponent(0.52)
-        statusLabel.lineBreakMode = .byWordWrapping
-        statusLabel.usesSingleLineMode = false
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        contentStack.addArrangedSubview(statusLabel)
-        statusLabel.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
+        loadingStatusLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        loadingStatusLabel.stringValue = L10n.ocrTranslating
+        contentStack.addArrangedSubview(loadingStatusLabel)
+        loadingStatusLabel.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
+
+        errorStatusLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        errorStatusLabel.textColor = NSColor.systemOrange
+        errorStatusLabel.lineBreakMode = .byWordWrapping
+        errorStatusLabel.usesSingleLineMode = false
+        errorStatusLabel.translatesAutoresizingMaskIntoConstraints = false
+        contentStack.addArrangedSubview(errorStatusLabel)
+        errorStatusLabel.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
 
         textContainer.translatesAutoresizingMaskIntoConstraints = false
         contentStack.addArrangedSubview(textContainer)
         textContainer.widthAnchor.constraint(equalTo: contentStack.widthAnchor).isActive = true
+        let minimumTextWidth = textContainer.widthAnchor.constraint(greaterThanOrEqualToConstant: 220)
+        minimumTextWidth.priority = .defaultHigh
+        minimumTextWidth.isActive = true
         textHeightConstraint.isActive = true
 
         configureExpandingTextView(textView)
@@ -975,9 +984,11 @@ private final class TranslationResultView: NSView {
 
     func reset() {
         textView.string = ""
-        statusLabel.stringValue = L10n.ocrTranslating
-        statusLabel.textColor = NSColor.white.withAlphaComponent(0.52)
-        statusLabel.isHidden = false
+        loadingStatusLabel.stringValue = L10n.ocrTranslating
+        loadingStatusLabel.isHidden = false
+        loadingStatusLabel.startAnimating()
+        errorStatusLabel.stringValue = ""
+        errorStatusLabel.isHidden = true
         retryButton.isHidden = true
         copyButton.isEnabled = false
         updateTextHeight()
@@ -990,16 +1001,19 @@ private final class TranslationResultView: NSView {
     }
 
     func markSuccess() {
-        statusLabel.stringValue = ""
-        statusLabel.isHidden = true
+        loadingStatusLabel.stopAnimating()
+        loadingStatusLabel.isHidden = true
+        errorStatusLabel.stringValue = ""
+        errorStatusLabel.isHidden = true
         copyButton.isEnabled = !textView.string.isEmpty
         onLayoutChange()
     }
 
     func markFailure(_ error: Error) {
-        statusLabel.stringValue = "\(L10n.ocrTranslateFailedPrefix) \(error.localizedDescription)"
-        statusLabel.textColor = NSColor.systemOrange
-        statusLabel.isHidden = false
+        loadingStatusLabel.stopAnimating()
+        loadingStatusLabel.isHidden = true
+        errorStatusLabel.stringValue = "\(L10n.ocrTranslateFailedPrefix) \(error.localizedDescription)"
+        errorStatusLabel.isHidden = false
         retryButton.isHidden = false
         copyButton.isEnabled = !textView.string.isEmpty
         onLayoutChange()
@@ -1215,6 +1229,7 @@ final class OCRTranslatePanel: NSPanel {
     private let screenshot: NSImage
     private let anchorScreen: NSScreen
     private let panelWidth: CGFloat
+    private var stablePanelWidth: CGFloat
     private let mode: Mode
 
     private let padding: CGFloat = 14
@@ -1226,7 +1241,7 @@ final class OCRTranslatePanel: NSPanel {
     private var ocrTextView: PanelTextView?
     private var ocrCopyButton: NSButton?
     private var translationTitleLabel: NSTextField?
-    private var dictionaryTitleLabel: AnimatedDictionaryWordLabel?
+    private var dictionaryTitleLabel: AnimatedGradientTextLabel?
     private var translationPlaceholderLabel: NSTextField?
     private var translationResultsStack: NSStackView?
     private var translationResultViews: [TranslationProviderKind: TranslationResultView] = [:]
@@ -1282,6 +1297,7 @@ final class OCRTranslatePanel: NSPanel {
         self.screenshot = image
         self.anchorScreen = screen
         self.panelWidth = panelWidth
+        self.stablePanelWidth = panelWidth
         self.mode = mode
         let initialHeight: CGFloat = 320
         let initialFrame = Self.topCenteredFrame(
@@ -1445,7 +1461,7 @@ final class OCRTranslatePanel: NSPanel {
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         translationTitleLabel = title
 
-        let dictionaryTitle = AnimatedDictionaryWordLabel()
+        let dictionaryTitle = AnimatedGradientTextLabel()
         dictionaryTitle.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         dictionaryTitle.isHidden = true
         dictionaryTitleLabel = dictionaryTitle
@@ -1889,14 +1905,22 @@ final class OCRTranslatePanel: NSPanel {
     /// Resizes the panel to fit its content while keeping it centered near the
     /// top of the target screen.
     private func refreshHeight() {
+        let visible = anchorScreen.visibleFrame
+        let maxWidth = max(360, visible.width - 16)
+        stablePanelWidth = min(max(stablePanelWidth, frame.width, panelWidth), maxWidth)
+        let width = stablePanelWidth
+
+        if abs(frame.width - width) > 0.5 {
+            setFrame(Self.topCenteredFrame(width: width, height: frame.height, on: anchorScreen),
+                     display: false, animate: false)
+        }
         contentView?.layoutSubtreeIfNeeded()
         let contentHeight = contentStack.fittingSize.height
         let desired = contentHeight + padding * 2
-        let visible = anchorScreen.visibleFrame
         let maxHeight = min(700, visible.height - Self.topMargin - 16)
         let height = max(180, min(desired, maxHeight))
 
-        setFrame(Self.topCenteredFrame(width: panelWidth, height: height, on: anchorScreen),
+        setFrame(Self.topCenteredFrame(width: width, height: height, on: anchorScreen),
                  display: true, animate: false)
     }
 
@@ -2085,8 +2109,27 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     private func dismissForOutsideClickIfNeeded(_ event: NSEvent) {
-        guard !isPinned, !isLiveTextMenuOpen, isVisible, !eventBelongsToPanel(event) else { return }
+        guard !isPinned,
+              !isLiveTextMenuOpen,
+              isVisible,
+              !eventBelongsToPanel(event),
+              !eventTargetsPanelThroughCaptureOverlay(event)
+        else { return }
         dismiss()
+    }
+
+    private func eventTargetsPanelThroughCaptureOverlay(_ event: NSEvent) -> Bool {
+        guard let eventWindow = event.window,
+              eventWindow.contentView is SelectionView
+        else {
+            return false
+        }
+
+        // A click on this panel during capcap's own capture overlay is delivered
+        // to SelectionView, not to the panel. Keep the panel visible until the
+        // window-ID capture has read its contents.
+        let screenPoint = eventWindow.convertPoint(toScreen: event.locationInWindow)
+        return frame.insetBy(dx: -24, dy: -24).contains(screenPoint)
     }
 
     private func handleOCRImageKeyEquivalent(_ event: NSEvent) -> Bool {

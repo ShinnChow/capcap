@@ -264,7 +264,8 @@ class EditCanvasView: NSView {
     }
 
     private struct PendingTextCreate {
-        let point: NSPoint
+        let start: NSPoint
+        var current: NSPoint
         let wasEditing: Bool
     }
 
@@ -1058,6 +1059,7 @@ class EditCanvasView: NSView {
         // Click on empty canvas: commit any in-progress text edit and
         // clear the current selection so adjust-mode chrome dismisses;
         // the active tool then takes over (if any).
+        let wasEditingText = activeTextField != nil
         activeTextField?.commit()
         selectedIndex = nil
 
@@ -1100,9 +1102,7 @@ class EditCanvasView: NSView {
             pendingNumberCreate = PendingNumberCreate(start: point, current: point)
 
         case .text:
-            let wasEditing = activeTextField != nil
-            activeTextField?.commit()
-            pendingTextCreate = PendingTextCreate(point: point, wasEditing: wasEditing)
+            pendingTextCreate = PendingTextCreate(start: point, current: point, wasEditing: wasEditingText)
         }
     }
 
@@ -1154,9 +1154,12 @@ class EditCanvasView: NSView {
             needsDisplay = true
             return
         }
-        // Text: drag away from the pending click cancels (no editor opens).
-        if let pending = pendingTextCreate {
-            if hypot(point.x - pending.point.x, point.y - pending.point.y) >= dragThreshold {
+        if var pending = pendingTextCreate {
+            if currentTextCallout {
+                pending.current = point
+                pendingTextCreate = pending
+                needsDisplay = true
+            } else if hypot(point.x - pending.start.x, point.y - pending.start.y) >= dragThreshold {
                 pendingTextCreate = nil
             }
             return
@@ -1250,12 +1253,23 @@ class EditCanvasView: NSView {
         if let pending = pendingTextCreate {
             pendingTextCreate = nil
             if !pending.wasEditing {
+                let calloutTip: NSPoint? = {
+                    guard currentTextCallout else { return nil }
+                    let dragDist = hypot(
+                        pending.current.x - pending.start.x,
+                        pending.current.y - pending.start.y
+                    )
+                    return dragDist >= TextAnnotation.calloutArrowMinDistance
+                        ? pending.current
+                        : nil
+                }()
                 beginTextEditing(
-                    bottomLeft: newTextOrigin(forClickAt: pending.point, fontSize: currentFontSize),
+                    bottomLeft: newTextOrigin(forClickAt: pending.start, fontSize: currentFontSize),
                     fontSize: currentFontSize,
                     color: currentColor,
                     hasStroke: currentTextStroke,
-                    hasCallout: currentTextCallout
+                    hasCallout: currentTextCallout,
+                    calloutTip: calloutTip
                 )
             }
             return
@@ -1458,6 +1472,8 @@ class EditCanvasView: NSView {
             annotation.drawApplyingTransforms(in: context, bounds: bounds)
         }
 
+        drawActiveTextCalloutBackground(in: context)
+
         let selected = validSelectedIndexes
         if let idx = hoveredAnnotationIndex,
            annotations.indices.contains(idx),
@@ -1595,6 +1611,18 @@ class EditCanvasView: NSView {
             preview.draw(in: context, bounds: bounds)
         }
 
+        if let pending = pendingTextCreate, currentTextCallout {
+            TextAnnotation(
+                text: "",
+                origin: newTextOrigin(forClickAt: pending.start, fontSize: currentFontSize),
+                color: currentColor,
+                fontSize: currentFontSize,
+                hasStroke: currentTextStroke,
+                hasCallout: true,
+                calloutTip: pending.current == pending.start ? nil : pending.current
+            ).draw(in: context, bounds: bounds)
+        }
+
         if activeTool == .emoji, let currentEmoji, let emojiPreviewPoint {
             context.saveGState()
             context.setAlpha(0.45)
@@ -1608,6 +1636,21 @@ class EditCanvasView: NSView {
         if didClip {
             context.restoreGState()
         }
+    }
+
+    private func drawActiveTextCalloutBackground(in context: CGContext) {
+        guard let field = activeTextField, field.hasCallout else { return }
+        let fontSize = field.font?.pointSize ?? currentFontSize
+        TextAnnotation(
+            text: field.stringValue,
+            origin: field.annotationOrigin,
+            color: field.annotationColor,
+            fontSize: fontSize,
+            rotation: field.rotation,
+            hasStroke: field.hasStroke,
+            hasCallout: field.hasCallout,
+            calloutTip: field.calloutTip
+        ).drawCalloutBackgroundOnly(in: context, bodyRect: field.frame)
     }
 
     private func drawEraserSelection(_ rect: NSRect, in context: CGContext) {
@@ -1938,12 +1981,23 @@ class EditCanvasView: NSView {
         }
 
         let initialSize = TextAnnotation.editorSize(for: initialText, font: font)
-        let fieldRect = NSRect(
-            x: bottomLeft.x,
-            y: bottomLeft.y,
-            width: initialSize.width,
-            height: max(initialSize.height, lineHeight)
-        )
+        let contentHeight = max(initialSize.height, lineHeight)
+        let fieldRect: NSRect
+        if hasCallout {
+            fieldRect = NSRect(
+                x: bottomLeft.x - TextAnnotation.calloutHorizontalPadding,
+                y: bottomLeft.y - TextAnnotation.calloutVerticalPadding,
+                width: initialSize.width + TextAnnotation.calloutHorizontalPadding * 2,
+                height: contentHeight + TextAnnotation.calloutVerticalPadding * 2
+            )
+        } else {
+            fieldRect = NSRect(
+                x: bottomLeft.x,
+                y: bottomLeft.y,
+                width: initialSize.width,
+                height: contentHeight
+            )
+        }
 
         let field = EditableTextField(frame: fieldRect)
         field.font = font
@@ -1958,6 +2012,9 @@ class EditCanvasView: NSView {
         }
         field.onCancel = { [weak self, weak field] in
             self?.handleTextCancel(field: field)
+        }
+        field.onChange = { [weak self] in
+            self?.needsDisplay = true
         }
 
         addSubview(field)
@@ -1993,7 +2050,7 @@ class EditCanvasView: NSView {
             let font = field.font ?? NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
             let newAnnotation = TextAnnotation(
                 text: text,
-                origin: NSPoint(x: field.frame.minX, y: field.frame.minY),
+                origin: field.annotationOrigin,
                 color: field.annotationColor,
                 fontSize: font.pointSize,
                 rotation: field.rotation,
@@ -3454,6 +3511,7 @@ class EditCanvasView: NSView {
 final class EditableTextField: NSTextField, NSTextFieldDelegate {
     var onCommit: ((String) -> Void)?
     var onCancel: (() -> Void)?
+    var onChange: (() -> Void)?
 
     /// Outline flag for the text being edited. Carried through the edit
     /// session and read back when the annotation is committed. The live field
@@ -3461,16 +3519,32 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// `TextAnnotation`, which adds it without shifting the glyphs.
     var hasStroke: Bool = false
     var annotationColor: NSColor = EditorStyleDefaults.primaryColor {
-        didSet { updateAppearanceForCurrentMode() }
+        didSet {
+            updateAppearanceForCurrentMode()
+            onChange?()
+        }
     }
     var hasCallout: Bool = false {
-        didSet { updateAppearanceForCurrentMode() }
+        didSet {
+            updateAppearanceForCurrentMode()
+            onChange?()
+        }
     }
-    var calloutTip: NSPoint?
+    var calloutTip: NSPoint? {
+        didSet { onChange?() }
+    }
     /// Rotation carried by an existing text annotation while it is being edited.
     /// The live editor stays horizontal, but the committed annotation keeps the
     /// original angle instead of snapping back to zero.
     var rotation: CGFloat = 0
+
+    var annotationOrigin: NSPoint {
+        guard hasCallout else { return frame.origin }
+        return NSPoint(
+            x: frame.minX + TextAnnotation.calloutHorizontalPadding,
+            y: frame.minY + TextAnnotation.calloutVerticalPadding
+        )
+    }
 
     private var didFinish = false
     private var wasCanceled = false
@@ -3619,12 +3693,19 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// top edge anchored so text grows downward only when font size changes.
     func sizeToFitText() {
         guard let font = font else { return }
-        let size = TextAnnotation.editorSize(for: stringValue, font: font)
+        let contentSize = TextAnnotation.editorSize(for: stringValue, font: font)
+        let size = hasCallout
+            ? NSSize(
+                width: contentSize.width + TextAnnotation.calloutHorizontalPadding * 2,
+                height: contentSize.height + TextAnnotation.calloutVerticalPadding * 2
+            )
+            : contentSize
 
         let prevTop = frame.maxY
         var f = frame
         f.size = size
         f.origin.y = prevTop - size.height
         frame = f
+        onChange?()
     }
 }

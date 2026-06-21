@@ -2184,6 +2184,7 @@ struct TextAnnotation: Annotation {
     static let calloutArrowLineWidth: CGFloat = 3
     private static let calloutTailBaseWidth: CGFloat = 30
     private static let calloutTailTipMaxRadius: CGFloat = 3.2
+    private static let textVerticalCenteringFactor: CGFloat = 0.2
 
     /// Outline pen width for the silhouette pass, as the percentage-of-font
     /// unit `NSAttributedString.Key.strokeWidth` expects. The fill pass on top
@@ -2230,6 +2231,24 @@ struct TextAnnotation: Annotation {
         return ceil((line as NSString).size(withAttributes: attributes).width)
     }
 
+    private static func inkBounds(for line: String, attributes: [NSAttributedString.Key: Any]) -> NSRect {
+        let textToMeasure = line.isEmpty ? "M" : line
+        return NSAttributedString(string: textToMeasure, attributes: attributes).boundingRect(
+            with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
+            options: [.usesDeviceMetrics]
+        )
+    }
+
+    private static func centeredDrawOffsetY(
+        for line: String,
+        lineHeight: CGFloat,
+        attributes: [NSAttributedString.Key: Any]
+    ) -> CGFloat {
+        let ink = inkBounds(for: line, attributes: attributes)
+        let metricOffset = (lineHeight - ink.height) / 2 - ink.origin.y
+        return metricOffset * textVerticalCenteringFactor
+    }
+
     static func editorSize(for text: String, font: NSFont) -> NSSize {
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = Self.lines(for: text)
@@ -2254,31 +2273,23 @@ struct TextAnnotation: Annotation {
         let font = TextAnnotation.font(forSize: fontSize)
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = TextAnnotation.lines(for: text)
-        guard lines.count > 1 else {
-            let textToMeasure = text.isEmpty ? "M" : text
-            let attr = NSAttributedString(string: textToMeasure, attributes: attrs)
-            let ink = attr.boundingRect(
-                with: NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude),
-                options: [.usesDeviceMetrics]
+        let lineHeight = TextAnnotation.lineHeight(for: font)
+        let rects = lines.enumerated().map { index, line in
+            let ink = TextAnnotation.inkBounds(for: line, attributes: attrs)
+            let offsetY = TextAnnotation.centeredDrawOffsetY(
+                for: line,
+                lineHeight: lineHeight,
+                attributes: attrs
             )
-            // `.usesDeviceMetrics` returns the ink rect with origin relative to
-            // the typographic baseline. Convert to coordinates relative to the
-            // draw origin (which is the typographic frame's bottom): the baseline
-            // sits |descender| above that bottom.
             return NSRect(
                 x: origin.x + ink.origin.x,
-                y: origin.y + ink.origin.y - font.descender,
+                y: origin.y + lineHeight * CGFloat(lines.count - 1 - index) + offsetY + ink.origin.y,
                 width: ink.width,
                 height: ink.height
             )
         }
-
-        let measuredWidth = lines
-            .map { TextAnnotation.measuredLineWidth($0, attributes: attrs) }
-            .max() ?? 0
-        let blockHeight = TextAnnotation.lineHeight(for: font) * CGFloat(lines.count)
-        let width = max(measuredWidth, TextAnnotation.minimumEditorWidth - TextAnnotation.trailingCaretPadding)
-        return NSRect(x: origin.x, y: origin.y, width: width, height: blockHeight)
+        guard let first = rects.first else { return textBlockRect }
+        return rects.dropFirst().reduce(first) { $0.union($1) }
     }
 
     var textBlockRect: NSRect {
@@ -2326,7 +2337,10 @@ struct TextAnnotation: Annotation {
     var supportsRotation: Bool { true }
 
     func calloutAnchorPoint(for tip: NSPoint?) -> NSPoint {
-        let rect = calloutBodyRect
+        calloutAnchorPoint(for: tip, in: calloutBodyRect)
+    }
+
+    private func calloutAnchorPoint(for tip: NSPoint?, in rect: NSRect) -> NSPoint {
         guard let tip else {
             return NSPoint(x: rect.midX, y: rect.minY)
         }
@@ -2374,9 +2388,14 @@ struct TextAnnotation: Annotation {
         }()
 
         for (index, line) in lines.enumerated() where !line.isEmpty {
+            let offsetY = TextAnnotation.centeredDrawOffsetY(
+                for: line,
+                lineHeight: lineHeight,
+                attributes: fillAttributes
+            )
             let lineOrigin = NSPoint(
                 x: origin.x,
-                y: origin.y + lineHeight * CGFloat(lines.count - 1 - index)
+                y: origin.y + lineHeight * CGFloat(lines.count - 1 - index) + offsetY
             )
             if let strokeAttributes {
                 (line as NSString).draw(at: lineOrigin, withAttributes: strokeAttributes)
@@ -2386,28 +2405,36 @@ struct TextAnnotation: Annotation {
         NSGraphicsContext.restoreGraphicsState()
     }
 
-    private func drawCalloutBackground(in context: CGContext) {
+    func drawCalloutBackgroundOnly(in context: CGContext, bodyRect: NSRect? = nil) {
+        guard hasCallout else { return }
+        drawCalloutBackground(in: context, bodyRect: bodyRect ?? calloutBodyRect)
+    }
+
+    private func drawCalloutBackground(in context: CGContext, bodyRect: NSRect? = nil) {
         context.saveGState()
         context.setFillColor(color.cgColor)
-        context.addPath(calloutBackgroundPath())
+        context.addPath(calloutBackgroundPath(bodyRect: bodyRect ?? calloutBodyRect))
         context.fillPath()
         context.restoreGState()
     }
 
     private func calloutBackgroundPath() -> CGPath {
+        calloutBackgroundPath(bodyRect: calloutBodyRect)
+    }
+
+    private func calloutBackgroundPath(bodyRect: NSRect) -> CGPath {
         guard hasCalloutArrow, let tip = calloutTip else {
             return CGPath(
-                roundedRect: calloutBodyRect,
+                roundedRect: bodyRect,
                 cornerWidth: TextAnnotation.calloutCornerRadius,
                 cornerHeight: TextAnnotation.calloutCornerRadius,
                 transform: nil
             )
         }
-        return calloutBubblePath(to: tip)
+        return calloutBubblePath(to: tip, bodyRect: bodyRect)
     }
 
-    private func calloutBubblePath(to tip: NSPoint) -> CGPath {
-        let rect = calloutBodyRect
+    private func calloutBubblePath(to tip: NSPoint, bodyRect rect: NSRect) -> CGPath {
         let radius = min(TextAnnotation.calloutCornerRadius, rect.width / 2, rect.height / 2)
         guard radius > 0 else {
             return CGPath(
@@ -2416,7 +2443,7 @@ struct TextAnnotation: Annotation {
             )
         }
 
-        let base = calloutTailBase(for: tip)
+        let base = calloutTailBase(for: tip, in: rect)
         let path = CGMutablePath()
         let kappa: CGFloat = 0.552_284_749_830_793_6
         let k = radius * kappa
@@ -2611,10 +2638,9 @@ struct TextAnnotation: Annotation {
         case left
     }
 
-    private func calloutTailBase(for tip: NSPoint) -> CalloutTailBase {
-        let rect = calloutBodyRect
-        let anchor = calloutAnchorPoint(for: tip)
-        let side = calloutTailSide(for: anchor, tip: tip)
+    private func calloutTailBase(for tip: NSPoint, in rect: NSRect) -> CalloutTailBase {
+        let anchor = calloutAnchorPoint(for: tip, in: rect)
+        let side = calloutTailSide(for: anchor, tip: tip, in: rect)
         let desiredWidth = min(
             TextAnnotation.calloutTailBaseWidth,
             max(18, fontSize * 0.78)
@@ -2671,8 +2697,7 @@ struct TextAnnotation: Annotation {
         )
     }
 
-    private func calloutTailSide(for anchor: NSPoint, tip: NSPoint) -> CalloutTailSide {
-        let rect = calloutBodyRect
+    private func calloutTailSide(for anchor: NSPoint, tip: NSPoint, in rect: NSRect) -> CalloutTailSide {
         let distances: [(CalloutTailSide, CGFloat)] = [
             (.top, abs(anchor.y - rect.maxY)),
             (.right, abs(anchor.x - rect.maxX)),
