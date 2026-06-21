@@ -1229,10 +1229,11 @@ final class OCRTranslatePanel: NSPanel {
     private let screenshot: NSImage
     private let anchorScreen: NSScreen
     private let panelWidth: CGFloat
-    private var stablePanelWidth: CGFloat
     private let mode: Mode
 
     private let padding: CGFloat = 14
+    private var panelWidthConstraint: NSLayoutConstraint?
+    private var documentWidthConstraint: NSLayoutConstraint?
     private var contentStack: NSStackView!
     private var docView: FlippedView!
     private var clipView: NSClipView!
@@ -1297,7 +1298,6 @@ final class OCRTranslatePanel: NSPanel {
         self.screenshot = image
         self.anchorScreen = screen
         self.panelWidth = panelWidth
-        self.stablePanelWidth = panelWidth
         self.mode = mode
         let initialHeight: CGFloat = 320
         let initialFrame = Self.topCenteredFrame(
@@ -1320,6 +1320,7 @@ final class OCRTranslatePanel: NSPanel {
         isMovableByWindowBackground = true
         isReleasedWhenClosed = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+        animationBehavior = .none
 
         buildUI()
         installEventMonitors()
@@ -1340,6 +1341,9 @@ final class OCRTranslatePanel: NSPanel {
         root.layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
         root.layer?.borderWidth = 1
         contentView = root
+        let panelWidthConstraint = root.widthAnchor.constraint(equalToConstant: panelWidth)
+        panelWidthConstraint.isActive = true
+        self.panelWidthConstraint = panelWidthConstraint
 
         let scrollView = NSScrollView()
         scrollView.translatesAutoresizingMaskIntoConstraints = false
@@ -1361,6 +1365,8 @@ final class OCRTranslatePanel: NSPanel {
         contentStack.spacing = 12
         contentStack.translatesAutoresizingMaskIntoConstraints = false
         docView.addSubview(contentStack)
+        let documentWidthConstraint = docView.widthAnchor.constraint(equalToConstant: panelWidth - padding * 2)
+        self.documentWidthConstraint = documentWidthConstraint
 
         let pinButton = PanelPinButton()
         pinButton.translatesAutoresizingMaskIntoConstraints = false
@@ -1377,7 +1383,7 @@ final class OCRTranslatePanel: NSPanel {
 
             docView.topAnchor.constraint(equalTo: contentStack.topAnchor),
             docView.heightAnchor.constraint(equalTo: contentStack.heightAnchor),
-            docView.widthAnchor.constraint(equalTo: clipView.widthAnchor),
+            documentWidthConstraint,
 
             contentStack.topAnchor.constraint(equalTo: docView.topAnchor),
             contentStack.leadingAnchor.constraint(equalTo: docView.leadingAnchor),
@@ -1905,23 +1911,24 @@ final class OCRTranslatePanel: NSPanel {
     /// Resizes the panel to fit its content while keeping it centered near the
     /// top of the target screen.
     private func refreshHeight() {
-        let visible = anchorScreen.visibleFrame
-        let maxWidth = max(360, visible.width - 16)
-        stablePanelWidth = min(max(stablePanelWidth, frame.width, panelWidth), maxWidth)
-        let width = stablePanelWidth
-
-        if abs(frame.width - width) > 0.5 {
-            setFrame(Self.topCenteredFrame(width: width, height: frame.height, on: anchorScreen),
-                     display: false, animate: false)
-        }
+        lockPanelWidth()
         contentView?.layoutSubtreeIfNeeded()
         let contentHeight = contentStack.fittingSize.height
         let desired = contentHeight + padding * 2
+        let visible = anchorScreen.visibleFrame
         let maxHeight = min(700, visible.height - Self.topMargin - 16)
         let height = max(180, min(desired, maxHeight))
 
-        setFrame(Self.topCenteredFrame(width: width, height: height, on: anchorScreen),
+        setFrame(Self.topCenteredFrame(width: panelWidth, height: height, on: anchorScreen),
                  display: true, animate: false)
+    }
+
+    private func lockPanelWidth() {
+        panelWidthConstraint?.constant = panelWidth
+        documentWidthConstraint?.constant = panelWidth - padding * 2
+        guard abs(frame.width - panelWidth) > 0.5 else { return }
+        setFrame(Self.topCenteredFrame(width: panelWidth, height: frame.height, on: anchorScreen),
+                 display: false, animate: false)
     }
 
     private static func topCenteredFrame(width: CGFloat, height: CGFloat, on screen: NSScreen) -> NSRect {
