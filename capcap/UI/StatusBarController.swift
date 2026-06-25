@@ -446,8 +446,6 @@ private final class HistoryMenuRow: NSView {
     private weak var target: AnyObject?
     private let action: Selector
     private let timeLabel: NSTextField
-    private var trackingArea: NSTrackingArea?
-    private var isHighlighted = false
 
     init(entry: HistoryEntry, timestamp: String, cloudTip: String?, target: AnyObject, action: Selector) {
         self.entry = entry
@@ -468,6 +466,7 @@ private final class HistoryMenuRow: NSView {
         let totalHeight = Self.verticalPadding * 2 + Self.labelHeight + Self.spacing + previewHeight
 
         timeLabel = NSTextField(labelWithString: timestamp)
+        timeLabel.isSelectable = false
         timeLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .regular)
         timeLabel.textColor = .secondaryLabelColor
         timeLabel.frame = NSRect(
@@ -501,49 +500,16 @@ private final class HistoryMenuRow: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let area = trackingArea {
-            removeTrackingArea(area)
-        }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(area)
-        trackingArea = area
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        isHighlighted = true
-        needsDisplay = true
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        isHighlighted = false
-        needsDisplay = true
-    }
-
     override func mouseUp(with event: NSEvent) {
         if let target = target {
             _ = target.perform(action, with: self)
         }
     }
 
-    override func draw(_ dirtyRect: NSRect) {
-        if isHighlighted {
-            let inset = bounds.insetBy(dx: 4, dy: 2)
-            let path = NSBezierPath(roundedRect: inset, xRadius: 4, yRadius: 4)
-            NSColor.selectedContentBackgroundColor.withAlphaComponent(0.25).setFill()
-            path.fill()
-        }
-    }
-
     private static func makeImagePreview(url: URL, maxWidth: CGFloat) -> (NSView, CGFloat) {
         let previewHeight = Self.thumbnailHeight
         let imageView = NSImageView()
+        imageView.isEditable = false
         imageView.imageScaling = .scaleProportionallyUpOrDown
         imageView.imageAlignment = .alignCenter
         imageView.wantsLayer = true
@@ -600,6 +566,7 @@ private final class HistoryMenuRow: NSView {
         container.addSubview(swatch)
 
         let hexLabel = NSTextField(labelWithString: hex.uppercased())
+        hexLabel.isSelectable = false
         hexLabel.font = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
         hexLabel.textColor = .labelColor
         hexLabel.alignment = .left
