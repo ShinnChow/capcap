@@ -1,3 +1,4 @@
+import AVFoundation
 import AppKit
 import CoreText
 import NaturalLanguage
@@ -1059,7 +1060,7 @@ private final class DictionaryResultView: NSView {
     private let errorRow = NSStackView()
     private let errorLabel = NSTextField(labelWithString: "")
     private let retryButton: NSButton
-    private let speaker = NSSpeechSynthesizer()
+    private let speaker = AVSpeechSynthesizer()
     private var retrySleeve: ClosureSleeve?
     private var speechSleeves: [ClosureSleeve] = []
     private let onLayoutChange: () -> Void
@@ -1206,9 +1207,9 @@ private final class DictionaryResultView: NSView {
 
     private func speak(_ text: String) {
         if speaker.isSpeaking {
-            speaker.stopSpeaking()
+            speaker.stopSpeaking(at: .immediate)
         }
-        speaker.startSpeaking(text)
+        speaker.speak(AVSpeechUtterance(string: text))
     }
 }
 

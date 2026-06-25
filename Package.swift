@@ -26,7 +26,7 @@ let package = Package(
                 "PermissionFlow"
             ],
             path: "capcap",
-            exclude: ["App/Info.plist", "Assets.xcassets"],
+            exclude: ["App/Info.plist"],
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("AVFoundation"),
