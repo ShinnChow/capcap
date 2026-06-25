@@ -3548,8 +3548,8 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
 
     private var didFinish = false
     private var wasCanceled = false
-    private static let insertNewlineIgnoringFieldEditorSelector = Selector(("insertNewlineIgnoringFieldEditor:"))
-    private static let insertLineBreakSelector = Selector(("insertLineBreak:"))
+    private static let insertNewlineIgnoringFieldEditorSelector = #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:))
+    private static let insertLineBreakSelector = #selector(NSResponder.insertLineBreak(_:))
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
