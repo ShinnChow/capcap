@@ -50,6 +50,11 @@ enum SettingsTab: CaseIterable {
     }
 }
 
+private enum HistoryPanelSettingsMode {
+    case dialog
+    case notch
+}
+
 class SettingsView: NSView {
 
     var isStartup: Bool = false
@@ -67,8 +72,9 @@ class SettingsView: NSView {
     private var historyCacheSwitch: NSSwitch!
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
-    private var historyPanelDialogSwitch: NSButton!
-    private var historyPanelNotchSwitch: NSButton!
+    private var historyPanelModePreview: HistoryPanelModePreviewView!
+    private var historyPanelDialogOption: HistoryPanelModeOptionView!
+    private var historyPanelNotchOption: HistoryPanelModeOptionView!
     private var countdownSlider: SettingsTickSlider!
     private var countdownValueLabel: NSTextField!
     private var countdownTitleLabel: NSTextField!
@@ -772,10 +778,13 @@ class SettingsView: NSView {
 
     private func updateHistoryPanelModeControlsEnabled() {
         let on = Defaults.historyCacheEnabled
-        historyPanelDialogSwitch?.isEnabled = on
-        historyPanelNotchSwitch?.isEnabled = on
-        historyPanelDialogSwitch?.state = Defaults.historyPanelDialogEnabled ? .on : .off
-        historyPanelNotchSwitch?.state = Defaults.historyPanelNotchEnabled ? .on : .off
+        let mode = selectedHistoryPanelMode()
+        historyPanelModePreview?.mode = mode
+        historyPanelModePreview?.isEffectEnabled = on
+        historyPanelDialogOption?.isEnabled = on
+        historyPanelNotchOption?.isEnabled = on
+        historyPanelDialogOption?.isSelected = mode == .dialog
+        historyPanelNotchOption?.isSelected = mode == .notch
 
         historyPanelDisplayModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
         historyPanelDisplayModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
@@ -783,6 +792,10 @@ class SettingsView: NSView {
         historyPanelDialogModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
         historyPanelNotchModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
         historyPanelNotchModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
+    }
+
+    private func selectedHistoryPanelMode() -> HistoryPanelSettingsMode {
+        Defaults.historyPanelNotchEnabled ? .notch : .dialog
     }
 
     private func refreshSavePathControls() {
@@ -1189,10 +1202,10 @@ class SettingsView: NSView {
         let inner = NSStackView()
         inner.orientation = .vertical
         inner.alignment = .leading
-        inner.spacing = 10
+        inner.spacing = 14
         inner.translatesAutoresizingMaskIntoConstraints = false
         card.addSubview(inner)
-        pin(inner, to: card, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
+        pin(inner, to: card, insets: NSEdgeInsets(top: 14, left: 16, bottom: 16, right: 16))
 
         historyPanelDisplayModeTitleLabel = primaryLabel(L10n.historyPanelDisplayModeLabel)
         historyPanelDisplayModeHintLabel = secondaryLabel(L10n.historyPanelDisplayModeHint, wrapping: true)
@@ -1200,37 +1213,48 @@ class SettingsView: NSView {
         inner.addArrangedSubview(historyPanelDisplayModeHintLabel)
         historyPanelDisplayModeHintLabel.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
-        let divider = rowDivider()
-        inner.addArrangedSubview(divider)
-        divider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        let preview = HistoryPanelModePreviewView(mode: selectedHistoryPanelMode())
+        preview.translatesAutoresizingMaskIntoConstraints = false
+        historyPanelModePreview = preview
+        inner.addArrangedSubview(preview)
+        NSLayoutConstraint.activate([
+            preview.widthAnchor.constraint(equalTo: inner.widthAnchor),
+            preview.heightAnchor.constraint(equalToConstant: 136),
+        ])
 
-        let dialog = makeRadioRow(
+        let optionRow = NSStackView()
+        optionRow.orientation = .horizontal
+        optionRow.alignment = .top
+        optionRow.distribution = .fillEqually
+        optionRow.spacing = 12
+        optionRow.translatesAutoresizingMaskIntoConstraints = false
+
+        let dialog = HistoryPanelModeOptionView(
+            mode: .dialog,
             title: L10n.historyPanelDialogMode,
-            subtitle: L10n.historyPanelDialogModeHint,
-            isOn: Defaults.historyPanelDialogEnabled,
-            action: #selector(historyPanelDialogModeToggled(_:))
+            subtitle: L10n.historyPanelDialogModeHint
         )
         historyPanelDialogModeTitleLabel = dialog.title
         historyPanelDialogModeHintLabel = dialog.subtitle
-        historyPanelDialogSwitch = dialog.button
-        inner.addArrangedSubview(dialog.row)
-        dialog.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        historyPanelDialogOption = dialog
+        dialog.target = self
+        dialog.action = #selector(historyPanelModeOptionClicked(_:))
 
-        let modeDivider = rowDivider()
-        inner.addArrangedSubview(modeDivider)
-        modeDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
-
-        let notch = makeRadioRow(
+        let notch = HistoryPanelModeOptionView(
+            mode: .notch,
             title: L10n.historyPanelNotchMode,
-            subtitle: L10n.historyPanelNotchModeHint,
-            isOn: Defaults.historyPanelNotchEnabled,
-            action: #selector(historyPanelNotchModeToggled(_:))
+            subtitle: L10n.historyPanelNotchModeHint
         )
         historyPanelNotchModeTitleLabel = notch.title
         historyPanelNotchModeHintLabel = notch.subtitle
-        historyPanelNotchSwitch = notch.button
-        inner.addArrangedSubview(notch.row)
-        notch.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        historyPanelNotchOption = notch
+        notch.target = self
+        notch.action = #selector(historyPanelModeOptionClicked(_:))
+
+        optionRow.addArrangedSubview(dialog)
+        optionRow.addArrangedSubview(notch)
+        inner.addArrangedSubview(optionRow)
+        optionRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
         updateHistoryPanelModeControlsEnabled()
 
@@ -2579,21 +2603,14 @@ class SettingsView: NSView {
         updateHistoryPanelModeControlsEnabled()
     }
 
-    @objc private func historyPanelDialogModeToggled(_ sender: NSButton) {
-        guard sender.state == .on else {
-            sender.state = .on
-            return
+    @objc private func historyPanelModeOptionClicked(_ sender: HistoryPanelModeOptionView) {
+        guard Defaults.historyCacheEnabled else { return }
+        switch sender.mode {
+        case .dialog:
+            Defaults.historyPanelDialogEnabled = true
+        case .notch:
+            Defaults.historyPanelNotchEnabled = true
         }
-        Defaults.historyPanelDialogEnabled = true
-        updateHistoryPanelModeControlsEnabled()
-    }
-
-    @objc private func historyPanelNotchModeToggled(_ sender: NSButton) {
-        guard sender.state == .on else {
-            sender.state = .on
-            return
-        }
-        Defaults.historyPanelNotchEnabled = true
         updateHistoryPanelModeControlsEnabled()
     }
 
@@ -4403,10 +4420,8 @@ class SettingsView: NSView {
         historyPanelDisplayModeHintLabel?.stringValue = L10n.historyPanelDisplayModeHint
         historyPanelDialogModeTitleLabel?.stringValue = L10n.historyPanelDialogMode
         historyPanelDialogModeHintLabel?.stringValue = L10n.historyPanelDialogModeHint
-        historyPanelDialogSwitch?.state = Defaults.historyPanelDialogEnabled ? .on : .off
         historyPanelNotchModeTitleLabel?.stringValue = L10n.historyPanelNotchMode
         historyPanelNotchModeHintLabel?.stringValue = L10n.historyPanelNotchModeHint
-        historyPanelNotchSwitch?.state = Defaults.historyPanelNotchEnabled ? .on : .off
         updateHistoryPanelModeControlsEnabled()
         windowShadowTitleLabel?.stringValue = L10n.windowShadowToggleLabel
         windowShadowSubtitleLabel?.stringValue = L10n.windowShadowToggleHint
@@ -5135,6 +5150,465 @@ private final class ShadowPreviewView: NSView {
         NSColor.black.withAlphaComponent(0.08).setStroke()
         cardPath.lineWidth = 1
         cardPath.stroke()
+    }
+}
+
+private final class HistoryPanelModePreviewView: NSView {
+    var mode: HistoryPanelSettingsMode {
+        didSet { needsDisplay = true }
+    }
+
+    var isEffectEnabled: Bool = true {
+        didSet { needsDisplay = true }
+    }
+
+    private let accentBlue = NSColor(
+        calibratedRed: 0x11 / 255.0,
+        green: 0x7D / 255.0,
+        blue: 0xFF / 255.0,
+        alpha: 1.0
+    )
+    private let surfaceColor = NSColor.black
+
+    init(mode: HistoryPanelSettingsMode) {
+        self.mode = mode
+        super.init(frame: .zero)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let ctx = NSGraphicsContext.current else { return }
+
+        let rect = bounds
+        let backdrop = NSBezierPath(roundedRect: rect, xRadius: 16, yRadius: 16)
+        ctx.saveGraphicsState()
+        backdrop.addClip()
+
+        NSColor(calibratedRed: 0.14, green: 0.15, blue: 0.18, alpha: 1).setFill()
+        backdrop.fill()
+        drawScreenGuide(in: rect)
+        ctx.cgContext.setAlpha(isEffectEnabled ? 1 : 0.42)
+        switch mode {
+        case .dialog:
+            drawDialogPreview(in: rect.insetBy(dx: 24, dy: 18))
+        case .notch:
+            drawNotchPreview(in: rect.insetBy(dx: 24, dy: 14))
+        }
+        ctx.restoreGraphicsState()
+
+        NSColor.white.withAlphaComponent(isEffectEnabled ? 0.08 : 0.04).setStroke()
+        backdrop.lineWidth = 1
+        backdrop.stroke()
+    }
+
+    private func drawScreenGuide(in rect: NSRect) {
+        let topEdge = NSRect(
+            x: rect.minX + 18,
+            y: rect.maxY - 20,
+            width: rect.width - 36,
+            height: 1
+        )
+        NSColor.white.withAlphaComponent(0.07).setFill()
+        NSBezierPath(rect: topEdge).fill()
+    }
+
+    private func drawDialogPreview(in rect: NSRect) {
+        let panelWidth = min(rect.width * 0.82, 560)
+        let panelHeight = min(rect.height - 14, 86)
+        let panelRect = NSRect(
+            x: rect.midX - panelWidth / 2,
+            y: rect.midY - panelHeight / 2 - 6,
+            width: panelWidth,
+            height: panelHeight
+        )
+        drawFloatingSurface(in: panelRect, radius: 18, shadow: true)
+        drawToolbarLine(in: panelRect)
+        drawTileRow(in: panelRect.insetBy(dx: 18, dy: 16), count: 4)
+    }
+
+    private func drawNotchPreview(in rect: NSRect) {
+        let sheetWidth = min(rect.width * 0.88, 620)
+        let sheetHeight = min(rect.height - 34, 74)
+        let notchWidth = min(sheetWidth * 0.42, 230)
+        let notchHeight: CGFloat = 28
+        let notchRect = NSRect(
+            x: rect.midX - notchWidth / 2,
+            y: rect.maxY - notchHeight,
+            width: notchWidth,
+            height: notchHeight
+        )
+        let sheetRect = NSRect(
+            x: rect.midX - sheetWidth / 2,
+            y: notchRect.minY - sheetHeight + 4,
+            width: sheetWidth,
+            height: sheetHeight
+        )
+
+        drawFloatingSurface(in: sheetRect, radius: 16, shadow: false)
+
+        surfaceColor.setFill()
+        notchPath(in: notchRect, flare: 14, bottomRadius: 12).fill()
+
+        accentBlue.setFill()
+        let mark = NSRect(x: notchRect.minX + 28, y: notchRect.midY - 5, width: 10, height: 10)
+        NSBezierPath(rect: NSRect(x: mark.midX - 1.5, y: mark.minY, width: 3, height: mark.height)).fill()
+        NSBezierPath(rect: NSRect(x: mark.minX, y: mark.midY - 1.5, width: mark.width, height: 3)).fill()
+
+        drawToolbarLine(in: sheetRect)
+        drawTileRow(in: sheetRect.insetBy(dx: 16, dy: 14), count: 5)
+    }
+
+    private func drawFloatingSurface(in rect: NSRect, radius: CGFloat, shadow: Bool) {
+        let path = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+
+        guard let ctx = NSGraphicsContext.current else { return }
+        ctx.saveGraphicsState()
+        if shadow {
+            let panelShadow = NSShadow()
+            panelShadow.shadowColor = NSColor.black.withAlphaComponent(0.34)
+            panelShadow.shadowBlurRadius = 18
+            panelShadow.shadowOffset = NSSize(width: 0, height: -6)
+            panelShadow.set()
+        }
+        surfaceColor.withAlphaComponent(0.92).setFill()
+        path.fill()
+        ctx.restoreGraphicsState()
+
+        NSColor.white.withAlphaComponent(0.14).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+    }
+
+    private func drawToolbarLine(in panelRect: NSRect) {
+        let y = panelRect.maxY - 22
+        let active = NSRect(x: panelRect.minX + 18, y: y, width: 46, height: 10)
+        accentBlue.setFill()
+        NSBezierPath(roundedRect: active, xRadius: 5, yRadius: 5).fill()
+
+        var x = active.maxX + 10
+        for _ in 0..<3 {
+            let pill = NSRect(x: x, y: y, width: 34, height: 10)
+            NSColor.white.withAlphaComponent(0.16).setFill()
+            NSBezierPath(roundedRect: pill, xRadius: 5, yRadius: 5).fill()
+            x += 44
+        }
+    }
+
+    private func drawTileRow(in rect: NSRect, count: Int) {
+        let contentRect = NSRect(
+            x: rect.minX,
+            y: rect.minY,
+            width: rect.width,
+            height: max(28, rect.height - 28)
+        )
+        let gap: CGFloat = 10
+        let tileWidth = max(34, (contentRect.width - gap * CGFloat(count - 1)) / CGFloat(count))
+        for index in 0..<count {
+            let tileRect = NSRect(
+                x: contentRect.minX + CGFloat(index) * (tileWidth + gap),
+                y: contentRect.minY,
+                width: tileWidth,
+                height: contentRect.height
+            )
+            NSColor.white.withAlphaComponent(0.10).setFill()
+            NSBezierPath(roundedRect: tileRect, xRadius: 8, yRadius: 8).fill()
+
+            let bar = NSRect(
+                x: tileRect.minX + 8,
+                y: tileRect.midY - 4,
+                width: max(18, tileRect.width - 16),
+                height: 8
+            )
+            (index == 0 ? accentBlue : NSColor.white.withAlphaComponent(0.24)).setFill()
+            NSBezierPath(roundedRect: bar, xRadius: 4, yRadius: 4).fill()
+        }
+    }
+
+    private func notchPath(in rect: NSRect, flare: CGFloat, bottomRadius: CGFloat) -> NSBezierPath {
+        let flare = max(0, min(flare, rect.width * 0.25, rect.height))
+        let bodyLeft = rect.minX + flare
+        let bodyRight = rect.maxX - flare
+        let bottom = max(0, min(bottomRadius, (bodyRight - bodyLeft) * 0.5, rect.height))
+        let path = NSBezierPath()
+        path.move(to: NSPoint(x: rect.minX, y: rect.maxY))
+        path.line(to: NSPoint(x: rect.maxX, y: rect.maxY))
+        path.curve(
+            to: NSPoint(x: bodyRight, y: rect.maxY - flare),
+            controlPoint1: NSPoint(x: rect.maxX - flare * 0.5, y: rect.maxY),
+            controlPoint2: NSPoint(x: bodyRight, y: rect.maxY - flare * 0.5)
+        )
+        path.line(to: NSPoint(x: bodyRight, y: rect.minY + bottom))
+        path.curve(
+            to: NSPoint(x: bodyRight - bottom, y: rect.minY),
+            controlPoint1: NSPoint(x: bodyRight, y: rect.minY + bottom * 0.45),
+            controlPoint2: NSPoint(x: bodyRight - bottom * 0.45, y: rect.minY)
+        )
+        path.line(to: NSPoint(x: bodyLeft + bottom, y: rect.minY))
+        path.curve(
+            to: NSPoint(x: bodyLeft, y: rect.minY + bottom),
+            controlPoint1: NSPoint(x: bodyLeft + bottom * 0.45, y: rect.minY),
+            controlPoint2: NSPoint(x: bodyLeft, y: rect.minY + bottom * 0.45)
+        )
+        path.line(to: NSPoint(x: bodyLeft, y: rect.maxY - flare))
+        path.curve(
+            to: NSPoint(x: rect.minX, y: rect.maxY),
+            controlPoint1: NSPoint(x: bodyLeft, y: rect.maxY - flare * 0.5),
+            controlPoint2: NSPoint(x: rect.minX + flare * 0.5, y: rect.maxY)
+        )
+        path.close()
+        return path
+    }
+
+}
+
+private final class HistoryPanelModeOptionView: NSControl {
+    let mode: HistoryPanelSettingsMode
+    let title: NSTextField
+    let subtitle: NSTextField
+
+    var isSelected: Bool = false {
+        didSet { applyAppearance() }
+    }
+
+    override var isEnabled: Bool {
+        didSet { applyAppearance() }
+    }
+
+    private let swatch: HistoryPanelModeSwatchView
+    private let checkView = NSImageView()
+    private var trackingArea: NSTrackingArea?
+    private var isHovered = false {
+        didSet { applyAppearance() }
+    }
+
+    private let accentBlue = NSColor(
+        calibratedRed: 0x11 / 255.0,
+        green: 0x7D / 255.0,
+        blue: 0xFF / 255.0,
+        alpha: 1.0
+    )
+
+    init(mode: HistoryPanelSettingsMode, title: String, subtitle: String) {
+        self.mode = mode
+        self.title = NSTextField(labelWithString: title)
+        self.subtitle = NSTextField(wrappingLabelWithString: subtitle)
+        self.swatch = HistoryPanelModeSwatchView(mode: mode)
+        super.init(frame: .zero)
+        commonInit()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func commonInit() {
+        translatesAutoresizingMaskIntoConstraints = false
+        wantsLayer = true
+        layer?.cornerRadius = 13
+        layer?.cornerCurve = .continuous
+
+        swatch.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(swatch)
+
+        title.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        title.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(title)
+
+        subtitle.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        subtitle.lineBreakMode = .byWordWrapping
+        subtitle.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(subtitle)
+
+        checkView.translatesAutoresizingMaskIntoConstraints = false
+        checkView.image = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)
+        checkView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 18, weight: .semibold)
+        checkView.imageScaling = .scaleProportionallyUpOrDown
+        addSubview(checkView)
+
+        NSLayoutConstraint.activate([
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 116),
+
+            swatch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            swatch.topAnchor.constraint(equalTo: topAnchor, constant: 14),
+            swatch.widthAnchor.constraint(equalToConstant: 72),
+            swatch.heightAnchor.constraint(equalToConstant: 40),
+
+            checkView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            checkView.topAnchor.constraint(equalTo: topAnchor, constant: 18),
+            checkView.widthAnchor.constraint(equalToConstant: 18),
+            checkView.heightAnchor.constraint(equalToConstant: 18),
+
+            title.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            title.topAnchor.constraint(equalTo: swatch.bottomAnchor, constant: 12),
+            title.trailingAnchor.constraint(lessThanOrEqualTo: checkView.leadingAnchor, constant: -8),
+
+            subtitle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
+            subtitle.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 4),
+            subtitle.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
+            subtitle.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -14),
+        ])
+
+        setContentCompressionResistancePriority(.required, for: .vertical)
+        applyAppearance()
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInActiveApp, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        trackingArea = area
+        addTrackingArea(area)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        guard isEnabled else { return }
+        isHovered = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovered = false
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        sendAction(action, to: target)
+    }
+
+    override var acceptsFirstResponder: Bool { isEnabled }
+
+    override func keyDown(with event: NSEvent) {
+        guard isEnabled else { return }
+        let keyCode = Int(event.keyCode)
+        if keyCode == kVK_Space || keyCode == kVK_Return {
+            sendAction(action, to: target)
+        } else {
+            super.keyDown(with: event)
+        }
+    }
+
+    private func applyAppearance() {
+        let enabledAlpha: CGFloat = isEnabled ? 1 : 0.42
+        let backgroundAlpha: CGFloat
+        if isSelected {
+            backgroundAlpha = 0.052
+        } else if isHovered {
+            backgroundAlpha = 0.044
+        } else {
+            backgroundAlpha = 0.018
+        }
+
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(backgroundAlpha * enabledAlpha).cgColor
+        layer?.borderColor = (isSelected ? accentBlue : NSColor.white.withAlphaComponent(0.09 * enabledAlpha)).cgColor
+        layer?.borderWidth = isSelected ? 2 : 1
+
+        title.textColor = NSColor.white.withAlphaComponent(isEnabled ? 0.94 : 0.4)
+        subtitle.textColor = NSColor.white.withAlphaComponent(isEnabled ? 0.58 : 0.35)
+        checkView.isHidden = !isSelected
+        checkView.contentTintColor = accentBlue.withAlphaComponent(enabledAlpha)
+        swatch.alphaValue = enabledAlpha
+        swatch.needsDisplay = true
+    }
+}
+
+private final class HistoryPanelModeSwatchView: NSView {
+    var mode: HistoryPanelSettingsMode {
+        didSet { needsDisplay = true }
+    }
+
+    private let accentGreen = NSColor(
+        calibratedRed: 0x29 / 255.0,
+        green: 0xE6 / 255.0,
+        blue: 0xA7 / 255.0,
+        alpha: 1.0
+    )
+
+    init(mode: HistoryPanelSettingsMode) {
+        self.mode = mode
+        super.init(frame: .zero)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let outer = bounds.insetBy(dx: 0.5, dy: 0.5)
+        let outerPath = NSBezierPath(roundedRect: outer, xRadius: 7, yRadius: 7)
+        NSColor.black.withAlphaComponent(0.9).setFill()
+        outerPath.fill()
+        NSColor.white.withAlphaComponent(0.16).setStroke()
+        outerPath.lineWidth = 1
+        outerPath.stroke()
+
+        switch mode {
+        case .dialog:
+            drawDialogSwatch(in: outer.insetBy(dx: 7, dy: 8))
+        case .notch:
+            drawNotchSwatch(in: outer.insetBy(dx: 6, dy: 6))
+        }
+    }
+
+    private func drawDialogSwatch(in rect: NSRect) {
+        let panel = NSRect(
+            x: rect.minX + 3,
+            y: rect.midY - rect.height * 0.28,
+            width: rect.width - 6,
+            height: rect.height * 0.56
+        )
+        let panelPath = NSBezierPath(roundedRect: panel, xRadius: 4, yRadius: 4)
+        NSColor.white.withAlphaComponent(0.18).setFill()
+        panelPath.fill()
+        accentGreen.withAlphaComponent(0.55).setStroke()
+        panelPath.lineWidth = 1
+        panelPath.stroke()
+        for index in 0..<3 {
+            let bar = NSRect(
+                x: panel.minX + 6 + CGFloat(index) * 13,
+                y: panel.midY - 3,
+                width: 8,
+                height: 6
+            )
+            NSColor.white.withAlphaComponent(0.28 + CGFloat(index) * 0.08).setFill()
+            NSBezierPath(roundedRect: bar, xRadius: 2, yRadius: 2).fill()
+        }
+    }
+
+    private func drawNotchSwatch(in rect: NSRect) {
+        let body = NSRect(
+            x: rect.minX + 1,
+            y: rect.minY + 2,
+            width: rect.width - 2,
+            height: rect.height - 12
+        )
+        let bodyPath = NSBezierPath(roundedRect: body, xRadius: 5, yRadius: 5)
+        NSColor.white.withAlphaComponent(0.17).setFill()
+        bodyPath.fill()
+
+        let notch = NSRect(
+            x: rect.midX - rect.width * 0.27,
+            y: rect.maxY - 11,
+            width: rect.width * 0.54,
+            height: 10
+        )
+        NSColor.black.setFill()
+        NSBezierPath(roundedRect: notch, xRadius: 5, yRadius: 5).fill()
+
+        accentGreen.setFill()
+        let mark = NSRect(x: notch.minX + 8, y: notch.midY - 4, width: 8, height: 8)
+        NSBezierPath(rect: NSRect(x: mark.midX - 1, y: mark.minY, width: 2, height: mark.height)).fill()
+        NSBezierPath(rect: NSRect(x: mark.minX, y: mark.midY - 1, width: mark.width, height: 2)).fill()
     }
 }
 
