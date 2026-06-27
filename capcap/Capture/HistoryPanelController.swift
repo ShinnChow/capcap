@@ -841,7 +841,8 @@ private final class HistoryPanelContentView: NSView {
     private let stripView = HistoryPanelStripView()
     private let emptyLabel = NSTextField(labelWithString: "")
     private let deleteButton = HistoryPanelDeleteButton()
-    private let finderButton = HistoryPanelActionButton(symbolName: "folder", title: "")
+    private let finderButton = HistoryPanelActionButton(symbolName: "folder", accessibilityLabel: L10n.historyShowInFinder)
+    private let settingsButton = HistoryPanelActionButton(symbolName: "gearshape", accessibilityLabel: L10n.settings)
     private var deleteButtonWidthConstraint: NSLayoutConstraint?
     private var confirmationDismissMonitor: Any?
     private weak var activeHoverTile: HistoryPanelTileView?
@@ -910,6 +911,11 @@ private final class HistoryPanelContentView: NSView {
         finderButton.translatesAutoresizingMaskIntoConstraints = false
         header.addSubview(finderButton)
 
+        settingsButton.target = self
+        settingsButton.action = #selector(openSettingsClicked)
+        settingsButton.translatesAutoresizingMaskIntoConstraints = false
+        header.addSubview(settingsButton)
+
         deleteButton.target = self
         deleteButton.action = #selector(deleteHistoryClicked)
         deleteButton.translatesAutoresizingMaskIntoConstraints = false
@@ -951,8 +957,11 @@ private final class HistoryPanelContentView: NSView {
             deleteWidth,
             deleteButton.heightAnchor.constraint(equalToConstant: 28),
 
-            finderButton.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            finderButton.trailingAnchor.constraint(equalTo: settingsButton.leadingAnchor, constant: -8),
             finderButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+
+            settingsButton.trailingAnchor.constraint(equalTo: header.trailingAnchor),
+            settingsButton.centerYAnchor.constraint(equalTo: header.centerYAnchor),
 
             scrollView.topAnchor.constraint(equalTo: header.bottomAnchor, constant: HistoryPanelLayout.verticalGap),
             scrollView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: inset),
@@ -980,8 +989,8 @@ private final class HistoryPanelContentView: NSView {
         }
         deleteButton.title = L10n.historyClear
         deleteButton.toolTip = L10n.historyClear
-        finderButton.title = L10n.historyShowInFinder
-        finderButton.toolTip = L10n.historyShowInFinder
+        finderButton.updateAccessibilityLabel(L10n.historyShowInFinder)
+        settingsButton.updateAccessibilityLabel(L10n.settings)
         if isConfirmingDelete {
             deleteButtonWidthConstraint?.constant = deleteButton.expandedWidth
         }
@@ -1017,6 +1026,12 @@ private final class HistoryPanelContentView: NSView {
     @objc private func showHistoryInFinderClicked() {
         setDeleteConfirmation(false, animated: true)
         NSWorkspace.shared.open(HistoryManager.shared.cacheDirectoryURL())
+        onRequestDismiss?()
+    }
+
+    @objc private func openSettingsClicked() {
+        setDeleteConfirmation(false, animated: true)
+        SettingsWindowController.shared.showAsSettings()
         onRequestDismiss?()
     }
 
@@ -1309,6 +1324,7 @@ private final class HistoryPanelDeleteButton: NSControl {
     private static let iconSize: CGFloat = 14
     private static let contentSpacing: CGFloat = 8
     private static let horizontalPadding: CGFloat = 12
+    private static let collapsedBackgroundColor = NSColor.white.withAlphaComponent(0.10).cgColor
 
     private let iconView = NSImageView()
     private let label = HistoryPanelCenteredTextView()
@@ -1401,7 +1417,7 @@ private final class HistoryPanelDeleteButton: NSControl {
 
         let backgroundColor = confirming
             ? NSColor.systemRed.withAlphaComponent(0.86).cgColor
-            : NSColor.clear.cgColor
+            : Self.collapsedBackgroundColor
         layer?.backgroundColor = backgroundColor
         iconView.contentTintColor = confirming
             ? .white
@@ -1433,56 +1449,39 @@ private final class HistoryPanelDeleteButton: NSControl {
 }
 
 private final class HistoryPanelActionButton: NSControl {
+    private static let buttonSize: CGFloat = 28
+    private static let iconSize: CGFloat = 13
     private let iconView = NSImageView()
-    private let label = NSTextField(labelWithString: "")
-
-    var title: String {
-        get { label.stringValue }
-        set {
-            label.stringValue = newValue
-            invalidateIntrinsicContentSize()
-        }
-    }
 
     override var toolTip: String? {
         didSet {
             iconView.toolTip = toolTip
-            label.toolTip = toolTip
         }
     }
 
-    init(symbolName: String, title: String) {
+    init(symbolName: String, accessibilityLabel: String) {
         super.init(frame: .zero)
         wantsLayer = true
         layer?.cornerRadius = 14
         layer?.cornerCurve = .continuous
         layer?.backgroundColor = NSColor.white.withAlphaComponent(0.10).cgColor
+        updateAccessibilityLabel(accessibilityLabel)
 
         let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
-        iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: title)?
+        iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel)?
             .withSymbolConfiguration(config)
         iconView.contentTintColor = NSColor.white.withAlphaComponent(0.68)
         iconView.imageScaling = .scaleProportionallyDown
         iconView.translatesAutoresizingMaskIntoConstraints = false
         addSubview(iconView)
 
-        label.stringValue = title
-        label.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
-        label.textColor = NSColor.white.withAlphaComponent(0.68)
-        label.alignment = .center
-        label.isSelectable = false
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(equalToConstant: 28),
-            iconView.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 13),
+            widthAnchor.constraint(equalToConstant: Self.buttonSize),
+            heightAnchor.constraint(equalToConstant: Self.buttonSize),
+            iconView.centerXAnchor.constraint(equalTo: centerXAnchor),
             iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
-            iconView.widthAnchor.constraint(equalToConstant: 13),
-            iconView.heightAnchor.constraint(equalToConstant: 13),
-            label.leadingAnchor.constraint(equalTo: iconView.trailingAnchor, constant: 6),
-            label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: Self.iconSize),
+            iconView.heightAnchor.constraint(equalToConstant: Self.iconSize),
         ])
     }
 
@@ -1491,7 +1490,12 @@ private final class HistoryPanelActionButton: NSControl {
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: label.intrinsicContentSize.width + 46, height: 28)
+        NSSize(width: Self.buttonSize, height: Self.buttonSize)
+    }
+
+    func updateAccessibilityLabel(_ label: String) {
+        toolTip = label
+        setAccessibilityLabel(label)
     }
 
     override func mouseDown(with event: NSEvent) {
