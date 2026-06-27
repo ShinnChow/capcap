@@ -685,6 +685,10 @@ extension OverlayWindowController: SelectionViewDelegate {
         suspendCurrentEditFromMask()
     }
 
+    func selectionDidDoubleClickInsideSelection(inView view: NSView) {
+        confirmFromKeyboard()
+    }
+
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?) {
         guard let window = view.window, let screen = window.screen else {
             cancel()

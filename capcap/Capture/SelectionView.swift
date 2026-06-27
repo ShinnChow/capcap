@@ -10,11 +10,13 @@ protocol SelectionViewDelegate: AnyObject {
     func selectionDidComplete(rect: NSRect, inView view: NSView, isWindowSelection: Bool, windowID: CGWindowID?)
     func selectionDidChange(rect: NSRect, inView view: NSView)
     func selectionMaskDidDoubleClick(inView view: NSView)
+    func selectionDidDoubleClickInsideSelection(inView view: NSView)
 }
 
 extension SelectionViewDelegate {
     func selectionDidChange(rect: NSRect, inView view: NSView) {}
     func selectionMaskDidDoubleClick(inView view: NSView) {}
+    func selectionDidDoubleClickInsideSelection(inView view: NSView) {}
 }
 
 class SelectionView: NSView {
@@ -160,6 +162,11 @@ class SelectionView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        if shouldConfirmFromSelectionDoubleClick(event: event, point: point) {
+            dragAction = .none
+            delegate?.selectionDidDoubleClickInsideSelection(inView: self)
+            return
+        }
         if shouldSuspendFromMaskDoubleClick(event: event, point: point) {
             dragAction = .none
             delegate?.selectionMaskDidDoubleClick(inView: self)
@@ -231,6 +238,16 @@ class SelectionView: NSView {
               let rect = selectionRect
         else { return false }
         return !rect.contains(point)
+    }
+
+    private func shouldConfirmFromSelectionDoubleClick(event: NSEvent, point: NSPoint) -> Bool {
+        guard event.clickCount >= 2,
+              state == .selected,
+              selectionLocked,
+              selectionInteractionEnabled,
+              let rect = selectionRect
+        else { return false }
+        return rect.contains(point)
     }
 
     override func mouseDragged(with event: NSEvent) {
