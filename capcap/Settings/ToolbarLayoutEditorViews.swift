@@ -371,15 +371,25 @@ final class ToolbarLayoutPreviewView: NSView {
     var layout: ToolbarLayout = .default {
         didSet {
             invalidateIntrinsicContentSize()
+            updateToolbarPreviews()
             needsDisplay = true
         }
     }
+
+    private let primaryScrollView = ToolbarPreviewScrollView(orientation: .horizontal)
+    private let primaryStripView = ToolbarPreviewStripView(orientation: .horizontal)
+    private let sideScrollView = ToolbarPreviewScrollView(orientation: .vertical)
+    private let sideStripView = ToolbarPreviewStripView(orientation: .vertical)
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
         layer?.masksToBounds = true
         layer?.cornerRadius = 8
+        primaryScrollView.documentView = primaryStripView
+        sideScrollView.documentView = sideStripView
+        addSubview(primaryScrollView)
+        addSubview(sideScrollView)
     }
 
     required init?(coder: NSCoder) {
@@ -391,12 +401,15 @@ final class ToolbarLayoutPreviewView: NSView {
     private let miniPad: CGFloat = 6
     private let minimumHeight: CGFloat = 188
     private let minimumSelectionHeight: CGFloat = 116
+    private let maximumSidePreviewItems = ToolbarLayout.default.side.count
     private let topInset: CGFloat = 22
+    private let previewMargin: CGFloat = 14
     private let emptyPrimaryBottomInset: CGFloat = 20
 
     var preferredHeight: CGFloat {
         let sideRun = layout.side.isEmpty ? 0 : capsuleRun(layout.side.count)
-        let contentHeight = max(minimumSelectionHeight, sideRun)
+        let sideCap = capsuleRun(maximumSidePreviewItems)
+        let contentHeight = max(minimumSelectionHeight, min(sideRun, sideCap))
         return max(minimumHeight, bottomInset + topInset + contentHeight)
     }
 
@@ -417,6 +430,16 @@ final class ToolbarLayoutPreviewView: NSView {
         layout.primary.isEmpty ? emptyPrimaryBottomInset : capsuleThickness + 16
     }
 
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        updateToolbarPreviews()
+    }
+
+    override func setBoundsSize(_ newSize: NSSize) {
+        super.setBoundsSize(newSize)
+        updateToolbarPreviews()
+    }
+
     override func draw(_ dirtyRect: NSRect) {
         let b = bounds
 
@@ -428,14 +451,7 @@ final class ToolbarLayoutPreviewView: NSView {
             gradient.draw(in: b, angle: -90)
         }
 
-        // Selection rect — leaves room below for the primary toolbar and to
-        // the right for the side toolbar.
-        let selection = NSRect(
-            x: b.minX + 44,
-            y: b.minY + bottomInset,
-            width: b.width - 44 - 70,
-            height: b.height - bottomInset - topInset
-        )
+        let selection = selectionRect(in: b)
         guard selection.width > 20, selection.height > 20 else { return }
 
         let dashed = NSBezierPath(rect: selection)
@@ -444,30 +460,62 @@ final class ToolbarLayoutPreviewView: NSView {
         accentGreen.setStroke()
         dashed.stroke()
         drawHandles(around: selection)
+    }
 
-        // Primary toolbar — horizontal capsule centered below the selection.
-        if !layout.primary.isEmpty {
-            let run = capsuleRun(layout.primary.count)
-            let rect = NSRect(
-                x: selection.midX - run / 2,
-                y: selection.minY - 10 - capsuleThickness,
-                width: run,
-                height: capsuleThickness
-            )
-            drawCapsule(rect, items: layout.primary, orientation: .horizontal)
-        }
+    /// Selection rect leaves room below for the primary toolbar and to the
+    /// right for the side toolbar.
+    private func selectionRect(in bounds: NSRect) -> NSRect {
+        NSRect(
+            x: bounds.minX + 44,
+            y: bounds.minY + bottomInset,
+            width: bounds.width - 44 - 70,
+            height: bounds.height - bottomInset - topInset
+        )
+    }
 
-        // Side toolbar — vertical capsule centered to the right.
-        if !layout.side.isEmpty {
-            let run = capsuleRun(layout.side.count)
-            let rect = NSRect(
-                x: selection.maxX + 10,
-                y: selection.midY - run / 2,
-                width: capsuleThickness,
-                height: run
-            )
-            drawCapsule(rect, items: layout.side, orientation: .vertical)
-        }
+    private func updateToolbarPreviews() {
+        guard bounds.width > 0, bounds.height > 0 else { return }
+        let selection = selectionRect(in: bounds)
+
+        updatePrimaryPreview(selection: selection)
+        updateSidePreview(selection: selection)
+    }
+
+    private func updatePrimaryPreview(selection: NSRect) {
+        primaryScrollView.isHidden = layout.primary.isEmpty
+        primaryStripView.items = layout.primary
+        guard !layout.primary.isEmpty else { return }
+
+        let run = capsuleRun(layout.primary.count)
+        let maxWidth = max(capsuleThickness, bounds.width - previewMargin * 2)
+        let width = min(run, maxWidth)
+        let proposedX = selection.midX - width / 2
+        let x = max(previewMargin, min(bounds.maxX - previewMargin - width, proposedX))
+        primaryScrollView.frame = NSRect(
+            x: x,
+            y: selection.minY - 10 - capsuleThickness,
+            width: width,
+            height: capsuleThickness
+        )
+        primaryStripView.setFrameSize(NSSize(width: run, height: capsuleThickness))
+        primaryScrollView.clampScrollOffset()
+    }
+
+    private func updateSidePreview(selection: NSRect) {
+        sideScrollView.isHidden = layout.side.isEmpty
+        sideStripView.items = layout.side
+        guard !layout.side.isEmpty else { return }
+
+        let run = capsuleRun(layout.side.count)
+        let height = min(run, max(capsuleThickness, selection.height))
+        sideScrollView.frame = NSRect(
+            x: selection.maxX + 10,
+            y: selection.midY - height / 2,
+            width: capsuleThickness,
+            height: height
+        )
+        sideStripView.setFrameSize(NSSize(width: capsuleThickness, height: run))
+        sideScrollView.clampScrollOffset()
     }
 
     private func drawHandles(around rect: NSRect) {
@@ -483,13 +531,70 @@ final class ToolbarLayoutPreviewView: NSView {
             NSBezierPath(ovalIn: dot).fill()
         }
     }
+}
 
-    private func drawCapsule(
-        _ rect: NSRect,
-        items: [ToolbarItemID],
-        orientation: ToolbarView.Orientation
-    ) {
-        let body = NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7)
+private final class ToolbarPreviewScrollView: NSScrollView {
+    private let orientation: ToolbarView.Orientation
+
+    init(orientation: ToolbarView.Orientation) {
+        self.orientation = orientation
+        super.init(frame: .zero)
+        borderType = .noBorder
+        drawsBackground = false
+        autohidesScrollers = true
+        scrollerStyle = .overlay
+        hasHorizontalScroller = orientation.isHorizontal
+        hasVerticalScroller = orientation.isVertical
+        horizontalScrollElasticity = orientation.isHorizontal ? .allowed : .none
+        verticalScrollElasticity = orientation.isVertical ? .allowed : .none
+        usesPredominantAxisScrolling = false
+        wantsLayer = true
+        layer?.cornerRadius = 7
+        layer?.masksToBounds = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    func clampScrollOffset() {
+        guard let documentView else { return }
+        let maxX = max(0, documentView.frame.width - contentView.bounds.width)
+        let maxY = max(0, documentView.frame.height - contentView.bounds.height)
+        var origin = contentView.bounds.origin
+        origin.x = max(0, min(maxX, origin.x))
+        origin.y = max(0, min(maxY, origin.y))
+        contentView.scroll(to: origin)
+        reflectScrolledClipView(contentView)
+    }
+}
+
+private final class ToolbarPreviewStripView: NSView {
+    let orientation: ToolbarView.Orientation
+    var items: [ToolbarItemID] = [] {
+        didSet { needsDisplay = true }
+    }
+
+    private let miniButton: CGFloat = 15
+    private let miniGap: CGFloat = 3
+    private let miniPad: CGFloat = 6
+
+    init(orientation: ToolbarView.Orientation) {
+        self.orientation = orientation
+        super.init(frame: .zero)
+        wantsLayer = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var isFlipped: Bool { true }
+
+    override func draw(_ dirtyRect: NSRect) {
+        let body = NSBezierPath(roundedRect: bounds, xRadius: 7, yRadius: 7)
         NSColor(white: 0.12, alpha: 0.95).setFill()
         body.fill()
 
@@ -498,15 +603,14 @@ final class ToolbarLayoutPreviewView: NSView {
             switch orientation {
             case .horizontal:
                 slot = NSRect(
-                    x: rect.minX + miniPad + CGFloat(index) * (miniButton + miniGap),
-                    y: rect.minY + miniPad,
+                    x: miniPad + CGFloat(index) * (miniButton + miniGap),
+                    y: miniPad,
                     width: miniButton, height: miniButton
                 )
             case .vertical:
-                // First item at the top of the vertical capsule.
                 slot = NSRect(
-                    x: rect.minX + miniPad,
-                    y: rect.maxY - miniPad - miniButton - CGFloat(index) * (miniButton + miniGap),
+                    x: miniPad,
+                    y: miniPad + CGFloat(index) * (miniButton + miniGap),
                     width: miniButton, height: miniButton
                 )
             }
@@ -527,4 +631,13 @@ final class ToolbarLayoutPreviewView: NSView {
             }
         }
     }
+}
+
+private extension ToolbarView.Orientation {
+    var isHorizontal: Bool {
+        if case .horizontal = self { return true }
+        return false
+    }
+
+    var isVertical: Bool { !isHorizontal }
 }
