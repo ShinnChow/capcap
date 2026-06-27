@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var recordingCancelLocalMonitor: Any?
     private var recordingCancelGlobalMonitor: Any?
     private var recordingCancelRequested = false
+    private var historyPanelController: HistoryPanelController?
     private var countdownActive = false
     private var appInitialized = false
     private var suspendedEditDraft: OverlayWindowController.SuspendedEditDraft?
@@ -61,6 +62,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ImageMergeLauncher.shared.onContinueEditing = { [weak self] image in
             self?.continueEditingMergedImage(image)
         }
+        historyPanelController = HistoryPanelController()
 
         statusBarController = StatusBarController(
             onTakeScreenshot: { [weak self] in self?.handleTrigger() },
@@ -68,6 +70,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             onRecord: { [weak self] in self?.handleRecordingTrigger() },
             onMergeImages: { [weak self] in self?.handleImageMergeMenuTrigger() },
             onColorPicker: { [weak self] in self?.handleColorPickerTrigger() },
+            onOpenHistoryPanel: { [weak self] in self?.handleHistoryPanelTrigger() },
             onOpenSettings: { [weak self] in self?.openSettings() }
         )
         statusBarController.setMenuBarVisible(Defaults.showMenuBar)
@@ -228,6 +231,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             HotkeyManager.shared.unregisterColorPicker()
         }
+
+        if Defaults.hasCustomHistoryPanelHotkey {
+            HotkeyManager.shared.registerHistoryPanel { [weak self] in
+                self?.handleHistoryPanelTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterHistoryPanel()
+        }
     }
 
     private func unregisterNonScreenshotHotkeys() {
@@ -243,6 +254,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterImageMerge()
         HotkeyManager.shared.unregisterFullScreenScreenshot()
         HotkeyManager.shared.unregisterColorPicker()
+        HotkeyManager.shared.unregisterHistoryPanel()
+    }
+
+    private func handleHistoryPanelTrigger() {
+        historyPanelController?.toggleFromUserRequest()
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
@@ -817,6 +833,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func showSavedRecording(_ destination: URL) {
+        HistoryManager.shared.addFile(destination)
         let directoryPath = SaveDestination.displayPath(destination.deletingLastPathComponent())
         ToastWindow.show(message: L10n.recordingSaved(to: directoryPath))
         if Defaults.autoRevealSavedFiles {

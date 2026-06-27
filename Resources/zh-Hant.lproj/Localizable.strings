@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "保存最近截圖、取色和上傳結果，方便從選單列快速再次複製";
 "historyCacheLabel" = "歷史快取數量";
 "historyCacheHint" = "保留最近的截圖，方便快速再次複製";
+"historyPanelDisplayModeLabel" = "歷史面板顯示方式";
+"historyPanelDisplayModeHint" = "選擇透過彈窗或瀏海查看歷史截圖";
+"historyPanelDialogMode" = "彈窗";
+"historyPanelDialogModeHint" = "透過選單或快捷鍵開啟橫向預覽面板";
+"historyPanelNotchMode" = "瀏海";
+"historyPanelNotchModeHint" = "滑鼠進入螢幕頂部瀏海自動展開，移出後自動收起";
 "countdownLabel" = "倒數秒數";
 "countdownHint" = "按住 ⌥ Option 後連按兩下 ⌘，或按下截圖快捷鍵，即可先倒數再截圖，按 Esc 取消";
 "countdownSecondsSuffix" = "秒";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "在編輯器中按下後，將截圖以 PNG 儲存到設定的截圖儲存路徑。預設為 ⌘S";
 "previousHistoryImageShortcutHeader" = "上一張歷史截圖";
 "nextHistoryImageShortcutHeader" = "下一張歷史截圖";
+"historyPanelShortcutHeader" = "歷史面板";
+"historyPanelShortcutDefaultDisplay" = "未設定";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "快捷鍵已被使用";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "這組按鍵已用於儲存為檔案快捷鍵。請選擇其他組合";
 "shortcutConflictPreviousHistoryImage" = "這組按鍵已用於上一張歷史截圖快捷鍵。請選擇其他組合";
 "shortcutConflictNextHistoryImage" = "這組按鍵已用於下一張歷史截圖快捷鍵。請選擇其他組合";
+"shortcutConflictHistoryPanel" = "這組按鍵已用於歷史面板快捷鍵。請選擇其他組合";
 "shortcutConflictSelectedImageEdit" = "這組按鍵已用於編輯所選圖片快捷鍵。請選擇其他組合";
 "shortcutConflictClipboardImageEdit" = "這組按鍵已用於編輯剪貼簿圖片快捷鍵。請選擇其他組合";
 "shortcutConflictTextRecognition" = "這組按鍵已用於文字辨識快捷鍵。請選擇其他組合";
@@ -113,8 +122,18 @@
 "historyMenu" = "歷史記錄";
 "historyEmpty" = "尚無歷史記錄";
 "historyClear" = "清除歷史記錄";
+"historyCleared" = "歷史記錄已清除";
 "historyShowInFinder" = "在 Finder 中顯示";
 "historyCloudMarkdownTip" = "按住 ⌘ 並點選預覽圖，可直接複製 Markdown 格式圖片連結";
+"historyPanelMenu" = "歷史面板";
+"historyPanelFilterAll" = "全部";
+"historyPanelFilterScreenshots" = "截圖";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "顏色";
+"historyPanelCopyHint" = "點選複製";
+"historyPanelCopyDragHint" = "點選複製 · 拖曳到應用";
+"historyPanelEmpty" = "尚無歷史";
 
 /* Cursor chip */
 "dragToScreenshot" = "點選視窗或拖曳以截圖";

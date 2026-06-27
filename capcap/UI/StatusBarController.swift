@@ -1,5 +1,4 @@
 import AppKit
-import ImageIO
 
 class StatusBarController: NSObject {
     private var statusItem: NSStatusItem
@@ -8,6 +7,7 @@ class StatusBarController: NSObject {
     private let onRecord: () -> Void
     private let onMergeImages: () -> Void
     private let onColorPicker: () -> Void
+    private let onOpenHistoryPanel: () -> Void
     private let onOpenSettings: () -> Void
     private var historyMenu: NSMenu?
     private var historyItem: NSMenuItem?
@@ -18,6 +18,7 @@ class StatusBarController: NSObject {
         onRecord: @escaping () -> Void,
         onMergeImages: @escaping () -> Void,
         onColorPicker: @escaping () -> Void,
+        onOpenHistoryPanel: @escaping () -> Void,
         onOpenSettings: @escaping () -> Void
     ) {
         self.onTakeScreenshot = onTakeScreenshot
@@ -25,6 +26,7 @@ class StatusBarController: NSObject {
         self.onRecord = onRecord
         self.onMergeImages = onMergeImages
         self.onColorPicker = onColorPicker
+        self.onOpenHistoryPanel = onOpenHistoryPanel
         self.onOpenSettings = onOpenSettings
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -103,6 +105,12 @@ class StatusBarController: NSObject {
             historyItem = history
             menu.addItem(history)
 
+            let historyPanelItem = NSMenuItem(title: L10n.historyPanelMenu, action: #selector(openHistoryPanel), keyEquivalent: "")
+            historyPanelItem.target = self
+            historyPanelItem.image = Self.menuIcon(systemName: "rectangle.stack")
+            HotkeyManager.applyHistoryPanelToMenuItem(historyPanelItem)
+            menu.addItem(historyPanelItem)
+
             menu.addItem(NSMenuItem.separator())
         } else {
             historyMenu = nil
@@ -177,6 +185,10 @@ class StatusBarController: NSObject {
 
     @objc private func openSettings() {
         onOpenSettings()
+    }
+
+    @objc private func openHistoryPanel() {
+        onOpenHistoryPanel()
     }
 
     /// Builds the update menu item — its title and action track the current
@@ -357,6 +369,11 @@ class StatusBarController: NSObject {
             guard let image = NSImage(contentsOf: entry.fileURL) else { return }
             ClipboardManager.copyToClipboard(image: image)
             ToastWindow.show()
+        case .video:
+            let pasteboard = NSPasteboard.general
+            pasteboard.clearContents()
+            pasteboard.writeObjects([entry.fileURL as NSURL])
+            ToastWindow.show(message: L10n.copiedToClipboard)
         case .color(let hex):
             let pasteboard = NSPasteboard.general
             pasteboard.clearContents()
@@ -366,7 +383,9 @@ class StatusBarController: NSObject {
     }
 
     @objc private func clearHistoryClicked() {
-        HistoryManager.shared.clearAll()
+        HistoryManager.shared.clearAll {
+            ToastWindow.show(message: L10n.historyCleared)
+        }
     }
 
     @objc private func showHistoryInFinderClicked() {
@@ -456,7 +475,13 @@ private final class HistoryMenuRow: NSView {
         let previewBlock: (NSView, CGFloat) = {
             switch entry.kind {
             case .image:
-                return Self.makeImagePreview(url: entry.fileURL, maxWidth: contentWidth)
+                return Self.makeImagePreview(
+                    url: entry.fileURL,
+                    maxWidth: contentWidth,
+                    badgeKind: HistoryMediaBadgeKind(entry: entry)
+                )
+            case .video:
+                return Self.makeVideoPreview(url: entry.fileURL, maxWidth: contentWidth)
             case .color(let hex):
                 return Self.makeColorPreview(hex: hex, maxWidth: contentWidth)
             }
@@ -506,8 +531,32 @@ private final class HistoryMenuRow: NSView {
         }
     }
 
-    private static func makeImagePreview(url: URL, maxWidth: CGFloat) -> (NSView, CGFloat) {
+    private static func makeImagePreview(
+        url: URL,
+        maxWidth: CGFloat,
+        badgeKind: HistoryMediaBadgeKind?
+    ) -> (NSView, CGFloat) {
+        makeMediaPreview(url: url, maxWidth: maxWidth, badgeKind: badgeKind, isVideo: false)
+    }
+
+    private static func makeVideoPreview(url: URL, maxWidth: CGFloat) -> (NSView, CGFloat) {
+        makeMediaPreview(url: url, maxWidth: maxWidth, badgeKind: .mp4, isVideo: true)
+    }
+
+    private static func makeMediaPreview(
+        url: URL,
+        maxWidth: CGFloat,
+        badgeKind: HistoryMediaBadgeKind?,
+        isVideo: Bool
+    ) -> (NSView, CGFloat) {
         let previewHeight = Self.thumbnailHeight
+        let container = HistoryMenuPreviewView(frame: NSRect(
+            x: Self.horizontalPadding,
+            y: Self.verticalPadding,
+            width: maxWidth,
+            height: previewHeight
+        ))
+
         let imageView = NSImageView()
         imageView.isEditable = false
         imageView.imageScaling = .scaleProportionallyUpOrDown
@@ -516,41 +565,49 @@ private final class HistoryMenuRow: NSView {
         imageView.layer?.cornerRadius = 4
         imageView.layer?.masksToBounds = true
         imageView.layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.6).cgColor
-        imageView.frame = NSRect(
-            x: Self.horizontalPadding,
-            y: Self.verticalPadding,
-            width: maxWidth,
-            height: previewHeight
-        )
+        imageView.frame = container.bounds
+        container.addSubview(imageView)
 
-        let pixelSize = Int(max(maxWidth, previewHeight) * (NSScreen.main?.backingScaleFactor ?? 2.0))
-        DispatchQueue.global(qos: .userInitiated).async {
-            guard let cgImage = Self.makeThumbnail(url: url, pixelSize: pixelSize) else { return }
-            DispatchQueue.main.async { [weak imageView] in
-                guard let imageView = imageView else { return }
-                let size = NSSize(width: cgImage.width, height: cgImage.height)
-                imageView.image = NSImage(cgImage: cgImage, size: size)
-                imageView.layer?.backgroundColor = NSColor.clear.cgColor
-            }
+        if isVideo {
+            let config = NSImage.SymbolConfiguration(pointSize: 28, weight: .semibold)
+            let image = NSImage(systemSymbolName: "play.rectangle.fill", accessibilityDescription: L10n.historyPanelFilterMP4)?
+                .withSymbolConfiguration(config)
+            image?.isTemplate = true
+            imageView.image = image
+            imageView.contentTintColor = .secondaryLabelColor
         }
 
-        return (imageView, previewHeight)
-    }
+        if let badgeKind {
+            let badge = HistoryMediaBadgeView(kind: badgeKind)
+            let badgeSize = badge.intrinsicContentSize
+            badge.frame = NSRect(
+                x: maxWidth - badgeSize.width - 6,
+                y: previewHeight - badgeSize.height - 6,
+                width: badgeSize.width,
+                height: badgeSize.height
+            )
+            container.addSubview(badge)
+        }
 
-    private static func makeThumbnail(url: URL, pixelSize: Int) -> CGImage? {
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
-        let options: [CFString: Any] = [
-            kCGImageSourceCreateThumbnailFromImageAlways: true,
-            kCGImageSourceCreateThumbnailWithTransform: true,
-            kCGImageSourceShouldCacheImmediately: false,
-            kCGImageSourceThumbnailMaxPixelSize: pixelSize
-        ]
-        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
+        let pixelSize = Int(max(maxWidth, previewHeight) * (NSScreen.main?.backingScaleFactor ?? 2.0))
+        let completion: (HistoryImagePreview) -> Void = { [weak imageView] preview in
+            guard let imageView, let cgImage = preview.cgImage else { return }
+            let size = NSSize(width: cgImage.width, height: cgImage.height)
+            imageView.image = NSImage(cgImage: cgImage, size: size)
+            imageView.layer?.backgroundColor = NSColor.clear.cgColor
+        }
+        if isVideo {
+            HistoryImagePreviewLoader.shared.loadVideoFrame(url: url, pixelSize: pixelSize, completion: completion)
+        } else {
+            HistoryImagePreviewLoader.shared.load(url: url, pixelSize: pixelSize, completion: completion)
+        }
+
+        return (container, previewHeight)
     }
 
     private static func makeColorPreview(hex: String, maxWidth: CGFloat) -> (NSView, CGFloat) {
         let blockHeight = Self.colorSwatchSize
-        let container = NSView(frame: NSRect(
+        let container = HistoryMenuPreviewView(frame: NSRect(
             x: Self.horizontalPadding,
             y: Self.verticalPadding,
             width: maxWidth,
@@ -581,6 +638,17 @@ private final class HistoryMenuRow: NSView {
         container.addSubview(hexLabel)
 
         return (container, blockHeight)
+    }
+}
+
+private final class HistoryMenuPreviewView: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden, alphaValue > 0, bounds.contains(point) else { return nil }
+        return self
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        superview?.mouseUp(with: event)
     }
 }
 

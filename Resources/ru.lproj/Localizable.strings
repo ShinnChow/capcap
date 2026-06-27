@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "Сохраняет недавние снимки, выбранные цвета и ссылки загрузок для быстрого повторного копирования из строки меню";
 "historyCacheLabel" = "Размер кэша истории";
 "historyCacheHint" = "Хранит недавние снимки для быстрого повторного копирования";
+"historyPanelDisplayModeLabel" = "Отображение панели истории";
+"historyPanelDisplayModeHint" = "Выберите Dialog или вырез для истории снимков";
+"historyPanelDialogMode" = "Dialog";
+"historyPanelDialogModeHint" = "Открывает горизонтальную панель предпросмотра из меню или по сочетанию";
+"historyPanelNotchMode" = "Вырез";
+"historyPanelNotchModeHint" = "Наведение на верхний вырез раскрывает панель, выход скрывает";
 "countdownLabel" = "Секунды обратного отсчёта";
 "countdownHint" = "Удерживайте ⌥ Option, затем дважды нажмите ⌘ или сочетание для снимка, чтобы запустить обратный отсчёт перед захватом, Esc — отмена";
 "countdownSecondsSuffix" = "с";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "Нажмите в редакторе, чтобы сохранить снимок PNG в заданную папку снимков. По умолчанию — ⌘S";
 "previousHistoryImageShortcutHeader" = "Предыдущий снимок из истории";
 "nextHistoryImageShortcutHeader" = "Следующий снимок из истории";
+"historyPanelShortcutHeader" = "Панель истории";
+"historyPanelShortcutDefaultDisplay" = "Не задано";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Сочетание уже используется";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "Это сочетание клавиш уже назначено для сохранения в файл. Выберите другое";
 "shortcutConflictPreviousHistoryImage" = "Это сочетание клавиш уже назначено для предыдущего снимка из истории. Выберите другое";
 "shortcutConflictNextHistoryImage" = "Это сочетание клавиш уже назначено для следующего снимка из истории. Выберите другое";
+"shortcutConflictHistoryPanel" = "Это сочетание клавиш уже назначено для панели истории. Выберите другое";
 "shortcutConflictSelectedImageEdit" = "Это сочетание клавиш уже назначено для редактирования выбранного изображения. Выберите другое";
 "shortcutConflictClipboardImageEdit" = "Это сочетание клавиш уже назначено для редактирования изображения из буфера. Выберите другое";
 "shortcutConflictTextRecognition" = "Это сочетание клавиш уже назначено для распознавания текста. Выберите другое";
@@ -113,8 +122,18 @@
 "historyMenu" = "История";
 "historyEmpty" = "История пуста";
 "historyClear" = "Очистить историю";
+"historyCleared" = "История очищена";
 "historyShowInFinder" = "Показать в Finder";
 "historyCloudMarkdownTip" = "Удерживайте ⌘ и щёлкните миниатюру, чтобы скопировать ссылку на изображение в формате Markdown";
+"historyPanelMenu" = "Панель истории";
+"historyPanelFilterAll" = "Все";
+"historyPanelFilterScreenshots" = "Снимки";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "Цвета";
+"historyPanelCopyHint" = "Нажмите для копирования";
+"historyPanelCopyDragHint" = "Нажмите для копирования · перетащите в приложение";
+"historyPanelEmpty" = "История пуста";
 
 /* Cursor chip */
 "dragToScreenshot" = "Нажмите на окно или перетащите для снимка";

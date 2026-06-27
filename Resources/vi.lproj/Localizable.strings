@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "Lưu ảnh chụp gần đây, màu đã chọn và liên kết tải lên để sao chép lại nhanh từ thanh menu";
 "historyCacheLabel" = "Kích thước bộ nhớ lịch sử";
 "historyCacheHint" = "Giữ các ảnh chụp gần đây nhất để sao chép lại nhanh";
+"historyPanelDisplayModeLabel" = "Cách hiển thị bảng lịch sử";
+"historyPanelDisplayModeHint" = "Chọn Dialog hoặc notch để xem lịch sử ảnh chụp";
+"historyPanelDialogMode" = "Dialog";
+"historyPanelDialogModeHint" = "Mở bảng xem trước ngang từ menu hoặc phím tắt";
+"historyPanelNotchMode" = "Notch";
+"historyPanelNotchModeHint" = "Di chuột vào notch trên cùng để mở rộng, rời khỏi để ẩn";
 "countdownLabel" = "Số giây đếm ngược";
 "countdownHint" = "Giữ ⌥ Option rồi nhấn đúp ⌘ hoặc nhấn phím tắt chụp màn hình để bắt đầu đếm ngược trước khi chụp, Esc để hủy";
 "countdownSecondsSuffix" = "giây";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "Nhấn trong trình chỉnh sửa để lưu ảnh chụp dạng PNG vào thư mục ảnh chụp đã đặt. Mặc định là ⌘S";
 "previousHistoryImageShortcutHeader" = "Ảnh chụp lịch sử trước";
 "nextHistoryImageShortcutHeader" = "Ảnh chụp lịch sử tiếp theo";
+"historyPanelShortcutHeader" = "Bảng lịch sử";
+"historyPanelShortcutDefaultDisplay" = "Chưa đặt";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Phím tắt đã được dùng";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "Tổ hợp phím này đã được dùng cho phím tắt lưu vào tệp. Vui lòng chọn tổ hợp khác";
 "shortcutConflictPreviousHistoryImage" = "Tổ hợp phím này đã được dùng cho phím tắt ảnh chụp lịch sử trước. Vui lòng chọn tổ hợp khác";
 "shortcutConflictNextHistoryImage" = "Tổ hợp phím này đã được dùng cho phím tắt ảnh chụp lịch sử tiếp theo. Vui lòng chọn tổ hợp khác";
+"shortcutConflictHistoryPanel" = "Tổ hợp phím này đã được dùng cho phím tắt bảng lịch sử. Vui lòng chọn tổ hợp khác";
 "shortcutConflictSelectedImageEdit" = "Tổ hợp phím này đã được dùng cho phím tắt chỉnh sửa ảnh đã chọn. Vui lòng chọn tổ hợp khác";
 "shortcutConflictClipboardImageEdit" = "Tổ hợp phím này đã được dùng cho phím tắt chỉnh sửa ảnh từ clipboard. Vui lòng chọn tổ hợp khác";
 "shortcutConflictTextRecognition" = "Tổ hợp phím này đã được dùng cho phím tắt nhận dạng văn bản. Vui lòng chọn tổ hợp khác";
@@ -113,8 +122,18 @@
 "historyMenu" = "Lịch sử";
 "historyEmpty" = "Chưa có lịch sử";
 "historyClear" = "Xóa lịch sử";
+"historyCleared" = "Đã xóa lịch sử";
 "historyShowInFinder" = "Hiển thị trong Finder";
 "historyCloudMarkdownTip" = "Giữ ⌘ và nhấp vào ảnh xem trước để sao chép liên kết ảnh dạng Markdown";
+"historyPanelMenu" = "Bảng lịch sử";
+"historyPanelFilterAll" = "Tất cả";
+"historyPanelFilterScreenshots" = "Ảnh chụp";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "Màu";
+"historyPanelCopyHint" = "Nhấp để sao chép";
+"historyPanelCopyDragHint" = "Nhấp để sao chép · kéo vào ứng dụng";
+"historyPanelEmpty" = "Chưa có lịch sử";
 
 /* Cursor chip */
 "dragToScreenshot" = "Nhấp vào cửa sổ hoặc kéo để chụp";

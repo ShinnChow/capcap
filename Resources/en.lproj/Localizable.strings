@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "Store recent screenshots, picked colors, and upload links for quick reuse from the menu bar";
 "historyCacheLabel" = "History Cache Size";
 "historyCacheHint" = "Keep the most recent screenshots for quick re-copy";
+"historyPanelDisplayModeLabel" = "History Panel Display";
+"historyPanelDisplayModeHint" = "Choose Dialog or Notch for screenshot history";
+"historyPanelDialogMode" = "Dialog";
+"historyPanelDialogModeHint" = "Open a horizontal preview panel from the menu or shortcut";
+"historyPanelNotchMode" = "Notch";
+"historyPanelNotchModeHint" = "Hover near the top notch to expand, leave to hide";
 "countdownLabel" = "Countdown Seconds";
 "countdownHint" = "Hold ⌥ Option then double-tap ⌘ or press the screenshot shortcut to start a countdown before capture, Esc cancels";
 "countdownSecondsSuffix" = "s";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "Pressed inside the editor to save the screenshot as a PNG in the configured screenshot folder. Defaults to ⌘S";
 "previousHistoryImageShortcutHeader" = "Previous History Screenshot";
 "nextHistoryImageShortcutHeader" = "Next History Screenshot";
+"historyPanelShortcutHeader" = "History Panel";
+"historyPanelShortcutDefaultDisplay" = "Not Set";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Shortcut Already in Use";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "This key combination is already used by the Save to File shortcut. Please choose a different one";
 "shortcutConflictPreviousHistoryImage" = "This key combination is already used by the Previous History Screenshot shortcut. Please choose a different one";
 "shortcutConflictNextHistoryImage" = "This key combination is already used by the Next History Screenshot shortcut. Please choose a different one";
+"shortcutConflictHistoryPanel" = "This key combination is already used by the History Panel shortcut. Please choose a different one";
 "shortcutConflictSelectedImageEdit" = "This key combination is already used by the Edit Selected Image shortcut. Please choose a different one";
 "shortcutConflictClipboardImageEdit" = "This key combination is already used by the Edit Clipboard Image shortcut. Please choose a different one";
 "shortcutConflictTextRecognition" = "This key combination is already used by the Text Recognition shortcut. Please choose a different one";
@@ -113,8 +122,18 @@
 "historyMenu" = "History";
 "historyEmpty" = "No history yet";
 "historyClear" = "Clear History";
+"historyCleared" = "History cleared";
 "historyShowInFinder" = "Show in Finder";
 "historyCloudMarkdownTip" = "Hold ⌘ and click the preview image to copy a Markdown image link";
+"historyPanelMenu" = "History Panel";
+"historyPanelFilterAll" = "All";
+"historyPanelFilterScreenshots" = "Screenshots";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "Colors";
+"historyPanelCopyHint" = "Click to copy";
+"historyPanelCopyDragHint" = "Click to copy · drag into an app";
+"historyPanelEmpty" = "No history yet";
 
 /* Cursor chip */
 "dragToScreenshot" = "Click window or drag to screenshot";

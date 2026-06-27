@@ -2,6 +2,7 @@ import AppKit
 
 enum HistoryEntryKind {
     case image
+    case video
     case color(hex: String)
 }
 
@@ -41,7 +42,7 @@ final class HistoryManager {
         )
 
         if !Defaults.historyCacheEnabled {
-            removeAllEntries()
+            removeAllEntries(includeRecordingMedia: false)
         }
     }
 
@@ -62,7 +63,7 @@ final class HistoryManager {
         queue.async { [weak self] in
             guard let self else { return }
             if !Defaults.historyCacheEnabled {
-                self.removeAllEntries()
+                self.removeAllEntries(includeRecordingMedia: false)
             }
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
@@ -113,6 +114,33 @@ final class HistoryManager {
         }
     }
 
+    func addFile(_ sourceURL: URL) {
+        guard Defaults.historyCacheEnabled else { return }
+        let ext = sourceURL.pathExtension.lowercased()
+        guard ["gif", "mp4"].contains(ext) else { return }
+        queue.async { [weak self] in
+            guard let self else { return }
+            guard Defaults.historyCacheEnabled else { return }
+            let name = Self.filenameFormatter.string(from: Date()) + "." + ext
+            let url = self.directoryURL.appendingPathComponent(name)
+            let fm = FileManager.default
+            do {
+                try? fm.removeItem(at: url)
+                do {
+                    try fm.linkItem(at: sourceURL, to: url)
+                } catch {
+                    try fm.copyItem(at: sourceURL, to: url)
+                }
+            } catch {
+                return
+            }
+            self.pruneToLimit()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
+            }
+        }
+    }
+
     func entries() -> [HistoryEntry] {
         guard Defaults.historyCacheEnabled else { return [] }
         return loadEntries()
@@ -133,21 +161,54 @@ final class HistoryManager {
     }
 
     private func loadEntries() -> [HistoryEntry] {
+        let mediaEntries = loadRecordingDirectoryEntries()
+        let cachedEntries = loadCachedEntries()
+        let items = deduplicatedEntries(mediaEntries + cachedEntries)
+        return items.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func loadCachedEntries() -> [HistoryEntry] {
+        entries(in: directoryURL, allowedExtensions: ["png", "gif", "mp4", "color"])
+    }
+
+    private func loadRecordingDirectoryEntries() -> [HistoryEntry] {
+        recordingDirectoriesToScan().flatMap { directory in
+            entries(in: directory, allowedExtensions: ["gif", "mp4"])
+        }
+    }
+
+    private func recordingDirectoriesToScan() -> [URL] {
+        var directories: [URL] = []
+        var seen = Set<String>()
+        for directory in [Defaults.recordingSaveDirectory, Defaults.defaultRecordingSaveDirectory] {
+            let normalized = directory.standardizedFileURL
+            guard seen.insert(normalized.path).inserted else { continue }
+            directories.append(normalized)
+        }
+        return directories
+    }
+
+    private func entries(in directory: URL, allowedExtensions: Set<String>) -> [HistoryEntry] {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(
-            at: directoryURL,
-            includingPropertiesForKeys: [.contentModificationDateKey],
+            at: directory,
+            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
             return []
         }
-        let items: [HistoryEntry] = urls.compactMap { url in
+        return urls.compactMap { url in
             let ext = url.pathExtension.lowercased()
-            let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+            guard allowedExtensions.contains(ext) else { return nil }
+            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
+            guard values?.isRegularFile != false else { return nil }
+            let date = values?.contentModificationDate ?? .distantPast
             switch ext {
-            case "png":
+            case "png", "gif":
                 let cloudURL = Self.readCloudURLXattr(on: url)
                 return HistoryEntry(fileURL: url, createdAt: date, kind: .image, cloudURL: cloudURL)
+            case "mp4":
+                return HistoryEntry(fileURL: url, createdAt: date, kind: .video, cloudURL: nil)
             case "color":
                 guard let hex = try? String(contentsOf: url, encoding: .utf8) else { return nil }
                 let trimmed = hex.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -157,7 +218,15 @@ final class HistoryManager {
                 return nil
             }
         }
-        return items.sorted { $0.createdAt > $1.createdAt }
+    }
+
+    private func deduplicatedEntries(_ entries: [HistoryEntry]) -> [HistoryEntry] {
+        var seen = Set<String>()
+        return entries.compactMap { entry in
+            let identity = Self.fileIdentity(for: entry.fileURL)
+            guard seen.insert(identity).inserted else { return nil }
+            return entry
+        }
     }
 
     func image(for entry: HistoryEntry) -> NSImage? {
@@ -166,23 +235,24 @@ final class HistoryManager {
         return NSImage(contentsOf: entry.fileURL)
     }
 
-    func clearAll() {
+    func clearAll(completion: (() -> Void)? = nil) {
         queue.async { [weak self] in
             guard let self = self else { return }
-            self.removeAllEntries()
+            self.removeAllEntries(includeRecordingMedia: true)
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
+                completion?()
             }
         }
     }
 
     private func pruneToLimit() {
         guard Defaults.historyCacheEnabled else {
-            removeAllEntries()
+            removeAllEntries(includeRecordingMedia: false)
             return
         }
         let limit = Defaults.historyCacheLimit
-        let all = loadEntries()
+        let all = loadCachedEntries().sorted { $0.createdAt > $1.createdAt }
         guard all.count > limit else { return }
         let fm = FileManager.default
         for extra in all.dropFirst(limit) {
@@ -190,10 +260,43 @@ final class HistoryManager {
         }
     }
 
-    private func removeAllEntries() {
+    private func removeAllEntries(includeRecordingMedia: Bool) {
         let fm = FileManager.default
-        for url in storedHistoryFileURLs() {
+        for url in fileURLsToRemove(includeRecordingMedia: includeRecordingMedia) {
             try? fm.removeItem(at: url)
+        }
+    }
+
+    private func fileURLsToRemove(includeRecordingMedia: Bool) -> [URL] {
+        var urls = storedHistoryFileURLs()
+        if includeRecordingMedia {
+            urls += recordingDirectoriesToScan().flatMap { directory in
+                storedMediaFileURLs(in: directory)
+            }
+        }
+
+        var seen = Set<String>()
+        return urls.compactMap { url in
+            let normalized = url.standardizedFileURL
+            guard seen.insert(normalized.path).inserted else { return nil }
+            return normalized
+        }
+    }
+
+    private func storedMediaFileURLs(in directory: URL) -> [URL] {
+        let fm = FileManager.default
+        guard let urls = try? fm.contentsOfDirectory(
+            at: directory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+        return urls.filter { url in
+            let ext = url.pathExtension.lowercased()
+            guard ext == "gif" || ext == "mp4" else { return false }
+            let isRegularFile = (try? url.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) ?? true
+            return isRegularFile
         }
     }
 
@@ -208,7 +311,7 @@ final class HistoryManager {
         }
         return urls.filter { url in
             switch url.pathExtension.lowercased() {
-            case "png", "color":
+            case "png", "gif", "mp4", "color":
                 return true
             default:
                 return false
@@ -239,6 +342,16 @@ final class HistoryManager {
             guard let str = String(bytes: buf[0..<read], encoding: .utf8) else { return nil }
             return URL(string: str)
         }
+    }
+
+    private static func fileIdentity(for url: URL) -> String {
+        let normalized = url.standardizedFileURL
+        if let values = try? normalized.resourceValues(forKeys: [.fileResourceIdentifierKey, .volumeIdentifierKey]),
+           let fileIdentifier = values.fileResourceIdentifier {
+            let volumeIdentifier = values.volumeIdentifier.map { String(describing: $0) } ?? ""
+            return "file:\(volumeIdentifier):\(String(describing: fileIdentifier))"
+        }
+        return "path:\(normalized.path)"
     }
 
     private static let filenameFormatter: DateFormatter = {

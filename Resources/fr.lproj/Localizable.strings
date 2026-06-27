@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "Enregistre les captures récentes, les couleurs prélevées et les liens téléversés pour les recopier depuis la barre de menus";
 "historyCacheLabel" = "Taille du cache d'historique";
 "historyCacheHint" = "Conserve les captures récentes pour les recopier rapidement";
+"historyPanelDisplayModeLabel" = "Affichage du panneau d'historique";
+"historyPanelDisplayModeHint" = "Choisir Dialog ou Encoche pour l'historique des captures";
+"historyPanelDialogMode" = "Dialog";
+"historyPanelDialogModeHint" = "Ouvre un panneau d'aperçus horizontaux depuis le menu ou le raccourci";
+"historyPanelNotchMode" = "Encoche";
+"historyPanelNotchModeHint" = "Survolez l'encoche en haut pour développer, quittez pour masquer";
 "countdownLabel" = "Secondes du compte à rebours";
 "countdownHint" = "Maintenez ⌥ Option puis double-appuyez sur ⌘ ou utilisez le raccourci de capture pour lancer un compte à rebours avant la capture, Échap pour annuler";
 "countdownSecondsSuffix" = "s";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "Appuyez dessus dans l'éditeur pour enregistrer la capture en PNG dans le dossier de captures configuré. ⌘S par défaut";
 "previousHistoryImageShortcutHeader" = "Capture précédente de l'historique";
 "nextHistoryImageShortcutHeader" = "Capture suivante de l'historique";
+"historyPanelShortcutHeader" = "Panneau d'historique";
+"historyPanelShortcutDefaultDisplay" = "Non défini";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "Raccourci déjà utilisé";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "Cette combinaison de touches est déjà utilisée par le raccourci d'enregistrement dans un fichier. Veuillez en choisir une autre";
 "shortcutConflictPreviousHistoryImage" = "Cette combinaison de touches est déjà utilisée par le raccourci Capture précédente de l'historique. Veuillez en choisir une autre";
 "shortcutConflictNextHistoryImage" = "Cette combinaison de touches est déjà utilisée par le raccourci Capture suivante de l'historique. Veuillez en choisir une autre";
+"shortcutConflictHistoryPanel" = "Cette combinaison de touches est déjà utilisée par le raccourci Panneau d'historique. Veuillez en choisir une autre";
 "shortcutConflictSelectedImageEdit" = "Cette combinaison de touches est déjà utilisée par le raccourci Modifier l'image sélectionnée. Veuillez en choisir une autre";
 "shortcutConflictClipboardImageEdit" = "Cette combinaison de touches est déjà utilisée par le raccourci Modifier l'image du presse-papiers. Veuillez en choisir une autre";
 "shortcutConflictTextRecognition" = "Cette combinaison de touches est déjà utilisée par le raccourci Reconnaissance de texte. Veuillez en choisir une autre";
@@ -113,8 +122,18 @@
 "historyMenu" = "Historique";
 "historyEmpty" = "Aucun historique";
 "historyClear" = "Effacer l'historique";
+"historyCleared" = "Historique effacé";
 "historyShowInFinder" = "Afficher dans le Finder";
 "historyCloudMarkdownTip" = "Maintenez ⌘ et cliquez sur l'aperçu pour copier un lien d'image Markdown";
+"historyPanelMenu" = "Panneau d'historique";
+"historyPanelFilterAll" = "Tout";
+"historyPanelFilterScreenshots" = "Captures";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "Couleurs";
+"historyPanelCopyHint" = "Cliquez pour copier";
+"historyPanelCopyDragHint" = "Cliquez pour copier · faites glisser vers une app";
+"historyPanelEmpty" = "Aucun historique";
 
 /* Cursor chip */
 "dragToScreenshot" = "Cliquez sur une fenêtre ou faites glisser pour capturer";

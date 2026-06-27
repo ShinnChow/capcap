@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "保存最近截图、取色和上传结果，便于从菜单栏快速再次复制";
 "historyCacheLabel" = "历史缓存数量";
 "historyCacheHint" = "保留最近的截图数量，便于快速再次复制";
+"historyPanelDisplayModeLabel" = "历史面板显示方式";
+"historyPanelDisplayModeHint" = "选择通过弹窗或刘海查看历史截图";
+"historyPanelDialogMode" = "弹窗";
+"historyPanelDialogModeHint" = "通过菜单或快捷键打开横向预览面板";
+"historyPanelNotchMode" = "刘海";
+"historyPanelNotchModeHint" = "鼠标进入屏幕顶部刘海自动展开，移出后自动收起";
 "countdownLabel" = "倒计时秒数";
 "countdownHint" = "按住 ⌥ Option 后双击 ⌘ 或按截图快捷键，先弹出倒计时再截图，按 Esc 取消";
 "countdownSecondsSuffix" = "秒";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "在编辑器内按下后，把截图保存为 PNG 到设置的截图保存路径。默认 ⌘S";
 "previousHistoryImageShortcutHeader" = "上一张历史截图";
 "nextHistoryImageShortcutHeader" = "下一张历史截图";
+"historyPanelShortcutHeader" = "历史面板";
+"historyPanelShortcutDefaultDisplay" = "未设置";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "快捷键已被占用";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "该按键组合已被保存到文件快捷键占用，请换一个";
 "shortcutConflictPreviousHistoryImage" = "该按键组合已被上一张历史截图快捷键占用，请换一个";
 "shortcutConflictNextHistoryImage" = "该按键组合已被下一张历史截图快捷键占用，请换一个";
+"shortcutConflictHistoryPanel" = "该按键组合已被历史面板快捷键占用，请换一个";
 "shortcutConflictSelectedImageEdit" = "该按键组合已被编辑选中图片快捷键占用，请换一个";
 "shortcutConflictClipboardImageEdit" = "该按键组合已被编辑剪贴板图片快捷键占用，请换一个";
 "shortcutConflictTextRecognition" = "该按键组合已被文字识别快捷键占用，请换一个";
@@ -113,8 +122,18 @@
 "historyMenu" = "历史";
 "historyEmpty" = "暂无历史";
 "historyClear" = "清除历史";
+"historyCleared" = "历史已清除";
 "historyShowInFinder" = "在 Finder 中显示";
 "historyCloudMarkdownTip" = "按住 ⌘ 并点击预览图，可直接复制 Markdown 格式图片链接";
+"historyPanelMenu" = "历史面板";
+"historyPanelFilterAll" = "全部";
+"historyPanelFilterScreenshots" = "截图";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "颜色";
+"historyPanelCopyHint" = "点击复制";
+"historyPanelCopyDragHint" = "点击复制 · 拖拽到应用";
+"historyPanelEmpty" = "暂无历史";
 
 /* Cursor chip */
 "dragToScreenshot" = "点击窗口或拖动以截图";

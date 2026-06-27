@@ -18,6 +18,12 @@
 "historyCacheToggleHint" = "최근 스크린샷, 선택한 색상, 업로드 결과를 저장해 메뉴 막대에서 빠르게 다시 복사할 수 있습니다";
 "historyCacheLabel" = "기록 캐시 개수";
 "historyCacheHint" = "최근 스크린샷을 보관해 빠르게 다시 복사할 수 있습니다";
+"historyPanelDisplayModeLabel" = "기록 패널 표시 방식";
+"historyPanelDisplayModeHint" = "Dialog 또는 노치로 스크린샷 기록 보기";
+"historyPanelDialogMode" = "Dialog";
+"historyPanelDialogModeHint" = "메뉴 또는 단축키로 가로 미리보기 패널 열기";
+"historyPanelNotchMode" = "노치";
+"historyPanelNotchModeHint" = "상단 노치에 마우스를 올리면 펼쳐지고 벗어나면 자동으로 숨김";
 "countdownLabel" = "카운트다운 초";
 "countdownHint" = "⌥ Option 을 누른 채 ⌘ 를 두 번 누르거나 스크린샷 단축키를 누르면 캡처 전에 카운트다운이 시작되며 Esc 로 취소";
 "countdownSecondsSuffix" = "초";
@@ -82,6 +88,8 @@
 "fileSaveShortcutHint" = "편집기에서 누르면 설정된 스크린샷 폴더에 PNG로 저장합니다. 기본값은 ⌘S입니다";
 "previousHistoryImageShortcutHeader" = "이전 기록 스크린샷";
 "nextHistoryImageShortcutHeader" = "다음 기록 스크린샷";
+"historyPanelShortcutHeader" = "기록 패널";
+"historyPanelShortcutDefaultDisplay" = "설정 안 됨";
 
 /* Shortcut conflict */
 "shortcutConflictTitle" = "단축키가 이미 사용 중입니다";
@@ -94,6 +102,7 @@
 "shortcutConflictFileSave" = "이 키 조합은 이미 파일로 저장 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
 "shortcutConflictPreviousHistoryImage" = "이 키 조합은 이미 이전 기록 스크린샷 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
 "shortcutConflictNextHistoryImage" = "이 키 조합은 이미 다음 기록 스크린샷 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
+"shortcutConflictHistoryPanel" = "이 키 조합은 이미 기록 패널 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
 "shortcutConflictSelectedImageEdit" = "이 키 조합은 이미 선택 이미지 편집 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
 "shortcutConflictClipboardImageEdit" = "이 키 조합은 이미 클립보드 이미지 편집 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
 "shortcutConflictTextRecognition" = "이 키 조합은 이미 문자 인식 단축키에 사용되고 있습니다. 다른 조합을 선택하세요";
@@ -113,8 +122,18 @@
 "historyMenu" = "기록";
 "historyEmpty" = "기록 없음";
 "historyClear" = "기록 지우기";
+"historyCleared" = "기록 지움";
 "historyShowInFinder" = "Finder에 표시";
 "historyCloudMarkdownTip" = "⌘ 키를 누른 채 미리보기 이미지를 클릭하면 Markdown 형식 이미지 링크를 복사합니다";
+"historyPanelMenu" = "기록 패널";
+"historyPanelFilterAll" = "전체";
+"historyPanelFilterScreenshots" = "스크린샷";
+"historyPanelFilterGIF" = "GIF";
+"historyPanelFilterMP4" = "MP4";
+"historyPanelFilterColors" = "색상";
+"historyPanelCopyHint" = "클릭해 복사";
+"historyPanelCopyDragHint" = "클릭해 복사 · 앱으로 드래그";
+"historyPanelEmpty" = "기록 없음";
 
 /* Cursor chip */
 "dragToScreenshot" = "창을 클릭하거나 드래그하여 스크린샷";

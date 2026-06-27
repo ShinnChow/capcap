@@ -67,6 +67,8 @@ class SettingsView: NSView {
     private var historyCacheSwitch: NSSwitch!
     private var historyCacheSlider: SettingsTickSlider!
     private var historyCacheValueLabel: NSTextField!
+    private var historyPanelDialogSwitch: NSButton!
+    private var historyPanelNotchSwitch: NSButton!
     private var countdownSlider: SettingsTickSlider!
     private var countdownValueLabel: NSTextField!
     private var countdownTitleLabel: NSTextField!
@@ -200,6 +202,12 @@ class SettingsView: NSView {
     private var nextHistoryImageShortcutRestoreButton: NSButton!
     private var nextHistoryImageShortcutRecordingMonitor: Any?
 
+    private var historyPanelShortcutTitleLabel: NSTextField!
+    private var historyPanelShortcutField: NSTextField!
+    private var historyPanelShortcutSetButton: NSButton!
+    private var historyPanelShortcutRestoreButton: NSButton!
+    private var historyPanelShortcutRecordingMonitor: Any?
+
     private var shortcutResetButton: NSButton?
 
     // Permission badges
@@ -221,6 +229,12 @@ class SettingsView: NSView {
     private var historyCacheToggleHintLabel: NSTextField?
     private var historyCacheTitleLabel: NSTextField!
     private var historyCacheHintLabel: NSTextField!
+    private var historyPanelDisplayModeTitleLabel: NSTextField!
+    private var historyPanelDisplayModeHintLabel: NSTextField!
+    private var historyPanelDialogModeTitleLabel: NSTextField!
+    private var historyPanelDialogModeHintLabel: NSTextField?
+    private var historyPanelNotchModeTitleLabel: NSTextField!
+    private var historyPanelNotchModeHintLabel: NSTextField?
     private var permHeaderSubtitleLabel: NSTextField?
     private var accessibilityNameLabel: NSTextField!
     private var accessibilityDescLabel: NSTextField!
@@ -330,6 +344,7 @@ class SettingsView: NSView {
         cancelFileSaveShortcutRecording()
         cancelPreviousHistoryImageShortcutRecording()
         cancelNextHistoryImageShortcutRecording()
+        cancelHistoryPanelShortcutRecording()
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -408,6 +423,7 @@ class SettingsView: NSView {
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
         refreshNextHistoryImageShortcutDisplay()
+        refreshHistoryPanelShortcutDisplay()
     }
 
     // MARK: - Sidebar
@@ -754,6 +770,21 @@ class SettingsView: NSView {
         historyCacheHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
     }
 
+    private func updateHistoryPanelModeControlsEnabled() {
+        let on = Defaults.historyCacheEnabled
+        historyPanelDialogSwitch?.isEnabled = on
+        historyPanelNotchSwitch?.isEnabled = on
+        historyPanelDialogSwitch?.state = Defaults.historyPanelDialogEnabled ? .on : .off
+        historyPanelNotchSwitch?.state = Defaults.historyPanelNotchEnabled ? .on : .off
+
+        historyPanelDisplayModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
+        historyPanelDisplayModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
+        historyPanelDialogModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
+        historyPanelDialogModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
+        historyPanelNotchModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
+        historyPanelNotchModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
+    }
+
     private func refreshSavePathControls() {
         recordingSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.recordingSaveDirectory)
         screenshotSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.screenshotSaveDirectory)
@@ -838,6 +869,18 @@ class SettingsView: NSView {
         nextHistoryImageShortcutRestoreButton = nextHistoryImageShortcut.restoreButton
         stack.addArrangedSubview(nextHistoryImageShortcut.card)
         nextHistoryImageShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+
+        let historyPanelShortcut = buildShortcutCard(
+            title: L10n.historyPanelShortcutHeader,
+            setAction: #selector(historyPanelShortcutSetClicked),
+            restoreAction: #selector(historyPanelShortcutRestoreClicked)
+        )
+        historyPanelShortcutTitleLabel = historyPanelShortcut.title
+        historyPanelShortcutField = historyPanelShortcut.field
+        historyPanelShortcutSetButton = historyPanelShortcut.setButton
+        historyPanelShortcutRestoreButton = historyPanelShortcut.restoreButton
+        stack.addArrangedSubview(historyPanelShortcut.card)
+        historyPanelShortcut.card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Full-screen screenshot shortcut card
         let fullScreenScreenshotShortcut = buildShortcutCard(
@@ -1089,6 +1132,8 @@ class SettingsView: NSView {
         stack.addArrangedSubview(historyCard)
         historyCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        buildHistoryPanelModeCard(into: stack)
+
         // Countdown card
         let countdownCard = CardView()
         let countdownInner = NSStackView()
@@ -1137,6 +1182,60 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(countdownCard)
         countdownCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func buildHistoryPanelModeCard(into stack: NSStackView) {
+        let card = CardView()
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 10
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
+
+        historyPanelDisplayModeTitleLabel = primaryLabel(L10n.historyPanelDisplayModeLabel)
+        historyPanelDisplayModeHintLabel = secondaryLabel(L10n.historyPanelDisplayModeHint, wrapping: true)
+        inner.addArrangedSubview(historyPanelDisplayModeTitleLabel)
+        inner.addArrangedSubview(historyPanelDisplayModeHintLabel)
+        historyPanelDisplayModeHintLabel.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let divider = rowDivider()
+        inner.addArrangedSubview(divider)
+        divider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let dialog = makeRadioRow(
+            title: L10n.historyPanelDialogMode,
+            subtitle: L10n.historyPanelDialogModeHint,
+            isOn: Defaults.historyPanelDialogEnabled,
+            action: #selector(historyPanelDialogModeToggled(_:))
+        )
+        historyPanelDialogModeTitleLabel = dialog.title
+        historyPanelDialogModeHintLabel = dialog.subtitle
+        historyPanelDialogSwitch = dialog.button
+        inner.addArrangedSubview(dialog.row)
+        dialog.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let modeDivider = rowDivider()
+        inner.addArrangedSubview(modeDivider)
+        modeDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let notch = makeRadioRow(
+            title: L10n.historyPanelNotchMode,
+            subtitle: L10n.historyPanelNotchModeHint,
+            isOn: Defaults.historyPanelNotchEnabled,
+            action: #selector(historyPanelNotchModeToggled(_:))
+        )
+        historyPanelNotchModeTitleLabel = notch.title
+        historyPanelNotchModeHintLabel = notch.subtitle
+        historyPanelNotchSwitch = notch.button
+        inner.addArrangedSubview(notch.row)
+        notch.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        updateHistoryPanelModeControlsEnabled()
+
+        stack.addArrangedSubview(card)
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
     }
 
     private func buildSavePathCard(into stack: NSStackView) {
@@ -2195,6 +2294,60 @@ class SettingsView: NSView {
         return ToggleRowBuild(row: row, title: titleLabel, subtitle: subtitleLabel, toggle: sw)
     }
 
+    private struct RadioRowBuild {
+        let row: NSView
+        let title: NSTextField
+        let subtitle: NSTextField?
+        let button: NSButton
+    }
+
+    private func makeRadioRow(
+        title: String,
+        subtitle: String?,
+        isOn: Bool,
+        action: Selector
+    ) -> RadioRowBuild {
+        let row = NSView()
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = primaryLabel(title)
+        titleLabel.translatesAutoresizingMaskIntoConstraints = false
+
+        let textStack = NSStackView()
+        textStack.orientation = .vertical
+        textStack.alignment = .leading
+        textStack.spacing = 2
+        textStack.translatesAutoresizingMaskIntoConstraints = false
+        textStack.addArrangedSubview(titleLabel)
+
+        var subtitleLabel: NSTextField? = nil
+        if let subtitle {
+            let sub = secondaryLabel(subtitle, wrapping: true)
+            textStack.addArrangedSubview(sub)
+            subtitleLabel = sub
+        }
+
+        let button = NSButton(radioButtonWithTitle: "", target: self, action: action)
+        button.state = isOn ? .on : .off
+        button.controlSize = .small
+        button.translatesAutoresizingMaskIntoConstraints = false
+
+        row.addSubview(textStack)
+        row.addSubview(button)
+
+        NSLayoutConstraint.activate([
+            textStack.leadingAnchor.constraint(equalTo: row.leadingAnchor),
+            textStack.topAnchor.constraint(equalTo: row.topAnchor, constant: 10),
+            textStack.bottomAnchor.constraint(equalTo: row.bottomAnchor, constant: -10),
+            textStack.trailingAnchor.constraint(lessThanOrEqualTo: button.leadingAnchor, constant: -12),
+
+            button.trailingAnchor.constraint(equalTo: row.trailingAnchor),
+            button.centerYAnchor.constraint(equalTo: textStack.centerYAnchor),
+        ])
+
+        return RadioRowBuild(row: row, title: titleLabel, subtitle: subtitleLabel, button: button)
+    }
+
     private struct PermissionRowBuild {
         let row: NSView
         let name: NSTextField
@@ -2423,6 +2576,25 @@ class SettingsView: NSView {
     @objc private func historyCacheToggled(_ sender: NSSwitch) {
         Defaults.historyCacheEnabled = sender.state == .on
         updateHistoryCacheControlsEnabled()
+        updateHistoryPanelModeControlsEnabled()
+    }
+
+    @objc private func historyPanelDialogModeToggled(_ sender: NSButton) {
+        guard sender.state == .on else {
+            sender.state = .on
+            return
+        }
+        Defaults.historyPanelDialogEnabled = true
+        updateHistoryPanelModeControlsEnabled()
+    }
+
+    @objc private func historyPanelNotchModeToggled(_ sender: NSButton) {
+        guard sender.state == .on else {
+            sender.state = .on
+            return
+        }
+        Defaults.historyPanelNotchEnabled = true
+        updateHistoryPanelModeControlsEnabled()
     }
 
     @objc private func countdownSliderChanged(_ sender: SettingsTickSlider) {
@@ -2603,6 +2775,9 @@ class SettingsView: NSView {
         }
         if slot != .nextHistoryImage, nextHistoryImageShortcutRecordingMonitor != nil {
             cancelNextHistoryImageShortcutRecording()
+        }
+        if slot != .historyPanel, historyPanelShortcutRecordingMonitor != nil {
+            cancelHistoryPanelShortcutRecording()
         }
     }
 
@@ -4063,6 +4238,93 @@ class SettingsView: NSView {
         nextHistoryImageShortcutRestoreButton?.isHidden = !Defaults.hasCustomNextHistoryImageHotkey
     }
 
+    @objc private func historyPanelShortcutSetClicked() {
+        if historyPanelShortcutRecordingMonitor != nil {
+            cancelHistoryPanelShortcutRecording()
+            return
+        }
+        cancelShortcutRecordings(except: .historyPanel)
+        HotkeyManager.shared.beginRecording()
+        historyPanelShortcutSetButton.title = L10n.shortcutCancel
+        historyPanelShortcutField.stringValue = L10n.shortcutWaiting
+        historyPanelShortcutRestoreButton.isHidden = true
+
+        historyPanelShortcutRecordingMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self = self else { return event }
+            let modifiers = event.modifierFlags
+            let isEscape = event.keyCode == UInt16(kVK_Escape)
+            let activeModifierMask: NSEvent.ModifierFlags = [.command, .shift, .option, .control]
+            let pressedModifiers = modifiers.intersection(activeModifierMask)
+
+            if isEscape && pressedModifiers.isEmpty {
+                self.cancelHistoryPanelShortcutRecording()
+                return nil
+            }
+
+            var carbonMods: UInt32 = 0
+            if modifiers.contains(.command) { carbonMods |= UInt32(cmdKey) }
+            if modifiers.contains(.shift)   { carbonMods |= UInt32(shiftKey) }
+            if modifiers.contains(.option)  { carbonMods |= UInt32(optionKey) }
+            if modifiers.contains(.control) { carbonMods |= UInt32(controlKey) }
+            let keyCode = UInt32(event.keyCode)
+
+            if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
+                return nil
+            }
+
+            if let conflict = HotkeyManager.shared.hotkeyConflictMessage(
+                forKeyCode: keyCode, modifiers: carbonMods, assigningTo: .historyPanel) {
+                self.cancelHistoryPanelShortcutRecording()
+                self.presentHotkeyConflictAlert(conflict)
+                return nil
+            }
+
+            Defaults.historyPanelHotkeyKeyCode = Int(keyCode)
+            Defaults.historyPanelHotkeyModifiers = Int(carbonMods)
+            self.finishHistoryPanelShortcutRecording()
+            return nil
+        }
+    }
+
+    @objc private func historyPanelShortcutRestoreClicked() {
+        if historyPanelShortcutRecordingMonitor != nil {
+            cancelHistoryPanelShortcutRecording()
+        }
+        Defaults.clearHistoryPanelHotkey()
+        NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
+        refreshHistoryPanelShortcutDisplay()
+    }
+
+    private func finishHistoryPanelShortcutRecording() {
+        if let m = historyPanelShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            historyPanelShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshHistoryPanelShortcutDisplay()
+    }
+
+    func cancelHistoryPanelShortcutRecording() {
+        guard historyPanelShortcutRecordingMonitor != nil else { return }
+        if let m = historyPanelShortcutRecordingMonitor {
+            NSEvent.removeMonitor(m)
+            historyPanelShortcutRecordingMonitor = nil
+        }
+        HotkeyManager.shared.endRecording()
+        refreshHistoryPanelShortcutDisplay()
+    }
+
+    private func refreshHistoryPanelShortcutDisplay() {
+        historyPanelShortcutSetButton?.title = L10n.shortcutSet
+        if let display = HotkeyManager.currentHistoryPanelDisplayString() {
+            historyPanelShortcutField?.stringValue = display
+            historyPanelShortcutRestoreButton?.isHidden = false
+        } else {
+            historyPanelShortcutField?.stringValue = L10n.historyPanelShortcutDefaultDisplay
+            historyPanelShortcutRestoreButton?.isHidden = true
+        }
+    }
+
     @objc private func shortcutsResetClicked() {
         cancelShortcutRecording()
         cancelFullScreenScreenshotShortcutRecording()
@@ -4081,6 +4343,7 @@ class SettingsView: NSView {
         cancelFileSaveShortcutRecording()
         cancelPreviousHistoryImageShortcutRecording()
         cancelNextHistoryImageShortcutRecording()
+        cancelHistoryPanelShortcutRecording()
 
         Defaults.resetShortcutHotkeysToDefaults()
         NotificationCenter.default.post(name: .hotkeyDidChange, object: nil)
@@ -4101,6 +4364,7 @@ class SettingsView: NSView {
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
         refreshNextHistoryImageShortcutDisplay()
+        refreshHistoryPanelShortcutDisplay()
     }
 
     @objc private func updateLocalization() {
@@ -4135,6 +4399,15 @@ class SettingsView: NSView {
         historyCacheToggleHintLabel?.stringValue = L10n.historyCacheToggleHint
         historyCacheTitleLabel?.stringValue = L10n.historyCacheLabel
         historyCacheHintLabel?.stringValue = L10n.historyCacheHint
+        historyPanelDisplayModeTitleLabel?.stringValue = L10n.historyPanelDisplayModeLabel
+        historyPanelDisplayModeHintLabel?.stringValue = L10n.historyPanelDisplayModeHint
+        historyPanelDialogModeTitleLabel?.stringValue = L10n.historyPanelDialogMode
+        historyPanelDialogModeHintLabel?.stringValue = L10n.historyPanelDialogModeHint
+        historyPanelDialogSwitch?.state = Defaults.historyPanelDialogEnabled ? .on : .off
+        historyPanelNotchModeTitleLabel?.stringValue = L10n.historyPanelNotchMode
+        historyPanelNotchModeHintLabel?.stringValue = L10n.historyPanelNotchModeHint
+        historyPanelNotchSwitch?.state = Defaults.historyPanelNotchEnabled ? .on : .off
+        updateHistoryPanelModeControlsEnabled()
         windowShadowTitleLabel?.stringValue = L10n.windowShadowToggleLabel
         windowShadowSubtitleLabel?.stringValue = L10n.windowShadowToggleHint
         windowShadowSizeTitleLabel?.stringValue = L10n.windowShadowSizeLabel
@@ -4176,6 +4449,8 @@ class SettingsView: NSView {
         previousHistoryImageShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         nextHistoryImageShortcutTitleLabel?.stringValue = L10n.nextHistoryImageShortcutHeader
         nextHistoryImageShortcutRestoreButton?.toolTip = L10n.shortcutRestore
+        historyPanelShortcutTitleLabel?.stringValue = L10n.historyPanelShortcutHeader
+        historyPanelShortcutRestoreButton?.toolTip = L10n.shortcutRestore
         shortcutResetButton?.title = L10n.toolbarSettingsReset
         aboutTaglineLabel?.stringValue = L10n.aboutTagline
         aboutLicenseTitleLabel?.stringValue = L10n.aboutLicense
@@ -4211,6 +4486,7 @@ class SettingsView: NSView {
         refreshFileSaveShortcutDisplay()
         refreshPreviousHistoryImageShortcutDisplay()
         refreshNextHistoryImageShortcutDisplay()
+        refreshHistoryPanelShortcutDisplay()
         refreshBottomAction()
         accessibilityBadge?.refreshTitle()
         screenRecordingBadge?.refreshTitle()
