@@ -234,7 +234,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         if Defaults.hasCustomHistoryPanelHotkey {
             HotkeyManager.shared.registerHistoryPanel { [weak self] in
-                self?.handleHistoryPanelTrigger()
+                self?.handleHistoryPanelTrigger(fromShortcut: true)
             }
         } else {
             HotkeyManager.shared.unregisterHistoryPanel()
@@ -257,8 +257,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         HotkeyManager.shared.unregisterHistoryPanel()
     }
 
-    private func handleHistoryPanelTrigger() {
-        historyPanelController?.toggleFromUserRequest()
+    private func handleHistoryPanelTrigger(fromShortcut: Bool = false) {
+        historyPanelController?.toggleFromUserRequest(openedByShortcut: fromShortcut)
     }
 
     /// KeyMonitor entry point for plain double-tap ⌘. While an overlay is
