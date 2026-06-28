@@ -33,14 +33,14 @@ final class HistoryPanelController {
         notchController?.close()
     }
 
-    func toggleFromUserRequest() {
+    func toggleFromUserRequest(openedByShortcut: Bool = false) {
         guard Defaults.historyCacheEnabled else { return }
         if Defaults.historyPanelDialogEnabled {
             toggleDialog()
             return
         }
         if Defaults.historyPanelNotchEnabled {
-            ensureNotchController().toggleFromUserRequest()
+            ensureNotchController().toggleFromUserRequest(openedByShortcut: openedByShortcut)
         }
     }
 
@@ -207,6 +207,8 @@ private final class HistoryNotchWindowController: NSWindowController {
     private var collapseWorkItem: DispatchWorkItem?
     private var isCollapsing = false
     private var suppressCollapseUntil: Date?
+    private var waitsForShortcutOpenedMouseExit = false
+    private var shortcutOpenedMouseHasEnteredHoverRegion = false
 
     private let expandDelay: TimeInterval = 0.03
     private let collapseDelay: TimeInterval = 0.35
@@ -267,18 +269,20 @@ private final class HistoryNotchWindowController: NSWindowController {
         super.close()
     }
 
-    func toggleFromUserRequest() {
+    func toggleFromUserRequest(openedByShortcut: Bool = false) {
         if rootView.isExpanded {
             collapse()
         } else {
-            expand()
+            expand(waitingForMouseExit: openedByShortcut)
         }
     }
 
-    private func expand() {
+    private func expand(waitingForMouseExit: Bool = false) {
         guard !rootView.isExpanded else { return }
         isCollapsing = false
         cancelCollapse()
+        waitsForShortcutOpenedMouseExit = waitingForMouseExit
+        shortcutOpenedMouseHasEnteredHoverRegion = false
         window?.ignoresMouseEvents = false
         window?.orderFrontRegardless()
         rootView.setExpanded(true, animated: true)
@@ -287,6 +291,8 @@ private final class HistoryNotchWindowController: NSWindowController {
     private func collapse() {
         guard rootView.isExpanded else { return }
         cancelExpand()
+        waitsForShortcutOpenedMouseExit = false
+        shortcutOpenedMouseHasEnteredHoverRegion = false
         rootView.setExpanded(false, animated: true)
         isCollapsing = true
         DispatchQueue.main.asyncAfter(deadline: .now() + collapseAnimationDuration) { [weak self] in
@@ -327,18 +333,16 @@ private final class HistoryNotchWindowController: NSWindowController {
         guard let window else { return }
         let mouse = NSEvent.mouseLocation
         if rootView.isExpanded {
-            let visibleHeight = rootView.visibleHeight > 0 ? rootView.visibleHeight : window.frame.height
-            let visibleRect = NSRect(
-                x: window.frame.minX,
-                y: window.frame.maxY - visibleHeight,
-                width: window.frame.width,
-                height: visibleHeight
-            )
-            let rect = visibleRect.insetBy(dx: -30, dy: -15)
+            let rect = expandedHoverRect(in: window)
             if rect.contains(mouse) {
+                shortcutOpenedMouseHasEnteredHoverRegion = true
                 cancelCollapse()
                 rootView.syncHoverStateWithCurrentMouse()
             } else {
+                if waitsForShortcutOpenedMouseExit, !shortcutOpenedMouseHasEnteredHoverRegion {
+                    cancelCollapse()
+                    return
+                }
                 scheduleCollapse()
             }
         } else {
@@ -354,6 +358,17 @@ private final class HistoryNotchWindowController: NSWindowController {
                 cancelExpand()
             }
         }
+    }
+
+    private func expandedHoverRect(in window: NSWindow) -> NSRect {
+        let visibleHeight = rootView.visibleHeight > 0 ? rootView.visibleHeight : window.frame.height
+        let visibleRect = NSRect(
+            x: window.frame.minX,
+            y: window.frame.maxY - visibleHeight,
+            width: window.frame.width,
+            height: visibleHeight
+        )
+        return visibleRect.insetBy(dx: -30, dy: -15)
     }
 
     private func scheduleExpand() {
