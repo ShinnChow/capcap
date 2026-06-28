@@ -1293,6 +1293,18 @@ private final class HistoryPanelCenteredTextView: NSView {
         didSet { needsDisplay = true }
     }
 
+    var verticalInset: CGFloat = 0 {
+        didSet { needsDisplay = true }
+    }
+
+    var lineBreakMode: NSLineBreakMode = .byTruncatingTail {
+        didSet { needsDisplay = true }
+    }
+
+    var minimumFontSize: CGFloat = 0 {
+        didSet { needsDisplay = true }
+    }
+
     override var toolTip: String? {
         didSet { super.toolTip = toolTip }
     }
@@ -1312,28 +1324,75 @@ private final class HistoryPanelCenteredTextView: NSView {
         super.draw(dirtyRect)
         guard !stringValue.isEmpty else { return }
 
+        let textBounds = bounds.insetBy(dx: horizontalInset, dy: verticalInset)
+        guard textBounds.width > 0, textBounds.height > 0 else { return }
+
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = alignment
-        paragraph.lineBreakMode = .byTruncatingTail
+        paragraph.lineBreakMode = lineBreakMode
 
+        let fittedFont = fontFitting(in: textBounds.size, paragraphStyle: paragraph)
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: font,
+            .font: fittedFont,
             .foregroundColor: textColor,
             .paragraphStyle: paragraph
         ]
         let attributed = NSAttributedString(string: stringValue, attributes: attributes)
-        let textBounds = bounds.insetBy(dx: horizontalInset, dy: 0)
-        let measured = attributed.boundingRect(
-            with: NSSize(width: textBounds.width, height: .greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading]
-        )
+        let measured = measuredRect(for: attributed, fitting: textBounds.size)
+        let textHeight = min(ceil(measured.height), textBounds.height)
         let textRect = NSRect(
             x: textBounds.minX,
-            y: textBounds.midY - ceil(measured.height) / 2,
+            y: textBounds.midY - textHeight / 2,
             width: textBounds.width,
-            height: ceil(measured.height)
+            height: textHeight
         )
+
+        NSGraphicsContext.saveGraphicsState()
+        NSBezierPath(rect: textBounds).addClip()
         attributed.draw(with: textRect, options: [.usesLineFragmentOrigin, .usesFontLeading])
+        NSGraphicsContext.restoreGraphicsState()
+    }
+
+    private func fontFitting(in size: NSSize, paragraphStyle: NSParagraphStyle) -> NSFont {
+        guard minimumFontSize > 0, lineBreakMode != .byWordWrapping, lineBreakMode != .byCharWrapping else {
+            return font
+        }
+
+        var pointSize = font.pointSize
+        while pointSize > minimumFontSize {
+            let candidate = font.withPointSize(pointSize)
+            let attributed = NSAttributedString(
+                string: stringValue,
+                attributes: [.font: candidate, .paragraphStyle: paragraphStyle]
+            )
+            let measured = measuredRect(for: attributed, fitting: size)
+            if ceil(measured.width) <= size.width, ceil(measured.height) <= size.height {
+                return candidate
+            }
+            pointSize -= 0.5
+        }
+
+        return font.withPointSize(minimumFontSize)
+    }
+
+    private func measuredRect(for attributed: NSAttributedString, fitting size: NSSize) -> NSRect {
+        let measuringSize: NSSize
+        switch lineBreakMode {
+        case .byWordWrapping, .byCharWrapping:
+            measuringSize = NSSize(width: size.width, height: .greatestFiniteMagnitude)
+        default:
+            measuringSize = NSSize(width: .greatestFiniteMagnitude, height: size.height)
+        }
+        return attributed.boundingRect(
+            with: measuringSize,
+            options: [.usesLineFragmentOrigin, .usesFontLeading]
+        )
+    }
+}
+
+private extension NSFont {
+    func withPointSize(_ pointSize: CGFloat) -> NSFont {
+        NSFont(descriptor: fontDescriptor, size: pointSize) ?? self
     }
 }
 
@@ -1601,7 +1660,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private let imageView = NSImageView()
     private let overlayLabel = HistoryPanelCenteredTextView()
     private let badgeView = HistoryMediaBadgeView()
-    private let metaLabel = NSTextField(labelWithString: "")
+    private let metaLabel = HistoryPanelCenteredTextView()
     private var trackingArea: NSTrackingArea?
     private var previewRequest: HistoryImagePreviewRequest?
     private var mouseDownPoint: NSPoint?
@@ -1637,14 +1696,17 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         imageView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.24).cgColor
         addSubview(imageView)
 
-        overlayLabel.stringValue = supportsDrag ? L10n.historyPanelCopyDragHint : L10n.historyPanelCopyHint
+        overlayLabel.stringValue = Self.overlayHint(supportsDrag: supportsDrag)
         overlayLabel.font = NSFont.systemFont(ofSize: presentation == .dialog ? 13 : 12, weight: .bold)
         overlayLabel.textColor = .white
         overlayLabel.alignment = .center
         overlayLabel.horizontalInset = 10
+        overlayLabel.verticalInset = 8
+        overlayLabel.lineBreakMode = .byWordWrapping
         overlayLabel.alphaValue = 0
         overlayLabel.layer?.cornerRadius = 5
         overlayLabel.layer?.cornerCurve = .continuous
+        overlayLabel.layer?.masksToBounds = true
         overlayLabel.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.56).cgColor
         addSubview(overlayLabel)
 
@@ -1659,6 +1721,8 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         metaLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
         metaLabel.textColor = NSColor.white.withAlphaComponent(0.56)
         metaLabel.alignment = .center
+        metaLabel.horizontalInset = 0
+        metaLabel.minimumFontSize = 7.5
         addSubview(metaLabel)
     }
 
@@ -1775,13 +1839,36 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         let draggingImage = imageView.image
             ?? NSImage(systemSymbolName: "photo", accessibilityDescription: nil)
             ?? NSImage(size: imageView.bounds.size)
-        item.setDraggingFrame(imageView.frame, contents: draggingImage)
+        item.setDraggingFrame(draggingFrame(for: draggingImage), contents: draggingImage)
         beginDraggingSession(with: [item], event: event, source: self)
+    }
+
+    private func draggingFrame(for image: NSImage) -> NSRect {
+        let imageSize = image.size
+        let bounds = imageView.bounds
+        guard imageSize.width > 0, imageSize.height > 0, bounds.width > 0, bounds.height > 0 else {
+            return imageView.frame
+        }
+
+        let scale = min(bounds.width / imageSize.width, bounds.height / imageSize.height)
+        let fittedSize = NSSize(width: imageSize.width * scale, height: imageSize.height * scale)
+        let fittedRect = NSRect(
+            x: bounds.midX - fittedSize.width / 2,
+            y: bounds.midY - fittedSize.height / 2,
+            width: fittedSize.width,
+            height: fittedSize.height
+        )
+        return imageView.convert(fittedRect, to: self)
     }
 
     private var supportsDrag: Bool {
         guard case .color = entry.kind else { return true }
         return false
+    }
+
+    private static func overlayHint(supportsDrag: Bool) -> String {
+        guard supportsDrag else { return L10n.historyPanelCopyHint }
+        return L10n.historyPanelCopyDragHint.replacingOccurrences(of: " · ", with: "\n")
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -1893,8 +1980,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
+        formatter.setLocalizedDateFormatFromTemplate("MdHm")
         return formatter
     }()
 }

@@ -57,8 +57,7 @@ struct HistoryImagePreview {
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateStyle = .short
-        formatter.timeStyle = .short
+        formatter.setLocalizedDateFormatFromTemplate("MdHm")
         return formatter
     }()
 

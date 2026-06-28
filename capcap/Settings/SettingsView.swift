@@ -5190,30 +5190,18 @@ private final class HistoryPanelModePreviewView: NSView {
 
         NSColor(calibratedRed: 0.14, green: 0.15, blue: 0.18, alpha: 1).setFill()
         backdrop.fill()
-        drawScreenGuide(in: rect)
         ctx.cgContext.setAlpha(isEffectEnabled ? 1 : 0.42)
         switch mode {
         case .dialog:
             drawDialogPreview(in: rect.insetBy(dx: 24, dy: 18))
         case .notch:
-            drawNotchPreview(in: rect.insetBy(dx: 24, dy: 14))
+            drawNotchPreview(in: rect.insetBy(dx: 24, dy: 0))
         }
         ctx.restoreGraphicsState()
 
         NSColor.white.withAlphaComponent(isEffectEnabled ? 0.08 : 0.04).setStroke()
         backdrop.lineWidth = 1
         backdrop.stroke()
-    }
-
-    private func drawScreenGuide(in rect: NSRect) {
-        let topEdge = NSRect(
-            x: rect.minX + 18,
-            y: rect.maxY - 20,
-            width: rect.width - 36,
-            height: 1
-        )
-        NSColor.white.withAlphaComponent(0.07).setFill()
-        NSBezierPath(rect: topEdge).fill()
     }
 
     private func drawDialogPreview(in rect: NSRect) {
@@ -5231,35 +5219,36 @@ private final class HistoryPanelModePreviewView: NSView {
     }
 
     private func drawNotchPreview(in rect: NSRect) {
-        let sheetWidth = min(rect.width * 0.88, 620)
-        let sheetHeight = min(rect.height - 34, 74)
-        let notchWidth = min(sheetWidth * 0.42, 230)
-        let notchHeight: CGFloat = 28
-        let notchRect = NSRect(
-            x: rect.midX - notchWidth / 2,
-            y: rect.maxY - notchHeight,
-            width: notchWidth,
-            height: notchHeight
-        )
-        let sheetRect = NSRect(
-            x: rect.midX - sheetWidth / 2,
-            y: notchRect.minY - sheetHeight + 4,
-            width: sheetWidth,
-            height: sheetHeight
+        let panelWidth = min(rect.width * 0.88, 620)
+        let panelHeight = min(rect.height * 0.78, 106)
+        let panelRect = NSRect(
+            x: rect.midX - panelWidth / 2,
+            y: rect.maxY - panelHeight,
+            width: panelWidth,
+            height: panelHeight
         )
 
-        drawFloatingSurface(in: sheetRect, radius: 16, shadow: false)
+        drawTopAttachedSurface(in: panelRect)
 
         surfaceColor.setFill()
-        notchPath(in: notchRect, flare: 14, bottomRadius: 12).fill()
-
+        let indicator = NSRect(
+            x: panelRect.midX - 5,
+            y: panelRect.maxY - 30,
+            width: 10,
+            height: 10
+        )
         accentBlue.setFill()
-        let mark = NSRect(x: notchRect.minX + 28, y: notchRect.midY - 5, width: 10, height: 10)
-        NSBezierPath(rect: NSRect(x: mark.midX - 1.5, y: mark.minY, width: 3, height: mark.height)).fill()
-        NSBezierPath(rect: NSRect(x: mark.minX, y: mark.midY - 1.5, width: mark.width, height: 3)).fill()
+        NSBezierPath(rect: NSRect(x: indicator.midX - 1.5, y: indicator.minY, width: 3, height: indicator.height)).fill()
+        NSBezierPath(rect: NSRect(x: indicator.minX, y: indicator.midY - 1.5, width: indicator.width, height: 3)).fill()
 
-        drawToolbarLine(in: sheetRect)
-        drawTileRow(in: sheetRect.insetBy(dx: 16, dy: 14), count: 5)
+        let contentRect = NSRect(
+            x: panelRect.minX,
+            y: panelRect.minY,
+            width: panelRect.width,
+            height: max(68, panelRect.height - 20)
+        )
+        drawToolbarLine(in: contentRect)
+        drawTileRow(in: contentRect.insetBy(dx: 16, dy: 14), count: 5)
     }
 
     private func drawFloatingSurface(in rect: NSRect, radius: CGFloat, shadow: Bool) {
@@ -5277,6 +5266,16 @@ private final class HistoryPanelModePreviewView: NSView {
         surfaceColor.withAlphaComponent(0.92).setFill()
         path.fill()
         ctx.restoreGraphicsState()
+
+        NSColor.white.withAlphaComponent(0.14).setStroke()
+        path.lineWidth = 1
+        path.stroke()
+    }
+
+    private func drawTopAttachedSurface(in rect: NSRect) {
+        let path = notchPath(in: rect, flare: 14, bottomRadius: 18)
+        surfaceColor.withAlphaComponent(0.92).setFill()
+        path.fill()
 
         NSColor.white.withAlphaComponent(0.14).setStroke()
         path.lineWidth = 1
