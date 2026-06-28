@@ -5378,7 +5378,6 @@ private final class HistoryPanelModeOptionView: NSControl {
         didSet { applyAppearance() }
     }
 
-    private let swatch: HistoryPanelModeSwatchView
     private let checkView = NSImageView()
     private var trackingArea: NSTrackingArea?
     private var isHovered = false {
@@ -5396,7 +5395,6 @@ private final class HistoryPanelModeOptionView: NSControl {
         self.mode = mode
         self.title = NSTextField(labelWithString: title)
         self.subtitle = NSTextField(wrappingLabelWithString: subtitle)
-        self.swatch = HistoryPanelModeSwatchView(mode: mode)
         super.init(frame: .zero)
         commonInit()
     }
@@ -5411,14 +5409,17 @@ private final class HistoryPanelModeOptionView: NSControl {
         layer?.cornerRadius = 13
         layer?.cornerCurve = .continuous
 
-        swatch.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(swatch)
-
         title.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        title.isEditable = false
+        title.isSelectable = false
+        title.refusesFirstResponder = true
         title.translatesAutoresizingMaskIntoConstraints = false
         addSubview(title)
 
         subtitle.font = NSFont.systemFont(ofSize: 11, weight: .medium)
+        subtitle.isEditable = false
+        subtitle.isSelectable = false
+        subtitle.refusesFirstResponder = true
         subtitle.lineBreakMode = .byWordWrapping
         subtitle.translatesAutoresizingMaskIntoConstraints = false
         addSubview(subtitle)
@@ -5430,12 +5431,7 @@ private final class HistoryPanelModeOptionView: NSControl {
         addSubview(checkView)
 
         NSLayoutConstraint.activate([
-            heightAnchor.constraint(greaterThanOrEqualToConstant: 116),
-
-            swatch.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            swatch.topAnchor.constraint(equalTo: topAnchor, constant: 14),
-            swatch.widthAnchor.constraint(equalToConstant: 72),
-            swatch.heightAnchor.constraint(equalToConstant: 40),
+            heightAnchor.constraint(greaterThanOrEqualToConstant: 92),
 
             checkView.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -14),
             checkView.topAnchor.constraint(equalTo: topAnchor, constant: 18),
@@ -5443,7 +5439,7 @@ private final class HistoryPanelModeOptionView: NSControl {
             checkView.heightAnchor.constraint(equalToConstant: 18),
 
             title.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
-            title.topAnchor.constraint(equalTo: swatch.bottomAnchor, constant: 12),
+            title.topAnchor.constraint(equalTo: topAnchor, constant: 18),
             title.trailingAnchor.constraint(lessThanOrEqualTo: checkView.leadingAnchor, constant: -8),
 
             subtitle.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 14),
@@ -5454,6 +5450,12 @@ private final class HistoryPanelModeOptionView: NSControl {
 
         setContentCompressionResistancePriority(.required, for: .vertical)
         applyAppearance()
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        let result = super.hitTest(point)
+        guard let result else { return nil }
+        return result === self ? result : self
     }
 
     override func updateTrackingAreas() {
@@ -5516,99 +5518,6 @@ private final class HistoryPanelModeOptionView: NSControl {
         subtitle.textColor = NSColor.white.withAlphaComponent(isEnabled ? 0.58 : 0.35)
         checkView.isHidden = !isSelected
         checkView.contentTintColor = accentBlue.withAlphaComponent(enabledAlpha)
-        swatch.alphaValue = enabledAlpha
-        swatch.needsDisplay = true
-    }
-}
-
-private final class HistoryPanelModeSwatchView: NSView {
-    var mode: HistoryPanelSettingsMode {
-        didSet { needsDisplay = true }
-    }
-
-    private let accentGreen = NSColor(
-        calibratedRed: 0x29 / 255.0,
-        green: 0xE6 / 255.0,
-        blue: 0xA7 / 255.0,
-        alpha: 1.0
-    )
-
-    init(mode: HistoryPanelSettingsMode) {
-        self.mode = mode
-        super.init(frame: .zero)
-        wantsLayer = true
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let outer = bounds.insetBy(dx: 0.5, dy: 0.5)
-        let outerPath = NSBezierPath(roundedRect: outer, xRadius: 7, yRadius: 7)
-        NSColor.black.withAlphaComponent(0.9).setFill()
-        outerPath.fill()
-        NSColor.white.withAlphaComponent(0.16).setStroke()
-        outerPath.lineWidth = 1
-        outerPath.stroke()
-
-        switch mode {
-        case .dialog:
-            drawDialogSwatch(in: outer.insetBy(dx: 7, dy: 8))
-        case .notch:
-            drawNotchSwatch(in: outer.insetBy(dx: 6, dy: 6))
-        }
-    }
-
-    private func drawDialogSwatch(in rect: NSRect) {
-        let panel = NSRect(
-            x: rect.minX + 3,
-            y: rect.midY - rect.height * 0.28,
-            width: rect.width - 6,
-            height: rect.height * 0.56
-        )
-        let panelPath = NSBezierPath(roundedRect: panel, xRadius: 4, yRadius: 4)
-        NSColor.white.withAlphaComponent(0.18).setFill()
-        panelPath.fill()
-        accentGreen.withAlphaComponent(0.55).setStroke()
-        panelPath.lineWidth = 1
-        panelPath.stroke()
-        for index in 0..<3 {
-            let bar = NSRect(
-                x: panel.minX + 6 + CGFloat(index) * 13,
-                y: panel.midY - 3,
-                width: 8,
-                height: 6
-            )
-            NSColor.white.withAlphaComponent(0.28 + CGFloat(index) * 0.08).setFill()
-            NSBezierPath(roundedRect: bar, xRadius: 2, yRadius: 2).fill()
-        }
-    }
-
-    private func drawNotchSwatch(in rect: NSRect) {
-        let body = NSRect(
-            x: rect.minX + 1,
-            y: rect.minY + 2,
-            width: rect.width - 2,
-            height: rect.height - 12
-        )
-        let bodyPath = NSBezierPath(roundedRect: body, xRadius: 5, yRadius: 5)
-        NSColor.white.withAlphaComponent(0.17).setFill()
-        bodyPath.fill()
-
-        let notch = NSRect(
-            x: rect.midX - rect.width * 0.27,
-            y: rect.maxY - 11,
-            width: rect.width * 0.54,
-            height: 10
-        )
-        NSColor.black.setFill()
-        NSBezierPath(roundedRect: notch, xRadius: 5, yRadius: 5).fill()
-
-        accentGreen.setFill()
-        let mark = NSRect(x: notch.minX + 8, y: notch.midY - 4, width: 8, height: 8)
-        NSBezierPath(rect: NSRect(x: mark.midX - 1, y: mark.minY, width: 2, height: mark.height)).fill()
-        NSBezierPath(rect: NSRect(x: mark.minX, y: mark.midY - 1, width: mark.width, height: 2)).fill()
     }
 }
 
