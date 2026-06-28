@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-28
+
+### Added
+- Add settings shortcut to history panel (ec91322)
+- Add history panel localization strings (8163e09)
+- Support scrolling toolbar previews (373ca58)
+
+### Fixed
+- Collapse translation config when provider switch is turned off (b41b9d1)
+- Fix image provider config handling (7c565ff)
+- Improve translation test failure alerts (0d9dbf8)
+- Fix build warnings (702c8a7)
+
+### Changed
+- Refine history panel layout, previews, notch behavior, and settings UI (77a83c2, f7adc31, 06959cf, 1b193c4, b60aa7a, 8dd25f9, 94c2e8f)
+- Gate scroll capture and allow Enter to confirm crop (44fcb5d)
+- Confirm selection on double-click (0f013d5)
+
 ## [1.5.5] - 2026-06-24
 
 ### Fixed
