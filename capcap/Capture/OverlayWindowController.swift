@@ -1093,7 +1093,10 @@ extension OverlayWindowController: SelectionViewDelegate {
         )
 
         Task { @MainActor in
-            let text = await OCRService.recognize(image: image)
+            let text = await OCRService.recognize(
+                image: image,
+                source: "overlay.copy-image-text"
+            )
             if text.isEmpty {
                 ToastWindow.show(
                     message: L10n.copyImageTextNoText,

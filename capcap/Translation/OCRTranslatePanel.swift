@@ -1222,6 +1222,13 @@ final class OCRTranslatePanel: NSPanel {
     private enum Mode {
         case textRecognition
         case screenshotTranslation
+
+        var diagnosticName: String {
+            switch self {
+            case .textRecognition: return "text-recognition"
+            case .screenshotTranslation: return "screenshot-translation"
+            }
+        }
     }
 
     private static var current: OCRTranslatePanel?
@@ -1231,6 +1238,7 @@ final class OCRTranslatePanel: NSPanel {
     private let anchorScreen: NSScreen
     private let panelWidth: CGFloat
     private let mode: Mode
+    private let diagnosticID = String(UUID().uuidString.prefix(8))
 
     private let padding: CGFloat = 14
     private var panelWidthConstraint: NSLayoutConstraint?
@@ -1326,6 +1334,13 @@ final class OCRTranslatePanel: NSPanel {
         buildUI()
         installEventMonitors()
         refreshHeight()
+        logOCR(
+            "panel-init",
+            metadata: [
+                "panelWidth": Self.diagnosticNumber(panelWidth),
+                "initialHeight": Self.diagnosticNumber(initialHeight),
+            ]
+        )
     }
 
     override var canBecomeKey: Bool { true }
@@ -1528,15 +1543,32 @@ final class OCRTranslatePanel: NSPanel {
     // MARK: OCR / Translation
 
     private func runOCR() {
+        logOCR("panel-run-task-created")
         Task { @MainActor in
+            let started = CFAbsoluteTimeGetCurrent()
+            var usedLiveText = false
+            self.logOCR("panel-run-begin")
             switch self.mode {
             case .textRecognition:
-                async let liveTextAnalysis = OCRService.analyzeText(image: self.screenshot)
-                async let recognizedLines = OCRService.recognizeLines(image: self.screenshot)
+                async let liveTextAnalysis = OCRService.analyzeText(
+                    image: self.screenshot,
+                    diagnosticID: self.diagnosticID,
+                    source: "panel.text-recognition.live-text"
+                )
+                async let recognizedLines = OCRService.recognizeLines(
+                    image: self.screenshot,
+                    diagnosticID: self.diagnosticID,
+                    source: "panel.text-recognition.vision-lines"
+                )
                 let lines = await recognizedLines
+                self.logOCR(
+                    "panel-vision-lines-awaited",
+                    metadata: Self.lineMetadata(lines)
+                )
                 if let analysis = await liveTextAnalysis {
                     let transcript = analysis.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !transcript.isEmpty {
+                        usedLiveText = true
                         self.applyOCRResult(text: transcript, lines: lines, liveTextAnalysis: analysis)
                     } else {
                         self.applyOCRResult(text: Self.text(from: lines), lines: lines, liveTextAnalysis: nil)
@@ -1545,11 +1577,23 @@ final class OCRTranslatePanel: NSPanel {
                     self.applyOCRResult(text: Self.text(from: lines), lines: lines, liveTextAnalysis: nil)
                 }
             case .screenshotTranslation:
-                let text = await OCRService.recognize(image: self.screenshot)
+                let text = await OCRService.recognize(
+                    image: self.screenshot,
+                    diagnosticID: self.diagnosticID,
+                    source: "panel.screenshot-translation"
+                )
                 self.applyOCRResult(text: text, lines: [], liveTextAnalysis: nil)
             }
 
             self.ocrReady = true
+            self.logOCR(
+                "panel-run-ocr-ready",
+                metadata: [
+                    "durationMs": Self.durationMS(since: started),
+                    "recognizedCharacters": self.recognizedText.count,
+                    "usedLiveText": usedLiveText,
+                ].merging(Self.lineMetadata(self.recognizedLines)) { _, new in new }
+            )
 
             switch self.mode {
             case .textRecognition:
@@ -1562,7 +1606,16 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     private func applyVisionLineFallback() async {
-        let lines = await OCRService.recognizeLines(image: screenshot)
+        logOCR("panel-vision-line-fallback-begin")
+        let lines = await OCRService.recognizeLines(
+            image: screenshot,
+            diagnosticID: diagnosticID,
+            source: "panel.vision-line-fallback"
+        )
+        logOCR(
+            "panel-vision-line-fallback-end",
+            metadata: Self.lineMetadata(lines)
+        )
         applyOCRResult(text: Self.text(from: lines), lines: lines, liveTextAnalysis: nil)
     }
 
@@ -1576,6 +1629,13 @@ final class OCRTranslatePanel: NSPanel {
         lines: [RecognizedTextLine],
         liveTextAnalysis: ImageAnalysis?
     ) {
+        logOCR(
+            "panel-apply-result",
+            metadata: [
+                "recognizedCharacters": text.count,
+                "hasLiveTextAnalysis": liveTextAnalysis != nil,
+            ].merging(Self.lineMetadata(lines)) { _, new in new }
+        )
         recognizedLines = lines
         previewView.lines = lines
         previewView.applyLiveTextAnalysis(liveTextAnalysis)
@@ -1585,10 +1645,15 @@ final class OCRTranslatePanel: NSPanel {
     private func finishTextRecognition() {
         guard let textView = ocrTextView, let copyButton = ocrCopyButton else { return }
         if recognizedText.isEmpty {
+            logOCR("panel-finish-text-recognition-empty")
             textView.string = L10n.ocrNoText
             textView.textColor = NSColor.white.withAlphaComponent(0.4)
             copyButton.isEnabled = false
         } else {
+            logOCR(
+                "panel-finish-text-recognition-success",
+                metadata: ["recognizedCharacters": recognizedText.count]
+            )
             textView.string = recognizedText
             textView.textColor = NSColor.white.withAlphaComponent(0.9)
             copyButton.isEnabled = true
@@ -1657,6 +1722,7 @@ final class OCRTranslatePanel: NSPanel {
     private func finishOCRAndStartTranslation() {
         updateLanguageButtonTitle()
         guard !recognizedText.isEmpty else {
+            logOCR("panel-finish-translation-empty-ocr")
             cancelTranslationTasks()
             clearTranslationResults()
             showStandardTranslationHeader()
@@ -1664,13 +1730,31 @@ final class OCRTranslatePanel: NSPanel {
             return
         }
         if Defaults.translationDictionaryMode, let word = Self.singleDictionaryWord(in: recognizedText) {
+            logOCR(
+                "panel-finish-translation-dictionary-branch",
+                metadata: ["wordLength": word.count]
+            )
             runDictionary(word: word)
             return
         }
+        logOCR(
+            "panel-finish-translation-normal-branch",
+            metadata: [
+                "recognizedCharacters": recognizedText.count,
+                "target": selectedTarget.rawValue,
+            ]
+        )
         runTranslation(target: selectedTarget)
     }
 
     private func runTranslation(target: TranslationLanguage) {
+        logOCR(
+            "panel-run-translation",
+            metadata: [
+                "recognizedCharacters": recognizedText.count,
+                "target": target.rawValue,
+            ]
+        )
         cancelTranslationTasks()
         clearTranslationResults()
         translationRunID = UUID()
@@ -1680,10 +1764,15 @@ final class OCRTranslatePanel: NSPanel {
 
         let kinds = TranslationConfigStore.usableKinds()
         guard !kinds.isEmpty else {
+            logOCR("panel-run-translation-no-provider")
             setTranslationPlaceholder("\(L10n.ocrNoProviderTitle)\n\(L10n.ocrNoProviderHint)")
             refreshHeight()
             return
         }
+        logOCR(
+            "panel-run-translation-providers",
+            metadata: ["providers": kinds.map(\.rawValue).joined(separator: ",")]
+        )
 
         translationPlaceholderLabel?.isHidden = true
         let text = recognizedText
@@ -1705,6 +1794,10 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     private func runDictionary(word: String) {
+        logOCR(
+            "panel-run-dictionary",
+            metadata: ["wordLength": word.count]
+        )
         cancelTranslationTasks()
         clearTranslationResults()
         translationRunID = UUID()
@@ -1714,6 +1807,7 @@ final class OCRTranslatePanel: NSPanel {
         showDictionaryHeader(word: word)
 
         guard let kind = TranslationConfigStore.usableKinds().first(where: { !$0.isDirectTranslationAPI }) else {
+            logOCR("panel-run-dictionary-no-provider")
             resetDictionaryTitle()
             setTranslationPlaceholder("\(L10n.dictionaryNoProviderTitle)\n\(L10n.dictionaryNoProviderHint)")
             refreshHeight()
@@ -1722,6 +1816,7 @@ final class OCRTranslatePanel: NSPanel {
 
         currentDictionaryProvider = kind
         translationPlaceholderLabel?.isHidden = true
+        logOCR("panel-run-dictionary-provider", metadata: ["provider": kind.rawValue])
 
         let resultView = DictionaryResultView(
             onRetry: { [weak self] in self?.retryDictionary() },
@@ -1937,6 +2032,35 @@ final class OCRTranslatePanel: NSPanel {
         let originX = min(max(visible.midX - width / 2, visible.minX), visible.maxX - width)
         let originY = visible.maxY - topMargin - height
         return NSRect(x: originX, y: max(originY, visible.minY), width: width, height: height)
+    }
+
+    private func logOCR(_ event: String, metadata: [String: Any] = [:]) {
+        var fields = metadata
+        fields["session"] = diagnosticID
+        fields["mode"] = mode.diagnosticName
+        fields["imageSize"] = Self.diagnosticSize(screenshot.size)
+        fields["screenName"] = anchorScreen.localizedName
+        DiagnosticLog.log("ocr", event, metadata: fields)
+    }
+
+    private static func lineMetadata(_ lines: [RecognizedTextLine]) -> [String: Any] {
+        [
+            "lines": lines.count,
+            "tokens": lines.reduce(0) { $0 + $1.tokens.count },
+            "lineCharacters": lines.reduce(0) { $0 + $1.text.count },
+        ]
+    }
+
+    private static func diagnosticSize(_ size: NSSize) -> String {
+        "w=\(diagnosticNumber(size.width)) h=\(diagnosticNumber(size.height))"
+    }
+
+    private static func diagnosticNumber(_ value: CGFloat) -> String {
+        String(format: "%.1f", Double(value))
+    }
+
+    private static func durationMS(since start: CFAbsoluteTime) -> String {
+        String(format: "%.1f", (CFAbsoluteTimeGetCurrent() - start) * 1000)
     }
 
     // MARK: Actions
@@ -2176,6 +2300,7 @@ final class OCRTranslatePanel: NSPanel {
     }
 
     func dismiss() {
+        logOCR("panel-dismiss")
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor); self.keyMonitor = nil }
         if let outsideClickLocalMonitor {
             NSEvent.removeMonitor(outsideClickLocalMonitor)
