@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-06-30
+
+### Added
+- Lock capture selection to a fixed aspect ratio (46f1bb2)
+
+### Fixed
+- Clamp aspect-locked selection to view bounds (f40d712)
+
+### Changed
+- Improve cursor chip aspect-ratio messaging (7705cbc)
+- Improve toolbar tile tooltip handling (96cd1bf)
+- Rename history panel shortcut hold-open flag (acfb872)
+- Fix v1.6.1 changelog hash (44e4f41)
+
 ## [1.6.1] - 2026-06-30
 
 ### Added
