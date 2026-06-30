@@ -233,10 +233,18 @@ enum L10n {
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }
+    static var dragToScreenshotAspectFree: String { s("dragToScreenshotAspectFree") }
+    static func dragToScreenshotAspect(_ ratio: String) -> String {
+        String(format: s("dragToScreenshotAspect"), ratio)
+    }
     static var dragToTextRecognition: String { s("dragToTextRecognition") }
     static var dragToCopyImageText: String { s("dragToCopyImageText") }
     static var dragToScreenshotTranslation: String { s("dragToScreenshotTranslation") }
     static var dragToRecord: String { s("dragToRecord") }
+    static var dragToRecordAspectFree: String { s("dragToRecordAspectFree") }
+    static func dragToRecordAspect(_ ratio: String) -> String {
+        String(format: s("dragToRecordAspect"), ratio)
+    }
 
     // Toast
     static var copiedToClipboard: String { s("copiedToClipboard") }
@@ -693,11 +701,13 @@ struct Defaults {
     }
 
     static let selectionAspectRatioPresets: [CGFloat] = [
-        16.0 / 9.0,
+        1.0,
+        2.35,
+        3.0,
         3.0 / 2.0,
         4.0 / 3.0,
-        1.0,
         9.0 / 16.0,
+        16.0 / 9.0,
     ]
 
     static var selectionAspectRatio: Double {

@@ -282,7 +282,7 @@ class OverlayWindowController {
             let selectionView = SelectionView(frame: screen.frame)
             selectionView.delegate = self
             selectionView.windowDetector = windowDetector
-            selectionView.aspectRatio = Self.persistedSelectionAspectRatio
+            selectionView.aspectRatio = usesAspectRatioSelection ? Self.persistedSelectionAspectRatio : nil
             if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
                let snapshot = screenSnapshots[displayID] {
                 selectionView.backgroundSnapshot = NSImage(cgImage: snapshot, size: screen.frame.size)
@@ -311,7 +311,7 @@ class OverlayWindowController {
             }
         }
 
-        chipWindow = CursorChipWindow(text: postCaptureAction.cursorChipText)
+        chipWindow = CursorChipWindow(text: currentCursorChipText)
         chipWindow?.show()
 
         escLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -404,7 +404,57 @@ class OverlayWindowController {
         return CGFloat(ratio)
     }
 
+    private var currentCursorChipText: String {
+        if usesAspectRatioSelection {
+            return Self.aspectRatioCursorChipText(
+                for: postCaptureAction,
+                aspectRatio: Self.persistedSelectionAspectRatio
+            )
+        }
+        return postCaptureAction.cursorChipText
+    }
+
+    private var usesAspectRatioSelection: Bool {
+        guard presetImage == nil, suspendedDraft == nil else { return false }
+        switch postCaptureAction {
+        case .edit, .record:
+            return true
+        case .textRecognition, .copyImageText, .screenshotTranslation:
+            return false
+        }
+    }
+
+    private static func aspectRatioCursorChipText(for action: PostCaptureAction, aspectRatio: CGFloat?) -> String {
+        switch action {
+        case .edit:
+            guard let aspectRatio else { return L10n.dragToScreenshotAspectFree }
+            return L10n.dragToScreenshotAspect(aspectRatioLabel(for: aspectRatio))
+        case .record:
+            guard let aspectRatio else { return L10n.dragToRecordAspectFree }
+            return L10n.dragToRecordAspect(aspectRatioLabel(for: aspectRatio))
+        case .textRecognition, .copyImageText, .screenshotTranslation:
+            return action.cursorChipText
+        }
+    }
+
+    private static func aspectRatioLabel(for aspectRatio: CGFloat) -> String {
+        let presets: [(CGFloat, String)] = [
+            (1.0, "1:1"),
+            (2.35, "2.35:1"),
+            (3.0, "3:1"),
+            (3.0 / 2.0, "3:2"),
+            (4.0 / 3.0, "4:3"),
+            (9.0 / 16.0, "9:16"),
+            (16.0 / 9.0, "16:9"),
+        ]
+        if let preset = presets.first(where: { abs($0.0 - aspectRatio) < 0.000_001 }) {
+            return preset.1
+        }
+        return String(format: "%.2f:1", Double(aspectRatio))
+    }
+
     private func cycleSelectionAspectRatioFromKeyboard(for event: NSEvent) -> Bool {
+        guard usesAspectRatioSelection else { return false }
         guard editController == nil, event.keyCode == 15 else { return false }
         let modifierMask: NSEvent.ModifierFlags = [.command, .option, .control, .shift]
         guard event.modifierFlags.intersection(modifierMask).isEmpty else { return false }
@@ -430,6 +480,9 @@ class OverlayWindowController {
             nextAspectRatio = ratio
         }
         applySelectionAspectRatio(nextAspectRatio)
+        if usesAspectRatioSelection {
+            chipWindow?.updateText(Self.aspectRatioCursorChipText(for: postCaptureAction, aspectRatio: nextAspectRatio))
+        }
         return true
     }
 
