@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-06-30
+
+### Added
+- Add capture diagnostics logging for Scroll Stitch and OCR issue triage (0642582)
+
+### Changed
+- Refine history panel translations (b9a6720)
+
 ## [1.6.0] - 2026-06-28
 
 ### Added
