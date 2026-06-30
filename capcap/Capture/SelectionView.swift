@@ -145,7 +145,8 @@ class SelectionView: NSView {
             from: originalRect,
             handle: handle,
             currentPoint: currentPoint,
-            aspectRatio: aspectRatio
+            aspectRatio: aspectRatio,
+            bounds: bounds
         )
         selectionRect = newRect
         state = .selected
@@ -273,7 +274,8 @@ class SelectionView: NSView {
             selectionRect = SelectionView.dragRect(
                 from: selectionOrigin,
                 to: point,
-                aspectRatio: aspectRatio
+                aspectRatio: aspectRatio,
+                bounds: bounds
             )
             needsDisplay = true
 
@@ -295,7 +297,8 @@ class SelectionView: NSView {
                 from: dragOriginalRect,
                 handle: handle,
                 currentPoint: point,
-                aspectRatio: aspectRatio
+                aspectRatio: aspectRatio,
+                bounds: bounds
             )
             selectionRect = newRect
             delegate?.selectionDidChange(rect: newRect, inView: self)
@@ -620,7 +623,7 @@ class SelectionView: NSView {
 
     // MARK: - Resize Logic
 
-    private static func dragRect(from origin: NSPoint, to point: NSPoint, aspectRatio: CGFloat?) -> NSRect {
+    private static func dragRect(from origin: NSPoint, to point: NSPoint, aspectRatio: CGFloat?, bounds: NSRect) -> NSRect {
         guard let ratio = normalizedAspectRatio(aspectRatio) else {
             let x = min(origin.x, point.x)
             let y = min(origin.y, point.y)
@@ -635,8 +638,16 @@ class SelectionView: NSView {
         let unconstrainedHeight = abs(dy)
         let constrainedWidth = max(unconstrainedWidth, unconstrainedHeight * ratio)
         let constrainedHeight = constrainedWidth / ratio
-        let signedWidth = dx < 0 ? -constrainedWidth : constrainedWidth
-        let signedHeight = dy < 0 ? -constrainedHeight : constrainedHeight
+        let maxWidth = dx < 0 ? origin.x - bounds.minX : bounds.maxX - origin.x
+        let maxHeight = dy < 0 ? origin.y - bounds.minY : bounds.maxY - origin.y
+        let size = fittedAspectSize(
+            CGSize(width: constrainedWidth, height: constrainedHeight),
+            aspectRatio: ratio,
+            maximumWidth: maxWidth,
+            maximumHeight: maxHeight
+        )
+        let signedWidth = dx < 0 ? -size.width : size.width
+        let signedHeight = dy < 0 ? -size.height : size.height
         let maxX = origin.x + signedWidth
         let maxY = origin.y + signedHeight
 
@@ -652,7 +663,8 @@ class SelectionView: NSView {
         from original: NSRect,
         handle: HandlePosition,
         currentPoint: NSPoint,
-        aspectRatio: CGFloat? = nil
+        aspectRatio: CGFloat? = nil,
+        bounds: NSRect
     ) -> NSRect {
         let minimumSize: CGFloat = 5
         var minX = original.minX
@@ -690,7 +702,8 @@ class SelectionView: NSView {
             original: original,
             handle: handle,
             aspectRatio: ratio,
-            minimumSize: minimumSize
+            minimumSize: minimumSize,
+            bounds: bounds
         )
     }
 
@@ -704,70 +717,125 @@ class SelectionView: NSView {
         original: NSRect,
         handle: HandlePosition,
         aspectRatio: CGFloat,
-        minimumSize: CGFloat
+        minimumSize: CGFloat,
+        bounds: NSRect
     ) -> NSRect {
         switch handle {
         case .topLeft:
-            let size = aspectSize(
-                fittingWidth: unconstrained.width,
-                height: unconstrained.height,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fittingWidth: unconstrained.width,
+                    height: unconstrained.height,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: original.maxX - bounds.minX,
+                maximumHeight: bounds.maxY - original.minY
             )
             return NSRect(x: original.maxX - size.width, y: original.minY, width: size.width, height: size.height)
         case .topRight:
-            let size = aspectSize(
-                fittingWidth: unconstrained.width,
-                height: unconstrained.height,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fittingWidth: unconstrained.width,
+                    height: unconstrained.height,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: bounds.maxX - original.minX,
+                maximumHeight: bounds.maxY - original.minY
             )
             return NSRect(x: original.minX, y: original.minY, width: size.width, height: size.height)
         case .bottomLeft:
-            let size = aspectSize(
-                fittingWidth: unconstrained.width,
-                height: unconstrained.height,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fittingWidth: unconstrained.width,
+                    height: unconstrained.height,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: original.maxX - bounds.minX,
+                maximumHeight: original.maxY - bounds.minY
             )
             return NSRect(x: original.maxX - size.width, y: original.maxY - size.height, width: size.width, height: size.height)
         case .bottomRight:
-            let size = aspectSize(
-                fittingWidth: unconstrained.width,
-                height: unconstrained.height,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fittingWidth: unconstrained.width,
+                    height: unconstrained.height,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: bounds.maxX - original.minX,
+                maximumHeight: original.maxY - bounds.minY
             )
             return NSRect(x: original.minX, y: original.maxY - size.height, width: size.width, height: size.height)
         case .topCenter:
-            let size = aspectSize(
-                fromHeight: unconstrained.height,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fromHeight: unconstrained.height,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: symmetricMaximumLength(around: original.midX, lowerBound: bounds.minX, upperBound: bounds.maxX),
+                maximumHeight: bounds.maxY - original.minY
             )
             return NSRect(x: original.midX - size.width / 2, y: original.minY, width: size.width, height: size.height)
         case .bottomCenter:
-            let size = aspectSize(
-                fromHeight: unconstrained.height,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fromHeight: unconstrained.height,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: symmetricMaximumLength(around: original.midX, lowerBound: bounds.minX, upperBound: bounds.maxX),
+                maximumHeight: original.maxY - bounds.minY
             )
             return NSRect(x: original.midX - size.width / 2, y: original.maxY - size.height, width: size.width, height: size.height)
         case .leftCenter:
-            let size = aspectSize(
-                fromWidth: unconstrained.width,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fromWidth: unconstrained.width,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: original.maxX - bounds.minX,
+                maximumHeight: symmetricMaximumLength(around: original.midY, lowerBound: bounds.minY, upperBound: bounds.maxY)
             )
             return NSRect(x: original.maxX - size.width, y: original.midY - size.height / 2, width: size.width, height: size.height)
         case .rightCenter:
-            let size = aspectSize(
-                fromWidth: unconstrained.width,
+            let size = fittedAspectSize(
+                aspectSize(
+                    fromWidth: unconstrained.width,
+                    aspectRatio: aspectRatio,
+                    minimumSize: minimumSize
+                ),
                 aspectRatio: aspectRatio,
-                minimumSize: minimumSize
+                maximumWidth: bounds.maxX - original.minX,
+                maximumHeight: symmetricMaximumLength(around: original.midY, lowerBound: bounds.minY, upperBound: bounds.maxY)
             )
             return NSRect(x: original.minX, y: original.midY - size.height / 2, width: size.width, height: size.height)
         }
+    }
+
+    private static func fittedAspectSize(
+        _ size: CGSize,
+        aspectRatio: CGFloat,
+        maximumWidth: CGFloat,
+        maximumHeight: CGFloat
+    ) -> CGSize {
+        let width = min(size.width, max(0, maximumWidth), max(0, maximumHeight) * aspectRatio)
+        return CGSize(width: width, height: width / aspectRatio)
+    }
+
+    private static func symmetricMaximumLength(around center: CGFloat, lowerBound: CGFloat, upperBound: CGFloat) -> CGFloat {
+        2 * max(0, min(center - lowerBound, upperBound - center))
     }
 
     private static func aspectSize(
