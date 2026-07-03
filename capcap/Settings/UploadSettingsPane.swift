@@ -666,6 +666,7 @@ private final class ProviderCard: NSView {
         Uploaders.provider(for: kind).upload(
             data: png,
             fileName: "capcap-config-test.png",
+            contentType: "image/png",
             config: cfg,
             progress: { _ in }
         ) { [weak self] result in

@@ -25,52 +25,71 @@ final class UploadManager {
             ToastWindow.show(message: err, on: screen)
             return
         }
-        guard let pngData = image.pngDataPreservingBacking() else {
-            ToastWindow.show(message: "\(L10n.uploadFailedPrefix) PNG encode", on: screen)
-            return
+        inFlight = true
+        let quality = Defaults.screenshotUploadQuality
+        if quality.usesLossyCompression {
+            ToastWindow.show(message: L10n.screenshotQualityCompressingUpload, on: screen, duration: 600)
         }
 
-        inFlight = true
-        let fileName = FilenameTemplate.imageFileName(for: image)
-
-        let window = UploadProgressWindow(provider: kind.displayName)
-        window.show(on: screen)
-        progressWindow = window
-
-        providerType.upload(
-            data: pngData,
-            fileName: fileName,
-            config: config,
-            progress: { [weak self] pct in
-                self?.progressWindow?.setProgress(pct)
-            },
-            completion: { [weak self] result in
-                guard let self else { return }
-                self.inFlight = false
-                self.progressWindow?.dismiss()
-                self.progressWindow = nil
-                switch result {
-                case .success(let url):
-                    let asMarkdown = Defaults.copyUploadAsMarkdown
-                    let copyText = asMarkdown
-                        ? "![](\(url.absoluteString))"
-                        : url.absoluteString
-                    let pasteboard = NSPasteboard.general
-                    pasteboard.clearContents()
-                    pasteboard.setString(copyText, forType: .string)
-                    HistoryManager.shared.add(image: image, cloudURL: url)
-                    ToastWindow.show(
-                        message: asMarkdown ? L10n.uploadCopiedMarkdown : L10n.uploadCopied,
-                        on: screen
-                    )
-                case .failure(let err):
-                    HistoryManager.shared.add(image: image)
-                    let msg = (err as? UploadError)?.errorDescription
-                        ?? err.localizedDescription
-                    ToastWindow.show(message: "\(L10n.uploadFailedPrefix) \(msg)", on: screen)
-                }
+        ImageOutputEncoder.encodeAsync(image: image, quality: quality) { [weak self] result in
+            guard let self else { return }
+            if quality.usesLossyCompression {
+                ToastWindow.dismiss()
             }
-        )
+
+            switch result {
+            case .failure:
+                self.inFlight = false
+                HistoryManager.shared.add(image: image)
+                ToastWindow.show(message: L10n.screenshotCompressionFailed, on: screen, duration: 3.0)
+            case .success(let output):
+                let fileName = FilenameTemplate.imageFileName(
+                    for: image,
+                    fileExtension: output.fileExtension,
+                    imageSize: output.pixelSize
+                )
+
+                let window = UploadProgressWindow(provider: kind.displayName)
+                window.show(on: screen)
+                self.progressWindow = window
+
+                providerType.upload(
+                    data: output.data,
+                    fileName: fileName,
+                    contentType: output.contentType,
+                    config: config,
+                    progress: { [weak self] pct in
+                        self?.progressWindow?.setProgress(pct)
+                    },
+                    completion: { [weak self] result in
+                        guard let self else { return }
+                        self.inFlight = false
+                        self.progressWindow?.dismiss()
+                        self.progressWindow = nil
+                        switch result {
+                        case .success(let url):
+                            let asMarkdown = Defaults.copyUploadAsMarkdown
+                            let copyText = asMarkdown
+                                ? "![](\(url.absoluteString))"
+                                : url.absoluteString
+                            let pasteboard = NSPasteboard.general
+                            pasteboard.clearContents()
+                            pasteboard.setString(copyText, forType: .string)
+                            HistoryManager.shared.add(image: image, cloudURL: url)
+                            ToastWindow.show(
+                                message: asMarkdown ? L10n.uploadCopiedMarkdown : L10n.uploadCopied,
+                                on: screen
+                            )
+                        case .failure(let err):
+                            HistoryManager.shared.add(image: image)
+                            let msg = (err as? UploadError)?.errorDescription
+                                ?? err.localizedDescription
+                            ToastWindow.show(message: "\(L10n.uploadFailedPrefix) \(msg)", on: screen)
+                        }
+                    }
+                )
+            }
+        }
     }
 
 }

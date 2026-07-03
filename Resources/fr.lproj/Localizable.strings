@@ -514,6 +514,21 @@
 "imageMergeEmptyBody" = "Ajoutez des fichiers, collez depuis le presse-papiers ou glissez des images ici";
 "imageMergeClipboardSourceName" = "Image du presse-papiers";
 
+/* Screenshot quality */
+"screenshotQualityTitle" = "Qualité des captures";
+"screenshotQualitySubtitle" = "Les captures sont traitées avant l'envoi, l'enregistrement ou la copie, original par défaut";
+"screenshotQualityUploadLabel" = "Envoi";
+"screenshotQualitySaveLabel" = "Enregistrer dans un fichier";
+"screenshotQualityClipboardLabel" = "Copier dans le presse-papiers";
+"screenshotQualityOriginal" = "Original";
+"screenshotQualityOriginalHint" = "PNG taille complète et qualité sans perte, fichier le plus grand";
+"screenshotQualityCompressed" = "Compressé";
+"screenshotQualityCompressedHint" = "Conserve les dimensions et applique une compression PNG locale inspirée de TinyIMG qualité 70";
+"screenshotQualityCompressingUpload" = "Compression avant l'envoi";
+"screenshotQualityCompressingSave" = "Compression avant l'enregistrement";
+"screenshotQualityCompressingClipboard" = "Compression avant la copie";
+"screenshotCompressionFailed" = "Échec de la compression de l'image";
+
 /* Save paths */
 "savePathTitle" = "Emplacements d'enregistrement";
 "savePathSubtitle" = "Les captures et enregistrements sont sauvegardés ici sans demander de destination";

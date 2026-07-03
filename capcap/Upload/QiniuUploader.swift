@@ -20,6 +20,7 @@ enum QiniuUploader: UploaderProtocol {
     static func upload(
         data: Data,
         fileName: String,
+        contentType: String,
         config: ProviderConfig,
         progress: @escaping (Double) -> Void,
         completion: @escaping (Result<URL, Error>) -> Void
@@ -67,7 +68,7 @@ enum QiniuUploader: UploaderProtocol {
         addField("token", token)
         body.append("--\(boundary)\r\n".data(using: .utf8)!)
         body.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileName)\"\r\n".data(using: .utf8)!)
-        body.append("Content-Type: image/png\r\n\r\n".data(using: .utf8)!)
+        body.append("Content-Type: \(contentType)\r\n\r\n".data(using: .utf8)!)
         body.append(data)
         body.append("\r\n--\(boundary)--\r\n".data(using: .utf8)!)
 

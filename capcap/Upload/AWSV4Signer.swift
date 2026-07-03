@@ -139,6 +139,7 @@ enum S3Common {
         region: String,
         accessKeyId: String,
         secretAccessKey: String,
+        contentType: String,
         publicURL: URL,
         progress: @escaping (Double) -> Void,
         completion: @escaping (Result<URL, Error>) -> Void
@@ -150,7 +151,7 @@ enum S3Common {
             accessKeyId: accessKeyId,
             secretAccessKey: secretAccessKey,
             payload: data,
-            contentType: "image/png"
+            contentType: contentType
         ) else {
             completion(.failure(UploadError.invalidConfig("bad endpoint")))
             return

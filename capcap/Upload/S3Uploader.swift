@@ -25,6 +25,7 @@ enum S3Uploader: UploaderProtocol {
     static func upload(
         data: Data,
         fileName: String,
+        contentType: String,
         config: ProviderConfig,
         progress: @escaping (Double) -> Void,
         completion: @escaping (Result<URL, Error>) -> Void
@@ -77,6 +78,7 @@ enum S3Uploader: UploaderProtocol {
             region: region,
             accessKeyId: id,
             secretAccessKey: secret,
+            contentType: contentType,
             publicURL: publicURL,
             progress: progress,
             completion: completion

@@ -20,6 +20,7 @@ enum AliyunOSSUploader: UploaderProtocol {
     static func upload(
         data: Data,
         fileName: String,
+        contentType: String,
         config: ProviderConfig,
         progress: @escaping (Double) -> Void,
         completion: @escaping (Result<URL, Error>) -> Void
@@ -42,7 +43,6 @@ enum AliyunOSSUploader: UploaderProtocol {
         }
 
         let date = AliyunPath.gmtDate()
-        let contentType = "image/png"
         let resource = "/\(bucket)/\(key)"
         let objectACL = "public-read"
         let canonicalizedOSSHeaders = "x-oss-object-acl:\(objectACL)\n"

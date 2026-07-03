@@ -514,6 +514,21 @@
 "imageMergeEmptyBody" = "添加文件、从剪贴板添加，或直接把图片拖到这里";
 "imageMergeClipboardSourceName" = "剪贴板图片";
 
+/* Screenshot quality */
+"screenshotQualityTitle" = "截图质量";
+"screenshotQualitySubtitle" = "上传、保存或复制前按所选档位处理截图，默认保留原图";
+"screenshotQualityUploadLabel" = "上传";
+"screenshotQualitySaveLabel" = "保存到文件";
+"screenshotQualityClipboardLabel" = "复制到剪贴板";
+"screenshotQualityOriginal" = "原图";
+"screenshotQualityOriginalHint" = "PNG 原尺寸无损画质，体积最大";
+"screenshotQualityCompressed" = "压缩";
+"screenshotQualityCompressedHint" = "保留原尺寸，参考 TinyIMG 质量 70 做本地 PNG 压缩";
+"screenshotQualityCompressingUpload" = "正在压缩后上传";
+"screenshotQualityCompressingSave" = "正在压缩后保存";
+"screenshotQualityCompressingClipboard" = "正在压缩后复制";
+"screenshotCompressionFailed" = "图片压缩失败";
+
 /* Save paths */
 "savePathTitle" = "保存路径";
 "savePathSubtitle" = "截图和录制会直接保存到这些路径，不再询问保存位置";

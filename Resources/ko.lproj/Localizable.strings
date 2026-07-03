@@ -514,6 +514,21 @@
 "imageMergeEmptyBody" = "파일을 추가하거나 클립보드에서 가져오거나 이미지를 여기로 드래그";
 "imageMergeClipboardSourceName" = "클립보드 이미지";
 
+/* Screenshot quality */
+"screenshotQualityTitle" = "스크린샷 품질";
+"screenshotQualitySubtitle" = "업로드, 저장, 복사 전에 선택한 품질로 처리하며 기본값은 원본";
+"screenshotQualityUploadLabel" = "업로드";
+"screenshotQualitySaveLabel" = "파일로 저장";
+"screenshotQualityClipboardLabel" = "클립보드에 복사";
+"screenshotQualityOriginal" = "원본";
+"screenshotQualityOriginalHint" = "PNG 원본 크기와 무손실 품질, 가장 큰 파일";
+"screenshotQualityCompressed" = "압축";
+"screenshotQualityCompressedHint" = "원본 크기를 유지하고 TinyIMG 품질 70을 참고한 로컬 PNG 압축";
+"screenshotQualityCompressingUpload" = "압축 후 업로드 중";
+"screenshotQualityCompressingSave" = "압축 후 저장 중";
+"screenshotQualityCompressingClipboard" = "압축 후 복사 중";
+"screenshotCompressionFailed" = "이미지 압축 실패";
+
 /* Save paths */
 "savePathTitle" = "저장 경로";
 "savePathSubtitle" = "스크린샷과 녹화는 저장 위치를 묻지 않고 여기에 저장됩니다";

@@ -119,6 +119,19 @@ enum L10n {
     static var savePathReveal: String { s("savePathReveal") }
     static var chooseRecordingSavePathTitle: String { s("chooseRecordingSavePathTitle") }
     static var chooseScreenshotSavePathTitle: String { s("chooseScreenshotSavePathTitle") }
+    static var screenshotQualityTitle: String { s("screenshotQualityTitle") }
+    static var screenshotQualitySubtitle: String { s("screenshotQualitySubtitle") }
+    static var screenshotQualityUploadLabel: String { s("screenshotQualityUploadLabel") }
+    static var screenshotQualitySaveLabel: String { s("screenshotQualitySaveLabel") }
+    static var screenshotQualityClipboardLabel: String { s("screenshotQualityClipboardLabel") }
+    static var screenshotQualityOriginal: String { s("screenshotQualityOriginal") }
+    static var screenshotQualityOriginalHint: String { s("screenshotQualityOriginalHint") }
+    static var screenshotQualityCompressed: String { s("screenshotQualityCompressed") }
+    static var screenshotQualityCompressedHint: String { s("screenshotQualityCompressedHint") }
+    static var screenshotQualityCompressingUpload: String { s("screenshotQualityCompressingUpload") }
+    static var screenshotQualityCompressingSave: String { s("screenshotQualityCompressingSave") }
+    static var screenshotQualityCompressingClipboard: String { s("screenshotQualityCompressingClipboard") }
+    static var screenshotCompressionFailed: String { s("screenshotCompressionFailed") }
 
     // Screenshot shortcut
     static var shortcutHeader: String { s("shortcutHeader") }
@@ -1131,6 +1144,31 @@ struct Defaults {
         set {
             defaults.set(newValue.standardizedFileURL.path, forKey: "screenshotSaveDirectory")
         }
+    }
+
+    static var screenshotUploadQuality: ScreenshotImageQuality {
+        get { screenshotQuality(forKey: "screenshotUploadQuality") }
+        set { defaults.set(newValue.rawValue, forKey: "screenshotUploadQuality") }
+    }
+
+    static var screenshotSaveQuality: ScreenshotImageQuality {
+        get { screenshotQuality(forKey: "screenshotSaveQuality") }
+        set { defaults.set(newValue.rawValue, forKey: "screenshotSaveQuality") }
+    }
+
+    static var screenshotClipboardQuality: ScreenshotImageQuality {
+        get { screenshotQuality(forKey: "screenshotClipboardQuality") }
+        set { defaults.set(newValue.rawValue, forKey: "screenshotClipboardQuality") }
+    }
+
+    private static func screenshotQuality(forKey key: String) -> ScreenshotImageQuality {
+        guard let raw = defaults.string(forKey: key) else {
+            return ScreenshotImageQuality.defaultValue
+        }
+        if raw == "balanced" || raw == "compact" {
+            return .compressed
+        }
+        return ScreenshotImageQuality(rawValue: raw) ?? ScreenshotImageQuality.defaultValue
     }
 
     static let defaultImageFilenameTemplate = "capcap-{date}-{time}"

@@ -545,9 +545,24 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func handleEditCompletion(_ finalImage: NSImage?) {
         if let finalImage = finalImage {
-            ClipboardManager.copyToClipboard(image: finalImage)
-            HistoryManager.shared.add(image: finalImage)
-            ToastWindow.show()
+            let quality = Defaults.screenshotClipboardQuality
+            if quality.usesLossyCompression {
+                ToastWindow.show(message: L10n.screenshotQualityCompressingClipboard, duration: 600)
+            }
+            ImageOutputEncoder.encodeClipboardAsync(image: finalImage, quality: quality) { result in
+                if quality.usesLossyCompression {
+                    ToastWindow.dismiss()
+                }
+                switch result {
+                case .failure:
+                    HistoryManager.shared.add(image: finalImage)
+                    ToastWindow.show(message: L10n.screenshotCompressionFailed, duration: 3.0)
+                case .success(let output):
+                    ClipboardManager.copyToClipboard(imageOutput: output)
+                    HistoryManager.shared.add(image: finalImage)
+                    ToastWindow.show()
+                }
+            }
         }
         overlayController = nil
         applyHotkeyState()
