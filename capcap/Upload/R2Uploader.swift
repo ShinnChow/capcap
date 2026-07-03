@@ -26,6 +26,7 @@ enum R2Uploader: UploaderProtocol {
     static func upload(
         data: Data,
         fileName: String,
+        contentType: String,
         config: ProviderConfig,
         progress: @escaping (Double) -> Void,
         completion: @escaping (Result<URL, Error>) -> Void
@@ -62,6 +63,7 @@ enum R2Uploader: UploaderProtocol {
             region: "auto",
             accessKeyId: id,
             secretAccessKey: secret,
+            contentType: contentType,
             publicURL: publicURL,
             progress: progress,
             completion: completion

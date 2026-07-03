@@ -514,6 +514,21 @@
 "imageMergeEmptyBody" = "Thêm tệp, dán từ clipboard hoặc kéo ảnh vào đây";
 "imageMergeClipboardSourceName" = "Ảnh clipboard";
 
+/* Screenshot quality */
+"screenshotQualityTitle" = "Chất lượng ảnh chụp";
+"screenshotQualitySubtitle" = "Ảnh chụp được xử lý trước khi tải lên, lưu hoặc sao chép, mặc định là bản gốc";
+"screenshotQualityUploadLabel" = "Tải lên";
+"screenshotQualitySaveLabel" = "Lưu vào tệp";
+"screenshotQualityClipboardLabel" = "Sao chép vào clipboard";
+"screenshotQualityOriginal" = "Bản gốc";
+"screenshotQualityOriginalHint" = "PNG kích thước đầy đủ và không mất chất lượng, tệp lớn nhất";
+"screenshotQualityCompressed" = "Đã nén";
+"screenshotQualityCompressedHint" = "Giữ nguyên kích thước và nén PNG cục bộ theo TinyIMG chất lượng 70";
+"screenshotQualityCompressingUpload" = "Đang nén trước khi tải lên";
+"screenshotQualityCompressingSave" = "Đang nén trước khi lưu";
+"screenshotQualityCompressingClipboard" = "Đang nén trước khi sao chép";
+"screenshotCompressionFailed" = "Nén ảnh thất bại";
+
 /* Save paths */
 "savePathTitle" = "Đường dẫn lưu";
 "savePathSubtitle" = "Ảnh chụp và bản ghi được lưu tại đây mà không hỏi vị trí đích";

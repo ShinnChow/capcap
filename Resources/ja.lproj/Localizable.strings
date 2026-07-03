@@ -514,6 +514,21 @@
 "imageMergeEmptyBody" = "ファイル追加、クリップボード追加、または画像をここにドラッグ";
 "imageMergeClipboardSourceName" = "クリップボード画像";
 
+/* Screenshot quality */
+"screenshotQualityTitle" = "スクリーンショット品質";
+"screenshotQualitySubtitle" = "アップロード、保存、コピー前に選択した品質で処理します。既定は原寸";
+"screenshotQualityUploadLabel" = "アップロード";
+"screenshotQualitySaveLabel" = "ファイルに保存";
+"screenshotQualityClipboardLabel" = "クリップボードにコピー";
+"screenshotQualityOriginal" = "原寸";
+"screenshotQualityOriginalHint" = "PNG 原寸の無劣化画質でファイルは最大";
+"screenshotQualityCompressed" = "圧縮";
+"screenshotQualityCompressedHint" = "原寸を保ち、TinyIMG 品質 70 を参考にローカル PNG 圧縮";
+"screenshotQualityCompressingUpload" = "圧縮してアップロード中";
+"screenshotQualityCompressingSave" = "圧縮して保存中";
+"screenshotQualityCompressingClipboard" = "圧縮してコピー中";
+"screenshotCompressionFailed" = "画像の圧縮に失敗";
+
 /* Save paths */
 "savePathTitle" = "保存先";
 "savePathSubtitle" = "スクリーンショットと録画は保存先を確認せず、ここへ保存されます";

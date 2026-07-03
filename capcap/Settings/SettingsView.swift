@@ -280,6 +280,17 @@ class SettingsView: NSView {
     private var paneViews: [SettingsTab: NSView] = [:]
     private var uploadPane: UploadSettingsPane?
     private var filenameRuleCard: FilenameRuleCard?
+    private var screenshotQualityTitleLabel: NSTextField!
+    private var screenshotQualitySubtitleLabel: NSTextField!
+    private var screenshotQualityUploadTitleLabel: NSTextField!
+    private var screenshotQualityUploadHintLabel: NSTextField!
+    private var screenshotQualityUploadPopup: NSPopUpButton!
+    private var screenshotQualitySaveTitleLabel: NSTextField!
+    private var screenshotQualitySaveHintLabel: NSTextField!
+    private var screenshotQualitySavePopup: NSPopUpButton!
+    private var screenshotQualityClipboardTitleLabel: NSTextField!
+    private var screenshotQualityClipboardHintLabel: NSTextField!
+    private var screenshotQualityClipboardPopup: NSPopUpButton!
     private var savePathTitleLabel: NSTextField!
     private var savePathSubtitleLabel: NSTextField!
     private var autoRevealSavedFilesTitleLabel: NSTextField!
@@ -678,6 +689,8 @@ class SettingsView: NSView {
         stack.addArrangedSubview(filenameCard)
         filenameCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
+        buildScreenshotQualityCard(into: stack)
+
         buildSavePathCard(into: stack)
 
         return wrapPane(stack)
@@ -811,6 +824,30 @@ class SettingsView: NSView {
         recordingSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.recordingSaveDirectory)
         screenshotSavePathValueLabel?.stringValue = SaveDestination.displayPath(Defaults.screenshotSaveDirectory)
         refreshRecordingSaveFormatPopup()
+    }
+
+    private func refreshScreenshotQualityControls() {
+        refreshScreenshotQualityPopup(screenshotQualityUploadPopup, selected: Defaults.screenshotUploadQuality)
+        refreshScreenshotQualityPopup(screenshotQualitySavePopup, selected: Defaults.screenshotSaveQuality)
+        refreshScreenshotQualityPopup(screenshotQualityClipboardPopup, selected: Defaults.screenshotClipboardQuality)
+        screenshotQualityUploadHintLabel?.stringValue = Defaults.screenshotUploadQuality.localizedHint
+        screenshotQualitySaveHintLabel?.stringValue = Defaults.screenshotSaveQuality.localizedHint
+        screenshotQualityClipboardHintLabel?.stringValue = Defaults.screenshotClipboardQuality.localizedHint
+    }
+
+    private func refreshScreenshotQualityPopup(
+        _ popup: NSPopUpButton?,
+        selected: ScreenshotImageQuality
+    ) {
+        guard let popup else { return }
+        popup.removeAllItems()
+        for quality in ScreenshotImageQuality.allCases {
+            popup.addItem(withTitle: quality.localizedTitle)
+            popup.lastItem?.representedObject = quality.rawValue
+        }
+        if let index = ScreenshotImageQuality.allCases.firstIndex(of: selected) {
+            popup.selectItem(at: index)
+        }
     }
 
     private func refreshRecordingSaveFormatPopup() {
@@ -1269,6 +1306,119 @@ class SettingsView: NSView {
 
         stack.addArrangedSubview(card)
         card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func buildScreenshotQualityCard(into stack: NSStackView) {
+        let card = CardView()
+        let inner = NSStackView()
+        inner.orientation = .vertical
+        inner.alignment = .leading
+        inner.spacing = 10
+        inner.translatesAutoresizingMaskIntoConstraints = false
+        card.addSubview(inner)
+        pin(inner, to: card, insets: NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14))
+
+        let header = NSStackView()
+        header.orientation = .vertical
+        header.alignment = .leading
+        header.spacing = 3
+        header.translatesAutoresizingMaskIntoConstraints = false
+
+        screenshotQualityTitleLabel = primaryLabel(L10n.screenshotQualityTitle)
+        screenshotQualitySubtitleLabel = secondaryLabel(L10n.screenshotQualitySubtitle, wrapping: true)
+        header.addArrangedSubview(screenshotQualityTitleLabel)
+        header.addArrangedSubview(screenshotQualitySubtitleLabel)
+        inner.addArrangedSubview(header)
+        header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+        screenshotQualitySubtitleLabel.widthAnchor.constraint(equalTo: header.widthAnchor).isActive = true
+
+        let topDivider = rowDivider()
+        inner.addArrangedSubview(topDivider)
+        topDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let upload = makeScreenshotQualityRow(
+            title: L10n.screenshotQualityUploadLabel,
+            quality: Defaults.screenshotUploadQuality,
+            action: #selector(screenshotUploadQualityChanged(_:))
+        )
+        screenshotQualityUploadTitleLabel = upload.title
+        screenshotQualityUploadHintLabel = upload.hint
+        screenshotQualityUploadPopup = upload.popup
+        inner.addArrangedSubview(upload.row)
+        upload.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let uploadDivider = rowDivider()
+        inner.addArrangedSubview(uploadDivider)
+        uploadDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let save = makeScreenshotQualityRow(
+            title: L10n.screenshotQualitySaveLabel,
+            quality: Defaults.screenshotSaveQuality,
+            action: #selector(screenshotSaveQualityChanged(_:))
+        )
+        screenshotQualitySaveTitleLabel = save.title
+        screenshotQualitySaveHintLabel = save.hint
+        screenshotQualitySavePopup = save.popup
+        inner.addArrangedSubview(save.row)
+        save.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let saveDivider = rowDivider()
+        inner.addArrangedSubview(saveDivider)
+        saveDivider.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let clipboard = makeScreenshotQualityRow(
+            title: L10n.screenshotQualityClipboardLabel,
+            quality: Defaults.screenshotClipboardQuality,
+            action: #selector(screenshotClipboardQualityChanged(_:))
+        )
+        screenshotQualityClipboardTitleLabel = clipboard.title
+        screenshotQualityClipboardHintLabel = clipboard.hint
+        screenshotQualityClipboardPopup = clipboard.popup
+        inner.addArrangedSubview(clipboard.row)
+        clipboard.row.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        refreshScreenshotQualityControls()
+
+        stack.addArrangedSubview(card)
+        card.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
+    }
+
+    private func makeScreenshotQualityRow(
+        title: String,
+        quality: ScreenshotImageQuality,
+        action: Selector
+    ) -> (row: NSView, title: NSTextField, hint: NSTextField, popup: NSPopUpButton) {
+        let row = NSStackView()
+        row.orientation = .horizontal
+        row.alignment = .centerY
+        row.spacing = 10
+        row.translatesAutoresizingMaskIntoConstraints = false
+
+        let labelStack = NSStackView()
+        labelStack.orientation = .vertical
+        labelStack.alignment = .leading
+        labelStack.spacing = 3
+        labelStack.translatesAutoresizingMaskIntoConstraints = false
+
+        let titleLabel = primaryLabel(title)
+        let hintLabel = secondaryLabel(quality.localizedHint, wrapping: true)
+        labelStack.addArrangedSubview(titleLabel)
+        labelStack.addArrangedSubview(hintLabel)
+        row.addArrangedSubview(labelStack)
+        labelStack.widthAnchor.constraint(greaterThanOrEqualToConstant: 300).isActive = true
+
+        row.addArrangedSubview(flexSpacer())
+
+        let popup = NSPopUpButton(frame: .zero, pullsDown: false)
+        popup.controlSize = .small
+        popup.font = NSFont.systemFont(ofSize: 12)
+        popup.target = self
+        popup.action = action
+        popup.translatesAutoresizingMaskIntoConstraints = false
+        popup.widthAnchor.constraint(greaterThanOrEqualToConstant: 140).isActive = true
+        row.addArrangedSubview(popup)
+
+        return (row, titleLabel, hintLabel, popup)
     }
 
     private func buildSavePathCard(into stack: NSStackView) {
@@ -2518,6 +2668,29 @@ class SettingsView: NSView {
             return
         }
         Defaults.recordingSavePreference = preference
+    }
+
+    @objc private func screenshotUploadQualityChanged(_ sender: NSPopUpButton) {
+        guard let quality = selectedScreenshotQuality(from: sender) else { return }
+        Defaults.screenshotUploadQuality = quality
+        refreshScreenshotQualityControls()
+    }
+
+    @objc private func screenshotSaveQualityChanged(_ sender: NSPopUpButton) {
+        guard let quality = selectedScreenshotQuality(from: sender) else { return }
+        Defaults.screenshotSaveQuality = quality
+        refreshScreenshotQualityControls()
+    }
+
+    @objc private func screenshotClipboardQualityChanged(_ sender: NSPopUpButton) {
+        guard let quality = selectedScreenshotQuality(from: sender) else { return }
+        Defaults.screenshotClipboardQuality = quality
+        refreshScreenshotQualityControls()
+    }
+
+    private func selectedScreenshotQuality(from sender: NSPopUpButton) -> ScreenshotImageQuality? {
+        guard let raw = sender.selectedItem?.representedObject as? String else { return nil }
+        return ScreenshotImageQuality(rawValue: raw)
     }
 
     @objc private func autoRevealSavedFilesToggled(_ sender: NSSwitch) {
@@ -4412,6 +4585,12 @@ class SettingsView: NSView {
         pinAcrossSpacesSwitch?.state = Defaults.pinAcrossSpaces ? .on : .off
         langTitleLabel?.stringValue = L10n.languageHeader
         filenameRuleCard?.refreshLocalization()
+        screenshotQualityTitleLabel?.stringValue = L10n.screenshotQualityTitle
+        screenshotQualitySubtitleLabel?.stringValue = L10n.screenshotQualitySubtitle
+        screenshotQualityUploadTitleLabel?.stringValue = L10n.screenshotQualityUploadLabel
+        screenshotQualitySaveTitleLabel?.stringValue = L10n.screenshotQualitySaveLabel
+        screenshotQualityClipboardTitleLabel?.stringValue = L10n.screenshotQualityClipboardLabel
+        refreshScreenshotQualityControls()
         savePathTitleLabel?.stringValue = L10n.savePathTitle
         savePathSubtitleLabel?.stringValue = L10n.savePathSubtitle
         autoRevealSavedFilesTitleLabel?.stringValue = L10n.autoRevealSavedFilesLabel

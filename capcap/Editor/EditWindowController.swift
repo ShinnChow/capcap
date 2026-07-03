@@ -1635,34 +1635,55 @@ class EditWindowController {
         canvasView?.commitActiveTextEditing()
         guard let finalImage = currentCompositeImage() else { return }
         let targetScreen = screen
+        let focusReturn = onRequestFocusReturn
+        let quality = Defaults.screenshotSaveQuality
 
         tearDown()
         onComplete(nil)
 
-        var shouldReturnFocus = true
-        do {
-            guard let pngData = finalImage.pngDataPreservingBacking() else {
-                throw NSError(
-                    domain: "capcap.screenshotSave",
-                    code: 1,
-                    userInfo: [NSLocalizedDescriptionKey: "Could not encode PNG data"]
-                )
-            }
-            let filename = FilenameTemplate.imageFileName(for: finalImage)
-            let destination = try SaveDestination.uniqueFile(in: Defaults.screenshotSaveDirectory, fileName: filename)
-            try pngData.write(to: destination, options: .atomic)
-            let directoryPath = SaveDestination.displayPath(destination.deletingLastPathComponent())
-            ToastWindow.show(message: L10n.screenshotSaved(to: directoryPath), on: targetScreen)
-            if Defaults.autoRevealSavedFiles {
-                NSWorkspace.shared.activateFileViewerSelecting([destination])
-                shouldReturnFocus = false
-            }
-        } catch {
-            ToastWindow.show(message: L10n.screenshotSaveFailed(error.localizedDescription), on: targetScreen, duration: 3.5)
+        if quality.usesLossyCompression {
+            ToastWindow.show(message: L10n.screenshotQualityCompressingSave, on: targetScreen, duration: 600)
         }
 
-        if shouldReturnFocus {
-            requestFocusReturn()
+        ImageOutputEncoder.encodeAsync(image: finalImage, quality: quality) { result in
+            if quality.usesLossyCompression {
+                ToastWindow.dismiss()
+            }
+
+            var shouldReturnFocus = true
+            switch result {
+            case .failure:
+                ToastWindow.show(message: L10n.screenshotCompressionFailed, on: targetScreen, duration: 3.0)
+            case .success(let output):
+                do {
+                    let filename = FilenameTemplate.imageFileName(
+                        for: finalImage,
+                        fileExtension: output.fileExtension,
+                        imageSize: output.pixelSize
+                    )
+                    let destination = try SaveDestination.uniqueFile(
+                        in: Defaults.screenshotSaveDirectory,
+                        fileName: filename
+                    )
+                    try output.data.write(to: destination, options: .atomic)
+                    let directoryPath = SaveDestination.displayPath(destination.deletingLastPathComponent())
+                    ToastWindow.show(message: L10n.screenshotSaved(to: directoryPath), on: targetScreen)
+                    if Defaults.autoRevealSavedFiles {
+                        NSWorkspace.shared.activateFileViewerSelecting([destination])
+                        shouldReturnFocus = false
+                    }
+                } catch {
+                    ToastWindow.show(
+                        message: L10n.screenshotSaveFailed(error.localizedDescription),
+                        on: targetScreen,
+                        duration: 3.5
+                    )
+                }
+            }
+
+            if shouldReturnFocus {
+                focusReturn?()
+            }
         }
     }
 

@@ -35,14 +35,16 @@ enum FilenameTemplate {
 
     static func imageFileName(
         for image: NSImage?,
+        fileExtension: String = "png",
+        imageSize: CGSize? = nil,
         date: Date = Date(),
         consumeCounters: Bool = true
     ) -> String {
         renderFileName(
             kind: .image,
             template: OutputKind.image.storedTemplate,
-            fileExtension: "png",
-            context: Context(date: date, imageSize: pixelSize(from: image)),
+            fileExtension: fileExtension,
+            context: Context(date: date, imageSize: imageSize ?? pixelSize(from: image)),
             consumeCounters: consumeCounters
         )
     }
@@ -222,14 +224,21 @@ enum FilenameTemplate {
     }
 
     private static func stripMatchingExtension(_ base: String, fileExtension: String) -> String {
-        let suffix = ".\(fileExtension.lowercased())"
         let lower = base.lowercased()
-        guard lower.hasSuffix(suffix),
-              let end = base.index(base.endIndex, offsetBy: -suffix.count, limitedBy: base.startIndex)
-        else {
-            return base
+        let suffixes: [String]
+        if fileExtension.lowercased() == "compressed.png" {
+            suffixes = [".compressed.png", ".png", ".jpg", ".jpeg"]
+        } else {
+            suffixes = [".\(fileExtension.lowercased())"]
         }
-        return String(base[..<end])
+
+        for suffix in suffixes where lower.hasSuffix(suffix) {
+            guard let end = base.index(base.endIndex, offsetBy: -suffix.count, limitedBy: base.startIndex) else {
+                continue
+            }
+            return String(base[..<end])
+        }
+        return base
     }
 
     private static func sanitizeBase(_ raw: String, fallback: String) -> String {

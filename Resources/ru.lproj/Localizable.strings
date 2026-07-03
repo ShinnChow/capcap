@@ -514,6 +514,21 @@
 "imageMergeEmptyBody" = "Добавьте файлы, вставьте из буфера или перетащите изображения сюда";
 "imageMergeClipboardSourceName" = "Изображение из буфера";
 
+/* Screenshot quality */
+"screenshotQualityTitle" = "Качество снимков";
+"screenshotQualitySubtitle" = "Снимки обрабатываются перед загрузкой, сохранением или копированием, по умолчанию оригинал";
+"screenshotQualityUploadLabel" = "Загрузка";
+"screenshotQualitySaveLabel" = "Сохранить в файл";
+"screenshotQualityClipboardLabel" = "Копировать в буфер";
+"screenshotQualityOriginal" = "Оригинал";
+"screenshotQualityOriginalHint" = "PNG в полном размере и без потерь, самый большой файл";
+"screenshotQualityCompressed" = "Сжатый";
+"screenshotQualityCompressedHint" = "Сохраняет исходные размеры и применяет локальное PNG сжатие по мотивам TinyIMG качество 70";
+"screenshotQualityCompressingUpload" = "Сжатие перед загрузкой";
+"screenshotQualityCompressingSave" = "Сжатие перед сохранением";
+"screenshotQualityCompressingClipboard" = "Сжатие перед копированием";
+"screenshotCompressionFailed" = "Не удалось сжать изображение";
+
 /* Save paths */
 "savePathTitle" = "Пути сохранения";
 "savePathSubtitle" = "Снимки и записи сохраняются сюда без запроса папки назначения";

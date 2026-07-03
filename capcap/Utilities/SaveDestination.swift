@@ -21,9 +21,9 @@ enum SaveDestination {
             return original
         }
 
-        let nsName = fileName as NSString
-        let rawBase = nsName.deletingPathExtension
-        let fileExtension = nsName.pathExtension
+        let nameParts = splitFileName(fileName)
+        let rawBase = nameParts.base
+        let fileExtension = nameParts.fileExtension
         let base = rawBase.isEmpty ? "capcap" : rawBase
 
         for index in 2...999 {
@@ -48,5 +48,16 @@ enum SaveDestination {
             fallbackName = "\(base)-\(token).\(fileExtension)"
         }
         return directory.appendingPathComponent(fallbackName, isDirectory: false)
+    }
+
+    private static func splitFileName(_ fileName: String) -> (base: String, fileExtension: String) {
+        let compressedSuffix = ".compressed.png"
+        if fileName.lowercased().hasSuffix(compressedSuffix) {
+            let end = fileName.index(fileName.endIndex, offsetBy: -compressedSuffix.count)
+            return (String(fileName[..<end]), "compressed.png")
+        }
+
+        let nsName = fileName as NSString
+        return (nsName.deletingPathExtension, nsName.pathExtension)
     }
 }

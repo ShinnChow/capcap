@@ -18,6 +18,7 @@ enum TencentCOSUploader: UploaderProtocol {
     static func upload(
         data: Data,
         fileName: String,
+        contentType: String,
         config: ProviderConfig,
         progress: @escaping (Double) -> Void,
         completion: @escaping (Result<URL, Error>) -> Void
@@ -60,7 +61,7 @@ enum TencentCOSUploader: UploaderProtocol {
         var req = URLRequest(url: url)
         req.httpMethod = "PUT"
         req.setValue(auth, forHTTPHeaderField: "Authorization")
-        req.setValue("image/png", forHTTPHeaderField: "Content-Type")
+        req.setValue(contentType, forHTTPHeaderField: "Content-Type")
         req.setValue("\(data.count)", forHTTPHeaderField: "Content-Length")
         req.setValue(host, forHTTPHeaderField: "Host")
 

@@ -38,6 +38,7 @@ let package = Package(
                 .linkedFramework("UniformTypeIdentifiers"),
                 .linkedFramework("Carbon"),
                 .linkedFramework("VideoToolbox"),
+                .linkedLibrary("z"),
             ]
         )
     ]
