@@ -124,7 +124,6 @@
 "historyClear" = "Effacer l'historique";
 "historyCleared" = "Historique effacé";
 "historyShowInFinder" = "Afficher dans le Finder";
-"historyCloudMarkdownTip" = "Maintenez ⌘ et cliquez sur l'aperçu pour copier un lien d'image Markdown";
 "historyPanelMenu" = "Panneau d'historique";
 "historyPanelFilterAll" = "Tout";
 "historyPanelFilterScreenshots" = "Captures";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "Couleurs";
 "historyPanelCopyHint" = "Cliquez pour copier";
 "historyPanelCopyDragHint" = "Cliquez pour copier · faites glisser vers une app";
+"historyPanelCopyMarkdownLink" = "Copier le lien MD";
+"historyPanelCopyPlainLink" = "Copier l'URL simple";
 "historyPanelEmpty" = "Aucun historique";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "Configuration enregistrée";
 "uploadCurrentDefault" = "Défaut actuel";
 "uploadMarkdownToggleTitle" = "Copier en lien Markdown";
-"uploadMarkdownToggleSubtitle" = "Si activé, copie une balise d'image Markdown (![](url)) après l'envoi ; sinon, copie une URL simple. Dans l'historique, ⌘-cliquez sur une image envoyée pour copier un lien Markdown, ou cliquez simplement dessus pour une URL simple";
+"uploadMarkdownToggleSubtitle" = "Si activé, copie une balise d'image Markdown (![](url)) après l'envoi ; sinon, copie une URL simple. Dans le panneau Historique, le clic sur une image cloud suit ce réglage, avec des boutons au survol pour MD ou URL simple";
 "filenameRuleTitle" = "Règles de nom de fichier";
 "filenameRuleSubtitle" = "Contrôle les téléversements d'image, les noms par défaut des images enregistrées et ceux des enregistrements. Les extensions sont ajoutées automatiquement";
 "filenameRulePresetLabel" = "Préréglage";

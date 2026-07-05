@@ -124,7 +124,6 @@
 "historyClear" = "기록 지우기";
 "historyCleared" = "기록 지움";
 "historyShowInFinder" = "Finder에 표시";
-"historyCloudMarkdownTip" = "⌘ 키를 누른 채 미리보기 이미지를 클릭하면 Markdown 형식 이미지 링크를 복사합니다";
 "historyPanelMenu" = "기록 패널";
 "historyPanelFilterAll" = "전체";
 "historyPanelFilterScreenshots" = "스크린샷";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "색상";
 "historyPanelCopyHint" = "클릭해 복사";
 "historyPanelCopyDragHint" = "클릭해 복사 · 앱으로 드래그";
+"historyPanelCopyMarkdownLink" = "MD 링크 복사";
+"historyPanelCopyPlainLink" = "일반 링크 복사";
 "historyPanelEmpty" = "기록 없음";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "설정이 저장됨";
 "uploadCurrentDefault" = "현재 기본값";
 "uploadMarkdownToggleTitle" = "Markdown 링크로 복사";
-"uploadMarkdownToggleSubtitle" = "켜면 업로드 후 Markdown 이미지 태그(![](url))를 복사하고, 끄면 일반 URL을 복사합니다. 기록에서 ⌘ 를 누른 채 업로드된 이미지를 클릭하면 Markdown 링크를, 그냥 클릭하면 일반 URL을 복사합니다";
+"uploadMarkdownToggleSubtitle" = "켜면 업로드 후 Markdown 이미지 태그(![](url))를 복사하고, 끄면 일반 URL을 복사합니다. 기록 패널에서 클라우드 이미지는 클릭 시 이 설정을 따르며, 호버 버튼으로 MD 또는 일반 링크를 선택할 수 있습니다";
 "filenameRuleTitle" = "파일 이름 규칙";
 "filenameRuleSubtitle" = "이미지 업로드, 이미지 저장 기본 이름, 녹화 저장 기본 이름을 제어합니다. 확장자는 자동으로 추가됩니다";
 "filenameRulePresetLabel" = "프리셋";

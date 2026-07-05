@@ -124,7 +124,6 @@
 "historyClear" = "Clear History";
 "historyCleared" = "History cleared";
 "historyShowInFinder" = "Show in Finder";
-"historyCloudMarkdownTip" = "Hold ⌘ and click the preview image to copy a Markdown image link";
 "historyPanelMenu" = "History Panel";
 "historyPanelFilterAll" = "All";
 "historyPanelFilterScreenshots" = "Screenshots";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "Colors";
 "historyPanelCopyHint" = "Click to copy";
 "historyPanelCopyDragHint" = "Click to copy · drag into an app";
+"historyPanelCopyMarkdownLink" = "Copy MD link";
+"historyPanelCopyPlainLink" = "Copy plain link";
 "historyPanelEmpty" = "No history yet";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "Config saved";
 "uploadCurrentDefault" = "Current default";
 "uploadMarkdownToggleTitle" = "Copy as Markdown link";
-"uploadMarkdownToggleSubtitle" = "When on, copies a Markdown image tag (![](url)) after upload; when off, copies a plain URL. In History, ⌘-click an uploaded image to copy a Markdown link, or click it directly for a plain URL";
+"uploadMarkdownToggleSubtitle" = "When on, copies a Markdown image tag (![](url)) after upload; when off, copies a plain URL. In History Panel, cloud images follow this setting on click, with hover buttons for MD or plain links";
 "filenameRuleTitle" = "File name rules";
 "filenameRuleSubtitle" = "Controls image uploads, image save defaults, and recording save defaults. Extensions are added automatically";
 "filenameRulePresetLabel" = "Preset";

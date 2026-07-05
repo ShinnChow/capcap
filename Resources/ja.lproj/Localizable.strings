@@ -124,7 +124,6 @@
 "historyClear" = "履歴を消去";
 "historyCleared" = "履歴を消去しました";
 "historyShowInFinder" = "Finder に表示";
-"historyCloudMarkdownTip" = "⌘ を押しながらプレビュー画像をクリックすると、Markdown 形式の画像リンクをコピーできます";
 "historyPanelMenu" = "履歴パネル";
 "historyPanelFilterAll" = "すべて";
 "historyPanelFilterScreenshots" = "スクリーンショット";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "カラー";
 "historyPanelCopyHint" = "クリックでコピー";
 "historyPanelCopyDragHint" = "クリックでコピー · アプリへドラッグ";
+"historyPanelCopyMarkdownLink" = "MD リンクをコピー";
+"historyPanelCopyPlainLink" = "通常リンクをコピー";
 "historyPanelEmpty" = "履歴がありません";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "設定を保存しました";
 "uploadCurrentDefault" = "現在のデフォルト";
 "uploadMarkdownToggleTitle" = "Markdown リンクとしてコピー";
-"uploadMarkdownToggleSubtitle" = "オンにすると、アップロード後に Markdown 画像タグ（![](url)）をコピーします。オフの場合は通常の URL をコピーします。履歴では、⌘ を押しながらアップロード済み画像をクリックすると Markdown リンクを、そのままクリックすると通常の URL をコピーします";
+"uploadMarkdownToggleSubtitle" = "オンにすると、アップロード後に Markdown 画像タグ（![](url)）をコピーします。オフの場合は通常の URL をコピーします。履歴パネルでは、クラウド画像のクリックはこの設定に従い、ホバーボタンで MD または通常リンクを選べます";
 "filenameRuleTitle" = "ファイル名ルール";
 "filenameRuleSubtitle" = "画像アップロード、画像保存の既定名、録画保存の既定名を制御します。拡張子は自動で追加されます";
 "filenameRulePresetLabel" = "プリセット";

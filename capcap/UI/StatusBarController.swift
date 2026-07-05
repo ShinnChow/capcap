@@ -370,10 +370,10 @@ class StatusBarController: NSObject {
         guard let entry = entry else { return }
         switch entry.kind {
         case .image:
-            // Cloud-hosted images copy a URL; holding ⌘ copies a Markdown image
-            // tag instead. Plain (non-uploaded) images always copy the image.
+            // Cloud-hosted images follow the user's upload copy format setting.
+            // Plain non-uploaded images always copy the image itself.
             if let cloudURL = entry.cloudURL {
-                let asMarkdown = NSEvent.modifierFlags.contains(.command)
+                let asMarkdown = Defaults.copyUploadAsMarkdown
                 let copyText = asMarkdown
                     ? "![](\(cloudURL.absoluteString))"
                     : cloudURL.absoluteString
@@ -441,7 +441,6 @@ extension StatusBarController: NSMenuDelegate {
             let row = HistoryMenuRow(
                 entry: entry,
                 timestamp: timestamp,
-                cloudTip: entry.cloudURL == nil ? nil : L10n.historyCloudMarkdownTip,
                 target: self,
                 action: #selector(historyItemClicked(_:))
             )
@@ -483,7 +482,7 @@ private final class HistoryMenuRow: NSView {
     private let action: Selector
     private let timeLabel: NSTextField
 
-    init(entry: HistoryEntry, timestamp: String, cloudTip: String?, target: AnyObject, action: Selector) {
+    init(entry: HistoryEntry, timestamp: String, target: AnyObject, action: Selector) {
         self.entry = entry
         self.target = target
         self.action = action
@@ -522,8 +521,8 @@ private final class HistoryMenuRow: NSView {
         super.init(frame: NSRect(x: 0, y: 0, width: Self.itemWidth, height: totalHeight))
         autoresizingMask = [.width]
         addSubview(timeLabel)
-        if let cloudTip {
-            let cloudLabel = InstantTooltipLabel(text: "☁️", tipMessage: cloudTip)
+        if entry.cloudURL != nil {
+            let cloudLabel = NSTextField(labelWithString: "☁️")
             cloudLabel.font = NSFont.systemFont(ofSize: 11, weight: .regular)
             cloudLabel.textColor = .secondaryLabelColor
             cloudLabel.frame = NSRect(
@@ -666,140 +665,6 @@ private final class HistoryMenuPreviewView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         superview?.mouseUp(with: event)
-    }
-}
-
-private final class InstantTooltipLabel: NSTextField {
-    private let tipMessage: String
-    private var tipTrackingArea: NSTrackingArea?
-
-    init(text: String, tipMessage: String) {
-        self.tipMessage = tipMessage
-        super.init(frame: .zero)
-        stringValue = text
-        isEditable = false
-        isSelectable = false
-        isBordered = false
-        drawsBackground = false
-        backgroundColor = .clear
-        focusRingType = .none
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let area = tipTrackingArea {
-            removeTrackingArea(area)
-        }
-        let area = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(area)
-        tipTrackingArea = area
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        InstantTooltipPresenter.shared.show(message: tipMessage, anchoredTo: self)
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        InstantTooltipPresenter.shared.hide()
-    }
-
-    override func mouseUp(with event: NSEvent) {
-        superview?.mouseUp(with: event)
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        if window == nil {
-            InstantTooltipPresenter.shared.hide()
-        }
-    }
-}
-
-private final class InstantTooltipPresenter {
-    static let shared = InstantTooltipPresenter()
-
-    private var panel: NSPanel?
-
-    func show(message: String, anchoredTo view: NSView) {
-        hide()
-        guard let anchorWindow = view.window else { return }
-
-        let font = NSFont.systemFont(ofSize: 12, weight: .regular)
-        let maxTextWidth: CGFloat = 280
-        let padding = NSEdgeInsets(top: 7, left: 9, bottom: 7, right: 9)
-        let textRect = (message as NSString).boundingRect(
-            with: NSSize(width: maxTextWidth, height: CGFloat.greatestFiniteMagnitude),
-            options: [.usesLineFragmentOrigin, .usesFontLeading],
-            attributes: [.font: font]
-        )
-        let textSize = NSSize(width: ceil(textRect.width), height: ceil(textRect.height))
-        let panelSize = NSSize(
-            width: textSize.width + padding.left + padding.right,
-            height: textSize.height + padding.top + padding.bottom
-        )
-
-        let contentView = NSView(frame: NSRect(origin: .zero, size: panelSize))
-        contentView.wantsLayer = true
-        contentView.layer?.cornerRadius = 6
-        contentView.layer?.backgroundColor = NSColor(calibratedWhite: 0.08, alpha: 0.94).cgColor
-
-        let label = NSTextField(wrappingLabelWithString: message)
-        label.font = font
-        label.textColor = .white
-        label.alignment = .left
-        label.frame = NSRect(
-            x: padding.left,
-            y: padding.bottom,
-            width: textSize.width,
-            height: textSize.height
-        )
-        contentView.addSubview(label)
-
-        let panel = NSPanel(
-            contentRect: NSRect(origin: .zero, size: panelSize),
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: true
-        )
-        panel.isReleasedWhenClosed = false
-        panel.isOpaque = false
-        panel.backgroundColor = .clear
-        panel.hasShadow = true
-        panel.ignoresMouseEvents = true
-        panel.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 1)
-        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        panel.contentView = contentView
-
-        let anchorRect = anchorWindow.convertToScreen(view.convert(view.bounds, to: nil))
-        let gap: CGFloat = 6
-        var origin = NSPoint(
-            x: anchorRect.midX - panelSize.width / 2,
-            y: anchorRect.maxY + gap
-        )
-        let visibleFrame = (anchorWindow.screen ?? NSScreen.main)?.visibleFrame ?? NSScreen.screens.first?.visibleFrame ?? .zero
-        if origin.y + panelSize.height > visibleFrame.maxY {
-            origin.y = anchorRect.minY - gap - panelSize.height
-        }
-        origin.x = min(max(origin.x, visibleFrame.minX + 6), visibleFrame.maxX - panelSize.width - 6)
-        origin.y = min(max(origin.y, visibleFrame.minY + 6), visibleFrame.maxY - panelSize.height - 6)
-
-        panel.setFrameOrigin(origin)
-        panel.orderFrontRegardless()
-        self.panel = panel
-    }
-
-    func hide() {
-        panel?.orderOut(nil)
-        panel = nil
     }
 }
 
