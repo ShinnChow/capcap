@@ -137,6 +137,7 @@ final class HistoryPanelController {
 
         panel.contentView = chrome
         panel.orderFrontRegardless()
+        panel.makeKey()
         dialogPanel = panel
         startDialogOutsideMonitoring(for: panel)
     }
@@ -296,6 +297,7 @@ private final class HistoryNotchWindowController: NSWindowController {
         commandOpenedMouseHasEnteredHoverRegion = false
         window?.ignoresMouseEvents = false
         window?.orderFrontRegardless()
+        window?.makeKey()
         rootView.setExpanded(true, animated: true)
     }
 
