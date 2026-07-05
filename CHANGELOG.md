@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.5] - 2026-07-05
+
+### Added
+- Add multi-select to history panel (576b5b1)
+- Show cloud badge in history panel (6ba7bc2)
+
 ## [1.6.4] - 2026-07-03
 
 ### Added
