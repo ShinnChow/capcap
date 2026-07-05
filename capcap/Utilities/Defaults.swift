@@ -233,7 +233,6 @@ enum L10n {
     static var historyClear: String { s("historyClear") }
     static var historyCleared: String { s("historyCleared") }
     static var historyShowInFinder: String { s("historyShowInFinder") }
-    static var historyCloudMarkdownTip: String { s("historyCloudMarkdownTip") }
     static var historyPanelMenu: String { s("historyPanelMenu") }
     static var historyPanelFilterAll: String { s("historyPanelFilterAll") }
     static var historyPanelFilterScreenshots: String { s("historyPanelFilterScreenshots") }
@@ -242,6 +241,8 @@ enum L10n {
     static var historyPanelFilterColors: String { s("historyPanelFilterColors") }
     static var historyPanelCopyHint: String { s("historyPanelCopyHint") }
     static var historyPanelCopyDragHint: String { s("historyPanelCopyDragHint") }
+    static var historyPanelCopyMarkdownLink: String { s("historyPanelCopyMarkdownLink") }
+    static var historyPanelCopyPlainLink: String { s("historyPanelCopyPlainLink") }
     static var historyPanelEmpty: String { s("historyPanelEmpty") }
 
     // Cursor chip

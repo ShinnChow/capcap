@@ -124,7 +124,6 @@
 "historyClear" = "清除历史";
 "historyCleared" = "历史已清除";
 "historyShowInFinder" = "在 Finder 中显示";
-"historyCloudMarkdownTip" = "按住 ⌘ 并点击预览图，可直接复制 Markdown 格式图片链接";
 "historyPanelMenu" = "历史面板";
 "historyPanelFilterAll" = "全部";
 "historyPanelFilterScreenshots" = "截图";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "颜色";
 "historyPanelCopyHint" = "点击复制";
 "historyPanelCopyDragHint" = "点击复制 · 拖拽到应用";
+"historyPanelCopyMarkdownLink" = "复制 MD 链接";
+"historyPanelCopyPlainLink" = "复制普通链接";
 "historyPanelEmpty" = "暂无历史";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "已保存配置";
 "uploadCurrentDefault" = "当前默认";
 "uploadMarkdownToggleTitle" = "复制为 Markdown 链接";
-"uploadMarkdownToggleSubtitle" = "开启后上传完成自动复制 Markdown 图片格式（![](链接)），关闭则复制普通 URL。在历史记录中，按住 ⌘ 点击已上传到图床的图片复制 Markdown 链接，直接点击则复制普通链接";
+"uploadMarkdownToggleSubtitle" = "开启后上传完成自动复制 Markdown 图片格式（![](链接)），关闭则复制普通 URL。历史面板中，点击云图片按此设置复制，也可用悬浮按钮选择 MD 或普通链接";
 "filenameRuleTitle" = "文件名规则";
 "filenameRuleSubtitle" = "控制图片上传、图片保存默认名和录制保存默认名。扩展名会自动添加";
 "filenameRulePresetLabel" = "预设";

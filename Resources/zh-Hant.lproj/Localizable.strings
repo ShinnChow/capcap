@@ -124,7 +124,6 @@
 "historyClear" = "清除歷史記錄";
 "historyCleared" = "歷史記錄已清除";
 "historyShowInFinder" = "在 Finder 中顯示";
-"historyCloudMarkdownTip" = "按住 ⌘ 並點選預覽圖，可直接複製 Markdown 格式圖片連結";
 "historyPanelMenu" = "歷史面板";
 "historyPanelFilterAll" = "全部";
 "historyPanelFilterScreenshots" = "截圖";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "顏色";
 "historyPanelCopyHint" = "點選複製";
 "historyPanelCopyDragHint" = "點選複製 · 拖曳到應用";
+"historyPanelCopyMarkdownLink" = "複製 MD 連結";
+"historyPanelCopyPlainLink" = "複製純網址";
 "historyPanelEmpty" = "尚無歷史";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "設定已儲存";
 "uploadCurrentDefault" = "目前預設";
 "uploadMarkdownToggleTitle" = "複製為 Markdown 連結";
-"uploadMarkdownToggleSubtitle" = "開啟後，上傳完成會複製 Markdown 圖片標籤（![](url)）；關閉則複製純網址。在歷史記錄中，按住 ⌘ 點選已上傳的圖片可複製 Markdown 連結，直接點選則複製純網址";
+"uploadMarkdownToggleSubtitle" = "開啟後，上傳完成會複製 Markdown 圖片標籤（![](url)）；關閉則複製純網址。歷史面板中，點選雲端圖片會依此設定複製，也可用懸浮按鈕選擇 MD 或純網址";
 "filenameRuleTitle" = "檔名規則";
 "filenameRuleSubtitle" = "控制圖片上傳、圖片儲存預設檔名和錄製儲存預設檔名。副檔名會自動加入";
 "filenameRulePresetLabel" = "預設";

@@ -1881,6 +1881,177 @@ private final class HistoryPanelFilterButton: NSControl {
     }
 }
 
+private final class HistoryCloudActionBarView: NSView {
+    private static let buttonSize = NSSize(width: 24, height: 22)
+    private static let spacing: CGFloat = 4
+    private let markdownButton = HistoryCloudActionButton(text: "MD", tooltip: L10n.historyPanelCopyMarkdownLink)
+    private let plainLinkButton = HistoryCloudActionButton(symbolName: "link", tooltip: L10n.historyPanelCopyPlainLink)
+
+    var onCopyMarkdown: (() -> Void)?
+    var onCopyPlainLink: (() -> Void)?
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+
+        markdownButton.target = self
+        markdownButton.action = #selector(markdownClicked)
+        addSubview(markdownButton)
+
+        plainLinkButton.target = self
+        plainLinkButton.action = #selector(plainLinkClicked)
+        addSubview(plainLinkButton)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let width = Self.buttonSize.width
+            + Self.spacing
+            + Self.buttonSize.width
+        return NSSize(width: width, height: Self.buttonSize.height)
+    }
+
+    override func layout() {
+        super.layout()
+        let y = bounds.midY - Self.buttonSize.height / 2
+
+        markdownButton.frame = NSRect(
+            x: 0,
+            y: y,
+            width: Self.buttonSize.width,
+            height: Self.buttonSize.height
+        )
+        plainLinkButton.frame = NSRect(
+            x: markdownButton.frame.maxX + Self.spacing,
+            y: y,
+            width: Self.buttonSize.width,
+            height: Self.buttonSize.height
+        )
+    }
+
+    @objc private func markdownClicked() {
+        onCopyMarkdown?()
+    }
+
+    @objc private func plainLinkClicked() {
+        onCopyPlainLink?()
+    }
+}
+
+private final class HistoryCloudActionButton: NSControl {
+    private let label = HistoryPanelCenteredTextView()
+    private let iconView = NSImageView()
+    private var trackingArea: NSTrackingArea?
+    private var isHovering = false {
+        didSet { applyAppearance() }
+    }
+
+    init(text: String, tooltip: String) {
+        super.init(frame: .zero)
+        commonInit(tooltip: tooltip)
+
+        label.stringValue = text
+        label.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .bold)
+        label.textColor = .white
+        label.alignment = .center
+        label.horizontalInset = 0
+        label.verticalInset = 0
+        addSubview(label)
+
+        iconView.isHidden = true
+    }
+
+    init(symbolName: String, tooltip: String) {
+        super.init(frame: .zero)
+        commonInit(tooltip: tooltip)
+
+        let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .bold)
+        iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: tooltip)?
+            .withSymbolConfiguration(config)
+        iconView.contentTintColor = .white
+        iconView.imageScaling = .scaleProportionallyDown
+        addSubview(iconView)
+
+        label.isHidden = true
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: 24, height: 22)
+    }
+
+    private func commonInit(tooltip: String) {
+        wantsLayer = true
+        layer?.cornerRadius = 7
+        layer?.cornerCurve = .continuous
+        toolTip = tooltip
+        setAccessibilityLabel(tooltip)
+        applyAppearance()
+    }
+
+    override func layout() {
+        super.layout()
+        label.frame = bounds
+        let iconSize: CGFloat = 14
+        iconView.frame = NSRect(
+            x: bounds.midX - iconSize / 2,
+            y: bounds.midY - iconSize / 2,
+            width: iconSize,
+            height: iconSize
+        )
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let trackingArea {
+            removeTrackingArea(trackingArea)
+        }
+        let area = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        trackingArea = area
+        addTrackingArea(area)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        isHovering = true
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        isHovering = false
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        layer?.backgroundColor = accentGreen.withAlphaComponent(0.92).cgColor
+        label.textColor = .black
+        iconView.contentTintColor = .black
+        sendAction(action, to: target)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
+            self?.applyAppearance()
+        }
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    private func applyAppearance() {
+        layer?.backgroundColor = isHovering
+            ? NSColor.white.withAlphaComponent(0.20).cgColor
+            : NSColor.white.withAlphaComponent(0.10).cgColor
+        label.textColor = .white
+        iconView.contentTintColor = .white
+    }
+}
+
 private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private enum PreviewLoadState {
         case idle
@@ -1898,6 +2069,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private let imageView = NSImageView()
     private let overlayLabel = HistoryPanelCenteredTextView()
     private let cloudBadgeView = HistoryCloudBadgeView()
+    private let cloudActionBarView = HistoryCloudActionBarView()
     private let badgeView = HistoryMediaBadgeView()
     private let selectionBadgeView = HistorySelectionBadgeView()
     private let metaLabel = HistoryPanelCenteredTextView()
@@ -1945,7 +2117,9 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         imageView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.24).cgColor
         addSubview(imageView)
 
-        overlayLabel.stringValue = Self.overlayHint(supportsDrag: supportsDrag)
+        let overlayHint = Self.overlayHint(for: entry, supportsDrag: supportsDrag)
+        overlayLabel.stringValue = overlayHint
+        overlayLabel.isHidden = overlayHint.isEmpty
         overlayLabel.font = NSFont.systemFont(ofSize: presentation == .dialog ? 13 : 12, weight: .bold)
         overlayLabel.textColor = .white
         overlayLabel.alignment = .center
@@ -1961,6 +2135,22 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
 
         cloudBadgeView.isHidden = entry.cloudURL == nil
         addSubview(cloudBadgeView)
+
+        cloudActionBarView.isHidden = true
+        cloudActionBarView.alphaValue = 0
+        cloudActionBarView.onCopyMarkdown = { [weak self] in
+            guard let self else { return }
+            if HistoryPanelEntryActions.copyCloudURL(for: self.entry, asMarkdown: true) {
+                self.onRequestDismiss?()
+            }
+        }
+        cloudActionBarView.onCopyPlainLink = { [weak self] in
+            guard let self else { return }
+            if HistoryPanelEntryActions.copyCloudURL(for: self.entry, asMarkdown: false) {
+                self.onRequestDismiss?()
+            }
+        }
+        addSubview(cloudActionBarView)
 
         if let badgeKind = HistoryMediaBadgeKind(entry: entry) {
             badgeView.title = badgeKind.title
@@ -2009,6 +2199,15 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
                 y: imageView.frame.minY - 5,
                 width: cloudSize.width,
                 height: cloudSize.height
+            )
+        }
+        if entry.cloudURL != nil {
+            let actionSize = cloudActionBarView.intrinsicContentSize
+            cloudActionBarView.frame = NSRect(
+                x: cloudBadgeView.frame.maxX + 4,
+                y: cloudBadgeView.frame.minY,
+                width: actionSize.width,
+                height: actionSize.height
             )
         }
         if !badgeView.isHidden {
@@ -2076,7 +2275,9 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         layer?.backgroundColor = hovered
             ? NSColor.white.withAlphaComponent(0.11).cgColor
             : NSColor.white.withAlphaComponent(0.075).cgColor
-        overlayLabel.alphaValue = hovered ? 1 : 0
+        overlayLabel.alphaValue = hovered && !overlayLabel.isHidden ? 1 : 0
+        cloudActionBarView.isHidden = entry.cloudURL == nil || !hovered
+        cloudActionBarView.alphaValue = hovered ? 1 : 0
         updateSelectionBadgeVisibility()
     }
 
@@ -2243,7 +2444,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         return false
     }
 
-    private static func overlayHint(supportsDrag: Bool) -> String {
+    private static func overlayHint(for entry: HistoryEntry, supportsDrag: Bool) -> String {
         guard supportsDrag else { return L10n.historyPanelCopyHint }
         return L10n.historyPanelCopyDragHint.replacingOccurrences(of: " · ", with: "\n")
     }
@@ -2379,18 +2580,6 @@ private enum HistoryPanelEntryActions {
     static func copy(_ entry: HistoryEntry) -> Bool {
         switch entry.kind {
         case .image:
-            if let cloudURL = entry.cloudURL {
-                let asMarkdown = NSEvent.modifierFlags.contains(.command)
-                let copyText = asMarkdown
-                    ? "![](\(cloudURL.absoluteString))"
-                    : cloudURL.absoluteString
-                let pasteboard = NSPasteboard.general
-                pasteboard.clearContents()
-                pasteboard.setString(copyText, forType: .string)
-                ToastWindow.show(message: asMarkdown ? L10n.uploadCopiedMarkdown : L10n.uploadCopied)
-                return true
-            }
-
             guard let image = NSImage(contentsOf: entry.fileURL) else { return false }
             ClipboardManager.copyToClipboard(image: image)
             ToastWindow.show()
@@ -2406,6 +2595,22 @@ private enum HistoryPanelEntryActions {
             ToastWindow.show(message: L10n.colorCopied(hex.uppercased()))
             return true
         }
+    }
+
+    static func copyCloudURL(for entry: HistoryEntry, asMarkdown: Bool) -> Bool {
+        guard let cloudURL = entry.cloudURL else { return false }
+        return copyCloudURL(cloudURL, asMarkdown: asMarkdown)
+    }
+
+    private static func copyCloudURL(_ cloudURL: URL, asMarkdown: Bool) -> Bool {
+        let copyText = asMarkdown
+            ? "![](\(cloudURL.absoluteString))"
+            : cloudURL.absoluteString
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(copyText, forType: .string)
+        ToastWindow.show(message: asMarkdown ? L10n.uploadCopiedMarkdown : L10n.uploadCopied)
+        return true
     }
 
     static func copyImages(_ entries: [HistoryEntry]) -> Bool {

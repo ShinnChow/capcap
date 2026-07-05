@@ -124,7 +124,6 @@
 "historyClear" = "Xóa lịch sử";
 "historyCleared" = "Đã xóa lịch sử";
 "historyShowInFinder" = "Hiển thị trong Finder";
-"historyCloudMarkdownTip" = "Giữ ⌘ và nhấp vào ảnh xem trước để sao chép liên kết ảnh dạng Markdown";
 "historyPanelMenu" = "Bảng lịch sử";
 "historyPanelFilterAll" = "Tất cả";
 "historyPanelFilterScreenshots" = "Ảnh chụp";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "Màu";
 "historyPanelCopyHint" = "Nhấp để sao chép";
 "historyPanelCopyDragHint" = "Nhấp để sao chép · kéo vào ứng dụng";
+"historyPanelCopyMarkdownLink" = "Sao chép liên kết MD";
+"historyPanelCopyPlainLink" = "Sao chép liên kết thường";
 "historyPanelEmpty" = "Chưa có lịch sử";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "Đã lưu cấu hình";
 "uploadCurrentDefault" = "Mặc định hiện tại";
 "uploadMarkdownToggleTitle" = "Sao chép dưới dạng liên kết Markdown";
-"uploadMarkdownToggleSubtitle" = "Khi bật, sau khi tải lên sẽ sao chép thẻ ảnh Markdown (![](url)); khi tắt, sao chép URL thuần. Trong Lịch sử, ⌘-nhấp ảnh đã tải lên để sao chép liên kết Markdown, hoặc nhấp trực tiếp để sao chép URL thuần";
+"uploadMarkdownToggleSubtitle" = "Khi bật, sau khi tải lên sẽ sao chép thẻ ảnh Markdown (![](url)); khi tắt, sao chép URL thuần. Trong bảng Lịch sử, ảnh đám mây khi nhấp sẽ theo thiết lập này, với nút khi rê chuột để chọn MD hoặc liên kết thường";
 "filenameRuleTitle" = "Quy tắc tên tệp";
 "filenameRuleSubtitle" = "Điều khiển tên khi tải ảnh lên, tên mặc định khi lưu ảnh và khi lưu bản ghi. Phần mở rộng được tự động thêm";
 "filenameRulePresetLabel" = "Mẫu";

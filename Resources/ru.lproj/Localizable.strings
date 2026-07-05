@@ -124,7 +124,6 @@
 "historyClear" = "Очистить историю";
 "historyCleared" = "История очищена";
 "historyShowInFinder" = "Показать в Finder";
-"historyCloudMarkdownTip" = "Удерживайте ⌘ и щёлкните миниатюру, чтобы скопировать ссылку на изображение в формате Markdown";
 "historyPanelMenu" = "Панель истории";
 "historyPanelFilterAll" = "Все";
 "historyPanelFilterScreenshots" = "Снимки";
@@ -133,6 +132,8 @@
 "historyPanelFilterColors" = "Цвета";
 "historyPanelCopyHint" = "Нажмите для копирования";
 "historyPanelCopyDragHint" = "Нажмите для копирования · перетащите в приложение";
+"historyPanelCopyMarkdownLink" = "Скопировать MD-ссылку";
+"historyPanelCopyPlainLink" = "Скопировать обычную ссылку";
 "historyPanelEmpty" = "История пуста";
 
 /* Cursor chip */
@@ -353,7 +354,7 @@
 "uploadSavedToast" = "Конфигурация сохранена";
 "uploadCurrentDefault" = "Текущий по умолчанию";
 "uploadMarkdownToggleTitle" = "Копировать как ссылку Markdown";
-"uploadMarkdownToggleSubtitle" = "Если включено, после загрузки копируется тег изображения Markdown (![](url)); если выключено — обычный URL. В истории нажмите ⌘ и щёлкните по загруженному изображению, чтобы скопировать ссылку Markdown, или просто щёлкните для обычного URL";
+"uploadMarkdownToggleSubtitle" = "Если включено, после загрузки копируется тег изображения Markdown (![](url)); если выключено — обычный URL. На панели истории щелчок по облачному изображению следует этой настройке, а кнопки при наведении выбирают MD или обычную ссылку";
 "filenameRuleTitle" = "Правила имени файла";
 "filenameRuleSubtitle" = "Управляет именами для загрузки изображений, сохранения изображений и сохранения записей. Расширения добавляются автоматически";
 "filenameRulePresetLabel" = "Шаблон";
