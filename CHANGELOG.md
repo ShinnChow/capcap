@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.6] - 2026-07-05
+
+### Fixed
+- Fix history panel cloud action clicks (6d34c50)
+
+### Changed
+- Refine history panel link copy actions (47677d9)
+- Make history panels key (d555c1b)
+
 ## [1.6.5] - 2026-07-05
 
 ### Added
