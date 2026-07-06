@@ -2931,6 +2931,20 @@ class SettingsView: NSView {
         }
     }
 
+    /// Tells the user a recorded key needs a modifier held with it, so they
+    /// can try again. Recording is already cancelled by the caller before
+    /// this is shown.
+    private func presentShortcutNeedsModifierAlert() {
+        let alert = NSAlert()
+        alert.messageText = L10n.shortcutNeedsModifier
+        alert.alertStyle = .warning
+        if let win = self.window {
+            alert.beginSheetModal(for: win, completionHandler: nil)
+        } else {
+            alert.runModal()
+        }
+    }
+
     private func cancelShortcutRecordings(except slot: HotkeyManager.HotkeySlot) {
         if slot != .screenshot, shortcutRecordingMonitor != nil {
             cancelShortcutRecording()
@@ -3021,7 +3035,8 @@ class SettingsView: NSView {
             // Reject bare keys (no modifier and not a function key) — the user must
             // hold at least one modifier so the shortcut won't collide with typing.
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.shortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3109,7 +3124,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.fullScreenScreenshotShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelFullScreenScreenshotShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3197,7 +3213,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.colorPickerShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelColorPickerShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3285,7 +3302,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.selectedImagePinShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelSelectedImagePinShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3375,7 +3393,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.clipboardImagePinShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelClipboardImagePinShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3465,7 +3484,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.clipboardTextPinShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelClipboardTextPinShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3553,7 +3573,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.selectedImageEditShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelSelectedImageEditShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3641,7 +3662,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.clipboardImageEditShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelClipboardImageEditShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3729,7 +3751,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.textRecognitionShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelTextRecognitionShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3817,7 +3840,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.copyImageTextShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelCopyImageTextShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3905,7 +3929,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.screenshotTranslationShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelScreenshotTranslationShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -3993,7 +4018,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.recordShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelRecordShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -4081,7 +4107,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.imageMergeShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelImageMergeShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
@@ -4489,7 +4516,8 @@ class SettingsView: NSView {
             let keyCode = UInt32(event.keyCode)
 
             if carbonMods == 0 && !HotkeyManager.isFunctionKey(keyCode) {
-                self.historyPanelShortcutField.stringValue = L10n.shortcutNeedsModifier
+                self.cancelHistoryPanelShortcutRecording()
+                self.presentShortcutNeedsModifierAlert()
                 return nil
             }
 
