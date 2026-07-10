@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.7] - 2026-07-10
+
+### Added
+- Add bulk delete support to the history panel (643ab8c)
+
+### Fixed
+- Show clear guidance when shortcut recording rejects bare keys (3e52030, a5ba6f3, d5a6743)
+
 ## [1.6.6] - 2026-07-05
 
 ### Fixed
