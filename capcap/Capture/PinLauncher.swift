@@ -1225,6 +1225,13 @@ private enum PinZoom {
     static let maxScale: CGFloat = 5.0
     static let buttonStep: CGFloat = 0.1
     static let wheelSensitivity: CGFloat = 0.002
+    static let expandedViewportScaleThreshold: CGFloat = 1.5
+    static let expandedViewportWidthRatio: CGFloat = 0.5
+    static let expandedViewportVerticalInset: CGFloat = 16
+    static let viewportTransitionDuration: TimeInterval = 0.22
+    static let viewportAnimationFrameInterval: TimeInterval = 1.0 / 60.0
+    static let interactivePreviewMaxPixelDimension = 1280
+    static let interactivePreviewEndDelay: TimeInterval = 0.1
     static let toolbarInset: CGFloat = 8
     static let navigatorScaleThreshold: CGFloat = 1.2
     static let navigatorGap: CGFloat = 8
@@ -1232,12 +1239,79 @@ private enum PinZoom {
     static let navigatorActivationDelay: TimeInterval = 0.4
     static let navigatorEntryTimeout: TimeInterval = 3.0
     static let toolbarAnimationDuration: TimeInterval = 0.16
+
+    static func usesExpandedViewport(at scale: CGFloat) -> Bool {
+        Int((scale * 100).rounded()) > Int((expandedViewportScaleThreshold * 100).rounded())
+    }
+}
+
+/// Builds a small bitmap once so continuous zoom redraws do not repeatedly
+/// resample the full-resolution source image on the main thread.
+private enum PinInteractivePreviewRenderer {
+    private static let queue = DispatchQueue(
+        label: "capcap.pin.interactive-preview",
+        qos: .userInitiated
+    )
+
+    static func makePreview(
+        from source: CGImage,
+        completion: @escaping (CGImage?) -> Void
+    ) {
+        let longestEdge = max(source.width, source.height)
+        guard longestEdge > PinZoom.interactivePreviewMaxPixelDimension else {
+            completion(source)
+            return
+        }
+
+        let scale = CGFloat(PinZoom.interactivePreviewMaxPixelDimension) / CGFloat(longestEdge)
+        let width = max(1, Int((CGFloat(source.width) * scale).rounded()))
+        let height = max(1, Int((CGFloat(source.height) * scale).rounded()))
+
+        queue.async {
+            let colorSpace = previewColorSpace(for: source)
+            guard let context = CGContext(
+                data: nil,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: 0,
+                space: colorSpace,
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
+            context.interpolationQuality = .low
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+            let preview = context.makeImage()
+            DispatchQueue.main.async { completion(preview) }
+        }
+    }
+
+    private static func previewColorSpace(for source: CGImage) -> CGColorSpace {
+        guard let sourceColorSpace = source.colorSpace,
+              sourceColorSpace.model == .rgb
+        else {
+            return CGColorSpaceCreateDeviceRGB()
+        }
+
+        guard CGColorSpaceUsesExtendedRange(sourceColorSpace) else {
+            return sourceColorSpace
+        }
+
+        if sourceColorSpace.name == CGColorSpace.extendedDisplayP3 ||
+           sourceColorSpace.name == CGColorSpace.extendedLinearDisplayP3 {
+            return CGColorSpace(name: CGColorSpace.displayP3) ?? CGColorSpaceCreateDeviceRGB()
+        }
+        return CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
+    }
 }
 
 final class PinContentView: NSView {
     var image: NSImage? {
         didSet {
-            navigator.image = image
+            prepareInteractivePreview(for: image)
             zoomScale = 1.0
             panOffset = .zero
             resetOCRSelection()
@@ -1270,6 +1344,35 @@ final class PinContentView: NSView {
     }
     private var panStartPoint: NSPoint?
     private var panStartOffset: NSPoint = .zero
+    private var interactivePreviewImage: NSImage?
+    private var interactivePreviewGeneration = UUID()
+    private var interactiveZoomEndTimer: Timer?
+    private var viewportAnimationTimer: Timer?
+    private var viewportAnimationGeneration = UUID()
+    private var viewportAnimationTargetGeometry: ViewportGeometry?
+    private var toolbarHostResizeGeneration = UUID()
+    private var isToolbarHostResizePending = false
+    private var isToolbarHostResizeReady = false
+    private var interactiveZoomStartScale: CGFloat?
+    private var interactiveZoomStartUsesExpanded: Bool?
+    private var interactiveZoomNeedsViewportAnimation = false
+    private var isZoomingInteractively = false {
+        didSet {
+            guard isZoomingInteractively != oldValue else { return }
+            refreshOCROverlayVisibility()
+            needsDisplay = true
+        }
+    }
+    private var isViewportAnimating = false {
+        didSet {
+            guard isViewportAnimating != oldValue else { return }
+            refreshOCROverlayVisibility()
+            needsDisplay = true
+        }
+    }
+    private var usesLowResolutionPreview: Bool {
+        isZoomingInteractively || isViewportAnimating
+    }
     private var imageTrackingArea: NSTrackingArea?
     private var isToolbarVisible = false
     private var isNavigatorVisible = false
@@ -1306,6 +1409,8 @@ final class PinContentView: NSView {
     }
 
     deinit {
+        interactiveZoomEndTimer?.invalidate()
+        viewportAnimationTimer?.invalidate()
         navigatorIdleTimer?.invalidate()
         navigatorEntryTimer?.invalidate()
         ocrRecognitionTask?.cancel()
@@ -1342,6 +1447,7 @@ final class PinContentView: NSView {
             self?.toggleOCRSelection()
         }
         toolbar.onMoveMouseDown = { [weak self] event in
+            guard self?.usesLowResolutionPreview == false else { return }
             self?.pinWindow?.performDrag(with: event)
         }
         toolbar.onZoomOut = { [weak self] in
@@ -1349,6 +1455,9 @@ final class PinContentView: NSView {
         }
         toolbar.onZoomIn = { [weak self] in
             self?.adjustZoom(by: PinZoom.buttonStep)
+        }
+        toolbar.onResetZoom = { [weak self] in
+            self?.resetZoomTo100Percent()
         }
         toolbar.onClose = { [weak self] in
             self?.pinWindow?.dismiss()
@@ -1378,6 +1487,305 @@ final class PinContentView: NSView {
         appDelegate.handlePinnedImageEditRequest(imageForEditing) {
             pinWindow.dismiss()
         }
+    }
+
+    private func prepareInteractivePreview(for image: NSImage?) {
+        let generation = UUID()
+        interactivePreviewGeneration = generation
+        interactivePreviewImage = nil
+        navigator.image = image
+
+        guard let image,
+              let source = image.cgImagePreservingBacking()
+        else { return }
+
+        let logicalSize = image.size
+        PinInteractivePreviewRenderer.makePreview(from: source) { [weak self] preview in
+            guard let self,
+                  self.interactivePreviewGeneration == generation,
+                  let preview
+            else { return }
+
+            let previewImage = NSImage(cgImage: preview, size: logicalSize)
+            self.interactivePreviewImage = previewImage
+            self.navigator.image = previewImage
+            if self.usesLowResolutionPreview {
+                self.needsDisplay = true
+            }
+        }
+    }
+
+    private struct ViewportGeometry {
+        let frame: NSRect
+        let panOffset: NSPoint
+    }
+
+    private func beginInteractiveZoom() {
+        interactiveZoomEndTimer?.invalidate()
+        interactiveZoomEndTimer = nil
+        guard !isZoomingInteractively else { return }
+
+        interactiveZoomStartScale = zoomScale
+        interactiveZoomStartUsesExpanded = PinZoom.usesExpandedViewport(at: zoomScale)
+        isZoomingInteractively = true
+        interactiveZoomNeedsViewportAnimation = cancelViewportAnimation()
+    }
+
+    private func scheduleInteractiveZoomEnd() {
+        interactiveZoomEndTimer?.invalidate()
+        let timer = Timer(timeInterval: PinZoom.interactivePreviewEndDelay, repeats: false) { [weak self] _ in
+            self?.finishInteractiveZoom()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        interactiveZoomEndTimer = timer
+    }
+
+    private func finishInteractiveZoom() {
+        interactiveZoomEndTimer?.invalidate()
+        interactiveZoomEndTimer = nil
+        guard isZoomingInteractively else { return }
+
+        let finalUsesExpanded = PinZoom.usesExpandedViewport(at: zoomScale)
+        let shouldAnimateCollapsedZoomIn = shouldAnimateViewportForCollapsedZoomIn(
+            from: interactiveZoomStartScale,
+            to: zoomScale
+        )
+        interactiveZoomStartScale = nil
+        let shouldAnimateViewport = interactiveZoomNeedsViewportAnimation ||
+            interactiveZoomStartUsesExpanded.map { $0 != finalUsesExpanded } == true ||
+            shouldAnimateCollapsedZoomIn
+        interactiveZoomStartUsesExpanded = nil
+        interactiveZoomNeedsViewportAnimation = false
+
+        let didStartAnimation = commitInteractiveWindowSize(animated: shouldAnimateViewport)
+        isZoomingInteractively = false
+        guard !didStartAnimation else { return }
+
+        finishViewportUpdate()
+    }
+
+    private func finishViewportUpdate() {
+        reconcileToolbarHostSizeIfNeeded()
+        updateImageInteractionGeometry()
+        needsDisplay = true
+        window?.displayIfNeeded()
+    }
+
+    /// Keeps the window surface fixed while events are arriving, then applies
+    /// the final viewport once. The target size always wins; image position is
+    /// preserved as far as the display and pan limits allow.
+    @discardableResult
+    private func commitInteractiveWindowSize(animated: Bool) -> Bool {
+        guard window != nil else {
+            let targetSize = windowSize(for: zoomScale)
+            setFrameSize(targetSize)
+            panOffset = clampedPanOffset(
+                panOffset,
+                scale: zoomScale,
+                viewportSize: targetSize,
+                allowsEmptyViewportSpace: allowsToolbarHostPadding(at: zoomScale)
+            )
+            return false
+        }
+
+        guard let geometry = targetViewportGeometry(for: zoomScale) else { return false }
+        return applyViewportGeometry(geometry, animated: animated)
+    }
+
+    private func targetViewportGeometry(
+        for scale: CGFloat,
+        on preferredScreen: NSScreen? = nil,
+        allowsEmptyViewportSpace: Bool? = nil
+    ) -> ViewportGeometry? {
+        guard let window else { return nil }
+
+        let targetScreen = preferredScreen ?? window.screen ?? NSScreen.main ?? NSScreen.screens.first
+        let targetSize = windowSize(for: scale, on: targetScreen)
+        let shouldAllowEmptyViewportSpace = allowsEmptyViewportSpace ??
+            allowsToolbarHostPadding(at: scale)
+        let currentFrame = window.frame
+        let imageScreenMinX = currentFrame.minX + panOffset.x
+        let imageScreenMaxY = currentFrame.maxY + panOffset.y
+        var targetPanOffset = clampedPanOffset(
+            panOffset,
+            scale: scale,
+            viewportSize: targetSize,
+            allowsEmptyViewportSpace: shouldAllowEmptyViewportSpace
+        )
+        var targetFrame = NSRect(
+            x: imageScreenMinX - targetPanOffset.x,
+            y: imageScreenMaxY - targetPanOffset.y - targetSize.height,
+            width: targetSize.width,
+            height: targetSize.height
+        )
+
+        if let targetScreen {
+            targetFrame = clampedWindowFrame(
+                targetFrame,
+                to: windowConstraintFrame(for: scale, on: targetScreen)
+            )
+            targetPanOffset = clampedPanOffset(
+                NSPoint(
+                    x: imageScreenMinX - targetFrame.minX,
+                    y: imageScreenMaxY - targetFrame.maxY
+                ),
+                scale: scale,
+                viewportSize: targetSize,
+                allowsEmptyViewportSpace: shouldAllowEmptyViewportSpace
+            )
+        }
+
+        return ViewportGeometry(frame: targetFrame, panOffset: targetPanOffset)
+    }
+
+    @discardableResult
+    private func applyViewportGeometry(_ geometry: ViewportGeometry, animated: Bool) -> Bool {
+        guard let window else { return false }
+
+        let currentFrame = window.frame
+        let frameDidChange = abs(geometry.frame.width - currentFrame.width) > 0.5 ||
+            abs(geometry.frame.height - currentFrame.height) > 0.5 ||
+            abs(geometry.frame.minX - currentFrame.minX) > 0.5 ||
+            abs(geometry.frame.minY - currentFrame.minY) > 0.5
+        let panDidChange = abs(geometry.panOffset.x - panOffset.x) > 0.5 ||
+            abs(geometry.panOffset.y - panOffset.y) > 0.5
+
+        guard frameDidChange || panDidChange else {
+            window.setFrame(geometry.frame, display: false, animate: false)
+            panOffset = geometry.panOffset
+            return false
+        }
+        if animated,
+           frameDidChange,
+           !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+            startViewportAnimation(to: geometry, in: window)
+            return true
+        }
+
+        window.setFrame(geometry.frame, display: false, animate: false)
+        panOffset = geometry.panOffset
+        return false
+    }
+
+    private func startViewportAnimation(to geometry: ViewportGeometry, in window: NSWindow) {
+        viewportAnimationTimer?.invalidate()
+        let generation = UUID()
+        viewportAnimationGeneration = generation
+        viewportAnimationTargetGeometry = geometry
+
+        let startFrame = window.frame
+        let startPanOffset = panOffset
+        let startTime = ProcessInfo.processInfo.systemUptime
+        isViewportAnimating = true
+
+        let timer = Timer(
+            timeInterval: PinZoom.viewportAnimationFrameInterval,
+            repeats: true
+        ) { [weak self, weak window] timer in
+            guard let self,
+                  let window,
+                  self.viewportAnimationGeneration == generation
+            else {
+                timer.invalidate()
+                return
+            }
+
+            let elapsed = ProcessInfo.processInfo.systemUptime - startTime
+            let progress = min(max(elapsed / PinZoom.viewportTransitionDuration, 0), 1)
+            if progress >= 1 {
+                timer.invalidate()
+                self.viewportAnimationTimer = nil
+                self.viewportAnimationTargetGeometry = nil
+                self.panOffset = geometry.panOffset
+                window.setFrame(geometry.frame, display: false, animate: false)
+                self.isViewportAnimating = false
+                self.finishViewportUpdate()
+                return
+            }
+
+            let easedProgress = progress * progress * (3 - 2 * progress)
+            self.panOffset = Self.interpolate(
+                from: startPanOffset,
+                to: geometry.panOffset,
+                progress: easedProgress
+            )
+            window.setFrame(
+                Self.interpolate(
+                    from: startFrame,
+                    to: geometry.frame,
+                    progress: easedProgress
+                ),
+                display: false,
+                animate: false
+            )
+            self.needsLayout = true
+            self.layoutSubtreeIfNeeded()
+            window.displayIfNeeded()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        viewportAnimationTimer = timer
+    }
+
+    @discardableResult
+    private func cancelViewportAnimation() -> Bool {
+        guard let viewportAnimationTimer else { return false }
+
+        viewportAnimationTimer.invalidate()
+        self.viewportAnimationTimer = nil
+        viewportAnimationGeneration = UUID()
+        viewportAnimationTargetGeometry = nil
+        isViewportAnimating = false
+        return true
+    }
+
+    private func finishViewportAnimationImmediately() {
+        guard let geometry = viewportAnimationTargetGeometry,
+              let window
+        else {
+            cancelViewportAnimation()
+            return
+        }
+
+        viewportAnimationTimer?.invalidate()
+        viewportAnimationTimer = nil
+        viewportAnimationGeneration = UUID()
+        viewportAnimationTargetGeometry = nil
+        panOffset = geometry.panOffset
+        window.setFrame(geometry.frame, display: false, animate: false)
+        isViewportAnimating = false
+        finishViewportUpdate()
+    }
+
+    private static func interpolate(
+        from start: CGFloat,
+        to end: CGFloat,
+        progress: Double
+    ) -> CGFloat {
+        start + (end - start) * CGFloat(progress)
+    }
+
+    private static func interpolate(
+        from start: NSPoint,
+        to end: NSPoint,
+        progress: Double
+    ) -> NSPoint {
+        NSPoint(
+            x: interpolate(from: start.x, to: end.x, progress: progress),
+            y: interpolate(from: start.y, to: end.y, progress: progress)
+        )
+    }
+
+    private static func interpolate(
+        from start: NSRect,
+        to end: NSRect,
+        progress: Double
+    ) -> NSRect {
+        NSRect(
+            x: interpolate(from: start.minX, to: end.minX, progress: progress),
+            y: interpolate(from: start.minY, to: end.minY, progress: progress),
+            width: interpolate(from: start.width, to: end.width, progress: progress),
+            height: interpolate(from: start.height, to: end.height, progress: progress)
+        )
     }
 
     override func layout() {
@@ -1419,6 +1827,7 @@ final class PinContentView: NSView {
     }
 
     private func updateOCROverlayFrame() {
+        guard !usesLowResolutionPreview else { return }
         ocrOverlay.frame = imageRect()
         ocrOverlay.needsDisplay = true
     }
@@ -1494,6 +1903,7 @@ final class PinContentView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
+        guard !usesLowResolutionPreview else { return }
         let point = convert(event.locationInWindow, from: nil)
         guard !toolbarInteractiveRect().contains(point) else { return }
         guard !navigatorInteractiveRect().contains(point) else { return }
@@ -1504,7 +1914,7 @@ final class PinContentView: NSView {
             return
         }
 
-        if zoomScale > 1 {
+        if canPanImage {
             panStartPoint = point
             panStartOffset = panOffset
             return
@@ -1514,14 +1924,18 @@ final class PinContentView: NSView {
     }
 
     override func mouseDragged(with event: NSEvent) {
-        guard zoomScale > 1, let start = panStartPoint else { return }
+        guard canPanImage, let start = panStartPoint else { return }
 
         let point = convert(event.locationInWindow, from: nil)
         let proposed = NSPoint(
             x: panStartOffset.x + point.x - start.x,
             y: panStartOffset.y + point.y - start.y
         )
-        panOffset = clampedPanOffset(proposed, scale: zoomScale)
+        panOffset = clampedPanOffset(
+            proposed,
+            scale: zoomScale,
+            allowsEmptyViewportSpace: allowsEmptyViewportSpaceWhileUpdating(at: zoomScale)
+        )
         updateImageInteractionGeometry()
     }
 
@@ -1530,28 +1944,67 @@ final class PinContentView: NSView {
     }
 
     override func scrollWheel(with event: NSEvent) {
+        let shouldFinish = shouldFinishInteractiveZoom(for: event, includesMomentum: true)
         let delta = event.scrollingDeltaY
         guard delta != 0 else {
+            if shouldFinish {
+                finishInteractiveZoom()
+            } else if isZoomingInteractively, event.phase.contains(.ended) {
+                scheduleInteractiveZoomEnd()
+            } else if isZoomingInteractively,
+                      event.phase.contains(.stationary) ||
+                      event.momentumPhase.contains(.began) ||
+                      event.momentumPhase.contains(.changed) {
+                beginInteractiveZoom()
+            }
             super.scrollWheel(with: event)
             return
         }
 
         let normalizedDelta = event.hasPreciseScrollingDeltas ? delta : delta * 10
         let factor = pow(1 + PinZoom.wheelSensitivity, normalizedDelta)
-        zoomAtEventLocation(zoomScale * factor, event: event)
+        let proposedScale = zoomScale * factor
+        if zoomScaleWillChange(to: proposedScale) {
+            beginInteractiveZoom()
+            zoomAtEventLocation(proposedScale, event: event)
+            if event.phase.isEmpty, event.momentumPhase.isEmpty {
+                scheduleInteractiveZoomEnd()
+            } else if event.phase.contains(.ended) {
+                scheduleInteractiveZoomEnd()
+            }
+        } else if isZoomingInteractively, event.phase.contains(.stationary) {
+            beginInteractiveZoom()
+        }
+        if shouldFinish {
+            finishInteractiveZoom()
+        }
     }
 
     override func magnify(with event: NSEvent) {
+        let shouldFinish = shouldFinishInteractiveZoom(for: event, includesMomentum: false)
         let factor = max(0.1, 1 + event.magnification)
-        zoomAtEventLocation(zoomScale * factor, event: event)
+        let proposedScale = zoomScale * factor
+        if zoomScaleWillChange(to: proposedScale) {
+            beginInteractiveZoom()
+            zoomAtEventLocation(proposedScale, event: event)
+            if event.phase.isEmpty {
+                scheduleInteractiveZoomEnd()
+            }
+        } else if isZoomingInteractively, event.phase.contains(.stationary) {
+            beginInteractiveZoom()
+        }
+        if shouldFinish {
+            finishInteractiveZoom()
+        }
     }
 
     override func draw(_ dirtyRect: NSRect) {
         guard let image else { return }
         let context = NSGraphicsContext.current
         let oldInterpolation = context?.imageInterpolation
-        context?.imageInterpolation = .high
-        image.draw(in: imageRect())
+        context?.imageInterpolation = usesLowResolutionPreview ? .low : .high
+        let displayImage = usesLowResolutionPreview ? (interactivePreviewImage ?? image) : image
+        displayImage.draw(in: imageRect())
         if let oldInterpolation {
             context?.imageInterpolation = oldInterpolation
         }
@@ -1577,6 +2030,106 @@ final class PinContentView: NSView {
 
     private func adjustZoom(by delta: CGFloat) {
         setZoom(zoomScale + delta)
+    }
+
+    private func resetZoomTo100Percent() {
+        guard zoomScale != 1 || isZoomingInteractively || isViewportAnimating else { return }
+
+        interactiveZoomEndTimer?.invalidate()
+        interactiveZoomEndTimer = nil
+        let wasExpanded = PinZoom.usesExpandedViewport(at: zoomScale)
+        let shouldAnimateCollapsedZoomIn = shouldAnimateViewportForCollapsedZoomIn(
+            from: zoomScale,
+            to: 1
+        )
+        let interruptedViewportAnimation = cancelViewportAnimation()
+        let shouldAnimateViewport = wasExpanded ||
+            interruptedViewportAnimation ||
+            shouldAnimateCollapsedZoomIn
+        interactiveZoomStartScale = nil
+        interactiveZoomStartUsesExpanded = nil
+        interactiveZoomNeedsViewportAnimation = false
+        let currentFrame = window?.frame
+        let currentAnchorFrame: NSRect?
+        if let currentFrame,
+           allowsToolbarHostPadding(at: zoomScale) {
+            let visibleImageRect = imageHoverRect()
+            currentAnchorFrame = visibleImageRect.isEmpty ? currentFrame : visibleImageRect.offsetBy(
+                dx: currentFrame.minX,
+                dy: currentFrame.minY
+            )
+        } else {
+            currentAnchorFrame = currentFrame
+        }
+        isZoomingInteractively = false
+        zoomScale = 1
+        panOffset = .zero
+
+        if let window,
+           let currentAnchorFrame {
+            let targetScreen = window.screen ?? NSScreen.main ?? NSScreen.screens.first
+            let resetSize = windowSize(for: 1, on: targetScreen)
+            let resetImageSize = scaledImageSize(for: 1)
+            let imageScreenMinX = currentAnchorFrame.midX - resetImageSize.width / 2
+            let imageScreenMaxY = currentAnchorFrame.maxY
+            var resetFrame = NSRect(
+                x: imageScreenMinX,
+                y: imageScreenMaxY - resetSize.height,
+                width: resetSize.width,
+                height: resetSize.height
+            )
+            if let targetScreen {
+                resetFrame = clampedWindowFrame(
+                    resetFrame,
+                    to: windowConstraintFrame(for: 1, on: targetScreen)
+                )
+            }
+            let resetPanOffset = clampedPanOffset(
+                NSPoint(
+                    x: imageScreenMinX - resetFrame.minX,
+                    y: imageScreenMaxY - resetFrame.maxY
+                ),
+                scale: 1,
+                viewportSize: resetSize,
+                allowsEmptyViewportSpace: isToolbarVisible
+            )
+            let didStartAnimation = applyViewportGeometry(
+                ViewportGeometry(frame: resetFrame, panOffset: resetPanOffset),
+                animated: shouldAnimateViewport
+            )
+            guard !didStartAnimation else { return }
+        } else {
+            setFrameSize(windowSize(for: 1))
+            panOffset = .zero
+        }
+
+        finishViewportUpdate()
+    }
+
+    private func shouldAnimateViewportForCollapsedZoomIn(
+        from startScale: CGFloat?,
+        to endScale: CGFloat
+    ) -> Bool {
+        guard let startScale else { return false }
+        return endScale > startScale + 0.001 &&
+            !PinZoom.usesExpandedViewport(at: endScale)
+    }
+
+    private func zoomScaleWillChange(to proposedScale: CGFloat) -> Bool {
+        let clampedScale = min(max(proposedScale, PinZoom.minScale), PinZoom.maxScale)
+        return abs(clampedScale - zoomScale) > 0.001
+    }
+
+    private func shouldFinishInteractiveZoom(
+        for event: NSEvent,
+        includesMomentum: Bool
+    ) -> Bool {
+        let gestureEnded = event.phase.contains(.ended) || event.phase.contains(.cancelled)
+        guard includesMomentum else { return gestureEnded }
+
+        let momentumEnded = event.momentumPhase.contains(.ended) ||
+            event.momentumPhase.contains(.cancelled)
+        return momentumEnded || event.phase.contains(.cancelled)
     }
 
     private func toggleOCRSelection() {
@@ -1636,6 +2189,11 @@ final class PinContentView: NSView {
     }
 
     private func refreshOCROverlayVisibility() {
+        if usesLowResolutionPreview {
+            ocrOverlay.isHidden = true
+            return
+        }
+
         updateOCROverlayFrame()
         let showOverlay = isOCRSelectionEnabled && !ocrOverlay.lines.isEmpty
         ocrOverlay.showsLineBoxes = showOverlay
@@ -1679,30 +2237,59 @@ final class PinContentView: NSView {
         let didChangeScale = abs(newScale - zoomScale) > 0.001
         guard didChangeScale || unitPoint != nil else { return }
 
-        let currentSize = bounds.size
-        let targetSize = windowSize(for: newScale)
+        let previousScale = zoomScale
+        let previousUsesExpanded = PinZoom.usesExpandedViewport(at: zoomScale)
+        let interruptedViewportAnimation = didChangeScale && !isZoomingInteractively
+            ? cancelViewportAnimation()
+            : false
         let shouldRevealNavigator = didChangeScale &&
             zoomScale < PinZoom.navigatorScaleThreshold &&
             newScale >= PinZoom.navigatorScaleThreshold
         if didChangeScale {
             zoomScale = newScale
         }
-        if let unitPoint, newScale > 1 {
-            resizeWindowKeepingTopLeft(for: newScale)
+        if didChangeScale, !isZoomingInteractively, unitPoint == nil {
+            panOffset = clampedPanOffset(
+                panOffset,
+                scale: newScale,
+                allowsEmptyViewportSpace: allowsToolbarHostPadding(at: newScale)
+            )
+        }
+        let shouldAnimateViewport = didChangeScale &&
+            !isZoomingInteractively &&
+            unitPoint == nil &&
+            (interruptedViewportAnimation ||
+                previousUsesExpanded != PinZoom.usesExpandedViewport(at: newScale) ||
+                shouldAnimateViewportForCollapsedZoomIn(
+                    from: previousScale,
+                    to: newScale
+                ))
+        let didStartViewportAnimation = shouldAnimateViewport &&
+            targetViewportGeometry(for: newScale).map {
+                applyViewportGeometry($0, animated: true)
+            } == true
+        let focusPointAdjustment = didChangeScale &&
+            !isZoomingInteractively &&
+            !didStartViewportAnimation
+            ? resizeWindowKeepingTopLeft(for: newScale)
+            : .zero
+        if didStartViewportAnimation {
+            // Frame and pan animate together so the image anchor stays stable.
+        } else if let unitPoint, newScale > 1 || isZoomingInteractively {
             panOffset = focusedPanOffset(
                 on: unitPoint,
                 scale: newScale,
                 at: adjustedFocusPoint(
                     focusPoint,
-                    from: currentSize,
-                    to: targetSize
+                    by: focusPointAdjustment
                 )
             )
         } else {
-            panOffset = newScale > 1 ? clampedPanOffset(panOffset, scale: newScale) : .zero
-            if didChangeScale {
-                resizeWindowKeepingTopLeft(for: newScale)
-            }
+            panOffset = clampedPanOffset(
+                panOffset,
+                scale: newScale,
+                allowsEmptyViewportSpace: allowsEmptyViewportSpaceWhileUpdating(at: newScale)
+            )
         }
         updateImageInteractionGeometry()
         if shouldRevealNavigator {
@@ -1713,6 +2300,7 @@ final class PinContentView: NSView {
     }
 
     private func focusImage(at unitPoint: NSPoint) {
+        finishViewportAnimationImmediately()
         guard isNavigatorVisible,
               !isNavigatorSuppressedUntilMouseExit,
               !isNavigatorNavigationBlocked,
@@ -1753,18 +2341,21 @@ final class PinContentView: NSView {
             x: targetPoint.x - imagePoint.x,
             y: targetPoint.y - imagePoint.y - bounds.height + size.height
         )
-        return clampedPanOffset(proposed, scale: scale)
+        return clampedPanOffset(
+            proposed,
+            scale: scale,
+            allowsEmptyViewportSpace: allowsEmptyViewportSpaceWhileUpdating(at: scale)
+        )
     }
 
     private func adjustedFocusPoint(
         _ point: NSPoint?,
-        from currentSize: NSSize,
-        to targetSize: NSSize
+        by windowOriginDelta: NSPoint
     ) -> NSPoint? {
         guard let point else { return nil }
         return NSPoint(
-            x: point.x,
-            y: point.y + targetSize.height - currentSize.height
+            x: point.x + windowOriginDelta.x,
+            y: point.y + windowOriginDelta.y
         )
     }
 
@@ -1785,46 +2376,173 @@ final class PinContentView: NSView {
         )
     }
 
-    private func windowSize(for scale: CGFloat) -> NSSize {
-        let imageSize = scaledImageSize(for: scale)
-        let naturalSize = scale > 1 ? baseImageSize : imageSize
-        return NSSize(
-            width: max(naturalSize.width, PinToolbarView.minimumWidth + 12),
-            height: max(naturalSize.height, PinToolbarView.preferredHeight + PinZoom.toolbarInset * 2)
-        )
-    }
-
-    private func clampedPanOffset(_ offset: NSPoint, scale: CGFloat) -> NSPoint {
-        guard scale > 1 else { return .zero }
-
-        let imageSize = scaledImageSize(for: scale)
-        let minX = min(0, bounds.width - imageSize.width)
-        let maxY = max(0, imageSize.height - bounds.height)
-        return NSPoint(
-            x: min(max(offset.x, minX), 0),
-            y: min(max(offset.y, 0), maxY)
-        )
-    }
-
-    private func resizeWindowKeepingTopLeft(for scale: CGFloat) {
-        let targetSize = windowSize(for: scale)
-        guard let window else {
-            setFrameSize(targetSize)
-            return
+    private func windowSize(for scale: CGFloat, on preferredScreen: NSScreen? = nil) -> NSSize {
+        guard baseImageSize.width > 0, baseImageSize.height > 0 else {
+            return baseImageSize
         }
 
+        let screen = preferredScreen ?? window?.screen ?? NSScreen.main ?? NSScreen.screens.first
+
+        if PinZoom.usesExpandedViewport(at: scale), let screen {
+            let constraintFrame = windowConstraintFrame(for: scale, on: screen)
+            return NSSize(
+                width: floor(min(
+                    screen.frame.width * PinZoom.expandedViewportWidthRatio,
+                    constraintFrame.width
+                )),
+                height: floor(constraintFrame.height)
+            )
+        }
+
+        // Up to 100%, the viewport follows the image scale. From 100% through
+        // 150%, it stays at the 100% size while the image zooms inside it. Use
+        // one multiplier for both dimensions so the viewport never drifts away
+        // from the source image's aspect ratio.
+        let requestedViewportScale = min(scale, 1)
+        let maximumViewportScale: CGFloat
+        if let visibleSize = screen?.visibleFrame.size {
+            maximumViewportScale = min(
+                visibleSize.width / baseImageSize.width,
+                visibleSize.height / baseImageSize.height
+            )
+        } else {
+            maximumViewportScale = requestedViewportScale
+        }
+        let viewportScale = min(requestedViewportScale, maximumViewportScale)
+        let imageViewportSize = NSSize(
+            width: baseImageSize.width * viewportScale,
+            height: baseImageSize.height * viewportScale
+        )
+        guard isToolbarVisible else { return imageViewportSize }
+
+        let minimumHostWidth = PinToolbarView.minimumWidth + 12
+        let minimumHostHeight = PinToolbarView.preferredHeight + PinZoom.toolbarInset * 2
+        let maximumHostSize = screen?.visibleFrame.size ?? imageViewportSize
+        return NSSize(
+            width: min(max(imageViewportSize.width, minimumHostWidth), maximumHostSize.width),
+            height: min(max(imageViewportSize.height, minimumHostHeight), maximumHostSize.height)
+        )
+    }
+
+    private func windowConstraintFrame(for scale: CGFloat, on screen: NSScreen) -> NSRect {
+        let visibleFrame = screen.visibleFrame
+        guard PinZoom.usesExpandedViewport(at: scale) else { return visibleFrame }
+
+        let maximumInset = max(0, (visibleFrame.height - 1) / 2)
+        let verticalInset = min(PinZoom.expandedViewportVerticalInset, maximumInset)
+        return visibleFrame.insetBy(dx: 0, dy: verticalInset)
+    }
+
+    private func clampedWindowFrame(_ frame: NSRect, to visibleFrame: NSRect) -> NSRect {
+        var clamped = frame
+        let maxX = max(visibleFrame.minX, visibleFrame.maxX - clamped.width)
+        let maxY = max(visibleFrame.minY, visibleFrame.maxY - clamped.height)
+        clamped.origin.x = min(max(clamped.minX, visibleFrame.minX), maxX)
+        clamped.origin.y = min(max(clamped.minY, visibleFrame.minY), maxY)
+        return clamped
+    }
+
+    private func clampedPanOffset(
+        _ offset: NSPoint,
+        scale: CGFloat,
+        viewportSize: NSSize? = nil,
+        allowsEmptyViewportSpace: Bool = false
+    ) -> NSPoint {
+        let imageSize = scaledImageSize(for: scale)
+        let viewportSize = viewportSize ?? bounds.size
+        let minimumX: CGFloat
+        let maximumX: CGFloat
+        if imageSize.width > viewportSize.width {
+            minimumX = viewportSize.width - imageSize.width
+            maximumX = 0
+        } else if allowsEmptyViewportSpace {
+            minimumX = 0
+            maximumX = viewportSize.width - imageSize.width
+        } else {
+            minimumX = 0
+            maximumX = 0
+        }
+
+        let minimumY: CGFloat
+        let maximumY: CGFloat
+        if imageSize.height > viewportSize.height {
+            minimumY = 0
+            maximumY = imageSize.height - viewportSize.height
+        } else if allowsEmptyViewportSpace {
+            minimumY = imageSize.height - viewportSize.height
+            maximumY = 0
+        } else {
+            minimumY = 0
+            maximumY = 0
+        }
+        return NSPoint(
+            x: min(max(offset.x, minimumX), maximumX),
+            y: min(max(offset.y, minimumY), maximumY)
+        )
+    }
+
+    private func allowsToolbarHostPadding(at scale: CGFloat) -> Bool {
+        (isToolbarVisible || isToolbarHostResizePending) &&
+            !PinZoom.usesExpandedViewport(at: scale)
+    }
+
+    private func allowsEmptyViewportSpaceWhileUpdating(at scale: CGFloat) -> Bool {
+        isZoomingInteractively || allowsToolbarHostPadding(at: scale)
+    }
+
+    private var canPanImage: Bool {
+        let imageSize = scaledImageSize(for: zoomScale)
+        return imageSize.width > bounds.width + 0.5 ||
+            imageSize.height > bounds.height + 0.5
+    }
+
+    /// Resizes from the top-left and returns the local-coordinate adjustment
+    /// needed to keep a screen-space zoom focus stable.
+    @discardableResult
+    private func resizeWindowKeepingTopLeft(for scale: CGFloat) -> NSPoint {
+        guard let window else {
+            let targetSize = windowSize(for: scale)
+            setFrameSize(targetSize)
+            return .zero
+        }
+
+        if allowsToolbarHostPadding(at: scale),
+           let geometry = targetViewportGeometry(
+               for: scale,
+               allowsEmptyViewportSpace: isToolbarVisible
+           ) {
+            let currentFrame = window.frame
+            applyViewportGeometry(geometry, animated: false)
+            return NSPoint(
+                x: currentFrame.minX - geometry.frame.minX,
+                y: currentFrame.minY - geometry.frame.minY
+            )
+        }
+
+        let targetSize = windowSize(for: scale, on: window.screen)
         let currentFrame = window.frame
-        let targetFrame = NSRect(
+        var targetFrame = NSRect(
             x: currentFrame.minX,
             y: currentFrame.maxY - targetSize.height,
             width: targetSize.width,
             height: targetSize.height
         )
+        if let screen = window.screen {
+            targetFrame = clampedWindowFrame(
+                targetFrame,
+                to: windowConstraintFrame(for: scale, on: screen)
+            )
+        }
+
         guard abs(targetFrame.width - currentFrame.width) > 0.5 ||
               abs(targetFrame.height - currentFrame.height) > 0.5
-        else { return }
+        else { return .zero }
 
-        window.setFrame(targetFrame, display: true, animate: false)
+        window.setFrame(targetFrame, display: !isZoomingInteractively, animate: false)
+        return NSPoint(
+            x: currentFrame.minX - targetFrame.minX,
+            y: currentFrame.minY - targetFrame.minY
+        )
     }
 
     private func imageHoverRect() -> NSRect {
@@ -1832,6 +2550,24 @@ final class PinContentView: NSView {
         let rect = imageRect().intersection(bounds)
         guard !rect.isNull, rect.width > 0, rect.height > 0 else { return .zero }
         return rect
+    }
+
+    private func toolbarTrackingRect() -> NSRect {
+        let imageRect = imageHoverRect()
+        guard imageRect.width > 0, imageRect.height > 0 else { return .zero }
+        guard toolbar.frame.width > 0, toolbar.frame.height > 0 else { return imageRect }
+        return imageRect.union(toolbarRetentionRect())
+    }
+
+    private func toolbarRetentionRect() -> NSRect {
+        toolbar.frame
+            .insetBy(dx: -PinZoom.toolbarInset, dy: -PinZoom.toolbarInset)
+            .intersection(bounds)
+    }
+
+    private func shouldShowToolbar(at point: NSPoint) -> Bool {
+        imageHoverRect().contains(point) ||
+            (isToolbarVisible && toolbarRetentionRect().contains(point))
     }
 
     private func updateImageInteractionGeometry() {
@@ -1899,7 +2635,7 @@ final class PinContentView: NSView {
             self.imageTrackingArea = nil
         }
 
-        let rect = imageHoverRect()
+        let rect = toolbarTrackingRect()
         guard rect.width > 0, rect.height > 0 else {
             setToolbarVisible(false, animated: false)
             return
@@ -1917,7 +2653,7 @@ final class PinContentView: NSView {
 
     private func updateToolbarVisibility(for event: NSEvent, animated: Bool) {
         let point = convert(event.locationInWindow, from: nil)
-        setToolbarVisible(imageHoverRect().contains(point), animated: animated)
+        setToolbarVisible(shouldShowToolbar(at: point), animated: animated)
     }
 
     private func updateNavigatorActivation(for event: NSEvent, animated: Bool) {
@@ -1987,7 +2723,7 @@ final class PinContentView: NSView {
         }
 
         let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-        setToolbarVisible(imageHoverRect().contains(point), animated: animated)
+        setToolbarVisible(shouldShowToolbar(at: point), animated: animated)
     }
 
     private func setToolbarVisible(_ visible: Bool, animated: Bool) {
@@ -1999,6 +2735,51 @@ final class PinContentView: NSView {
             animated: animated,
             shouldRemainVisible: { [weak self] in self?.isToolbarVisible == true }
         )
+        scheduleWindowResizeForToolbarVisibility(visible, afterFade: animated && !visible)
+    }
+
+    private func scheduleWindowResizeForToolbarVisibility(
+        _ visible: Bool,
+        afterFade: Bool
+    ) {
+        guard !PinZoom.usesExpandedViewport(at: zoomScale) else { return }
+
+        let generation = UUID()
+        toolbarHostResizeGeneration = generation
+        isToolbarHostResizePending = true
+        isToolbarHostResizeReady = !afterFade
+        let delay = afterFade ? PinZoom.toolbarAnimationDuration : 0
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self,
+                  self.toolbarHostResizeGeneration == generation,
+                  self.isToolbarVisible == visible
+            else { return }
+
+            self.isToolbarHostResizeReady = true
+            self.finishViewportUpdate()
+        }
+    }
+
+    private func reconcileToolbarHostSizeIfNeeded() {
+        guard isToolbarHostResizePending,
+              isToolbarHostResizeReady,
+              !usesLowResolutionPreview
+        else { return }
+
+        if PinZoom.usesExpandedViewport(at: zoomScale) {
+            isToolbarHostResizePending = false
+            isToolbarHostResizeReady = false
+            return
+        }
+
+        guard let geometry = targetViewportGeometry(
+            for: zoomScale,
+            allowsEmptyViewportSpace: isToolbarVisible
+        ) else { return }
+
+        isToolbarHostResizePending = false
+        isToolbarHostResizeReady = false
+        applyViewportGeometry(geometry, animated: false)
     }
 
     private func showNavigator(animated _: Bool) {
@@ -2351,6 +3132,7 @@ private final class PinToolbarView: NSView {
     var onMoveMouseDown: ((NSEvent) -> Void)?
     var onZoomOut: (() -> Void)?
     var onZoomIn: (() -> Void)?
+    var onResetZoom: (() -> Void)?
     var onClose: (() -> Void)?
     var isOCRActive = false {
         didSet { ocrButton.isActive = isOCRActive }
@@ -2358,7 +3140,7 @@ private final class PinToolbarView: NSView {
 
     var zoomScale: CGFloat = 1.0 {
         didSet {
-            zoomLabel.stringValue = "\(Int(round(zoomScale * 100)))%"
+            zoomLabel.setPercentage(Int(round(zoomScale * 100)))
         }
     }
 
@@ -2367,7 +3149,7 @@ private final class PinToolbarView: NSView {
     private let moveButton = PinToolbarMoveButton(symbolName: "arrow.up.and.down.and.arrow.left.and.right",
                                                   accessibilityLabel: "Move pinned image")
     private let zoomOutButton = PinToolbarIconButton(symbolName: "minus", accessibilityLabel: "Zoom out")
-    private let zoomLabel = NSTextField(labelWithString: "100%")
+    private let zoomLabel = PinToolbarZoomButton()
     private let zoomInButton = PinToolbarIconButton(symbolName: "plus", accessibilityLabel: "Zoom in")
     private let closeButton = PinToolbarIconButton(symbolName: "xmark",
                                                    accessibilityLabel: "Close pinned image")
@@ -2397,18 +3179,15 @@ private final class PinToolbarView: NSView {
 
         zoomOutButton.target = self
         zoomOutButton.action = #selector(zoomOutTapped)
+        zoomLabel.onClick = { [weak self] in
+            self?.onResetZoom?()
+        }
         zoomInButton.target = self
         zoomInButton.action = #selector(zoomInTapped)
         closeButton.target = self
         closeButton.action = #selector(closeTapped)
 
         zoomLabel.alignment = .center
-        zoomLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .medium)
-        zoomLabel.textColor = NSColor.white.withAlphaComponent(0.9)
-        zoomLabel.backgroundColor = .clear
-        zoomLabel.isBezeled = false
-        zoomLabel.isEditable = false
-        zoomLabel.isSelectable = false
 
         addSubview(moveButton)
         addSubview(editButton)
@@ -2508,6 +3287,57 @@ private final class PinToolbarView: NSView {
 
     @objc private func closeTapped() {
         onClose?()
+    }
+}
+
+private final class PinToolbarZoomButton: NSButton {
+    var onClick: (() -> Void)?
+
+    init() {
+        super.init(frame: .zero)
+        isBordered = false
+        bezelStyle = .regularSquare
+        focusRingType = .exterior
+        setButtonType(.momentaryPushIn)
+        target = self
+        action = #selector(clicked)
+        setPercentage(100)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
+        true
+    }
+
+    func setPercentage(_ percentage: Int) {
+        let value = "\(percentage)%"
+        attributedTitle = NSAttributedString(
+            string: value,
+            attributes: [
+                .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
+                .foregroundColor: NSColor.white.withAlphaComponent(0.9),
+            ]
+        )
+        setAccessibilityLabel(value)
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .pointingHand)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        nextResponder?.scrollWheel(with: event)
+    }
+
+    override func magnify(with event: NSEvent) {
+        nextResponder?.magnify(with: event)
+    }
+
+    @objc private func clicked() {
+        onClick?()
     }
 }
 
