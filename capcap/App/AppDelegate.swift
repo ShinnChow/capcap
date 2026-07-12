@@ -101,7 +101,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         ImageMergeLauncher.shared.onContinueEditing = { [weak self] image in
             self?.continueEditingMergedImage(image)
         }
-        historyPanelController = HistoryPanelController()
+        historyPanelController = HistoryPanelController { [weak self] entry in
+            _ = self?.launchImageFile(entry.fileURL)
+        }
 
         statusBarController = StatusBarController(
             onTakeScreenshot: { [weak self] in self?.handleTrigger() },

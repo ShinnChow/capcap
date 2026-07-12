@@ -22,6 +22,7 @@ final class HotkeyManager {
     private var fullScreenScreenshotHotKeyRef: EventHotKeyRef?
     private var colorPickerHotKeyRef: EventHotKeyRef?
     private var historyPanelHotKeyRef: EventHotKeyRef?
+    private var historyPreviewHotKeyRef: EventHotKeyRef?
     private var callback: (() -> Void)?
     private var countdownCallback: (() -> Void)?
     private var selectedImagePinCallback: (() -> Void)?
@@ -37,6 +38,7 @@ final class HotkeyManager {
     private var fullScreenScreenshotCallback: (() -> Void)?
     private var colorPickerCallback: (() -> Void)?
     private var historyPanelCallback: (() -> Void)?
+    private var historyPreviewCallback: (() -> Void)?
     private var eventHandlerRef: EventHandlerRef?
 
     private static let regularHotKeySignature: OSType = OSType(0x4341_5043) // 'CAPC'
@@ -55,6 +57,7 @@ final class HotkeyManager {
     private static let copyImageTextHotKeyID: UInt32 = 13
     private static let clipboardTextPinHotKeyID: UInt32 = 14
     private static let historyPanelHotKeyID: UInt32 = 15
+    private static let historyPreviewHotKeyID: UInt32 = 16
 
     private init() {}
 
@@ -74,6 +77,7 @@ final class HotkeyManager {
         unregisterFullScreenScreenshot()
         unregisterColorPicker()
         unregisterHistoryPanel()
+        unregisterHistoryPreview()
         if let handler = eventHandlerRef {
             RemoveEventHandler(handler)
             eventHandlerRef = nil
@@ -478,6 +482,36 @@ final class HotkeyManager {
             UnregisterEventHotKey(ref)
             historyPanelHotKeyRef = nil
         }
+    }
+
+    /// Temporarily captures an unmodified Space press while a history tile is
+    /// hovered. Carbon hotkeys work even though the history panel intentionally
+    /// remains a non-activating panel.
+    @discardableResult
+    func registerHistoryPreview(callback: @escaping () -> Void) -> Bool {
+        unregisterHistoryPreview()
+        historyPreviewCallback = callback
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.historyPreviewHotKeyID)
+        let status = RegisterEventHotKey(
+            UInt32(kVK_Space), 0, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref {
+            historyPreviewHotKeyRef = ref
+            return true
+        }
+        historyPreviewCallback = nil
+        return false
+    }
+
+    func unregisterHistoryPreview() {
+        if let ref = historyPreviewHotKeyRef {
+            UnregisterEventHotKey(ref)
+            historyPreviewHotKeyRef = nil
+        }
+        historyPreviewCallback = nil
     }
 
     /// Returns the (keyCode, modifiers) for the countdown variant — user hotkey + ⌥.
@@ -1121,6 +1155,8 @@ final class HotkeyManager {
                     callback = mgr.colorPickerCallback
                 case HotkeyManager.historyPanelHotKeyID:
                     callback = mgr.historyPanelCallback
+                case HotkeyManager.historyPreviewHotKeyID:
+                    callback = mgr.historyPreviewCallback
                 case HotkeyManager.regularHotKeyID:
                     callback = mgr.callback
                 default:
