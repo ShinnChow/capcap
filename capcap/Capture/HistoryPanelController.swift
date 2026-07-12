@@ -2779,7 +2779,11 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private let entries: [HistoryEntry]
     private let onEdit: (HistoryEntry) -> Void
     private let imageView = NSImageView()
+    private let titlebarFilenameContainer = NSView()
+    private let titlebarFilenameLabel = NSTextField(labelWithString: "")
     private let titlebarPositionLabel = NSTextField(labelWithString: "")
+    private let titlebarActionStack = NSStackView()
+    private var uploadButton: NSButton?
     private var currentIndex: Int
     private var loadGeneration = 0
     private var placementScreen: NSScreen?
@@ -2798,7 +2802,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             backing: .buffered,
             defer: false
         )
-        panel.titleVisibility = .visible
+        panel.titleVisibility = .hidden
         panel.titlebarAppearsTransparent = true
         panel.isMovableByWindowBackground = true
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 3)
@@ -2849,39 +2853,64 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         imageView.autoresizingMask = [.width, .height]
         content.addSubview(imageView)
 
-        let stack = NSStackView()
+        titlebarFilenameLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
+        titlebarFilenameLabel.textColor = NSColor.labelColor
+        titlebarFilenameLabel.lineBreakMode = .byTruncatingTail
+        titlebarFilenameLabel.maximumNumberOfLines = 1
+        titlebarFilenameLabel.frame = titlebarFilenameContainer.bounds
+        titlebarFilenameLabel.autoresizingMask = [.width, .height]
+        titlebarFilenameContainer.addSubview(titlebarFilenameLabel)
+
+        let filenameAccessory = NSTitlebarAccessoryViewController()
+        filenameAccessory.layoutAttribute = .left
+        filenameAccessory.view = titlebarFilenameContainer
+        panel.addTitlebarAccessoryViewController(filenameAccessory)
+
+        let stack = titlebarActionStack
         stack.orientation = .horizontal
         stack.alignment = .centerY
         stack.spacing = 6
+        stack.edgeInsets = NSEdgeInsets(top: 0, left: 2, bottom: 0, right: 8)
+
+        titlebarPositionLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
+        titlebarPositionLabel.textColor = NSColor.secondaryLabelColor
+        titlebarPositionLabel.alignment = .center
+        titlebarPositionLabel.translatesAutoresizingMaskIntoConstraints = false
+        titlebarPositionLabel.widthAnchor.constraint(equalToConstant: 38).isActive = true
+        stack.addArrangedSubview(titlebarPositionLabel)
 
         let actions: [(String, String, Selector)] = [
             ("pencil", "\(L10n.imageMergeContinueEditing) E", #selector(editCurrent)),
+            ("doc.on.doc", "\(L10n.tipConfirm) C", #selector(copyCurrent)),
             ("pin", "\(L10n.tipPin) P", #selector(pinCurrent)),
-            ("doc.on.clipboard", "\(L10n.tipConfirm) C", #selector(copyCurrent)),
-            ("arrow.up.to.line", "\(L10n.tipUpload) U", #selector(uploadCurrent)),
+            ("icloud.and.arrow.up", "\(L10n.tipUpload) U", #selector(uploadCurrent)),
         ]
         for action in actions {
-            let button = NSButton(image: NSImage(systemSymbolName: action.0, accessibilityDescription: action.1) ?? NSImage(), target: self, action: action.2)
+            let symbol = NSImage(systemSymbolName: action.0, accessibilityDescription: action.1)?
+                .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .medium))
+                ?? NSImage()
+            let button = NSButton(image: symbol, target: self, action: action.2)
             button.bezelStyle = .toolbar
             button.isBordered = false
+            button.imagePosition = .imageOnly
+            button.contentTintColor = .secondaryLabelColor
             button.toolTip = action.1
             button.setAccessibilityLabel(action.1)
             button.translatesAutoresizingMaskIntoConstraints = false
             button.widthAnchor.constraint(equalToConstant: 30).isActive = true
             button.heightAnchor.constraint(equalToConstant: 24).isActive = true
             stack.addArrangedSubview(button)
+            if action.2 == #selector(uploadCurrent) {
+                uploadButton = button
+            }
         }
-
-        titlebarPositionLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .medium)
-        titlebarPositionLabel.textColor = NSColor.secondaryLabelColor
-        titlebarPositionLabel.alignment = .center
-        stack.addArrangedSubview(titlebarPositionLabel)
+        updateTitlebarActionStackSize()
 
         let accessory = NSTitlebarAccessoryViewController()
         accessory.layoutAttribute = .right
         accessory.view = stack
         panel.addTitlebarAccessoryViewController(accessory)
-
+        updateTitlebarFilenameLayout()
     }
 
     private func handleKeyDown(_ event: NSEvent) -> Bool {
@@ -2921,7 +2950,12 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         let url = currentEntry.fileURL
         imageView.image = nil
         window?.title = url.lastPathComponent
+        titlebarFilenameLabel.stringValue = url.lastPathComponent
+        titlebarFilenameLabel.toolTip = url.lastPathComponent
         titlebarPositionLabel.stringValue = "\(currentIndex + 1) / \(entries.count)"
+        uploadButton?.isHidden = currentEntry.cloudURL != nil
+        updateTitlebarActionStackSize()
+        updateTitlebarFilenameLayout()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let image = NSImage(contentsOf: url)
             DispatchQueue.main.async {
@@ -2986,6 +3020,38 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
 
     private var currentEntry: HistoryEntry { entries[currentIndex] }
 
+    func windowDidResize(_ notification: Notification) {
+        updateTitlebarFilenameLayout()
+    }
+
+    private func updateTitlebarFilenameLayout() {
+        guard let window else { return }
+        let trafficLightReserve: CGFloat = 148
+        let accessoryGap: CGFloat = 20
+        let availableWidth = window.frame.width
+            - trafficLightReserve
+            - titlebarActionStack.frame.width
+            - accessoryGap
+        let width = min(280, max(0, floor(availableWidth)))
+        titlebarFilenameContainer.isHidden = width < 48
+        titlebarFilenameContainer.frame = NSRect(
+            origin: .zero,
+            size: NSSize(width: width, height: 24)
+        )
+    }
+
+    private func updateTitlebarActionStackSize() {
+        titlebarActionStack.layoutSubtreeIfNeeded()
+        let fittingSize = titlebarActionStack.fittingSize
+        titlebarActionStack.frame = NSRect(
+            origin: .zero,
+            size: NSSize(
+                width: ceil(fittingSize.width),
+                height: max(24, ceil(fittingSize.height))
+            )
+        )
+    }
+
     @objc private func editCurrent() {
         let entry = currentEntry
         close()
@@ -2994,16 +3060,21 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
 
     @objc private func pinCurrent() {
         guard let image = NSImage(contentsOf: currentEntry.fileURL) else { return }
+        close()
         PinLauncher.pin(image: image)
     }
 
     @objc private func copyCurrent() {
-        _ = HistoryPanelEntryActions.copy(currentEntry)
+        guard HistoryPanelEntryActions.copy(currentEntry) else { return }
+        close()
     }
 
     @objc private func uploadCurrent() {
+        guard currentEntry.cloudURL == nil else { return }
         guard let image = NSImage(contentsOf: currentEntry.fileURL) else { return }
-        UploadManager.shared.upload(image: image, on: window?.screen)
+        let screen = window?.screen
+        close()
+        UploadManager.shared.upload(image: image, on: screen)
     }
 }
 
