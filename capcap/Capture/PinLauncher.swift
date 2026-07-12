@@ -3148,9 +3148,9 @@ private final class PinToolbarView: NSView {
     private let ocrButton = PinToolbarIconButton(symbolName: "text.viewfinder", accessibilityLabel: L10n.tipOCR)
     private let moveButton = PinToolbarMoveButton(symbolName: "arrow.up.and.down.and.arrow.left.and.right",
                                                   accessibilityLabel: "Move pinned image")
-    private let zoomOutButton = PinToolbarIconButton(symbolName: "minus", accessibilityLabel: "Zoom out")
+    private let zoomOutButton = PinToolbarIconButton(symbolName: "minus.magnifyingglass", accessibilityLabel: "Zoom out")
     private let zoomLabel = PinToolbarZoomButton()
-    private let zoomInButton = PinToolbarIconButton(symbolName: "plus", accessibilityLabel: "Zoom in")
+    private let zoomInButton = PinToolbarIconButton(symbolName: "plus.magnifyingglass", accessibilityLabel: "Zoom in")
     private let closeButton = PinToolbarIconButton(symbolName: "xmark",
                                                    accessibilityLabel: "Close pinned image")
 
@@ -3358,7 +3358,7 @@ private class PinToolbarIconButton: NSButton {
         setAccessibilityLabel(accessibilityLabel)
 
         if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel) {
-            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+            let config = NSImage.SymbolConfiguration(pointSize: 13, weight: .medium)
             self.image = image.withSymbolConfiguration(config)
         }
         updateAppearance()
