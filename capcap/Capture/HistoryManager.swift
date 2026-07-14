@@ -4,7 +4,44 @@ enum HistoryEntryKind {
     case image
     case video
     case color(hex: String)
-    case text(String)
+    case text(HistoryTextContent)
+}
+
+final class HistoryTextContent {
+    private static let loadQueue = DispatchQueue(
+        label: "capcap.historyTextContent",
+        qos: .utility,
+        attributes: .concurrent
+    )
+
+    let fileURL: URL
+
+    private let lock = NSLock()
+    private var cachedValue: String?
+
+    init(fileURL: URL) {
+        self.fileURL = fileURL
+    }
+
+    var value: String {
+        lock.lock()
+        defer { lock.unlock() }
+        if let cachedValue {
+            return cachedValue
+        }
+        let loadedValue = (try? String(contentsOf: fileURL, encoding: .utf8)) ?? ""
+        cachedValue = loadedValue
+        return loadedValue
+    }
+
+    func load(completion: @escaping (String) -> Void) {
+        Self.loadQueue.async { [self] in
+            let value = value
+            DispatchQueue.main.async {
+                completion(value)
+            }
+        }
+    }
 }
 
 struct HistoryEntry {
@@ -21,6 +58,9 @@ final class HistoryManager {
 
     private let queue = DispatchQueue(label: "capcap.history", qos: .utility)
     private let directoryURL: URL
+    private let entriesCacheLock = NSLock()
+    private var cachedEntries: [HistoryEntry]?
+    private var cachedEntryCount: Int?
 
     private init() {
         let fm = FileManager.default
@@ -47,6 +87,12 @@ final class HistoryManager {
             name: .clipboardTextCacheEnabledDidChange,
             object: nil
         )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(recordingSaveDirectoryChanged),
+            name: .recordingSaveDirectoryDidChange,
+            object: nil
+        )
 
         if !Defaults.historyCacheEnabled {
             removeStoredHistoryEntries(withExtensions: ["png", "gif", "mp4", "color"])
@@ -62,7 +108,9 @@ final class HistoryManager {
 
     @objc private func limitChanged() {
         queue.async { [weak self] in
-            self?.pruneToLimit()
+            guard let self else { return }
+            self.pruneToLimit()
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -75,6 +123,7 @@ final class HistoryManager {
             if !Defaults.historyCacheEnabled {
                 self.removeStoredHistoryEntries(withExtensions: ["png", "gif", "mp4", "color"])
             }
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -87,6 +136,17 @@ final class HistoryManager {
             if !Defaults.clipboardTextCacheEnabled {
                 self.removeStoredHistoryEntries(withExtensions: ["txt"])
             }
+            self.invalidateEntriesCache()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
+            }
+        }
+    }
+
+    @objc private func recordingSaveDirectoryChanged() {
+        queue.async { [weak self] in
+            guard let self else { return }
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -110,6 +170,7 @@ final class HistoryManager {
                 Self.writeCloudURLXattr(cloudURL, on: url)
             }
             self.pruneToLimit()
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -130,6 +191,7 @@ final class HistoryManager {
                 return
             }
             self.pruneToLimit()
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -149,6 +211,7 @@ final class HistoryManager {
                 return
             }
             self.pruneToLimit()
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -176,6 +239,7 @@ final class HistoryManager {
                 return
             }
             self.pruneToLimit()
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
             }
@@ -184,7 +248,27 @@ final class HistoryManager {
 
     func entries() -> [HistoryEntry] {
         guard Defaults.isHistoryCacheAvailable else { return [] }
-        return loadEntries()
+        entriesCacheLock.lock()
+        defer { entriesCacheLock.unlock() }
+        if let cachedEntries {
+            return cachedEntries
+        }
+        let entries = loadEntries()
+        cachedEntries = entries
+        cachedEntryCount = entries.count
+        return entries
+    }
+
+    func entryCount() -> Int {
+        guard Defaults.isHistoryCacheAvailable else { return 0 }
+        entriesCacheLock.lock()
+        defer { entriesCacheLock.unlock() }
+        if let cachedEntryCount {
+            return cachedEntryCount
+        }
+        let count = loadEntryCount()
+        cachedEntryCount = count
+        return count
     }
 
     func imageEntries() -> [HistoryEntry] {
@@ -225,6 +309,41 @@ final class HistoryManager {
         }
     }
 
+    private func loadEntryCount() -> Int {
+        var locations: [(URL, Set<String>)] = []
+        if Defaults.historyCacheEnabled {
+            for directory in recordingDirectoriesToScan() {
+                locations.append((directory, ["gif", "mp4"]))
+            }
+        }
+
+        var cachedExtensions = Set<String>()
+        if Defaults.historyCacheEnabled {
+            cachedExtensions.formUnion(["png", "gif", "mp4", "color"])
+        }
+        if Defaults.clipboardTextCacheEnabled {
+            cachedExtensions.insert("txt")
+        }
+        locations.append((directoryURL, cachedExtensions))
+
+        var identities = Set<String>()
+        let fm = FileManager.default
+        for (directory, allowedExtensions) in locations {
+            guard !allowedExtensions.isEmpty,
+                  let urls = try? fm.contentsOfDirectory(
+                    at: directory,
+                    includingPropertiesForKeys: [.fileSizeKey, .isRegularFileKey],
+                    options: [.skipsHiddenFiles]
+                  ) else { continue }
+            for url in urls where allowedExtensions.contains(url.pathExtension.lowercased()) {
+                let values = try? url.resourceValues(forKeys: [.fileSizeKey, .isRegularFileKey])
+                guard values?.isRegularFile != false, (values?.fileSize ?? 0) > 0 else { continue }
+                identities.insert(Self.fileIdentity(for: url))
+            }
+        }
+        return identities.count
+    }
+
     private func recordingDirectoriesToScan() -> [URL] {
         var directories: [URL] = []
         var seen = Set<String>()
@@ -240,7 +359,7 @@ final class HistoryManager {
         let fm = FileManager.default
         guard let urls = try? fm.contentsOfDirectory(
             at: directory,
-            includingPropertiesForKeys: [.contentModificationDateKey, .isRegularFileKey],
+            includingPropertiesForKeys: [.contentModificationDateKey, .fileSizeKey, .isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
             return []
@@ -248,7 +367,7 @@ final class HistoryManager {
         return urls.compactMap { url in
             let ext = url.pathExtension.lowercased()
             guard allowedExtensions.contains(ext) else { return nil }
-            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .isRegularFileKey])
+            let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .fileSizeKey, .isRegularFileKey])
             guard values?.isRegularFile != false else { return nil }
             let date = values?.contentModificationDate ?? .distantPast
             switch ext {
@@ -263,8 +382,13 @@ final class HistoryManager {
                 guard !trimmed.isEmpty else { return nil }
                 return HistoryEntry(fileURL: url, createdAt: date, kind: .color(hex: trimmed), cloudURL: nil)
             case "txt":
-                guard let text = try? String(contentsOf: url, encoding: .utf8), !text.isEmpty else { return nil }
-                return HistoryEntry(fileURL: url, createdAt: date, kind: .text(text), cloudURL: nil)
+                guard (values?.fileSize ?? 0) > 0 else { return nil }
+                return HistoryEntry(
+                    fileURL: url,
+                    createdAt: date,
+                    kind: .text(HistoryTextContent(fileURL: url)),
+                    cloudURL: nil
+                )
             default:
                 return nil
             }
@@ -290,6 +414,7 @@ final class HistoryManager {
         queue.async { [weak self] in
             guard let self = self else { return }
             self.removeAllEntries(includeRecordingMedia: true)
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
                 completion?()
@@ -316,6 +441,7 @@ final class HistoryManager {
                     continue
                 }
             }
+            self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
                 completion?(removedCount)
@@ -335,6 +461,13 @@ final class HistoryManager {
         for extra in all.dropFirst(limit) {
             try? fm.removeItem(at: extra.fileURL)
         }
+    }
+
+    private func invalidateEntriesCache() {
+        entriesCacheLock.lock()
+        cachedEntries = nil
+        cachedEntryCount = nil
+        entriesCacheLock.unlock()
     }
 
     private func removeAllEntries(includeRecordingMedia: Bool) {

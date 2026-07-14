@@ -65,6 +65,7 @@ extension Notification.Name {
     static let clipboardTextCacheEnabledDidChange = Notification.Name("capcap.clipboardTextCacheEnabledDidChange")
     static let historyCacheLimitDidChange = Notification.Name("capcap.historyCacheLimitDidChange")
     static let historyDidUpdate = Notification.Name("capcap.historyDidUpdate")
+    static let recordingSaveDirectoryDidChange = Notification.Name("capcap.recordingSaveDirectoryDidChange")
     static let historyPanelDisplayModesDidChange = Notification.Name("capcap.historyPanelDisplayModesDidChange")
     static let hotkeyDidChange = Notification.Name("capcap.hotkeyDidChange")
     static let translationConfigDidChange = Notification.Name("capcap.translationConfigDidChange")
@@ -1153,7 +1154,12 @@ struct Defaults {
             )
         }
         set {
-            defaults.set(newValue.standardizedFileURL.path, forKey: "recordingSaveDirectory")
+            let normalized = newValue.standardizedFileURL
+            let oldValue = recordingSaveDirectory
+            defaults.set(normalized.path, forKey: "recordingSaveDirectory")
+            if oldValue != normalized {
+                NotificationCenter.default.post(name: .recordingSaveDirectoryDidChange, object: nil)
+            }
         }
     }
 

@@ -145,6 +145,7 @@ final class HistoryPanelController {
         content.frame = chrome.bounds
         content.autoresizingMask = [.width, .height]
         chrome.addSubview(content)
+        content.setActive(true)
 
         panel.contentView = chrome
         panel.orderFrontRegardless()
@@ -609,8 +610,10 @@ private final class HistoryNotchRootView: NSView {
         currentSize = expanded ? expandedSize : collapsedSize
 
         if expanded {
+            contentView.setActive(true)
             contentView.isHidden = false
         } else {
+            contentView.setActive(false)
             contentView.resetTransientState(animated: animated)
         }
 
@@ -688,7 +691,7 @@ private final class HistoryNotchRootView: NSView {
         let title = L10n.historyMenu
         collapsedLabel.stringValue = title
         countQueue.async { [weak self] in
-            let count = HistoryManager.shared.entries().count
+            let count = HistoryManager.shared.entryCount()
             DispatchQueue.main.async {
                 guard let self, self.countGeneration == generation else { return }
                 self.collapsedLabel.stringValue = "\(title) \(count)"
@@ -898,7 +901,22 @@ private enum HistoryPanelFilter: CaseIterable {
     }
 }
 
-private final class HistoryPanelContentView: NSView {
+private final class HistoryPanelScrollView: NSScrollView {
+    override func layout() {
+        super.layout()
+        horizontalScroller?.isHidden = true
+    }
+
+    override func reflectScrolledClipView(_ cView: NSClipView) {
+        super.reflectScrolledClipView(cView)
+        horizontalScroller?.isHidden = true
+    }
+}
+
+private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegate {
+    private static let pageSize = 30
+    private static let previewLoadDelay: TimeInterval = 0.14
+
     private let presentation: HistoryPanelPresentation
     private let onEditEntry: (HistoryEntry) -> Void
     var onRequestDismiss: (() -> Void)?
@@ -906,8 +924,9 @@ private final class HistoryPanelContentView: NSView {
     private var selectedFilter: HistoryPanelFilter = .all
     private var filterButtons: [HistoryPanelFilter: HistoryPanelFilterButton] = [:]
     private let entriesQueue = DispatchQueue(label: "capcap.historyPanelEntries", qos: .userInitiated)
-    private let scrollView = NSScrollView()
-    private let stripView = HistoryPanelStripView()
+    private let scrollView = HistoryPanelScrollView()
+    private let collectionView = NSCollectionView()
+    private let collectionLayout = NSCollectionViewFlowLayout()
     private let emptyLabel = NSTextField(labelWithString: "")
     private let deleteButton = HistoryPanelDeleteButton()
     private let finderButton = HistoryPanelActionButton(symbolName: "folder", accessibilityLabel: L10n.historyShowInFinder)
@@ -917,11 +936,21 @@ private final class HistoryPanelContentView: NSView {
     private var selectionKeyMonitor: Any?
     private var previewController: HistoryPreviewWindowController?
     private weak var activeHoverTile: HistoryPanelTileView?
+    private var allEntries: [HistoryEntry] = []
     private var visibleEntries: [HistoryEntry] = []
+    private var availableFilters: Set<HistoryPanelFilter> = [.all]
+    private var renderedEntryCount = 0
+    private var isAppendingPage = false
     private var selectedEntryIDs: [String] = []
     private var lastSelectionAnchorID: String?
     private var reloadGeneration = 0
+    private var isActive = false
+    private var isReloading = false
+    private var hasLoadedEntries = false
+    private var needsEntriesReload = true
     private var isConfirmingDelete = false
+    private var isScrolling = false
+    private var previewLoadWorkItem: DispatchWorkItem?
 
     init(
         presentation: HistoryPanelPresentation,
@@ -938,7 +967,7 @@ private final class HistoryPanelContentView: NSView {
 
         NotificationCenter.default.addObserver(
             self,
-            selector: #selector(reloadEntries),
+            selector: #selector(historyDidUpdate),
             name: .historyDidUpdate,
             object: nil
         )
@@ -946,12 +975,6 @@ private final class HistoryPanelContentView: NSView {
             self,
             selector: #selector(refreshLocalization),
             name: .languageDidChange,
-            object: nil
-        )
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(clipboardTextCacheEnabledChanged),
-            name: .clipboardTextCacheEnabledDidChange,
             object: nil
         )
     }
@@ -964,13 +987,14 @@ private final class HistoryPanelContentView: NSView {
         NotificationCenter.default.removeObserver(self)
         stopConfirmationDismissMonitoring()
         stopSelectionKeyMonitoring()
+        previewLoadWorkItem?.cancel()
         previewController?.close()
         HotkeyManager.shared.unregisterHistoryPreview()
     }
 
     override func layout() {
         super.layout()
-        layoutStrip()
+        updateCollectionLayout()
     }
 
     private func setupUI() {
@@ -1013,16 +1037,39 @@ private final class HistoryPanelContentView: NSView {
         scrollView.drawsBackground = false
         scrollView.hasHorizontalScroller = false
         scrollView.hasVerticalScroller = false
-        scrollView.autohidesScrollers = true
+        scrollView.autohidesScrollers = false
+        scrollView.horizontalScroller = nil
         scrollView.borderType = .noBorder
         scrollView.horizontalScrollElasticity = .allowed
         scrollView.contentView.postsBoundsChangedNotifications = true
-        scrollView.documentView = stripView
+
+        collectionLayout.scrollDirection = .horizontal
+        collectionLayout.minimumLineSpacing = 14
+        collectionLayout.minimumInteritemSpacing = 14
+        collectionLayout.itemSize = NSSize(width: presentation.tileWidth, height: presentation.tileHeight)
+        collectionLayout.sectionInset = NSEdgeInsets(
+            top: 0,
+            left: presentation.stripSideInset,
+            bottom: 0,
+            right: presentation.stripSideInset
+        )
+        collectionView.collectionViewLayout = collectionLayout
+        collectionView.dataSource = self
+        collectionView.delegate = self
+        collectionView.isSelectable = false
+        collectionView.backgroundColors = [.clear]
+        collectionView.frame = NSRect(x: 0, y: 0, width: 1, height: presentation.tileHeight)
+        collectionView.register(
+            HistoryPanelCollectionItem.self,
+            forItemWithIdentifier: HistoryPanelCollectionItem.identifier
+        )
+        scrollView.documentView = collectionView
         addSubview(scrollView)
 
         emptyLabel.font = NSFont.systemFont(ofSize: 13, weight: .medium)
         emptyLabel.textColor = NSColor.white.withAlphaComponent(0.48)
         emptyLabel.alignment = .center
+        emptyLabel.isHidden = true
         emptyLabel.translatesAutoresizingMaskIntoConstraints = false
         addSubview(emptyLabel)
 
@@ -1061,7 +1108,7 @@ private final class HistoryPanelContentView: NSView {
             emptyLabel.widthAnchor.constraint(lessThanOrEqualTo: scrollView.widthAnchor, constant: -40),
         ])
 
-        refreshLocalization()
+        updateLocalizedCopy()
         startConfirmationDismissMonitoring()
         startSelectionKeyMonitoring()
         NotificationCenter.default.addObserver(
@@ -1073,6 +1120,10 @@ private final class HistoryPanelContentView: NSView {
     }
 
     @objc private func refreshLocalization() {
+        updateLocalizedCopy()
+    }
+
+    private func updateLocalizedCopy() {
         for (filter, button) in filterButtons {
             button.title = filter.title
         }
@@ -1080,17 +1131,47 @@ private final class HistoryPanelContentView: NSView {
         finderButton.updateAccessibilityLabel(L10n.historyShowInFinder)
         settingsButton.updateAccessibilityLabel(L10n.settings)
         emptyLabel.stringValue = L10n.historyPanelEmpty
-        reloadEntries()
+    }
+
+    func setActive(_ active: Bool) {
+        guard isActive != active else { return }
+        isActive = active
+        if active {
+            if needsEntriesReload || !hasLoadedEntries {
+                reloadEntries()
+            } else {
+                scheduleVisiblePreviewLoad(after: 0.04)
+            }
+        } else {
+            previewLoadWorkItem?.cancel()
+            previewLoadWorkItem = nil
+            isScrolling = false
+            visibleCollectionTiles.forEach { $0.cancelPendingPreviewLoad() }
+            if isReloading {
+                needsEntriesReload = true
+                isReloading = false
+                reloadGeneration += 1
+            }
+            clearActiveHoverTile()
+        }
+    }
+
+    @objc private func historyDidUpdate() {
+        needsEntriesReload = true
+        if isActive {
+            reloadEntries()
+        }
     }
 
     @objc private func filterClicked(_ sender: HistoryPanelFilterButton) {
         selectedFilter = sender.filter
-        updateFilterSelection()
-        reloadEntries()
-    }
-
-    @objc private func clipboardTextCacheEnabledChanged() {
-        reloadEntries()
+        setDeleteConfirmation(false, animated: true)
+        if hasLoadedEntries {
+            applySelectedFilter(resetScrollPosition: true)
+        } else {
+            updateFilterSelection()
+            reloadEntries()
+        }
     }
 
     private func updateFilterAvailability(availableFilters: Set<HistoryPanelFilter>) {
@@ -1146,20 +1227,37 @@ private final class HistoryPanelContentView: NSView {
     }
 
     @objc private func reloadEntries() {
+        guard isActive else {
+            needsEntriesReload = true
+            return
+        }
         reloadGeneration += 1
         let generation = reloadGeneration
-        let filter = selectedFilter
+        needsEntriesReload = false
+        isReloading = true
         entriesQueue.async { [weak self] in
             let allEntries = HistoryManager.shared.entries()
             let availableFilters = Self.availableFilters(for: allEntries)
-            let effectiveFilter = availableFilters.contains(filter) ? filter : .all
-            let entries = Self.filteredEntries(from: allEntries, filter: effectiveFilter)
             DispatchQueue.main.async {
-                guard let self, self.reloadGeneration == generation else { return }
-                self.selectedFilter = effectiveFilter
-                self.updateFilterAvailability(availableFilters: availableFilters)
-                self.applyEntries(entries, hasAnyEntries: !allEntries.isEmpty)
+                guard let self, self.reloadGeneration == generation, self.isActive else { return }
+                self.isReloading = false
+                self.hasLoadedEntries = true
+                self.allEntries = allEntries
+                self.availableFilters = availableFilters
+                self.applySelectedFilter(resetScrollPosition: false)
             }
+        }
+    }
+
+    private func applySelectedFilter(resetScrollPosition: Bool) {
+        let effectiveFilter = availableFilters.contains(selectedFilter) ? selectedFilter : .all
+        selectedFilter = effectiveFilter
+        updateFilterAvailability(availableFilters: availableFilters)
+        let entries = Self.filteredEntries(from: allEntries, filter: effectiveFilter)
+        applyEntries(entries, hasAnyEntries: !allEntries.isEmpty)
+        if resetScrollPosition {
+            scrollView.contentView.scroll(to: .zero)
+            scrollView.reflectScrolledClipView(scrollView.contentView)
         }
     }
 
@@ -1167,29 +1265,10 @@ private final class HistoryPanelContentView: NSView {
         clearActiveHoverTile()
         visibleEntries = entries
         pruneSelection(to: entries)
-        stripView.subviews.forEach { $0.removeFromSuperview() }
-        for entry in entries {
-            let tile = HistoryPanelTileView(
-                entry: entry,
-                presentation: presentation,
-                onRequestDismiss: { [weak self] in
-                    self?.onRequestDismiss?()
-                },
-                onHoverChanged: { [weak self] tile, isHovered in
-                    self?.updateActiveHoverTile(tile, isHovered: isHovered)
-                },
-                onSelectionToggle: { [weak self] tile, event in
-                    self?.handleSelectionToggle(for: tile, event: event)
-                },
-                onPrimaryClick: { [weak self] tile, event in
-                    self?.handlePrimaryClick(for: tile, event: event)
-                },
-                dragEntriesProvider: { [weak self] tile in
-                    self?.dragEntries(for: tile) ?? [tile.entry]
-                }
-            )
-            stripView.addSubview(tile)
-        }
+        renderedEntryCount = min(Self.pageSize, entries.count)
+        isAppendingPage = false
+        collectionView.reloadData()
+        collectionLayout.invalidateLayout()
         refreshTileSelectionStates()
         deleteButton.isEnabled = hasAnyEntries
         deleteButton.alphaValue = deleteButton.isEnabled ? 1 : 0.35
@@ -1197,10 +1276,11 @@ private final class HistoryPanelContentView: NSView {
             setDeleteConfirmation(false, animated: true)
         }
         emptyLabel.isHidden = !entries.isEmpty
-        layoutStrip()
-        updateVisibleTilePreviews()
         DispatchQueue.main.async { [weak self] in
-            self?.syncHoverStateWithCurrentMouse()
+            guard let self else { return }
+            self.loadNextPageIfNeeded()
+            self.syncHoverStateWithCurrentMouse()
+            self.scheduleVisiblePreviewLoad(after: 0.04)
         }
     }
 
@@ -1324,7 +1404,7 @@ private final class HistoryPanelContentView: NSView {
     }
 
     private func refreshTileSelectionStates() {
-        for case let tile as HistoryPanelTileView in stripView.subviews {
+        for tile in visibleCollectionTiles {
             let id = entryID(tile.entry)
             let order = selectedEntryIDs.firstIndex(of: id).map { $0 + 1 }
             tile.setSelectionState(order: order, selectionModeActive: hasSelection)
@@ -1397,10 +1477,9 @@ private final class HistoryPanelContentView: NSView {
             return
         }
 
-        let stripPoint = stripView.convert(windowPoint, from: nil)
-        for subview in stripView.subviews.reversed() {
-            guard let tile = subview as? HistoryPanelTileView else { continue }
-            if tile.frame.contains(stripPoint) {
+        for tile in visibleCollectionTiles.reversed() {
+            let tilePoint = tile.convert(windowPoint, from: nil)
+            if tile.bounds.contains(tilePoint) {
                 updateActiveHoverTile(tile, isHovered: true)
                 return
             }
@@ -1562,8 +1641,12 @@ private final class HistoryPanelContentView: NSView {
     }
 
     @objc private func scrollBoundsDidChange() {
-        updateVisibleTilePreviews()
+        isScrolling = true
+        previewLoadWorkItem?.cancel()
+        visibleCollectionTiles.forEach { $0.cancelPendingPreviewLoad() }
+        loadNextPageIfNeeded()
         syncHoverStateWithCurrentMouse()
+        scheduleVisiblePreviewLoad()
     }
 
     private static func filteredEntries(from entries: [HistoryEntry], filter: HistoryPanelFilter) -> [HistoryEntry] {
@@ -1602,44 +1685,114 @@ private final class HistoryPanelContentView: NSView {
         }
     }
 
-    private func layoutStrip() {
-        let tileCount = stripView.subviews.count
-        let viewportWidth = max(scrollView.contentSize.width, scrollView.bounds.width)
-        let tileHeight = presentation.tileHeight
-        let gap: CGFloat = 14
-        let sideInset = presentation.stripSideInset
-        let tileWidth = presentation.tileWidth
-
-        let rowWidth = tileCount > 0
-            ? CGFloat(tileCount) * tileWidth + CGFloat(tileCount - 1) * gap
-            : 0
-        let totalWidth = max(viewportWidth, rowWidth + sideInset * 2)
-        var x = sideInset
-
-        for tile in stripView.subviews {
-            tile.frame = NSRect(x: x, y: 0, width: tileWidth, height: tileHeight)
-            x += tileWidth + gap
+    private var visibleCollectionTiles: [HistoryPanelTileView] {
+        collectionView.visibleItems().compactMap { item in
+            (item as? HistoryPanelCollectionItem)?.tileView
         }
-        stripView.frame = NSRect(x: 0, y: 0, width: totalWidth, height: tileHeight)
-        updateVisibleTilePreviews()
     }
 
-    private func updateVisibleTilePreviews() {
-        guard stripView.superview != nil else { return }
-        let preloadMargin = max(presentation.tileWidth * 2, scrollView.bounds.width * 0.35)
-        let visibleRect = scrollView.documentVisibleRect.insetBy(dx: -preloadMargin, dy: 0)
-        for case let tile as HistoryPanelTileView in stripView.subviews {
-            if visibleRect.intersects(tile.frame) {
-                tile.loadPreviewIfNeeded()
-            } else {
-                tile.cancelPendingPreviewLoad()
+    private func scheduleVisiblePreviewLoad(after delay: TimeInterval = previewLoadDelay) {
+        previewLoadWorkItem?.cancel()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.isActive else { return }
+            self.isScrolling = false
+            self.previewLoadWorkItem = nil
+            self.visibleCollectionTiles.forEach { $0.loadPreviewIfNeeded() }
+        }
+        previewLoadWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func updateCollectionLayout() {
+        let itemSize = NSSize(width: presentation.tileWidth, height: presentation.tileHeight)
+        if collectionLayout.itemSize != itemSize {
+            collectionLayout.itemSize = itemSize
+            collectionLayout.invalidateLayout()
+        }
+    }
+
+    private func loadNextPageIfNeeded() {
+        guard isActive, !isAppendingPage, renderedEntryCount < visibleEntries.count else { return }
+        let visibleRect = scrollView.documentVisibleRect
+        let contentWidth = collectionLayout.collectionViewContentSize.width
+        let threshold = max(scrollView.bounds.width * 0.75, presentation.tileWidth * 3)
+        guard contentWidth - visibleRect.maxX <= threshold else { return }
+
+        let oldCount = renderedEntryCount
+        let newCount = min(oldCount + Self.pageSize, visibleEntries.count)
+        guard newCount > oldCount else { return }
+        isAppendingPage = true
+        renderedEntryCount = newCount
+        let indexPaths = Set((oldCount..<newCount).map { IndexPath(item: $0, section: 0) })
+        collectionView.insertItems(at: indexPaths)
+        collectionLayout.invalidateLayout()
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.collectionView.layoutSubtreeIfNeeded()
+            self.isAppendingPage = false
+        }
+    }
+
+    func numberOfSections(in collectionView: NSCollectionView) -> Int {
+        1
+    }
+
+    func collectionView(_ collectionView: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
+        renderedEntryCount
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        itemForRepresentedObjectAt indexPath: IndexPath
+    ) -> NSCollectionViewItem {
+        let item = collectionView.makeItem(
+            withIdentifier: HistoryPanelCollectionItem.identifier,
+            for: indexPath
+        ) as! HistoryPanelCollectionItem
+        guard indexPath.item < renderedEntryCount, indexPath.item < visibleEntries.count else {
+            item.clear()
+            return item
+        }
+
+        let entry = visibleEntries[indexPath.item]
+        item.configure(
+            entry: entry,
+            presentation: presentation,
+            onRequestDismiss: { [weak self] in
+                self?.onRequestDismiss?()
+            },
+            onHoverChanged: { [weak self] tile, isHovered in
+                self?.updateActiveHoverTile(tile, isHovered: isHovered)
+            },
+            onSelectionToggle: { [weak self] tile, event in
+                self?.handleSelectionToggle(for: tile, event: event)
+            },
+            onPrimaryClick: { [weak self] tile, event in
+                self?.handlePrimaryClick(for: tile, event: event)
+            },
+            dragEntriesProvider: { [weak self] tile in
+                self?.dragEntries(for: tile) ?? [tile.entry]
             }
+        )
+        let order = selectedEntryIDs.firstIndex(of: entryID(entry)).map { $0 + 1 }
+        item.tileView?.setSelectionState(order: order, selectionModeActive: hasSelection)
+        if !isScrolling {
+            scheduleVisiblePreviewLoad(after: 0.04)
+        }
+        return item
+    }
+
+    func collectionView(
+        _ collectionView: NSCollectionView,
+        didEndDisplaying item: NSCollectionViewItem,
+        forRepresentedObjectAt indexPath: IndexPath
+    ) {
+        guard let tile = (item as? HistoryPanelCollectionItem)?.tileView else { return }
+        tile.cancelPendingPreviewLoad()
+        if activeHoverTile === tile {
+            clearActiveHoverTile()
         }
     }
-}
-
-private final class HistoryPanelStripView: NSView {
-    override var isFlipped: Bool { true }
 }
 
 private final class HistoryPanelCenteredTextView: NSView {
@@ -2265,6 +2418,57 @@ private final class HistoryCloudActionButton: NSControl {
     }
 }
 
+private final class HistoryPanelCollectionItem: NSCollectionViewItem {
+    static let identifier = NSUserInterfaceItemIdentifier("HistoryPanelCollectionItem")
+
+    private(set) var tileView: HistoryPanelTileView?
+
+    override func loadView() {
+        view = NSView()
+        view.wantsLayer = true
+        view.layer?.backgroundColor = NSColor.clear.cgColor
+    }
+
+    func configure(
+        entry: HistoryEntry,
+        presentation: HistoryPanelPresentation,
+        onRequestDismiss: (() -> Void)?,
+        onHoverChanged: @escaping (HistoryPanelTileView, Bool) -> Void,
+        onSelectionToggle: @escaping (HistoryPanelTileView, NSEvent) -> Void,
+        onPrimaryClick: @escaping (HistoryPanelTileView, NSEvent) -> Void,
+        dragEntriesProvider: @escaping (HistoryPanelTileView) -> [HistoryEntry]
+    ) {
+        if let tileView {
+            tileView.reconfigure(with: entry)
+            tileView.isHidden = false
+            return
+        }
+        let tile = HistoryPanelTileView(
+            entry: entry,
+            presentation: presentation,
+            onRequestDismiss: onRequestDismiss,
+            onHoverChanged: onHoverChanged,
+            onSelectionToggle: onSelectionToggle,
+            onPrimaryClick: onPrimaryClick,
+            dragEntriesProvider: dragEntriesProvider
+        )
+        tile.frame = view.bounds
+        tile.autoresizingMask = [.width, .height]
+        view.addSubview(tile)
+        tileView = tile
+    }
+
+    func clear() {
+        tileView?.cancelPendingPreviewLoad()
+        tileView?.isHidden = true
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        tileView?.prepareForCollectionReuse()
+    }
+}
+
 private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private enum PreviewLoadState {
         case idle
@@ -2272,7 +2476,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         case loaded
     }
 
-    let entry: HistoryEntry
+    private(set) var entry: HistoryEntry
     private let presentation: HistoryPanelPresentation
     private let onRequestDismiss: (() -> Void)?
     private let onHoverChanged: ((HistoryPanelTileView, Bool) -> Void)?
@@ -2298,6 +2502,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private var didStartDrag = false
     private var didDismissForCurrentDrag = false
     private var previewLoadState: PreviewLoadState = .idle
+    private var previewLoadGeneration = 0
 
     init(
         entry: HistoryEntry,
@@ -2384,6 +2589,8 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         metaLabel.minimumFontSize = 7.5
         metaLabel.ignoresHitTesting = true
         addSubview(metaLabel)
+
+        reconfigure(with: entry)
     }
 
     required init?(coder: NSCoder) {
@@ -2532,14 +2739,83 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         needsLayout = true
     }
 
+    func reconfigure(with entry: HistoryEntry) {
+        cancelPendingPreviewLoad()
+        previewLoadGeneration += 1
+        self.entry = entry
+        previewLoadState = .idle
+
+        imageView.image = nil
+        imageView.contentTintColor = nil
+        imageView.layer?.backgroundColor = NSColor.black.withAlphaComponent(0.24).cgColor
+        textPreviewLabel.stringValue = ""
+        textPreviewLabel.toolTip = nil
+        textPreviewLabel.isHidden = true
+
+        let overlayHint = Self.overlayHint(for: entry, supportsDrag: supportsDrag)
+        overlayLabel.stringValue = overlayHint
+        overlayLabel.isHidden = overlayHint.isEmpty
+        overlayLabel.alphaValue = 0
+
+        cloudBadgeView.isHidden = entry.cloudURL == nil
+        cloudActionBarView.isHidden = true
+        cloudActionBarView.alphaValue = 0
+        cloudActionBarView.setPressedActionKind(nil)
+
+        if let badgeKind = HistoryMediaBadgeKind(entry: entry) {
+            badgeView.title = badgeKind.title
+            badgeView.isHidden = false
+        } else {
+            badgeView.isHidden = true
+        }
+
+        isHovered = false
+        isSelectionModeActive = false
+        selectionOrder = nil
+        selectionBadgeView.order = nil
+        selectionBadgeView.isHidden = true
+        layer?.borderColor = selectedBorderColor
+        layer?.borderWidth = 1
+        layer?.backgroundColor = NSColor.white.withAlphaComponent(0.075).cgColor
+
+        mouseDownPoint = nil
+        mouseDownHitSelectionBadge = false
+        mouseDownCloudActionKind = nil
+        didStartDrag = false
+        didDismissForCurrentDrag = false
+
+        switch entry.kind {
+        case .image:
+            let label = entry.fileURL.pathExtension.lowercased() == "gif"
+                ? L10n.historyPanelFilterGIF
+                : L10n.historyPanelFilterScreenshots
+            metaLabel.stringValue = Self.metadata(label: label, date: entry.createdAt)
+        case .video:
+            configureVideoPlaceholder()
+            previewLoadState = .idle
+        case .color(let hex):
+            configureColorPreview(hex: hex)
+        case .text:
+            metaLabel.stringValue = Self.metadata(label: L10n.historyPanelFilterText, date: entry.createdAt)
+        }
+        needsLayout = true
+    }
+
+    func prepareForCollectionReuse() {
+        cancelPendingPreviewLoad()
+        setHovered(false)
+    }
+
     func loadPreviewIfNeeded() {
         guard previewLoadState == .idle else { return }
         previewLoadState = .loading
-        loadEntryPreview()
+        previewLoadGeneration += 1
+        loadEntryPreview(generation: previewLoadGeneration)
     }
 
     func cancelPendingPreviewLoad() {
         guard previewLoadState == .loading else { return }
+        previewLoadGeneration += 1
         previewRequest?.cancel()
         previewRequest = nil
         previewLoadState = .idle
@@ -2740,25 +3016,34 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         }
     }
 
-    private func loadEntryPreview() {
+    private func loadEntryPreview(generation: Int) {
         switch entry.kind {
         case .image:
-            loadPreview()
+            loadPreview(generation: generation)
         case .video:
-            loadVideoPreview()
+            loadVideoPreview(generation: generation)
         case .color(let hex):
             configureColorPreview(hex: hex)
         case .text(let text):
-            configureTextPreview(text)
+            text.load { [weak self] value in
+                guard let self,
+                      self.previewLoadGeneration == generation,
+                      self.previewLoadState == .loading else { return }
+                self.previewLoadState = .loaded
+                self.configureTextPreview(value)
+            }
         }
     }
 
-    private func loadPreview() {
+    private func loadPreview(generation: Int) {
         let pixelSize = Int(max(presentation.tileWidth, presentation.previewHeight) * (NSScreen.main?.backingScaleFactor ?? 2))
         let url = entry.fileURL
         previewRequest?.cancel()
         previewRequest = HistoryImagePreviewLoader.shared.load(url: url, pixelSize: pixelSize) { [weak self] preview in
-            guard let self, self.entry.fileURL == url else { return }
+            guard let self,
+                  self.previewLoadGeneration == generation,
+                  self.previewLoadState == .loading,
+                  self.entry.fileURL == url else { return }
             self.previewRequest = nil
             self.previewLoadState = .loaded
             if let cgImage = preview.cgImage {
@@ -2776,13 +3061,16 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         }
     }
 
-    private func loadVideoPreview() {
+    private func loadVideoPreview(generation: Int) {
         configureVideoPlaceholder()
         let pixelSize = Int(max(presentation.tileWidth, presentation.previewHeight) * (NSScreen.main?.backingScaleFactor ?? 2))
         let url = entry.fileURL
         previewRequest?.cancel()
         previewRequest = HistoryImagePreviewLoader.shared.loadVideoFrame(url: url, pixelSize: pixelSize) { [weak self] preview in
-            guard let self, self.entry.fileURL == url else { return }
+            guard let self,
+                  self.previewLoadGeneration == generation,
+                  self.previewLoadState == .loading,
+                  self.entry.fileURL == url else { return }
             self.previewRequest = nil
             self.previewLoadState = .loaded
             if let cgImage = preview.cgImage {
@@ -3232,7 +3520,10 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         case .image:
             loadCurrentImage(generation: generation)
         case .text(let text):
-            loadCurrentText(text)
+            text.load { [weak self] value in
+                guard let self, self.loadGeneration == generation else { return }
+                self.loadCurrentText(value)
+            }
         case .video, .color:
             return
         }
@@ -3480,16 +3771,16 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         let screen = window?.screen ?? placementScreen ?? NSScreen.main ?? NSScreen.screens.first
         guard let screen else { return }
         close()
-        OCRTranslatePanel.presentTextTranslation(text: text, screen: screen)
+        OCRTranslatePanel.presentTextTranslation(text: text.value, screen: screen)
     }
 
     @objc private func showQRCodeCurrent() {
         guard case .text(let text) = currentEntry.kind,
-              TextQRCodeWindowController.canGenerateQRCode(for: text) else { return }
+              TextQRCodeWindowController.canGenerateQRCode(for: text.value) else { return }
         let screen = window?.screen ?? placementScreen ?? NSScreen.main ?? NSScreen.screens.first
         guard let screen else { return }
         close()
-        TextQRCodeWindowController.present(text: text, screen: screen)
+        TextQRCodeWindowController.present(text: text.value, screen: screen)
     }
 }
 
@@ -3512,7 +3803,7 @@ private enum HistoryPanelEntryActions {
             ToastWindow.show(message: L10n.colorCopied(hex.uppercased()))
             return true
         case .text(let text):
-            ClipboardManager.copyHistoryTextToClipboard(text)
+            ClipboardManager.copyHistoryTextToClipboard(text.value)
             ToastWindow.show(message: L10n.copiedToClipboard)
             return true
         }

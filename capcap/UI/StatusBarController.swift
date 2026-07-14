@@ -400,7 +400,7 @@ class StatusBarController: NSObject {
             pasteboard.setString(hex, forType: .string)
             ToastWindow.show(message: L10n.colorCopied(hex))
         case .text(let text):
-            ClipboardManager.copyHistoryTextToClipboard(text)
+            ClipboardManager.copyHistoryTextToClipboard(text.value)
             ToastWindow.show(message: L10n.copiedToClipboard)
         }
     }
@@ -508,7 +508,7 @@ private final class HistoryMenuRow: NSView {
             case .color(let hex):
                 return Self.makeColorPreview(hex: hex, maxWidth: contentWidth)
             case .text(let text):
-                return Self.makeTextPreview(text, maxWidth: contentWidth)
+                return Self.makeTextPreview(text.value, maxWidth: contentWidth)
             }
         }()
         let preview = previewBlock.0

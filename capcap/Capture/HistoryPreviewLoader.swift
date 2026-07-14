@@ -7,6 +7,11 @@ struct HistoryImagePreview {
     let pixelWidth: Int
     let pixelHeight: Int
 
+    var estimatedByteCost: Int {
+        guard let cgImage else { return 0 }
+        return cgImage.bytesPerRow * cgImage.height
+    }
+
     static func load(url: URL, pixelSize: Int) -> HistoryImagePreview {
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else {
             return HistoryImagePreview(cgImage: nil, pixelWidth: 0, pixelHeight: 0)
@@ -95,6 +100,7 @@ final class HistoryImagePreviewLoader {
 
     private init() {
         cache.countLimit = 180
+        cache.totalCostLimit = 48 * 1024 * 1024
     }
 
     @discardableResult
@@ -152,7 +158,11 @@ final class HistoryImagePreviewLoader {
 
             let preview = producer(url, pixelSize)
             guard !request.isCancelled else { return }
-            self.cache.setObject(HistoryImagePreviewCacheValue(preview: preview), forKey: key)
+            self.cache.setObject(
+                HistoryImagePreviewCacheValue(preview: preview),
+                forKey: key,
+                cost: preview.estimatedByteCost
+            )
             DispatchQueue.main.async { [request] in
                 guard !request.isCancelled else { return }
                 completion(preview)
