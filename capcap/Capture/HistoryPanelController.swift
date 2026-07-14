@@ -992,7 +992,7 @@ private final class HistoryPanelContentView: NSView {
             filterButtons[filter] = button
             toolbar.addArrangedSubview(button)
         }
-        updateFilterAvailability()
+        updateFilterAvailability(availableFilters: [.all])
 
         finderButton.target = self
         finderButton.action = #selector(showHistoryInFinderClicked)
@@ -1090,15 +1090,12 @@ private final class HistoryPanelContentView: NSView {
     }
 
     @objc private func clipboardTextCacheEnabledChanged() {
-        updateFilterAvailability()
         reloadEntries()
     }
 
-    private func updateFilterAvailability() {
-        let showsTextFilter = Defaults.clipboardTextCacheEnabled
-        filterButtons[.text]?.isHidden = !showsTextFilter
-        if !showsTextFilter, selectedFilter == .text {
-            selectedFilter = .all
+    private func updateFilterAvailability(availableFilters: Set<HistoryPanelFilter>) {
+        for (filter, button) in filterButtons {
+            button.isHidden = !availableFilters.contains(filter)
         }
         updateFilterSelection()
     }
@@ -1154,9 +1151,13 @@ private final class HistoryPanelContentView: NSView {
         let filter = selectedFilter
         entriesQueue.async { [weak self] in
             let allEntries = HistoryManager.shared.entries()
-            let entries = Self.filteredEntries(from: allEntries, filter: filter)
+            let availableFilters = Self.availableFilters(for: allEntries)
+            let effectiveFilter = availableFilters.contains(filter) ? filter : .all
+            let entries = Self.filteredEntries(from: allEntries, filter: effectiveFilter)
             DispatchQueue.main.async {
                 guard let self, self.reloadGeneration == generation else { return }
+                self.selectedFilter = effectiveFilter
+                self.updateFilterAvailability(availableFilters: availableFilters)
                 self.applyEntries(entries, hasAnyEntries: !allEntries.isEmpty)
             }
         }
@@ -1566,26 +1567,38 @@ private final class HistoryPanelContentView: NSView {
     }
 
     private static func filteredEntries(from entries: [HistoryEntry], filter: HistoryPanelFilter) -> [HistoryEntry] {
-        entries.filter { entry in
-            switch filter {
-            case .all:
-                return true
-            case .screenshots:
-                guard case .image = entry.kind else { return false }
-                return entry.fileURL.pathExtension.lowercased() != "gif"
-            case .gif:
-                guard case .image = entry.kind else { return false }
-                return entry.fileURL.pathExtension.lowercased() == "gif"
-            case .mp4:
-                guard case .video = entry.kind else { return false }
-                return true
-            case .colors:
-                guard case .color = entry.kind else { return false }
-                return true
-            case .text:
-                guard case .text = entry.kind else { return false }
-                return true
+        entries.filter { entryMatches($0, filter: filter) }
+    }
+
+    private static func availableFilters(for entries: [HistoryEntry]) -> Set<HistoryPanelFilter> {
+        var filters: Set<HistoryPanelFilter> = [.all]
+        for filter in HistoryPanelFilter.allCases where filter != .all {
+            if entries.contains(where: { entryMatches($0, filter: filter) }) {
+                filters.insert(filter)
             }
+        }
+        return filters
+    }
+
+    private static func entryMatches(_ entry: HistoryEntry, filter: HistoryPanelFilter) -> Bool {
+        switch filter {
+        case .all:
+            return true
+        case .screenshots:
+            guard case .image = entry.kind else { return false }
+            return entry.fileURL.pathExtension.lowercased() != "gif"
+        case .gif:
+            guard case .image = entry.kind else { return false }
+            return entry.fileURL.pathExtension.lowercased() == "gif"
+        case .mp4:
+            guard case .video = entry.kind else { return false }
+            return true
+        case .colors:
+            guard case .color = entry.kind else { return false }
+            return true
+        case .text:
+            guard case .text = entry.kind else { return false }
+            return true
         }
     }
 
