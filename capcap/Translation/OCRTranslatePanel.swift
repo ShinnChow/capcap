@@ -1222,11 +1222,13 @@ final class OCRTranslatePanel: NSPanel {
     private enum Mode {
         case textRecognition
         case screenshotTranslation
+        case textTranslation
 
         var diagnosticName: String {
             switch self {
             case .textRecognition: return "text-recognition"
             case .screenshotTranslation: return "screenshot-translation"
+            case .textTranslation: return "text-translation"
             }
         }
     }
@@ -1235,6 +1237,7 @@ final class OCRTranslatePanel: NSPanel {
     private static let topMargin: CGFloat = 24
 
     private let screenshot: NSImage
+    private let sourceText: String?
     private let anchorScreen: NSScreen
     private let panelWidth: CGFloat
     private let mode: Mode
@@ -1293,18 +1296,54 @@ final class OCRTranslatePanel: NSPanel {
         present(image: image, anchorRect: anchorRect, screen: screen, mode: .screenshotTranslation)
     }
 
-    private static func present(image: NSImage, anchorRect: NSRect, screen: NSScreen, mode: Mode) {
+    static func presentTextTranslation(text: String, screen: NSScreen) {
+        let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedText.isEmpty else { return }
         current?.dismiss()
-        let panel = OCRTranslatePanel(image: image, anchorRect: anchorRect, screen: screen, mode: mode)
+        let anchorRect = NSRect(
+            x: screen.visibleFrame.midX - 250,
+            y: screen.visibleFrame.maxY,
+            width: 500,
+            height: 0
+        )
+        let panel = OCRTranslatePanel(
+            image: NSImage(size: NSSize(width: 1, height: 1)),
+            sourceText: text,
+            anchorRect: anchorRect,
+            screen: screen,
+            mode: .textTranslation
+        )
         current = panel
         panel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         panel.runOCR()
     }
 
-    private init(image: NSImage, anchorRect: NSRect, screen: NSScreen, mode: Mode) {
+    private static func present(image: NSImage, anchorRect: NSRect, screen: NSScreen, mode: Mode) {
+        current?.dismiss()
+        let panel = OCRTranslatePanel(
+            image: image,
+            sourceText: nil,
+            anchorRect: anchorRect,
+            screen: screen,
+            mode: mode
+        )
+        current = panel
+        panel.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+        panel.runOCR()
+    }
+
+    private init(
+        image: NSImage,
+        sourceText: String?,
+        anchorRect: NSRect,
+        screen: NSScreen,
+        mode: Mode
+    ) {
         let panelWidth = min(max(anchorRect.width, 360), 500)
         self.screenshot = image
+        self.sourceText = sourceText
         self.anchorScreen = screen
         self.panelWidth = panelWidth
         self.mode = mode
@@ -1411,11 +1450,15 @@ final class OCRTranslatePanel: NSPanel {
             pinButton.heightAnchor.constraint(equalToConstant: 24),
         ])
 
-        buildScreenshotCard()
         switch mode {
         case .textRecognition:
+            buildScreenshotCard()
             buildOCRCard()
         case .screenshotTranslation:
+            buildScreenshotCard()
+            buildTranslationCard()
+        case .textTranslation:
+            buildTextSourceCard()
             buildTranslationCard()
         }
     }
@@ -1467,6 +1510,28 @@ final class OCRTranslatePanel: NSPanel {
         textView.string = L10n.ocrRecognizing
         textView.textColor = NSColor.white.withAlphaComponent(0.4)
         ocrTextView = textView
+        inner.addArrangedSubview(scroll)
+        scroll.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        addStackRow(card)
+    }
+
+    private func buildTextSourceCard() {
+        let card = makeCard()
+        let inner = makeCardStack()
+        card.addSubview(inner)
+        pin(inner, to: card, inset: 12)
+
+        let title = makeLabel(
+            L10n.historyPreviewOriginalText,
+            size: 12,
+            weight: .semibold,
+            alpha: 0.92
+        )
+        inner.addArrangedSubview(title)
+
+        let (scroll, textView) = makeTextScroll(editable: false, height: 140)
+        textView.string = sourceText ?? ""
         inner.addArrangedSubview(scroll)
         scroll.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
@@ -1583,6 +1648,9 @@ final class OCRTranslatePanel: NSPanel {
                     source: "panel.screenshot-translation"
                 )
                 self.applyOCRResult(text: text, lines: [], liveTextAnalysis: nil)
+            case .textTranslation:
+                self.recognizedText = self.sourceText?
+                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             }
 
             self.ocrReady = true
@@ -1598,7 +1666,7 @@ final class OCRTranslatePanel: NSPanel {
             switch self.mode {
             case .textRecognition:
                 self.finishTextRecognition()
-            case .screenshotTranslation:
+            case .screenshotTranslation, .textTranslation:
                 self.finishOCRAndStartTranslation()
             }
             self.refreshHeight()

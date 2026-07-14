@@ -140,6 +140,12 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "Couleurs";
 "historyPanelFilterText" = "Texte";
+"historyPreviewCopyText" = "Copier le texte";
+"historyPreviewTranslateText" = "Traduire le texte";
+"historyPreviewConvertToQRCode" = "Convertir en code QR";
+"historyPreviewQRCodeTooLong" = "Texte trop long pour être converti en code QR";
+"historyPreviewOriginalText" = "Texte original";
+"historyPreviewQRCodeTitle" = "Code QR du texte";
 "historyPanelCopyHint" = "Cliquez pour copier";
 "historyPanelCopyDragHint" = "Cliquez pour copier · faites glisser vers une app";
 "historyPanelCopyMarkdownLink" = "Copier le lien MD";
