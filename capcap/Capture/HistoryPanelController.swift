@@ -1437,14 +1437,14 @@ private final class HistoryPanelContentView: NSView {
     private func updateHistoryPreviewHotkey() {
         guard previewController == nil,
               let entry = activeHoverTile?.entry,
-              case .image = entry.kind else {
+              previewKind(for: entry) != nil else {
             HotkeyManager.shared.unregisterHistoryPreview()
             return
         }
         HotkeyManager.shared.registerHistoryPreview { [weak self] in
             guard let self,
                   let hoveredEntry = self.activeHoverTile?.entry,
-                  case .image = hoveredEntry.kind else { return }
+                  self.previewKind(for: hoveredEntry) != nil else { return }
             self.presentPreview(startingAt: hoveredEntry)
         }
     }
@@ -1473,7 +1473,7 @@ private final class HistoryPanelContentView: NSView {
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
             if event.keyCode == UInt16(kVK_Space), modifiers.isEmpty,
                let hoveredEntry = self.activeHoverTile?.entry,
-               case .image = hoveredEntry.kind {
+               self.previewKind(for: hoveredEntry) != nil {
                 self.presentPreview(startingAt: hoveredEntry)
                 return nil
             }
@@ -1505,15 +1505,13 @@ private final class HistoryPanelContentView: NSView {
     }
 
     private func presentPreview(startingAt entry: HistoryEntry) {
-        let imageEntries = visibleEntries.filter { candidate in
-            if case .image = candidate.kind { return true }
-            return false
-        }
-        guard !imageEntries.isEmpty else { return }
+        guard let kind = previewKind(for: entry) else { return }
+        let previewEntries = visibleEntries.filter { previewKind(for: $0) == kind }
+        guard !previewEntries.isEmpty else { return }
         HotkeyManager.shared.unregisterHistoryPreview()
         previewController?.close()
         let controller = HistoryPreviewWindowController(
-            entries: imageEntries,
+            entries: previewEntries,
             initialEntry: entry,
             onEdit: { [weak self] selectedEntry in
                 self?.previewController = nil
@@ -1528,6 +1526,19 @@ private final class HistoryPanelContentView: NSView {
         }
         previewController = controller
         controller.show(relativeTo: window?.screen)
+    }
+
+    private enum PreviewKind {
+        case image
+        case text
+    }
+
+    private func previewKind(for entry: HistoryEntry) -> PreviewKind? {
+        switch entry.kind {
+        case .image: return .image
+        case .text: return .text
+        case .video, .color: return nil
+        }
     }
 
     private func stopSelectionKeyMonitoring() {
@@ -2833,15 +2844,141 @@ private final class HistoryPreviewPanel: NSPanel {
     }
 }
 
+private final class HistoryPreviewActionButton: NSButton {
+    var hoverTip = ""
+
+    init(image: NSImage, target: AnyObject?, action: Selector?) {
+        super.init(frame: .zero)
+        self.image = image
+        self.target = target
+        self.action = action
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+}
+
+private final class HistoryPreviewTooltipPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+private final class HistoryPreviewTooltipController {
+    private weak var parentWindow: NSWindow?
+    private let panel: HistoryPreviewTooltipPanel
+    private let label = NSTextField(labelWithString: "")
+
+    init() {
+        panel = HistoryPreviewTooltipPanel(
+            contentRect: .zero,
+            styleMask: [.borderless, .nonactivatingPanel],
+            backing: .buffered,
+            defer: false
+        )
+        panel.appearance = NSAppearance(named: .darkAqua)
+        panel.isOpaque = false
+        panel.backgroundColor = .clear
+        panel.hasShadow = true
+        panel.ignoresMouseEvents = true
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+
+        let content = NSView()
+        content.wantsLayer = true
+        content.layer?.cornerRadius = 6
+        content.layer?.cornerCurve = .continuous
+        content.layer?.backgroundColor = NSColor(calibratedWhite: 0.12, alpha: 0.98).cgColor
+        content.layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
+        content.layer?.borderWidth = 1
+        panel.contentView = content
+
+        label.font = NSFont.systemFont(ofSize: 12, weight: .medium)
+        label.textColor = .white
+        label.usesSingleLineMode = true
+        label.lineBreakMode = .byClipping
+        content.addSubview(label)
+    }
+
+    func show(_ text: String, relativeTo anchorView: NSView) {
+        guard !text.isEmpty,
+              let parentWindow = anchorView.window,
+              let screen = parentWindow.screen ?? NSScreen.main ?? NSScreen.screens.first else {
+            hide()
+            return
+        }
+
+        if self.parentWindow !== parentWindow {
+            if let previousParent = self.parentWindow {
+                previousParent.removeChildWindow(panel)
+            }
+            self.parentWindow = parentWindow
+            parentWindow.addChildWindow(panel, ordered: .above)
+        }
+        label.stringValue = text
+        let textSize = label.intrinsicContentSize
+        let panelSize = NSSize(
+            width: ceil(textSize.width) + 20,
+            height: ceil(textSize.height) + 10
+        )
+        label.frame = NSRect(x: 10, y: 5, width: ceil(textSize.width), height: ceil(textSize.height))
+
+        let anchorRect = parentWindow.convertToScreen(anchorView.convert(anchorView.bounds, to: nil))
+        let visibleFrame = screen.visibleFrame
+        var origin = NSPoint(
+            x: anchorRect.midX - panelSize.width / 2,
+            y: anchorRect.minY - panelSize.height - 6
+        )
+        origin.x = min(
+            max(origin.x, visibleFrame.minX + 8),
+            visibleFrame.maxX - panelSize.width - 8
+        )
+        if origin.y < visibleFrame.minY + 8 {
+            origin.y = anchorRect.maxY + 6
+        }
+
+        panel.level = NSWindow.Level(rawValue: parentWindow.level.rawValue + 1)
+        panel.setFrame(NSRect(origin: origin, size: panelSize), display: true)
+        panel.orderFrontRegardless()
+    }
+
+    func hide() {
+        panel.orderOut(nil)
+        if let parentWindow {
+            parentWindow.removeChildWindow(panel)
+        }
+        parentWindow = nil
+    }
+
+    func close() {
+        hide()
+    }
+}
+
 private final class HistoryPreviewWindowController: NSWindowController, NSWindowDelegate {
+    private enum ContentKind {
+        case image
+        case text
+    }
+
     private let entries: [HistoryEntry]
     private let onEdit: (HistoryEntry) -> Void
+    private let contentKind: ContentKind
     private let imageView = NSImageView()
+    private let textScrollView = NSScrollView()
+    private let textView = NSTextView()
     private let titlebarFilenameContainer = NSView()
     private let titlebarFilenameLabel = NSTextField(labelWithString: "")
     private let titlebarPositionLabel = NSTextField(labelWithString: "")
     private let titlebarActionStack = NSStackView()
+    private let tooltipController = HistoryPreviewTooltipController()
     private var uploadButton: NSButton?
+    private weak var hoveredActionButton: HistoryPreviewActionButton?
+    private var qrCodeButton: HistoryPreviewActionButton?
+    private var actionButtons: [HistoryPreviewActionButton] = []
+    private var actionHoverTimer: Timer?
+    private var previewKeyMonitor: Any?
     private var currentIndex: Int
     private var loadGeneration = 0
     private var placementScreen: NSScreen?
@@ -2850,6 +2987,11 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     init(entries: [HistoryEntry], initialEntry: HistoryEntry, onEdit: @escaping (HistoryEntry) -> Void) {
         self.entries = entries
         self.onEdit = onEdit
+        if case .text = initialEntry.kind {
+            contentKind = .text
+        } else {
+            contentKind = .image
+        }
         currentIndex = entries.firstIndex(where: {
             $0.fileURL.standardizedFileURL == initialEntry.fileURL.standardizedFileURL
         }) ?? 0
@@ -2867,6 +3009,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
         panel.backgroundColor = NSColor(calibratedWhite: 0.055, alpha: 0.98)
+        if contentKind == .text {
+            panel.appearance = NSAppearance(named: .darkAqua)
+        }
 
         super.init(window: panel)
         panel.delegate = self
@@ -2886,16 +3031,24 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         updateWindowFrame(for: currentEntry, on: placementScreen, animated: false)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(imageView)
-        loadCurrentImage()
+        window.makeFirstResponder(contentKind == .text ? textView : imageView)
+        startPreviewKeyMonitoring()
+        startActionHoverTracking()
+        loadCurrentContent()
     }
 
     override func close() {
+        stopPreviewKeyMonitoring()
+        stopActionHoverTracking()
+        tooltipController.close()
         (window as? HistoryPreviewPanel)?.onKeyDown = nil
         super.close()
     }
 
     func windowWillClose(_ notification: Notification) {
+        stopPreviewKeyMonitoring()
+        stopActionHoverTracking()
+        tooltipController.close()
         (window as? HistoryPreviewPanel)?.onKeyDown = nil
         onClose?()
     }
@@ -2910,6 +3063,39 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         imageView.frame = content.bounds
         imageView.autoresizingMask = [.width, .height]
         content.addSubview(imageView)
+
+        textScrollView.drawsBackground = false
+        textScrollView.hasVerticalScroller = true
+        textScrollView.hasHorizontalScroller = false
+        textScrollView.autohidesScrollers = true
+        textScrollView.borderType = .noBorder
+        textScrollView.frame = content.bounds
+        textScrollView.autoresizingMask = [.width, .height]
+        textScrollView.isHidden = true
+
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isRichText = false
+        textView.drawsBackground = false
+        textView.font = NSFont.systemFont(ofSize: 16)
+        textView.textColor = .labelColor
+        textView.textContainerInset = NSSize(width: 24, height: 20)
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = true
+        textView.textContainer?.containerSize = NSSize(
+            width: 0,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.frame = textScrollView.contentView.bounds
+        textScrollView.documentView = textView
+        content.addSubview(textScrollView)
 
         titlebarFilenameLabel.font = NSFont.systemFont(ofSize: 13, weight: .semibold)
         titlebarFilenameLabel.textColor = NSColor.labelColor
@@ -2937,29 +3123,43 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         titlebarPositionLabel.widthAnchor.constraint(equalToConstant: 38).isActive = true
         stack.addArrangedSubview(titlebarPositionLabel)
 
-        let actions: [(String, String, Selector)] = [
-            ("pencil", "\(L10n.imageMergeContinueEditing) E", #selector(editCurrent)),
-            ("doc.on.doc", "\(L10n.tipConfirm) C", #selector(copyCurrent)),
-            ("pin", "\(L10n.tipPin) P", #selector(pinCurrent)),
-            ("icloud.and.arrow.up", "\(L10n.tipUpload) U", #selector(uploadCurrent)),
-        ]
+        let actions: [(String, String, String, Selector)]
+        switch contentKind {
+        case .image:
+            actions = [
+                ("pencil", L10n.imageMergeContinueEditing, "E", #selector(editCurrent)),
+                ("doc.on.doc", L10n.tipConfirm, "C", #selector(copyCurrent)),
+                ("pin", L10n.tipPin, "P", #selector(pinCurrent)),
+                ("icloud.and.arrow.up", L10n.tipUpload, "U", #selector(uploadCurrent)),
+            ]
+        case .text:
+            actions = [
+                ("doc.on.doc", L10n.historyPreviewCopyText, "C", #selector(copyCurrent)),
+                ("character.bubble", L10n.historyPreviewTranslateText, "T", #selector(translateCurrent)),
+                ("qrcode", L10n.historyPreviewConvertToQRCode, "Q", #selector(showQRCodeCurrent)),
+            ]
+        }
         for action in actions {
+            let tooltip = Self.shortcutTooltip(action.1, key: action.2)
             let symbol = NSImage(systemSymbolName: action.0, accessibilityDescription: action.1)?
                 .withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .medium))
                 ?? NSImage()
-            let button = NSButton(image: symbol, target: self, action: action.2)
+            let button = HistoryPreviewActionButton(image: symbol, target: self, action: action.3)
             button.bezelStyle = .toolbar
             button.isBordered = false
             button.imagePosition = .imageOnly
             button.contentTintColor = .secondaryLabelColor
-            button.toolTip = action.1
+            button.hoverTip = tooltip
             button.setAccessibilityLabel(action.1)
             button.translatesAutoresizingMaskIntoConstraints = false
             button.widthAnchor.constraint(equalToConstant: 30).isActive = true
             button.heightAnchor.constraint(equalToConstant: 24).isActive = true
             stack.addArrangedSubview(button)
-            if action.2 == #selector(uploadCurrent) {
+            actionButtons.append(button)
+            if action.3 == #selector(uploadCurrent) {
                 uploadButton = button
+            } else if action.3 == #selector(showQRCodeCurrent) {
+                qrCodeButton = button
             }
         }
         updateTitlebarActionStackSize()
@@ -2982,13 +3182,22 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         case kVK_Escape, kVK_Space:
             close()
         case kVK_ANSI_E:
+            guard contentKind == .image else { return false }
             editCurrent()
         case kVK_ANSI_P:
+            guard contentKind == .image else { return false }
             pinCurrent()
         case kVK_ANSI_C:
             copyCurrent()
         case kVK_ANSI_U:
+            guard contentKind == .image else { return false }
             uploadCurrent()
+        case kVK_ANSI_T:
+            guard contentKind == .text else { return false }
+            translateCurrent()
+        case kVK_ANSI_Q:
+            guard contentKind == .text else { return false }
+            showQRCodeCurrent()
         default:
             return false
         }
@@ -2999,21 +3208,34 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         guard entries.count > 1 else { return }
         currentIndex = (currentIndex + offset + entries.count) % entries.count
         updateWindowFrame(for: currentEntry, on: placementScreen, animated: true)
-        loadCurrentImage()
+        loadCurrentContent()
     }
 
-    private func loadCurrentImage() {
+    private func loadCurrentContent() {
         loadGeneration += 1
         let generation = loadGeneration
+        titlebarPositionLabel.stringValue = "\(currentIndex + 1) / \(entries.count)"
+        switch currentEntry.kind {
+        case .image:
+            loadCurrentImage(generation: generation)
+        case .text(let text):
+            loadCurrentText(text)
+        case .video, .color:
+            return
+        }
+        updateTitlebarActionStackSize()
+        updateTitlebarFilenameLayout()
+    }
+
+    private func loadCurrentImage(generation: Int) {
         let url = currentEntry.fileURL
+        textScrollView.isHidden = true
+        imageView.isHidden = false
         imageView.image = nil
         window?.title = url.lastPathComponent
         titlebarFilenameLabel.stringValue = url.lastPathComponent
         titlebarFilenameLabel.toolTip = url.lastPathComponent
-        titlebarPositionLabel.stringValue = "\(currentIndex + 1) / \(entries.count)"
         uploadButton?.isHidden = currentEntry.cloudURL != nil
-        updateTitlebarActionStackSize()
-        updateTitlebarFilenameLayout()
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let image = NSImage(contentsOf: url)
             DispatchQueue.main.async {
@@ -3021,6 +3243,28 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
                 self.imageView.image = image
                 self.imageView.animates = url.pathExtension.lowercased() == "gif"
             }
+        }
+    }
+
+    private func loadCurrentText(_ text: String) {
+        imageView.image = nil
+        imageView.isHidden = true
+        textScrollView.isHidden = false
+        textView.string = text
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        textView.frame.size.width = textScrollView.contentSize.width
+        textScrollView.contentView.scroll(to: .zero)
+        textScrollView.reflectScrolledClipView(textScrollView.contentView)
+        window?.title = L10n.historyPanelFilterText
+        titlebarFilenameLabel.stringValue = L10n.historyPanelFilterText
+        titlebarFilenameLabel.toolTip = L10n.historyPanelFilterText
+        let canGenerateQRCode = TextQRCodeWindowController.canGenerateQRCode(for: text)
+        qrCodeButton?.isEnabled = canGenerateQRCode
+        qrCodeButton?.hoverTip = canGenerateQRCode
+            ? Self.shortcutTooltip(L10n.historyPreviewConvertToQRCode, key: "Q")
+            : L10n.historyPreviewQRCodeTooLong
+        if let qrCodeButton, hoveredActionButton === qrCodeButton {
+            tooltipController.show(qrCodeButton.hoverTip, relativeTo: qrCodeButton)
         }
     }
 
@@ -3032,6 +3276,18 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         guard let window,
               let targetScreen = screen ?? window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
         let visibleFrame = targetScreen.visibleFrame
+        if case .text = entry.kind {
+            let safeWidth = max(360, visibleFrame.width - 128)
+            let safeHeight = max(280, visibleFrame.height - 96)
+            let contentSize = NSSize(width: min(720, safeWidth), height: min(520, safeHeight))
+            let frameSize = window.frameRect(forContentRect: NSRect(origin: .zero, size: contentSize)).size
+            let origin = NSPoint(
+                x: visibleFrame.midX - frameSize.width / 2,
+                y: visibleFrame.midY - frameSize.height / 2
+            )
+            window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
+            return
+        }
         let pixelSize = Self.pixelSize(for: entry.fileURL)
         guard pixelSize.width > 0, pixelSize.height > 0 else { return }
 
@@ -3078,8 +3334,79 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
 
     private var currentEntry: HistoryEntry { entries[currentIndex] }
 
+    private static func shortcutTooltip(_ title: String, key: String) -> String {
+        "\(title) (\(key))"
+    }
+
+    private func startPreviewKeyMonitoring() {
+        guard previewKeyMonitor == nil else { return }
+        previewKeyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, event.window === self.window else { return event }
+            return self.handleKeyDown(event) ? nil : event
+        }
+    }
+
+    private func stopPreviewKeyMonitoring() {
+        if let previewKeyMonitor {
+            NSEvent.removeMonitor(previewKeyMonitor)
+            self.previewKeyMonitor = nil
+        }
+    }
+
+    private func startActionHoverTracking() {
+        guard actionHoverTimer == nil else { return }
+        let timer = Timer(timeInterval: 1.0 / 60.0, repeats: true) { [weak self] _ in
+            self?.refreshActionHoverState()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        actionHoverTimer = timer
+        refreshActionHoverState()
+    }
+
+    private func stopActionHoverTracking() {
+        actionHoverTimer?.invalidate()
+        actionHoverTimer = nil
+        hoveredActionButton = nil
+    }
+
+    private func refreshActionHoverState() {
+        guard let window, window.isVisible else {
+            if hoveredActionButton != nil {
+                hoveredActionButton = nil
+                tooltipController.hide()
+            }
+            return
+        }
+
+        let windowPoint = window.convertPoint(fromScreen: NSEvent.mouseLocation)
+        let hoveredButton = actionButtons.first { button in
+            guard !button.isHidden, button.window === window else { return false }
+            return button.bounds.contains(button.convert(windowPoint, from: nil))
+        }
+        guard hoveredActionButton !== hoveredButton else { return }
+
+        hoveredActionButton = hoveredButton
+        if let hoveredButton {
+            tooltipController.show(hoveredButton.hoverTip, relativeTo: hoveredButton)
+        } else {
+            tooltipController.hide()
+        }
+    }
+
     func windowDidResize(_ notification: Notification) {
+        tooltipController.hide()
+        hoveredActionButton = nil
+        if contentKind == .text {
+            textView.frame.size.width = textScrollView.contentSize.width
+            textScrollView.contentView.scroll(to: NSPoint(x: 0, y: textScrollView.contentView.bounds.origin.y))
+            textScrollView.reflectScrolledClipView(textScrollView.contentView)
+        }
         updateTitlebarFilenameLayout()
+    }
+
+    func windowDidMove(_ notification: Notification) {
+        tooltipController.hide()
+        hoveredActionButton = nil
     }
 
     private func updateTitlebarFilenameLayout() {
@@ -3133,6 +3460,23 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         let screen = window?.screen
         close()
         UploadManager.shared.upload(image: image, on: screen)
+    }
+
+    @objc private func translateCurrent() {
+        guard case .text(let text) = currentEntry.kind else { return }
+        let screen = window?.screen ?? placementScreen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen else { return }
+        close()
+        OCRTranslatePanel.presentTextTranslation(text: text, screen: screen)
+    }
+
+    @objc private func showQRCodeCurrent() {
+        guard case .text(let text) = currentEntry.kind,
+              TextQRCodeWindowController.canGenerateQRCode(for: text) else { return }
+        let screen = window?.screen ?? placementScreen ?? NSScreen.main ?? NSScreen.screens.first
+        guard let screen else { return }
+        close()
+        TextQRCodeWindowController.present(text: text, screen: screen)
     }
 }
 

@@ -140,6 +140,12 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "カラー";
 "historyPanelFilterText" = "テキスト";
+"historyPreviewCopyText" = "テキストをコピー";
+"historyPreviewTranslateText" = "テキストを翻訳";
+"historyPreviewConvertToQRCode" = "QRコードに変換";
+"historyPreviewQRCodeTooLong" = "テキストが長すぎるためQRコードに変換できません";
+"historyPreviewOriginalText" = "原文";
+"historyPreviewQRCodeTitle" = "テキストのQRコード";
 "historyPanelCopyHint" = "クリックでコピー";
 "historyPanelCopyDragHint" = "クリックでコピー · アプリへドラッグ";
 "historyPanelCopyMarkdownLink" = "MD リンクをコピー";

@@ -140,6 +140,12 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "Màu";
 "historyPanelFilterText" = "Văn bản";
+"historyPreviewCopyText" = "Sao chép văn bản";
+"historyPreviewTranslateText" = "Dịch văn bản";
+"historyPreviewConvertToQRCode" = "Chuyển thành mã QR";
+"historyPreviewQRCodeTooLong" = "Văn bản quá dài nên không thể chuyển thành mã QR";
+"historyPreviewOriginalText" = "Văn bản gốc";
+"historyPreviewQRCodeTitle" = "Mã QR văn bản";
 "historyPanelCopyHint" = "Nhấp để sao chép";
 "historyPanelCopyDragHint" = "Nhấp để sao chép · kéo vào ứng dụng";
 "historyPanelCopyMarkdownLink" = "Sao chép liên kết MD";

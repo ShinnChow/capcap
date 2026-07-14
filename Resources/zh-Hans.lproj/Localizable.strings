@@ -140,6 +140,12 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "颜色";
 "historyPanelFilterText" = "文本";
+"historyPreviewCopyText" = "复制文本";
+"historyPreviewTranslateText" = "翻译文本";
+"historyPreviewConvertToQRCode" = "转成二维码";
+"historyPreviewQRCodeTooLong" = "文本太长，无法转换为二维码";
+"historyPreviewOriginalText" = "原文";
+"historyPreviewQRCodeTitle" = "文本二维码";
 "historyPanelCopyHint" = "点击复制";
 "historyPanelCopyDragHint" = "点击复制 · 拖拽到应用";
 "historyPanelCopyMarkdownLink" = "复制 MD 链接";

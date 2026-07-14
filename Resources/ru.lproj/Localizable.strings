@@ -140,6 +140,12 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "Цвета";
 "historyPanelFilterText" = "Текст";
+"historyPreviewCopyText" = "Копировать текст";
+"historyPreviewTranslateText" = "Перевести текст";
+"historyPreviewConvertToQRCode" = "Преобразовать в QR-код";
+"historyPreviewQRCodeTooLong" = "Текст слишком длинный для преобразования в QR-код";
+"historyPreviewOriginalText" = "Исходный текст";
+"historyPreviewQRCodeTitle" = "QR-код текста";
 "historyPanelCopyHint" = "Нажмите для копирования";
 "historyPanelCopyDragHint" = "Нажмите для копирования · перетащите в приложение";
 "historyPanelCopyMarkdownLink" = "Скопировать MD-ссылку";

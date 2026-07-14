@@ -140,6 +140,12 @@
 "historyPanelFilterMP4" = "MP4";
 "historyPanelFilterColors" = "색상";
 "historyPanelFilterText" = "텍스트";
+"historyPreviewCopyText" = "텍스트 복사";
+"historyPreviewTranslateText" = "텍스트 번역";
+"historyPreviewConvertToQRCode" = "QR 코드로 변환";
+"historyPreviewQRCodeTooLong" = "텍스트가 너무 길어 QR 코드로 변환할 수 없습니다";
+"historyPreviewOriginalText" = "원문";
+"historyPreviewQRCodeTitle" = "텍스트 QR 코드";
 "historyPanelCopyHint" = "클릭해 복사";
 "historyPanelCopyDragHint" = "클릭해 복사 · 앱으로 드래그";
 "historyPanelCopyMarkdownLink" = "MD 링크 복사";
