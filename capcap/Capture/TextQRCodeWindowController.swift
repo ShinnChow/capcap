@@ -8,6 +8,8 @@ final class TextQRCodeWindowController: NSWindowController, NSWindowDelegate {
 
     private static var current: TextQRCodeWindowController?
     private static let ciContext = CIContext(options: [.useSoftwareRenderer: false])
+    private var outsideClickLocalMonitor: Any?
+    private var outsideClickGlobalMonitor: Any?
 
     static func canGenerateQRCode(for text: String) -> Bool {
         guard let data = text.data(using: .utf8) else { return false }
@@ -58,11 +60,43 @@ final class TextQRCodeWindowController: NSWindowController, NSWindowDelegate {
         window.setFrameOrigin(origin)
         NSApp.activate(ignoringOtherApps: true)
         window.makeKeyAndOrderFront(nil)
+        startOutsideClickMonitoring()
     }
 
     func windowWillClose(_ notification: Notification) {
+        stopOutsideClickMonitoring()
         if Self.current === self {
             Self.current = nil
+        }
+    }
+
+    private func startOutsideClickMonitoring() {
+        guard outsideClickLocalMonitor == nil, outsideClickGlobalMonitor == nil else { return }
+        let mouseDownMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        outsideClickLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: mouseDownMask) { [weak self] event in
+            self?.closeForOutsideClickIfNeeded(event)
+            return event
+        }
+        outsideClickGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: mouseDownMask) { [weak self] event in
+            self?.closeForOutsideClickIfNeeded(event)
+        }
+    }
+
+    private func closeForOutsideClickIfNeeded(_ event: NSEvent) {
+        guard let window,
+              event.window !== window,
+              event.windowNumber != window.windowNumber else { return }
+        close()
+    }
+
+    private func stopOutsideClickMonitoring() {
+        if let outsideClickLocalMonitor {
+            NSEvent.removeMonitor(outsideClickLocalMonitor)
+            self.outsideClickLocalMonitor = nil
+        }
+        if let outsideClickGlobalMonitor {
+            NSEvent.removeMonitor(outsideClickGlobalMonitor)
+            self.outsideClickGlobalMonitor = nil
         }
     }
 
