@@ -19,9 +19,7 @@
 "clipboardTextCacheToggleLabel" = "Cache Clipboard Text";
 "clipboardTextCacheToggleHint" = "Store copied text in history for quick reuse";
 "clipboardTextHistoryLimitLabel" = "Text History Limit";
-"clipboardTextHistoryLimitHint" = "Keep copied text separately so it does not use image and media history capacity";
 "historyCacheLabel" = "Image and Media History Limit";
-"historyCacheHint" = "Keep screenshots, colors, GIFs, and videos separately from text history";
 "historyPanelDisplayModeLabel" = "History Panel Display";
 "historyPanelDisplayModeHint" = "Choose Dialog or Notch for history";
 "historyPanelDialogMode" = "Dialog";

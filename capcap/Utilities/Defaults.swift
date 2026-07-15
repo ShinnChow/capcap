@@ -99,9 +99,7 @@ enum L10n {
     static var clipboardTextCacheToggleLabel: String { s("clipboardTextCacheToggleLabel") }
     static var clipboardTextCacheToggleHint: String { s("clipboardTextCacheToggleHint") }
     static var clipboardTextHistoryLimitLabel: String { s("clipboardTextHistoryLimitLabel") }
-    static var clipboardTextHistoryLimitHint: String { s("clipboardTextHistoryLimitHint") }
     static var historyCacheLabel: String { s("historyCacheLabel") }
-    static var historyCacheHint: String { s("historyCacheHint") }
     static var historyPanelDisplayModeLabel: String { s("historyPanelDisplayModeLabel") }
     static var historyPanelDisplayModeHint: String { s("historyPanelDisplayModeHint") }
     static var historyPanelDialogMode: String { s("historyPanelDialogMode") }
