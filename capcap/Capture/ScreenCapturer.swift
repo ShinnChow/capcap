@@ -13,15 +13,21 @@ struct ScreenCapturer {
     ) -> NSImage? {
         guard rect.width > 0, rect.height > 0 else { return nil }
         let excludedWindowNumbers = effectiveExcludedWindowNumbers(excludingWindowNumbers)
+        let requestedDisplayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        let screenScale = screen.backingScaleFactor
 
         let resultBox = CaptureResultBox()
         let semaphore = DispatchSemaphore(value: 0)
 
-        let task = Task {
+        // The headless agent entrypoint calls this bridge on the process main
+        // thread. A regular Task inherits that executor and cannot start while
+        // the main thread is blocked by the semaphore below.
+        let task = Task.detached {
             do {
                 let image = try await captureAsync(
                     rect: rect,
-                    screen: screen,
+                    requestedDisplayID: requestedDisplayID,
+                    screenScale: screenScale,
                     excludingWindowNumbers: excludedWindowNumbers
                 )
                 resultBox.set(image)
@@ -62,21 +68,42 @@ struct ScreenCapturer {
     /// Capture one WindowServer window directly, preserving its real alpha
     /// silhouette. This gives window screenshots the exact system corner mask
     /// instead of relying on a guessed radius.
-    static func capture(windowID: CGWindowID, pointSize: NSSize? = nil) -> NSImage? {
-        var resultImage: NSImage?
+    static func capture(
+        windowID: CGWindowID,
+        pointSize: NSSize? = nil,
+        timeout: TimeInterval? = nil
+    ) -> NSImage? {
+        let resultBox = CaptureResultBox()
         let semaphore = DispatchSemaphore(value: 0)
 
-        Task {
+        let task = Task.detached {
             do {
-                resultImage = try await captureWindowAsync(windowID: windowID, pointSize: pointSize)
+                let image = try await captureWindowAsync(windowID: windowID, pointSize: pointSize)
+                resultBox.set(image)
             } catch {
                 NSLog("capcap: Window capture failed: \(error)")
             }
             semaphore.signal()
         }
 
-        semaphore.wait()
-        return resultImage
+        if let timeout {
+            let waitResult = semaphore.wait(timeout: .now() + .milliseconds(max(1, Int(timeout * 1000))))
+            if waitResult == .timedOut {
+                task.cancel()
+                DiagnosticLog.log(
+                    "screen-capture",
+                    "window-capture-timeout",
+                    metadata: [
+                        "windowID": String(windowID),
+                        "timeoutSeconds": String(format: "%.2f", timeout),
+                    ]
+                )
+                return nil
+            }
+        } else {
+            semaphore.wait()
+        }
+        return resultBox.get()
     }
 
     static func isEffectivelyTransparent(_ image: NSImage, alphaThreshold: UInt8 = 3) -> Bool {
@@ -134,10 +161,10 @@ struct ScreenCapturer {
 
     private static func captureAsync(
         rect: CGRect,
-        screen: NSScreen,
+        requestedDisplayID: CGDirectDisplayID?,
+        screenScale: CGFloat,
         excludingWindowNumbers: [CGWindowID]
     ) async throws -> NSImage? {
-        let requestedDisplayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
         let content = try await SCShareableContent.current
         let excludedWindows = excludingWindowNumbers.isEmpty
             ? []
@@ -149,10 +176,20 @@ struct ScreenCapturer {
         }) else {
             // Fallback: use first display
             guard let display = content.displays.first else { return nil }
-            return try await captureDisplay(display, rect: rect, excludingWindows: excludedWindows)
+            return try await captureDisplay(
+                display,
+                rect: rect,
+                scale: screenScale,
+                excludingWindows: excludedWindows
+            )
         }
 
-        return try await captureDisplay(display, rect: rect, excludingWindows: excludedWindows)
+        return try await captureDisplay(
+            display,
+            rect: rect,
+            scale: screenScale,
+            excludingWindows: excludedWindows
+        )
     }
 
     private static func captureWindowAsync(windowID: CGWindowID, pointSize: NSSize?) async throws -> NSImage? {
@@ -186,10 +223,11 @@ struct ScreenCapturer {
     private static func captureDisplay(
         _ display: SCDisplay,
         rect: CGRect,
+        scale: CGFloat,
         excludingWindows: [SCWindow]
     ) async throws -> NSImage? {
         let filter = SCContentFilter(display: display, excludingWindows: excludingWindows)
-        let scale = max(screenScale(for: display), 1)
+        let scale = max(scale, 1)
 
         // sourceRect must be in the display's local coordinate space (top-left
         // origin of *this* display), not the global CG coordinate space. For
@@ -246,18 +284,6 @@ struct ScreenCapturer {
 
         guard let cropped = snapshot.cropping(to: imageRect) else { return nil }
         return NSImage(cgImage: cropped, size: NSSize(width: captureRect.width, height: captureRect.height))
-    }
-
-    private static func screenScale(for display: SCDisplay) -> CGFloat {
-        guard
-            let screen = NSScreen.screens.first(where: {
-                ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID) == display.displayID
-            })
-        else {
-            return 2
-        }
-
-        return screen.backingScaleFactor
     }
 
     private static func diagnosticRect(_ rect: CGRect) -> String {

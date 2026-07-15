@@ -160,7 +160,7 @@ private struct AgentAnnotateOptions {
                 continue
             }
             if token == "--help" || token == "-h" {
-                throw AgentCLIError.help(AgentCLI.usageText)
+                throw AgentCLIError.help(Self.usageText)
             }
 
             let key: String
@@ -205,6 +205,30 @@ private struct AgentAnnotateOptions {
             pretty: pretty
         )
     }
+
+    private static let usageText = """
+    Usage
+      capcap agent annotate --input image.png --spec marks.json --out result.png
+
+    Options
+      --input, -i        Source PNG or image file
+      --spec, -s         JSON annotation spec
+      --out, -o          Output PNG file
+      --meta             Optional metadata JSON file
+      --pretty           Pretty print JSON output
+
+    Annotation types
+      rect, rectangle, box
+      ellipse, oval, circle
+      arrow, line, text, label
+      number, numbered, badge
+      mosaic, pixelate, blur
+      magnifier, loupe
+      pen, path
+      marker, highlight, highlighter
+
+    Specs use pixel coordinates with a top-left origin
+    """
 }
 
 struct AgentAnnotateResult {
@@ -372,21 +396,21 @@ private struct AgentAnnotationSpec: Decodable {
             let rect = try requireRect().canvasRect(using: mapper)
             return RectAnnotation(
                 rect: rect,
-                color: resolvedColor(default: AgentColor.defaultRed),
-                lineWidth: positive(lineWidth, fallback: 4, name: "lineWidth"),
-                fillMode: resolvedFillMode(),
-                strokeStyle: resolvedStrokeStyle(),
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                lineWidth: try positive(lineWidth, fallback: 4, name: "lineWidth"),
+                fillMode: try resolvedFillMode(),
+                strokeStyle: try resolvedStrokeStyle(),
                 rotation: resolvedRotation()
             )
 
         case "ellipse", "oval", "circle":
             let rect = try requireRect().canvasRect(using: mapper)
-            let strokeStyle = resolvedStrokeStyle()
+            let strokeStyle = try resolvedStrokeStyle()
             return EllipseAnnotation(
                 rect: rect,
-                color: resolvedColor(default: AgentColor.defaultRed),
-                lineWidth: positive(lineWidth, fallback: 4, name: "lineWidth"),
-                fillMode: resolvedFillMode(),
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                lineWidth: try positive(lineWidth, fallback: 4, name: "lineWidth"),
+                fillMode: try resolvedFillMode(),
                 strokeStyle: strokeStyle == .rounded ? .standard : strokeStyle,
                 rotation: resolvedRotation()
             )
@@ -395,9 +419,9 @@ private struct AgentAnnotationSpec: Decodable {
             return ArrowAnnotation(
                 startPoint: try requireStartPoint().canvasPoint(using: mapper),
                 endPoint: try requireEndPoint().canvasPoint(using: mapper),
-                color: resolvedColor(default: AgentColor.defaultRed),
-                lineWidth: positive(lineWidth, fallback: 5, name: "lineWidth"),
-                style: resolvedArrowStyle(),
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                lineWidth: try positive(lineWidth, fallback: 5, name: "lineWidth"),
+                style: try resolvedArrowStyle(),
                 controlPoint: (controlPoint ?? control)?.canvasPoint(using: mapper)
             )
 
@@ -405,17 +429,18 @@ private struct AgentAnnotationSpec: Decodable {
             return LineAnnotation(
                 startPoint: try requireStartPoint().canvasPoint(using: mapper),
                 endPoint: try requireEndPoint().canvasPoint(using: mapper),
-                color: resolvedColor(default: AgentColor.defaultRed),
-                lineWidth: positive(lineWidth, fallback: 4, name: "lineWidth")
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                lineWidth: try positive(lineWidth, fallback: 4, name: "lineWidth")
             )
 
         case "text", "label":
             guard let text else {
                 throw AgentCLIError.failure("Text annotation is missing text")
             }
+            let resolvedFontSize = try positive(fontSize, fallback: 24, name: "fontSize")
             let size = TextAnnotation.editorSize(
                 for: text,
-                font: TextAnnotation.font(forSize: positive(fontSize, fallback: 24, name: "fontSize"))
+                font: TextAnnotation.font(forSize: resolvedFontSize)
             )
             let topLeft = at ?? rect?.originPoint
             guard let topLeft else {
@@ -424,8 +449,8 @@ private struct AgentAnnotationSpec: Decodable {
             return TextAnnotation(
                 text: text,
                 origin: mapper.textOrigin(topLeft: topLeft, textSize: size),
-                color: resolvedColor(default: AgentColor.defaultRed),
-                fontSize: positive(fontSize, fallback: 24, name: "fontSize"),
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                fontSize: resolvedFontSize,
                 rotation: resolvedRotation(),
                 hasStroke: stroke ?? false,
                 hasCallout: callout ?? false,
@@ -441,12 +466,12 @@ private struct AgentAnnotationSpec: Decodable {
                 tip: tip?.canvasPoint(using: mapper),
                 controlPoint: (controlPoint ?? control)?.canvasPoint(using: mapper),
                 number: number ?? index + 1,
-                color: resolvedColor(default: AgentColor.defaultRed)
+                color: try resolvedColor(default: AgentColor.defaultRed)
             )
 
         case "mosaic", "pixelate", "blur":
             let canvasRect = try requireRect().canvasRect(using: mapper)
-            let blockSize = positive(blockSize, fallback: 12, name: "blockSize")
+            let blockSize = try positive(blockSize, fallback: 12, name: "blockSize")
             guard let region = MosaicTool.createMosaicRegion(
                 rect: canvasRect,
                 imageSize: mapper.imageSize,
@@ -467,10 +492,10 @@ private struct AgentAnnotationSpec: Decodable {
             }
             return MagnifierAnnotation(
                 center: center.canvasPoint(using: mapper),
-                radius: positive(radius, fallback: 64, name: "radius"),
-                color: resolvedColor(default: AgentColor.defaultRed),
-                lineWidth: positive(lineWidth, fallback: 4, name: "lineWidth"),
-                zoom: positive(zoom, fallback: MagnifierAnnotation.defaultZoom, name: "zoom"),
+                radius: try positive(radius, fallback: 64, name: "radius"),
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                lineWidth: try positive(lineWidth, fallback: 4, name: "lineWidth"),
+                zoom: try positive(zoom, fallback: MagnifierAnnotation.defaultZoom, name: "zoom"),
                 sourceImage: baseImage,
                 sourceCenter: source?.canvasPoint(using: mapper)
             )
@@ -478,16 +503,16 @@ private struct AgentAnnotationSpec: Decodable {
         case "pen", "path":
             return PenAnnotation(
                 path: try smoothedPath(using: mapper),
-                color: resolvedColor(default: AgentColor.defaultRed),
-                lineWidth: positive(lineWidth, fallback: 4, name: "lineWidth"),
+                color: try resolvedColor(default: AgentColor.defaultRed),
+                lineWidth: try positive(lineWidth, fallback: 4, name: "lineWidth"),
                 rotation: resolvedRotation()
             )
 
         case "marker", "highlight", "highlighter":
             return MarkerAnnotation(
                 path: try smoothedPath(using: mapper),
-                color: resolvedColor(default: AgentColor.defaultYellow),
-                lineWidth: positive(lineWidth, fallback: 5, name: "lineWidth"),
+                color: try resolvedColor(default: AgentColor.defaultYellow),
+                lineWidth: try positive(lineWidth, fallback: 5, name: "lineWidth"),
                 rotation: resolvedRotation()
             )
 
@@ -529,17 +554,23 @@ private struct AgentAnnotationSpec: Decodable {
         return NSBezierPath.smoothed(through: points.map { $0.canvasPoint(using: mapper) })
     }
 
-    private func positive(_ value: Double?, fallback: CGFloat, name: String) -> CGFloat {
-        guard let value, value.isFinite, value > 0 else { return fallback }
+    private func positive(_ value: Double?, fallback: CGFloat, name: String) throws -> CGFloat {
+        guard let value else { return fallback }
+        guard value.isFinite, value > 0 else {
+            throw AgentCLIError.failure("Annotation \(name) must be a positive number")
+        }
         return CGFloat(value)
     }
 
-    private func resolvedColor(default defaultColor: NSColor) -> NSColor {
+    private func resolvedColor(default defaultColor: NSColor) throws -> NSColor {
         guard let color else { return defaultColor }
-        return AgentColor.parse(color) ?? defaultColor
+        guard let parsed = AgentColor.parse(color) else {
+            throw AgentCLIError.failure("Invalid annotation color \(color)")
+        }
+        return parsed
     }
 
-    private func resolvedFillMode() -> ShapeFillMode {
+    private func resolvedFillMode() throws -> ShapeFillMode {
         if let fillMode {
             switch fillMode.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
             case "none":
@@ -549,13 +580,13 @@ private struct AgentAnnotationSpec: Decodable {
             case "translucent", "transparent":
                 return .translucent
             default:
-                return fill == true ? .opaque : .none
+                throw AgentCLIError.failure("Unsupported annotation fillMode \(fillMode)")
             }
         }
         return fill == true ? .opaque : .none
     }
 
-    private func resolvedStrokeStyle() -> ShapeStrokeStyle {
+    private func resolvedStrokeStyle() throws -> ShapeStrokeStyle {
         guard let strokeStyle else { return .standard }
         switch strokeStyle.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "rounded", "round", "roundedrect", "rounded-rect", "roundedrectangle", "rounded-rectangle":
@@ -563,11 +594,11 @@ private struct AgentAnnotationSpec: Decodable {
         case "handdrawn", "hand-drawn", "rough":
             return .handDrawn
         default:
-            return .standard
+            throw AgentCLIError.failure("Unsupported annotation strokeStyle \(strokeStyle)")
         }
     }
 
-    private func resolvedArrowStyle() -> ArrowStyle {
+    private func resolvedArrowStyle() throws -> ArrowStyle {
         guard let style else { return .tapered }
         switch style.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "doubleended", "double-ended", "double":
@@ -577,7 +608,7 @@ private struct AgentAnnotationSpec: Decodable {
         case "dottail", "dot-tail", "dot":
             return .dotTail
         default:
-            return .tapered
+            throw AgentCLIError.failure("Unsupported annotation arrow style \(style)")
         }
     }
 
@@ -716,52 +747,48 @@ private struct AgentCoordinateMapper {
 
 private enum AgentAnnotationRenderer {
     static func render(baseImage: NSImage, annotations: [Annotation]) throws -> NSImage {
-        guard let compositeRep = makeBitmapRep(matching: baseImage),
-              let graphicsContext = NSGraphicsContext(bitmapImageRep: compositeRep)
-        else {
+        guard let baseCGImage = baseImage.cgImagePreservingBacking() else {
+            throw AgentCLIError.failure("Could not prepare output bitmap")
+        }
+
+        let width = baseCGImage.width
+        let height = baseCGImage.height
+        let colorSpace = baseCGImage.colorSpace.flatMap { space in
+            space.model == .rgb ? space : nil
+        } ?? CGColorSpace(name: CGColorSpace.sRGB)!
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
             throw AgentCLIError.failure("Could not prepare output bitmap")
         }
 
         let imageBounds = NSRect(origin: .zero, size: baseImage.size)
+        context.saveGState()
+        context.setBlendMode(.copy)
+        context.interpolationQuality = .none
+        context.draw(baseCGImage, in: imageBounds)
+        context.restoreGState()
 
+        let graphicsContext = NSGraphicsContext(cgContext: context, flipped: false)
         NSGraphicsContext.saveGraphicsState()
         NSGraphicsContext.current = graphicsContext
-        graphicsContext.imageInterpolation = .high
-        baseImage.draw(
-            in: imageBounds,
-            from: imageBounds,
-            operation: .copy,
-            fraction: 1.0
-        )
 
-        let context = graphicsContext.cgContext
         for annotation in annotations {
             annotation.drawApplyingTransforms(in: context, bounds: imageBounds)
         }
         graphicsContext.flushGraphics()
         NSGraphicsContext.restoreGraphicsState()
 
-        let merged = NSImage(size: baseImage.size)
-        merged.addRepresentation(compositeRep)
-        return merged
-    }
-
-    private static func makeBitmapRep(matching image: NSImage) -> NSBitmapImageRep? {
-        guard let cgImage = image.cgImagePreservingBacking() else { return nil }
-        let rep = NSBitmapImageRep(
-            bitmapDataPlanes: nil,
-            pixelsWide: cgImage.width,
-            pixelsHigh: cgImage.height,
-            bitsPerSample: 8,
-            samplesPerPixel: 4,
-            hasAlpha: true,
-            isPlanar: false,
-            colorSpaceName: .deviceRGB,
-            bytesPerRow: 0,
-            bitsPerPixel: 0
-        )
-        rep?.size = image.size
-        return rep
+        guard let renderedCGImage = context.makeImage() else {
+            throw AgentCLIError.failure("Could not prepare output image")
+        }
+        return NSImage(cgImage: renderedCGImage, size: baseImage.size)
     }
 }
 
