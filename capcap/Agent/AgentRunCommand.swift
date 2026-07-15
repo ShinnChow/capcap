@@ -139,6 +139,7 @@ struct AgentRunResult {
 enum AgentRunner {
     static func run(options: AgentRunOptions) throws -> AgentRunResult {
         let capture = try AgentCapturer.capturePayload(for: options.target)
+        let annotationImage = try imageUsingPixelDimensions(capture.image)
 
         if let shotOutputURL = options.shotOutputURL {
             try writeRawShot(capture.image, to: shotOutputURL)
@@ -152,7 +153,7 @@ enum AgentRunner {
         }
 
         let annotateResult = try AgentAnnotator.annotate(
-            baseImage: capture.image,
+            baseImage: annotationImage,
             inputDescription: "agent capture",
             specURL: options.specURL,
             outputURL: options.outputURL,
@@ -161,6 +162,16 @@ enum AgentRunner {
         )
 
         return AgentRunResult(metadata: annotateResult.metadata)
+    }
+
+    private static func imageUsingPixelDimensions(_ image: NSImage) throws -> NSImage {
+        guard let cgImage = image.cgImagePreservingBacking() else {
+            throw AgentCLIError.failure("Could not prepare captured image for annotation")
+        }
+        return NSImage(
+            cgImage: cgImage,
+            size: NSSize(width: cgImage.width, height: cgImage.height)
+        )
     }
 
     private static func writeRawShot(_ image: NSImage, to url: URL) throws {

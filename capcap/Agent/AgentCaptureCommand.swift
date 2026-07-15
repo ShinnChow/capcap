@@ -200,6 +200,8 @@ struct AgentCaptureResult {
 }
 
 enum AgentCapturer {
+    private static let captureTimeout: TimeInterval = 15
+
     static func capture(options: AgentCaptureOptions) throws -> AgentCaptureResult {
         let payload = try capturePayload(for: options.target)
 
@@ -280,8 +282,14 @@ enum AgentCapturer {
             throw AgentCLIError.failure("Could not resolve display id")
         }
         let rect = CGDisplayBounds(displayID)
-        guard let image = ScreenCapturer.capture(rect: rect, screen: screen) else {
-            throw AgentCLIError.failure("Screen capture failed")
+        guard let image = ScreenCapturer.capture(
+            rect: rect,
+            screen: screen,
+            timeout: captureTimeout
+        ) else {
+            throw AgentCLIError.failure(
+                "Screen capture failed; make sure the screen is unlocked and Screen Recording permission is granted"
+            )
         }
 
         return AgentCapturePayload(
@@ -303,8 +311,14 @@ enum AgentCapturer {
             throw AgentCLIError.failure("Rect must fit inside one display")
         }
 
-        guard let image = ScreenCapturer.capture(rect: rect, screen: screen) else {
-            throw AgentCLIError.failure("Rect capture failed")
+        guard let image = ScreenCapturer.capture(
+            rect: rect,
+            screen: screen,
+            timeout: captureTimeout
+        ) else {
+            throw AgentCLIError.failure(
+                "Rect capture failed; make sure the screen is unlocked and Screen Recording permission is granted"
+            )
         }
 
         return AgentCapturePayload(
@@ -335,10 +349,16 @@ enum AgentCapturer {
         }
 
         let pointSize = info.map { NSSize(width: $0.frame.width, height: $0.frame.height) }
-        guard let image = ScreenCapturer.capture(windowID: id, pointSize: pointSize),
+        guard let image = ScreenCapturer.capture(
+            windowID: id,
+            pointSize: pointSize,
+            timeout: captureTimeout
+        ),
               !ScreenCapturer.isEffectivelyTransparent(image)
         else {
-            throw AgentCLIError.failure("Window capture failed")
+            throw AgentCLIError.failure(
+                "Window capture failed; make sure the screen is unlocked and Screen Recording permission is granted"
+            )
         }
 
         var metadata: [String: Any] = [

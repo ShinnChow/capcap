@@ -153,8 +153,10 @@ enum AgentWindowsLister {
 
     private static func filteredWindows(options: AgentWindowsOptions) -> [AgentWindowInfo] {
         AgentWindowCatalog.visibleWindows().filter { window in
-            if !options.includeSystem, window.layer != 0 {
-                return false
+            if !options.includeSystem {
+                if window.layer != 0 || window.ownerName == "WindowManager" {
+                    return false
+                }
             }
             if let owner = options.ownerFilter,
                !window.ownerName.localizedCaseInsensitiveContains(owner) {
