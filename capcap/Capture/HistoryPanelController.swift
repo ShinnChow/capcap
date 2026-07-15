@@ -1181,7 +1181,11 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     }
 
     @objc private func filterClicked(_ sender: HistoryPanelFilterButton) {
-        selectedFilter = sender.filter
+        selectFilter(sender.filter)
+    }
+
+    private func selectFilter(_ filter: HistoryPanelFilter) {
+        selectedFilter = filter
         setDeleteConfirmation(false, animated: true)
         if hasLoadedEntries {
             applySelectedFilter(resetScrollPosition: true)
@@ -1189,6 +1193,14 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             updateFilterSelection()
             reloadEntries()
         }
+    }
+
+    private func cycleFilter(forward: Bool) {
+        let orderedFilters = HistoryPanelFilter.allCases.filter { availableFilters.contains($0) }
+        guard orderedFilters.count > 1,
+              let currentIndex = orderedFilters.firstIndex(of: selectedFilter) else { return }
+        let offset = forward ? 1 : orderedFilters.count - 1
+        selectFilter(orderedFilters[(currentIndex + offset) % orderedFilters.count])
     }
 
     private func updateFilterAvailability(availableFilters: Set<HistoryPanelFilter>) {
@@ -1575,6 +1587,19 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             guard event.window === self.window else { return event }
 
             let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+            let hasFilterCycleModifier = !modifiers.intersection([.command, .control, .option, .shift]).isEmpty
+            if self.isActive, !hasFilterCycleModifier {
+                switch Int(event.keyCode) {
+                case kVK_LeftArrow:
+                    self.cycleFilter(forward: false)
+                    return nil
+                case kVK_RightArrow:
+                    self.cycleFilter(forward: true)
+                    return nil
+                default:
+                    break
+                }
+            }
             if event.keyCode == UInt16(kVK_Space), modifiers.isEmpty,
                let hoveredEntry = self.activeHoverTile?.entry,
                self.previewKind(for: hoveredEntry) != nil {
