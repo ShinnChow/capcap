@@ -94,6 +94,7 @@ cp "Resources/AppIcon.icns" "$EXTENSION_RESOURCES/AppIcon.icns"
 
 # Copy Info.plist
 cp "capcap/App/Info.plist" "$CONTENTS/Info.plist"
+bash scripts/inject-build-metadata.sh "$CONTENTS/Info.plist"
 APP_SHORT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$CONTENTS/Info.plist")"
 APP_BUNDLE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$CONTENTS/Info.plist")"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $APP_SHORT_VERSION" "$EXTENSION_CONTENTS/Info.plist"

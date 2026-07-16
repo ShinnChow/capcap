@@ -514,7 +514,13 @@ class SettingsView: NSView {
     private func appVersionString() -> String {
         let info = Bundle.main.infoDictionary
         let short = info?["CFBundleShortVersionString"] as? String ?? "—"
-        return "v\(short)"
+        let buildCommit = (info?["CapcapGitCommit"] as? String)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let buildCommit, !buildCommit.isEmpty else {
+            return "v\(short)"
+        }
+        return "v\(short)(\(buildCommit))"
     }
 
     @objc private func tabClicked(_ sender: TabButton) {
@@ -2259,7 +2265,7 @@ class SettingsView: NSView {
 
         switch UpdateChecker.shared.state {
         case .idle:
-            statusLabel.stringValue = "v\(UpdateChecker.shared.currentVersion)"
+            statusLabel.stringValue = appVersionString()
             statusLabel.textColor = dim
             button.title = L10n.checkForUpdates
             button.isEnabled = true

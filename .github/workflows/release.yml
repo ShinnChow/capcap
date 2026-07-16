@@ -95,6 +95,7 @@ jobs:
 
           cp "$BUILD_DIR/$APP_NAME" "$MACOS/$APP_NAME"
           cp "capcap/App/Info.plist" "$CONTENTS/Info.plist"
+          bash scripts/inject-build-metadata.sh "$CONTENTS/Info.plist"
 
           if [ ! -f "$BUILD_DIR/$EXTENSION_PRODUCT_NAME" ]; then
             echo "error: share extension binary missing at $BUILD_DIR/$EXTENSION_PRODUCT_NAME" >&2
