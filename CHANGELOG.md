@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.11] - 2026-07-16
+
+### Added
+- Add agent window capture and annotation handling (c41c16d)
+- Add text history retention controls and preview actions (c40b403, 1819dc4)
+
+### Fixed
+- Close text QR code windows on outside clicks (f57a5d2)
+- Keep history filters and selection in sync with available content (5b31ec5, 4b5e895)
+
+### Changed
+- Improve history panel navigation, loading, caching, and copied-entry ordering (6da6c56, 7bbe7ed, bf98e11, 9c9604d, ee52e68, f29bd87)
+- Simplify history settings guidance (86f416a)
+
 ## [1.6.10] - 2026-07-14
 
 ### Added
