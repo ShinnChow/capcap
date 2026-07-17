@@ -523,6 +523,39 @@ class SettingsView: NSView {
         return "v\(short)(\(buildCommit))"
     }
 
+    private func makeBuildConfigurationBadge() -> NSView {
+        #if DEBUG
+        let title = "DEBUG"
+        let color = NSColor.systemOrange
+        #else
+        let title = "RELEASE"
+        let color = NSColor.systemGreen
+        #endif
+
+        let badge = NSView()
+        badge.wantsLayer = true
+        badge.layer?.cornerRadius = 4
+        badge.layer?.cornerCurve = .continuous
+        badge.layer?.backgroundColor = color.withAlphaComponent(0.18).cgColor
+        badge.translatesAutoresizingMaskIntoConstraints = false
+
+        let label = NSTextField(labelWithString: title)
+        label.font = NSFont.systemFont(ofSize: 9, weight: .semibold)
+        label.textColor = color
+        label.translatesAutoresizingMaskIntoConstraints = false
+        badge.addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.topAnchor.constraint(equalTo: badge.topAnchor, constant: 2),
+            label.bottomAnchor.constraint(equalTo: badge.bottomAnchor, constant: -2),
+            label.leadingAnchor.constraint(equalTo: badge.leadingAnchor, constant: 6),
+            label.trailingAnchor.constraint(equalTo: badge.trailingAnchor, constant: -6),
+        ])
+        badge.setContentHuggingPriority(.required, for: .horizontal)
+        badge.setContentCompressionResistancePriority(.required, for: .horizontal)
+        return badge
+    }
+
     @objc private func tabClicked(_ sender: TabButton) {
         selectTab(sender.tab)
     }
@@ -1736,10 +1769,15 @@ class SettingsView: NSView {
         versionLabel.font = NSFont.systemFont(ofSize: 12, weight: .regular)
         versionLabel.textColor = NSColor.white.withAlphaComponent(0.55)
 
+        let versionRow = NSStackView(views: [versionLabel, makeBuildConfigurationBadge()])
+        versionRow.orientation = .horizontal
+        versionRow.alignment = .centerY
+        versionRow.spacing = 6
+
         let taglineLabel = secondaryLabel(L10n.aboutTagline, wrapping: true)
         aboutTaglineLabel = taglineLabel
 
-        let textStack = NSStackView(views: [nameLabel, versionLabel, taglineLabel])
+        let textStack = NSStackView(views: [nameLabel, versionRow, taglineLabel])
         textStack.orientation = .vertical
         textStack.alignment = .leading
         textStack.spacing = 3
