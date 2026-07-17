@@ -564,6 +564,11 @@ private final class ImageMergeTemplateChipButton: NSButton {
         updateAppearance()
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateAppearance()
+    }
+
     private func commonInit() {
         translatesAutoresizingMaskIntoConstraints = false
         bezelStyle = .rounded
@@ -581,11 +586,15 @@ private final class ImageMergeTemplateChipButton: NSButton {
         let selected = state == .on
         let textColor = selected
             ? NSColor.white
-            : NSColor.labelColor.withAlphaComponent(0.92)
-        layer?.backgroundColor = (selected
+            : AdaptiveChrome.resolvedColor(.labelColor, for: effectiveAppearance)
+                .withAlphaComponent(0.92)
+        let backgroundColor = selected
             ? NSColor.controlAccentColor
-            : NSColor.labelColor.withAlphaComponent(0.10)
-        ).cgColor
+            : AdaptiveChrome.subtleFill
+        layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
+            backgroundColor,
+            for: effectiveAppearance
+        )
         attributedTitle = NSAttributedString(
             string: template.title,
             attributes: [
@@ -612,7 +621,19 @@ private final class ImageMergeSidebarCardView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 12
         layer?.cornerCurve = .continuous
-        layer?.backgroundColor = NSColor.controlBackgroundColor.withAlphaComponent(0.72).cgColor
         layer?.borderWidth = 0
+        applyAppearance()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.cardBackground,
+            for: effectiveAppearance
+        )
     }
 }

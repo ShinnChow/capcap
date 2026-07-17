@@ -1,8 +1,7 @@
 import AppKit
 
-/// Single-instance dark-themed hover tooltip used by the editor toolbar.
-/// Self-drawn to match the toolbar / cursor chip aesthetic — `NSView.toolTip`
-/// renders the system light bubble which clashes with the floating HUD.
+/// Single-instance hover tooltip used by the editor toolbar
+/// Self-drawn to match the adaptive toolbar / cursor chip aesthetic
 final class ToolTipWindow: NSPanel {
     private static var current: ToolTipWindow?
     private static var pendingWorkItem: DispatchWorkItem?
@@ -90,14 +89,14 @@ private final class ToolTipContentView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 6, yRadius: 6)
-        NSColor(white: 0.12, alpha: 0.95).setFill()
+        AdaptiveChrome.floatingBackground.setFill()
         path.fill()
-        NSColor(white: 0.4, alpha: 1.0).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 0.5
         path.stroke()
 
         let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor.white.withAlphaComponent(0.92),
+            .foregroundColor: NSColor.labelColor,
             .font: NSFont.systemFont(ofSize: 11, weight: .medium)
         ]
         let size = text.size(withAttributes: attrs)

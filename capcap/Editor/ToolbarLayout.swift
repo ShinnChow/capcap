@@ -180,7 +180,7 @@ extension ToolbarItemID {
         switch self {
         case .close:   return toolbarDangerRed
         case .confirm: return accentGreen
-        default:       return .white
+        default:       return .labelColor
         }
     }
 

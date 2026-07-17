@@ -26,12 +26,12 @@ final class UploadProgressWindow: NSPanel {
         let title = "\(L10n.uploadingTitle) · \(provider)"
         titleLabel.stringValue = title
         titleLabel.font = NSFont.systemFont(ofSize: 11, weight: .medium)
-        titleLabel.textColor = NSColor.white.withAlphaComponent(0.85)
+        titleLabel.textColor = .labelColor
         titleLabel.translatesAutoresizingMaskIntoConstraints = false
         host.addSubview(titleLabel)
 
         percentLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
-        percentLabel.textColor = NSColor.white.withAlphaComponent(0.85)
+        percentLabel.textColor = .labelColor
         percentLabel.alignment = .right
         percentLabel.translatesAutoresizingMaskIntoConstraints = false
         host.addSubview(percentLabel)
@@ -93,9 +93,9 @@ final class UploadProgressWindow: NSPanel {
 private final class ChipBackgroundView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 10, yRadius: 10)
-        NSColor(white: 0.13, alpha: 0.92).setFill()
+        AdaptiveChrome.floatingBackground.setFill()
         path.fill()
-        NSColor(white: 0.4, alpha: 1.0).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 0.5
         path.stroke()
     }
@@ -108,7 +108,7 @@ private final class ProgressBarView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let trackPath = NSBezierPath(roundedRect: bounds, xRadius: bounds.height / 2, yRadius: bounds.height / 2)
-        NSColor.white.withAlphaComponent(0.12).setFill()
+        AdaptiveChrome.subtleFill.setFill()
         trackPath.fill()
 
         let fillWidth = bounds.width * progress

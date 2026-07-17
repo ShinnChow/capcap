@@ -2825,7 +2825,7 @@ class ToolbarView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 
@@ -2938,7 +2938,7 @@ class ToolButton: NSButton {
         if isSelected {
             contentTintColor = selectedColor
             let bgPath = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 6, yRadius: 6)
-            NSColor.white.withAlphaComponent(0.15).setFill()
+            AdaptiveChrome.selectedFill.setFill()
             bgPath.fill()
         } else {
             contentTintColor = normalColor
@@ -3043,7 +3043,7 @@ final class MoveSelectionDragHandle: NSView {
     override func draw(_ dirtyRect: NSRect) {
         if isPressed {
             let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 6, yRadius: 6)
-            NSColor.white.withAlphaComponent(0.15).setFill()
+            AdaptiveChrome.selectedFill.setFill()
             bg.fill()
         }
 
@@ -3056,7 +3056,7 @@ final class MoveSelectionDragHandle: NSView {
 
         let tint = NSImage(size: img.size, flipped: false) { rect in
             img.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
-            NSColor.white.set()
+            NSColor.labelColor.set()
             rect.fill(using: .sourceAtop)
             return true
         }
@@ -3098,14 +3098,11 @@ private final class ScrollCaptureHintWindow: NSPanel {
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
-        let container = NSView()
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor(white: 0.12, alpha: 0.92).cgColor
-        container.layer?.cornerRadius = 8
+        let container = AdaptiveChromeSurfaceView(style: .floating, cornerRadius: 8)
 
         label.stringValue = text
         label.font = NSFont.systemFont(ofSize: 13, weight: .medium)
-        label.textColor = .white
+        label.textColor = .labelColor
         label.alignment = .center
         container.addSubview(label)
         contentView = container
@@ -3192,7 +3189,7 @@ private final class ScrollCaptureControlView: NSView {
         let button = ToolButton(
             frame: bounds.insetBy(dx: 6, dy: 6),
             symbolName: "arrow.up.and.down.text.horizontal",
-            normalColor: .white,
+            normalColor: .labelColor,
             selectedColor: accentGreen
         )
         button.isSelected = true
@@ -3207,7 +3204,7 @@ private final class ScrollCaptureControlView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.92).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -3290,7 +3287,7 @@ private final class ScrollCropControlView: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.92).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -3325,12 +3322,12 @@ private final class ScrollPreviewWindow: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
 
         let containerRect = NSRect(origin: .zero, size: initialRect.size)
-        let container = NSView(frame: containerRect)
-        container.wantsLayer = true
-        container.layer?.backgroundColor = NSColor(white: 0.1, alpha: 0.88).cgColor
-        container.layer?.cornerRadius = 8
-        container.layer?.borderColor = NSColor(white: 1, alpha: 0.15).cgColor
-        container.layer?.borderWidth = 0.5
+        let container = AdaptiveChromeSurfaceView(
+            style: .floating,
+            cornerRadius: 8,
+            borderWidth: 0.5
+        )
+        container.frame = containerRect
         container.autoresizingMask = [.width, .height]
 
         imageView.imageScaling = .scaleProportionallyUpOrDown
@@ -3392,7 +3389,7 @@ private final class EmojiSubToolbar: NSView {
     var onMoreRequested: ((NSView) -> Void)?
 
     private let moreButton = EmojiMoreButton(frame: .zero)
-    private let separatorView = NSView()
+    private let separatorView = AdaptiveSeparatorView()
     private var emojiViews: [EmojiChoiceView] = []
 
     private static let visibleEmojiCount = 10
@@ -3422,8 +3419,6 @@ private final class EmojiSubToolbar: NSView {
         moreButton.action = #selector(showMoreEmojiPicker)
         addSubview(moreButton)
 
-        separatorView.wantsLayer = true
-        separatorView.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.18).cgColor
         addSubview(separatorView)
 
         rebuildEmojiViews()
@@ -3495,7 +3490,7 @@ private final class EmojiSubToolbar: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -3578,10 +3573,10 @@ private final class EmojiPickerView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let rect = bounds.insetBy(dx: 1, dy: 1)
         let path = NSBezierPath(roundedRect: rect, xRadius: 14, yRadius: 14)
-        NSColor(calibratedWhite: 0.23, alpha: 0.98).setFill()
+        AdaptiveChrome.popoverBackground.setFill()
         path.fill()
 
-        NSColor.white.withAlphaComponent(0.15).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 1
         path.stroke()
     }
@@ -3648,7 +3643,7 @@ private final class EmojiChoiceView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         if isSelected || isHovering {
             let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
-            NSColor.white.withAlphaComponent(isSelected ? 0.16 : 0.08).setFill()
+            (isSelected ? AdaptiveChrome.selectedFill : AdaptiveChrome.subtleFill).setFill()
             bg.fill()
             if isSelected {
                 accentGreen.setStroke()
@@ -3691,7 +3686,7 @@ private final class EmojiMoreButton: NSButton {
         setButtonType(.momentaryPushIn)
         imagePosition = .imageOnly
         toolTip = L10n.tipMoreEmoji
-        contentTintColor = NSColor.white.withAlphaComponent(0.78)
+        contentTintColor = .secondaryLabelColor
         wantsLayer = true
         (cell as? NSButtonCell)?.highlightsBy = []
 
@@ -3734,10 +3729,10 @@ private final class EmojiMoreButton: NSButton {
 
     override func draw(_ dirtyRect: NSRect) {
         let active = isHovering || isHighlighted
-        contentTintColor = active ? .white : NSColor.white.withAlphaComponent(0.78)
+        contentTintColor = active ? .labelColor : .secondaryLabelColor
         if active {
             let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
-            NSColor.white.withAlphaComponent(0.10).setFill()
+            AdaptiveChrome.subtleFill.setFill()
             bg.fill()
         }
         super.draw(dirtyRect)
@@ -3908,9 +3903,7 @@ private class ColorSizeSubToolbar: NSView {
         // Separator only when there's a size section to separate from.
         if !sizes.isEmpty {
             x += 8
-            let sep = NSView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
-            sep.wantsLayer = true
-            sep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            let sep = AdaptiveSeparatorView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
             addSubview(sep)
             x += 9
         }
@@ -3943,9 +3936,7 @@ private class ColorSizeSubToolbar: NSView {
 
         if currentArrowStyle != nil {
             let styleSepX = lastSectionRightEdge + ColorSizeSubToolbar.separatorGap
-            let styleSep = NSView(frame: NSRect(x: styleSepX, y: 6, width: 1, height: bounds.height - 12))
-            styleSep.wantsLayer = true
-            styleSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            let styleSep = AdaptiveSeparatorView(frame: NSRect(x: styleSepX, y: 6, width: 1, height: bounds.height - 12))
             addSubview(styleSep)
 
             x = styleSepX + 1 + ColorSizeSubToolbar.arrowStyleGap
@@ -3971,9 +3962,7 @@ private class ColorSizeSubToolbar: NSView {
 
         if showsShapeFillModes {
             let fillSepX = lastSectionRightEdge + ColorSizeSubToolbar.separatorGap
-            let fillSep = NSView(frame: NSRect(x: fillSepX, y: 6, width: 1, height: bounds.height - 12))
-            fillSep.wantsLayer = true
-            fillSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            let fillSep = AdaptiveSeparatorView(frame: NSRect(x: fillSepX, y: 6, width: 1, height: bounds.height - 12))
             addSubview(fillSep)
 
             x = fillSepX + 1 + ColorSizeSubToolbar.arrowStyleGap
@@ -3998,9 +3987,7 @@ private class ColorSizeSubToolbar: NSView {
 
         if showsShapeStrokeStyles {
             let styleSepX = lastSectionRightEdge + ColorSizeSubToolbar.separatorGap
-            let styleSep = NSView(frame: NSRect(x: styleSepX, y: 6, width: 1, height: bounds.height - 12))
-            styleSep.wantsLayer = true
-            styleSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+            let styleSep = AdaptiveSeparatorView(frame: NSRect(x: styleSepX, y: 6, width: 1, height: bounds.height - 12))
             addSubview(styleSep)
 
             x = styleSepX + 1 + ColorSizeSubToolbar.arrowStyleGap
@@ -4086,7 +4073,7 @@ private class ColorSizeSubToolbar: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -4157,7 +4144,7 @@ private class MosaicSubToolbar: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -4282,9 +4269,7 @@ private class TextSubToolbar: NSView {
         x += TextSubToolbar.sliderWidth + 8
 
         // Vertical separator between size controls and color swatches.
-        let sep = NSView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        let sep = AdaptiveSeparatorView(frame: NSRect(x: x, y: 6, width: 1, height: bounds.height - 12))
         addSubview(sep)
         x += 1 + 9
 
@@ -4315,9 +4300,7 @@ private class TextSubToolbar: NSView {
         // Vertical separator between color swatches and the outline checkbox.
         let lastSwatchRightEdge = x - TextSubToolbar.swatchGap
         let strokeSepX = lastSwatchRightEdge + TextSubToolbar.separatorGap
-        let strokeSep = NSView(frame: NSRect(x: strokeSepX, y: 6, width: 1, height: bounds.height - 12))
-        strokeSep.wantsLayer = true
-        strokeSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        let strokeSep = AdaptiveSeparatorView(frame: NSRect(x: strokeSepX, y: 6, width: 1, height: bounds.height - 12))
         addSubview(strokeSep)
 
         // Outline checkbox.
@@ -4394,7 +4377,7 @@ private class TextSubToolbar: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -4418,7 +4401,7 @@ private final class ArrowStyleButtonView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
-        let color = isSelected ? accentGreen : NSColor.white.withAlphaComponent(0.68)
+        let color = isSelected ? accentGreen : NSColor.secondaryLabelColor
         color.setFill()
         color.setStroke()
 
@@ -4630,7 +4613,7 @@ private class ColorSwatchView: NSView {
             yRadius: 2.2 * unit
         )
 
-        NSColor.white.withAlphaComponent(0.12).setFill()
+        AdaptiveChrome.subtleFill.setFill()
         bodyPath.fill()
 
         let inkPath = NSBezierPath()
@@ -4657,27 +4640,27 @@ private class ColorSwatchView: NSView {
 
         let neckRect = rect(7.0, 12.7, 4.0, 2.0)
         let neckPath = NSBezierPath(roundedRect: neckRect, xRadius: 0.7 * unit, yRadius: 0.7 * unit)
-        NSColor.white.withAlphaComponent(0.58).setFill()
+        NSColor.secondaryLabelColor.setFill()
         neckPath.fill()
 
         let capRect = rect(6.2, 14.2, 5.6, 1.8)
         let capPath = NSBezierPath(roundedRect: capRect, xRadius: 0.8 * unit, yRadius: 0.8 * unit)
-        NSColor.white.withAlphaComponent(0.88).setFill()
+        NSColor.labelColor.setFill()
         capPath.fill()
 
         let highlight = NSBezierPath()
         highlight.move(to: NSPoint(x: bodyRect.minX + 2.5 * unit, y: bodyRect.minY + 2.1 * unit))
         highlight.line(to: NSPoint(x: bodyRect.minX + 2.5 * unit, y: bodyRect.maxY - 2.3 * unit))
-        NSColor.white.withAlphaComponent(0.42).setStroke()
+        NSColor.quaternaryLabelColor.setStroke()
         highlight.lineWidth = 1
         highlight.lineCapStyle = .round
         highlight.stroke()
 
-        NSColor.white.withAlphaComponent(0.82).setStroke()
+        NSColor.secondaryLabelColor.setStroke()
         bodyPath.lineWidth = 1
         bodyPath.stroke()
 
-        NSColor.black.withAlphaComponent(0.22).setStroke()
+        AdaptiveChrome.border.setStroke()
         capPath.lineWidth = 0.6
         capPath.stroke()
     }
@@ -4755,7 +4738,7 @@ final class HUDSlider: NSControl {
             leftHeight: trackLeftHeight,
             rightHeight: trackRightHeight
         )
-        NSColor.white.withAlphaComponent(0.05 * enabledAlpha).setFill()
+        AdaptiveChrome.subtleFill.withAlphaComponent(enabledAlpha).setFill()
         trackPath.fill()
 
         let knobCenterX = trackRect.minX + normalizedValue * trackRect.width
@@ -4776,7 +4759,7 @@ final class HUDSlider: NSControl {
             fillPath.fill()
         }
 
-        NSColor.white.withAlphaComponent(0.28 * enabledAlpha).setStroke()
+        AdaptiveChrome.border.withAlphaComponent(enabledAlpha).setStroke()
         trackPath.lineWidth = 1.5
         trackPath.stroke()
 
@@ -4798,11 +4781,11 @@ final class HUDSlider: NSControl {
         shadow.shadowBlurRadius = 2.5
         shadow.shadowOffset = NSSize(width: 0, height: -1)
         shadow.set()
-        NSColor(white: isDragging ? 0.97 : 0.92, alpha: enabledAlpha).setFill()
+        NSColor.controlBackgroundColor.withAlphaComponent(enabledAlpha).setFill()
         knobPath.fill()
         NSGraphicsContext.restoreGraphicsState()
 
-        NSColor.black.withAlphaComponent(0.10 * enabledAlpha).setStroke()
+        AdaptiveChrome.border.withAlphaComponent(enabledAlpha).setStroke()
         knobPath.lineWidth = 0.6
         knobPath.stroke()
 
@@ -4961,7 +4944,7 @@ final class HUDSlider: NSControl {
             string: text,
             attributes: [
                 .font: valueFont,
-                .foregroundColor: NSColor.black.withAlphaComponent(0.78 * enabledAlpha),
+                .foregroundColor: NSColor.labelColor.withAlphaComponent(enabledAlpha),
             ]
         )
         let textSize = attributed.size()
@@ -5023,7 +5006,7 @@ private final class ShapeFillModeSegmentedControl: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let rect = bounds.insetBy(dx: 0.5, dy: 0.5)
         let background = NSBezierPath(roundedRect: rect, xRadius: 7, yRadius: 7)
-        NSColor(white: 0.18, alpha: 0.96).setFill()
+        AdaptiveChrome.cardBackground.setFill()
         background.fill()
 
         let widths = Self.segmentWidths()
@@ -5036,7 +5019,7 @@ private final class ShapeFillModeSegmentedControl: NSView {
                 accentGreen.setFill()
                 selected.fill()
             } else if index > 0 {
-                NSColor.white.withAlphaComponent(0.06).setStroke()
+                AdaptiveChrome.separator.setStroke()
                 let sep = NSBezierPath()
                 sep.move(to: NSPoint(x: x, y: rect.minY + 4))
                 sep.line(to: NSPoint(x: x, y: rect.maxY - 4))
@@ -5047,7 +5030,7 @@ private final class ShapeFillModeSegmentedControl: NSView {
             x += width
         }
 
-        NSColor.white.withAlphaComponent(0.06).setStroke()
+        AdaptiveChrome.border.setStroke()
         background.lineWidth = 1
         background.stroke()
     }
@@ -5083,7 +5066,7 @@ private final class ShapeFillModeSegmentedControl: NSView {
         let selected = mode == selectedMode
         let attributes: [NSAttributedString.Key: Any] = [
             .font: Self.font,
-            .foregroundColor: selected ? NSColor.white : NSColor.white.withAlphaComponent(0.84),
+            .foregroundColor: selected ? NSColor.white : NSColor.labelColor,
         ]
         let title = Self.title(for: mode) as NSString
         let size = title.size(withAttributes: attributes)
@@ -5124,7 +5107,7 @@ private final class ShapeStrokeStyleButtonView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func draw(_ dirtyRect: NSRect) {
-        let color = isSelected ? accentGreen : NSColor.white.withAlphaComponent(0.68)
+        let color = isSelected ? accentGreen : NSColor.secondaryLabelColor
 
         if isSelected {
             let bg = NSBezierPath(roundedRect: bounds.insetBy(dx: 1.5, dy: 1.5), xRadius: 7, yRadius: 7)
@@ -5267,11 +5250,13 @@ private final class HUDCheckboxButton: NSButton {
         if state == .on {
             accentGreen.withAlphaComponent(enabledAlpha).setFill()
         } else {
-            NSColor.white.withAlphaComponent((isHighlighted ? 0.24 : 0.16) * enabledAlpha).setFill()
+            AdaptiveChrome.subtleFill
+                .withAlphaComponent((isHighlighted ? 1.0 : 0.72) * enabledAlpha)
+                .setFill()
         }
         boxPath.fill()
 
-        NSColor.white.withAlphaComponent(0.18 * enabledAlpha).setStroke()
+        AdaptiveChrome.border.withAlphaComponent(enabledAlpha).setStroke()
         boxPath.lineWidth = 1
         boxPath.stroke()
 
@@ -5291,7 +5276,7 @@ private final class HUDCheckboxButton: NSButton {
             string: label,
             attributes: [
                 .font: labelFont,
-                .foregroundColor: NSColor.white.withAlphaComponent(0.9 * enabledAlpha),
+                .foregroundColor: NSColor.labelColor.withAlphaComponent(enabledAlpha),
             ]
         )
         let textSize = attributed.size()
@@ -5403,9 +5388,7 @@ private class BeautifySubToolbar: NSView {
         // 5 px gap → slider. Total = separatorGap (10 px).
         let lastSwatchRightEdge = x - swatchSpacing
         let sepX = lastSwatchRightEdge + 4
-        let sep = NSView(frame: NSRect(x: sepX, y: 6, width: 1, height: bounds.height - 12))
-        sep.wantsLayer = true
-        sep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        let sep = AdaptiveSeparatorView(frame: NSRect(x: sepX, y: 6, width: 1, height: bounds.height - 12))
         addSubview(sep)
 
         // Horizontal padding slider, 5 px to the right of the separator.
@@ -5428,9 +5411,7 @@ private class BeautifySubToolbar: NSView {
         paddingSlider = slider
 
         let shadowSepX = sliderX + sliderWidth + 5
-        let shadowSep = NSView(frame: NSRect(x: shadowSepX, y: 6, width: 1, height: bounds.height - 12))
-        shadowSep.wantsLayer = true
-        shadowSep.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.2).cgColor
+        let shadowSep = AdaptiveSeparatorView(frame: NSRect(x: shadowSepX, y: 6, width: 1, height: bounds.height - 12))
         addSubview(shadowSep)
 
         let checkbox = HUDCheckboxButton(
@@ -5478,7 +5459,7 @@ private class BeautifySubToolbar: NSView {
 
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 2), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.12, alpha: 0.9).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
     }
 }
@@ -5530,9 +5511,9 @@ private class BeautifySwatchView: NSView {
         }
         NSGraphicsContext.restoreGraphicsState()
 
-        // Subtle outer border so light presets remain visible on the dark toolbar
+        // Subtle outer border keeps both light and dark presets visible
         let border = NSBezierPath(ovalIn: circleRect)
-        NSColor.white.withAlphaComponent(0.15).setStroke()
+        AdaptiveChrome.border.setStroke()
         border.lineWidth = 0.5
         border.stroke()
 
