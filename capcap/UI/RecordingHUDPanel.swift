@@ -34,10 +34,9 @@ final class RecordingHUDPanel: NSPanel {
 
         containerView.panel = self
         containerView.wantsLayer = true
-        containerView.layer?.backgroundColor = NSColor.windowBackgroundColor.withAlphaComponent(0.94).cgColor
         containerView.layer?.cornerRadius = 10
         containerView.layer?.borderWidth = 0.5
-        containerView.layer?.borderColor = NSColor.white.withAlphaComponent(0.14).cgColor
+        containerView.applyAppearance()
         contentView = containerView
 
         setupControls()
@@ -160,6 +159,22 @@ private final class RecordingHUDContainerView: NSView {
     private var dragOffset: NSPoint = .zero
     private var isDragging = false
     private var trackingArea: NSTrackingArea?
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    func applyAppearance() {
+        layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.floatingBackground,
+            for: effectiveAppearance
+        )
+        layer?.borderColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.border,
+            for: effectiveAppearance
+        )
+    }
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()

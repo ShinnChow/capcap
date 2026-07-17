@@ -1,6 +1,6 @@
 import AppKit
 
-/// A small dark HUD panel shown while capcap checks for, downloads, or installs
+/// A small adaptive HUD panel shown while capcap checks for, downloads, or installs
 /// an update.
 ///
 /// Unlike `ToastWindow` it persists across phases: callers advance it through
@@ -69,10 +69,6 @@ final class UpdateProgressWindow: NSPanel {
         backgroundColor = .clear
         hasShadow = true
         isMovableByWindowBackground = false
-        // Force dark so the system progress indicators render light against
-        // the dark chip regardless of the user's system appearance.
-        appearance = NSAppearance(named: .darkAqua)
-
         let content = HUDBackgroundView(frame: NSRect(origin: .zero, size: Self.windowSize))
 
         spinner.style = .spinning
@@ -86,7 +82,7 @@ final class UpdateProgressWindow: NSPanel {
         bar.maxValue = 1
 
         label.font = .systemFont(ofSize: 13, weight: .medium)
-        label.textColor = NSColor.white.withAlphaComponent(0.92)
+        label.textColor = .labelColor
         label.lineBreakMode = .byTruncatingTail
         label.maximumNumberOfLines = 1
 
@@ -138,15 +134,15 @@ final class UpdateProgressWindow: NSPanel {
     }
 }
 
-/// Draws the rounded dark chip behind the HUD's contents — matches the toast
+/// Draws the rounded adaptive chip behind the HUD's contents — matches the toast
 /// styling used elsewhere in the app.
 private final class HUDBackgroundView: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1),
                                 xRadius: 12, yRadius: 12)
-        NSColor(white: 0.15, alpha: 0.96).setFill()
+        AdaptiveChrome.floatingBackground.setFill()
         path.fill()
-        NSColor(white: 0.4, alpha: 1.0).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 0.5
         path.stroke()
     }

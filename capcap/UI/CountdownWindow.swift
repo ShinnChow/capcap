@@ -1,7 +1,7 @@
 import AppKit
 
 /// Translucent fullscreen-overlay-free countdown shown before a delayed capture.
-/// Displays a large white digit on a rounded translucent black plate centered on
+/// Displays a large high-contrast digit on a rounded adaptive plate centered on
 /// the cursor's screen. Esc cancels; on natural expiry calls `onFinish`.
 final class CountdownWindow: NSPanel {
     private static var current: CountdownWindow?
@@ -161,13 +161,12 @@ private final class CountdownPlateView: NSView {
         wantsLayer = true
         layer?.cornerRadius = 28
         layer?.cornerCurve = .continuous
-        layer?.backgroundColor = NSColor(white: 0.0, alpha: 0.62).cgColor
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
         layer?.borderWidth = 1
+        applyAppearance()
 
         digitLabel.translatesAutoresizingMaskIntoConstraints = false
         digitLabel.alignment = .center
-        digitLabel.textColor = .white
+        digitLabel.textColor = .labelColor
         digitLabel.font = NSFont.monospacedDigitSystemFont(ofSize: 120, weight: .semibold)
         digitLabel.isBezeled = false
         digitLabel.drawsBackground = false
@@ -182,6 +181,23 @@ private final class CountdownPlateView: NSView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.floatingBackground,
+            for: effectiveAppearance
+        )
+        layer?.borderColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.border,
+            for: effectiveAppearance
+        )
+        digitLabel.textColor = .labelColor
     }
 
     func setDigit(_ value: Int, animated: Bool) {

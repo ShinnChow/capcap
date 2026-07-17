@@ -68,8 +68,8 @@ private final class OCRPreviewView: NSView, ImageAnalysisOverlayViewDelegate {
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
         layer?.backgroundColor = NSColor.black.withAlphaComponent(0.26).cgColor
-        layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
         layer?.borderWidth = 1
+        applyAppearance()
 
         imageView.image = image
         imageView.imageAlignment = .alignCenter
@@ -95,6 +95,18 @@ private final class OCRPreviewView: NSView, ImageAnalysisOverlayViewDelegate {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        layer?.borderColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.border,
+            for: effectiveAppearance
+        )
+    }
 
     override var mouseDownCanMoveWindow: Bool { false }
 
@@ -729,14 +741,26 @@ private final class PanelPinButton: NSButton {
         let symbolName = pinned ? "pin.fill" : "pin"
         image = NSImage(systemSymbolName: symbolName, accessibilityDescription: label)?
             .withSymbolConfiguration(pinSymbolConfiguration)
-        contentTintColor = pinned ? .white : NSColor.black.withAlphaComponent(0.82)
-        layer?.backgroundColor = (pinned
-            ? accentGreen.withAlphaComponent(0.96)
-            : NSColor.white.withAlphaComponent(0.90)
-        ).cgColor
-        layer?.borderColor = NSColor.black.withAlphaComponent(0.48).cgColor
+        updateAppearance()
         toolTip = label
         setAccessibilityLabel(label)
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateAppearance()
+    }
+
+    private func updateAppearance() {
+        contentTintColor = pinned ? .white : .labelColor
+        let background = pinned
+            ? accentGreen.withAlphaComponent(0.96)
+            : AdaptiveChrome.floatingBackground
+        layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(background, for: effectiveAppearance)
+        layer?.borderColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.border,
+            for: effectiveAppearance
+        )
     }
 }
 
@@ -785,13 +809,7 @@ private final class AnimatedGradientTextLabel: NSView {
 
         gradientLayer.startPoint = CGPoint(x: 0, y: 0.5)
         gradientLayer.endPoint = CGPoint(x: 1, y: 0.5)
-        gradientLayer.colors = [
-            NSColor.white.withAlphaComponent(0.82).cgColor,
-            NSColor.systemCyan.withAlphaComponent(0.98).cgColor,
-            NSColor.systemPink.withAlphaComponent(0.98).cgColor,
-            NSColor.systemYellow.withAlphaComponent(0.96).cgColor,
-            NSColor.white.withAlphaComponent(0.86).cgColor,
-        ]
+        updateAppearance()
         gradientLayer.locations = Self.restingLocations
         gradientLayer.mask = textMaskLayer
         hostLayer.addSublayer(gradientLayer)
@@ -826,6 +844,11 @@ private final class AnimatedGradientTextLabel: NSView {
         }
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateAppearance()
+    }
+
     func startAnimating() {
         guard gradientLayer.animation(forKey: Self.animationKey) == nil else { return }
 
@@ -857,6 +880,17 @@ private final class AnimatedGradientTextLabel: NSView {
         let scale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
         gradientLayer.contentsScale = scale
         textMaskLayer.contentsScale = scale
+    }
+
+    private func updateAppearance() {
+        let appearance = effectiveAppearance
+        gradientLayer.colors = [
+            AdaptiveChrome.resolvedCGColor(NSColor.labelColor.withAlphaComponent(0.82), for: appearance),
+            AdaptiveChrome.resolvedCGColor(NSColor.systemCyan.withAlphaComponent(0.98), for: appearance),
+            AdaptiveChrome.resolvedCGColor(NSColor.systemPink.withAlphaComponent(0.98), for: appearance),
+            AdaptiveChrome.resolvedCGColor(NSColor.systemYellow.withAlphaComponent(0.96), for: appearance),
+            AdaptiveChrome.resolvedCGColor(NSColor.labelColor.withAlphaComponent(0.86), for: appearance),
+        ]
     }
 }
 
@@ -915,7 +949,7 @@ private final class TranslationResultView: NSView {
 
         chevronView.translatesAutoresizingMaskIntoConstraints = false
         chevronView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
-        chevronView.contentTintColor = NSColor.white.withAlphaComponent(0.72)
+        chevronView.contentTintColor = .secondaryLabelColor
         updateChevron()
 
         let header = TranslationHeaderView()
@@ -1193,7 +1227,7 @@ private final class DictionaryResultView: NSView {
 
         let valueLabel = NSTextField(wrappingLabelWithString: trimmed)
         valueLabel.font = NSFont.systemFont(ofSize: 15)
-        valueLabel.textColor = NSColor.white.withAlphaComponent(0.93)
+        valueLabel.textColor = .labelColor
         valueLabel.maximumNumberOfLines = 0
         valueLabel.isSelectable = true
         valueLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -1360,7 +1394,6 @@ final class OCRTranslatePanel: NSPanel {
             backing: .buffered,
             defer: false
         )
-        appearance = NSAppearance(named: .darkAqua)
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
@@ -1388,13 +1421,7 @@ final class OCRTranslatePanel: NSPanel {
     // MARK: UI
 
     private func buildUI() {
-        let root = NSView()
-        root.wantsLayer = true
-        root.layer?.cornerRadius = 12
-        root.layer?.cornerCurve = .continuous
-        root.layer?.backgroundColor = NSColor(calibratedRed: 0.13, green: 0.14, blue: 0.16, alpha: 1.0).cgColor
-        root.layer?.borderColor = NSColor.white.withAlphaComponent(0.10).cgColor
-        root.layer?.borderWidth = 1
+        let root = AdaptiveChromeSurfaceView(style: .panel, cornerRadius: 12, borderWidth: 1)
         contentView = root
         let panelWidthConstraint = root.widthAnchor.constraint(equalToConstant: panelWidth)
         panelWidthConstraint.isActive = true
@@ -1508,7 +1535,7 @@ final class OCRTranslatePanel: NSPanel {
 
         let (scroll, textView) = makeTextScroll(editable: true, height: 116)
         textView.string = L10n.ocrRecognizing
-        textView.textColor = NSColor.white.withAlphaComponent(0.4)
+        textView.textColor = .secondaryLabelColor
         ocrTextView = textView
         inner.addArrangedSubview(scroll)
         scroll.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
@@ -1715,7 +1742,7 @@ final class OCRTranslatePanel: NSPanel {
         if recognizedText.isEmpty {
             logOCR("panel-finish-text-recognition-empty")
             textView.string = L10n.ocrNoText
-            textView.textColor = NSColor.white.withAlphaComponent(0.4)
+            textView.textColor = .secondaryLabelColor
             copyButton.isEnabled = false
         } else {
             logOCR(
@@ -1723,7 +1750,7 @@ final class OCRTranslatePanel: NSPanel {
                 metadata: ["recognizedCharacters": recognizedText.count]
             )
             textView.string = recognizedText
-            textView.textColor = NSColor.white.withAlphaComponent(0.9)
+            textView.textColor = .labelColor
             copyButton.isEnabled = true
         }
     }
@@ -2006,7 +2033,7 @@ final class OCRTranslatePanel: NSPanel {
 
     private func setTranslationPlaceholder(_ text: String) {
         translationPlaceholderLabel?.stringValue = text
-        translationPlaceholderLabel?.textColor = NSColor.white.withAlphaComponent(0.52)
+        translationPlaceholderLabel?.textColor = .secondaryLabelColor
         translationPlaceholderLabel?.isHidden = false
     }
 
@@ -2387,19 +2414,9 @@ final class OCRTranslatePanel: NSPanel {
 
     // MARK: Shared builders
 
-    fileprivate static func styleCard(_ view: NSView) {
-        view.wantsLayer = true
-        view.layer?.cornerRadius = 10
-        view.layer?.cornerCurve = .continuous
-        view.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.04).cgColor
-        view.layer?.borderColor = NSColor.white.withAlphaComponent(0.07).cgColor
-        view.layer?.borderWidth = 1
-    }
-
     private func makeCard() -> NSView {
-        let v = NSView()
+        let v = AdaptiveChromeSurfaceView(style: .card, cornerRadius: 10, borderWidth: 1)
         v.translatesAutoresizingMaskIntoConstraints = false
-        Self.styleCard(v)
         return v
     }
 
@@ -2442,7 +2459,7 @@ private final class LanguagePickerView: NSView {
     init(selected: TranslationLanguage, onSelect: @escaping (TranslationLanguage) -> Void) {
         super.init(frame: NSRect(x: 0, y: 0, width: 220, height: 1))
         wantsLayer = true
-        layer?.backgroundColor = NSColor(calibratedRed: 0.12, green: 0.13, blue: 0.15, alpha: 1.0).cgColor
+        applyAppearance()
 
         let stack = NSStackView()
         stack.orientation = .vertical
@@ -2458,7 +2475,7 @@ private final class LanguagePickerView: NSView {
             button.isBordered = false
             button.alignment = .left
             button.font = NSFont.systemFont(ofSize: 12, weight: language == selected ? .semibold : .regular)
-            button.contentTintColor = NSColor.white.withAlphaComponent(language == selected ? 0.95 : 0.78)
+            button.contentTintColor = language == selected ? .labelColor : .secondaryLabelColor
             button.translatesAutoresizingMaskIntoConstraints = false
             let sleeve = ClosureSleeve { onSelect(language) }
             sleeves.append(sleeve)
@@ -2482,6 +2499,18 @@ private final class LanguagePickerView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.popoverBackground,
+            for: effectiveAppearance
+        )
+    }
 }
 
 private final class ClosureSleeve: NSObject {
@@ -2497,7 +2526,7 @@ private final class ClosureSleeve: NSObject {
 func makeLabel(_ text: String, size: CGFloat, weight: NSFont.Weight, alpha: CGFloat) -> NSTextField {
     let l = NSTextField(labelWithString: text)
     l.font = NSFont.systemFont(ofSize: size, weight: weight)
-    l.textColor = NSColor.white.withAlphaComponent(alpha)
+    l.textColor = NSColor.labelColor.withAlphaComponent(alpha)
     l.translatesAutoresizingMaskIntoConstraints = false
     return l
 }
@@ -2527,7 +2556,7 @@ func configureIconButton(_ button: NSButton, symbolName: String, label: String) 
     button.isBordered = false
     button.bezelStyle = .regularSquare
     button.controlSize = .small
-    button.contentTintColor = NSColor.white.withAlphaComponent(0.78)
+    button.contentTintColor = .secondaryLabelColor
     button.toolTip = label
     button.setAccessibilityLabel(label)
     button.translatesAutoresizingMaskIntoConstraints = false
@@ -2551,7 +2580,7 @@ func configureExpandingTextView(_ textView: PanelTextView) {
     textView.isRichText = false
     textView.drawsBackground = false
     textView.font = NSFont.systemFont(ofSize: 12)
-    textView.textColor = NSColor.white.withAlphaComponent(0.9)
+    textView.textColor = .labelColor
     textView.textContainerInset = NSSize(width: 6, height: 6)
     textView.isVerticallyResizable = false
     textView.isHorizontallyResizable = false
@@ -2562,13 +2591,13 @@ func configureExpandingTextView(_ textView: PanelTextView) {
 
 /// A bordered scroll view wrapping a `PanelTextView` of fixed height.
 func makeTextScroll(editable: Bool, height: CGFloat) -> (NSScrollView, PanelTextView) {
-    let scroll = NSScrollView()
+    let scroll = AdaptiveTextScrollView()
     scroll.translatesAutoresizingMaskIntoConstraints = false
     scroll.hasVerticalScroller = false
     scroll.hasHorizontalScroller = false
     scroll.autohidesScrollers = true
     scroll.drawsBackground = true
-    scroll.backgroundColor = NSColor.black.withAlphaComponent(0.22)
+    scroll.backgroundColor = AdaptiveChrome.cardBackground
     scroll.borderType = .noBorder
     scroll.wantsLayer = true
     scroll.layer?.cornerRadius = 6
@@ -2582,7 +2611,7 @@ func makeTextScroll(editable: Bool, height: CGFloat) -> (NSScrollView, PanelText
     textView.isRichText = false
     textView.drawsBackground = false
     textView.font = NSFont.systemFont(ofSize: 12)
-    textView.textColor = NSColor.white.withAlphaComponent(0.9)
+    textView.textColor = .labelColor
     textView.textContainerInset = NSSize(width: 6, height: 6)
     textView.isVerticallyResizable = true
     textView.isHorizontallyResizable = false
@@ -2606,6 +2635,27 @@ func flashIconButton(_ button: NSButton, symbolName: String, restoreSymbolName: 
     button.contentTintColor = NSColor.systemGreen
     DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak button] in
         button?.image = NSImage(systemSymbolName: restoreSymbolName, accessibilityDescription: L10n.ocrCopy)
-        button?.contentTintColor = NSColor.white.withAlphaComponent(0.78)
+        button?.contentTintColor = .secondaryLabelColor
+    }
+}
+
+private final class AdaptiveTextScrollView: NSScrollView {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        applyAppearance()
+    }
+
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        backgroundColor = AdaptiveChrome.cardBackground
+        layer?.borderWidth = 1
+        layer?.borderColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.border,
+            for: effectiveAppearance
+        )
     }
 }

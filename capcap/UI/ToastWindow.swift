@@ -136,18 +136,16 @@ private class ToastContentView: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        // Dark semi-transparent background (matching CursorChip style)
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
-        NSColor(white: 0.15, alpha: 0.9).setFill()
+        AdaptiveChrome.floatingBackground.setFill()
         path.fill()
 
-        NSColor(white: 0.4, alpha: 1.0).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 0.5
         path.stroke()
 
-        // Text
         let attrs: [NSAttributedString.Key: Any] = [
-            .foregroundColor: NSColor.white.withAlphaComponent(0.85),
+            .foregroundColor: NSColor.labelColor,
             .font: NSFont.systemFont(ofSize: 12, weight: .medium)
         ]
         let size = message.size(withAttributes: attrs)

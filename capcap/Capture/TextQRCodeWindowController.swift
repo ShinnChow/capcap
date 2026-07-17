@@ -33,12 +33,11 @@ final class TextQRCodeWindowController: NSWindowController, NSWindowDelegate {
         )
         panel.title = L10n.historyPreviewQRCodeTitle
         panel.titleVisibility = .visible
-        panel.appearance = NSAppearance(named: .darkAqua)
         panel.isMovableByWindowBackground = true
         panel.level = NSWindow.Level(rawValue: NSWindow.Level.popUpMenu.rawValue + 4)
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         panel.isReleasedWhenClosed = false
-        panel.backgroundColor = NSColor(calibratedWhite: 0.07, alpha: 0.99)
+        panel.backgroundColor = .windowBackgroundColor
 
         super.init(window: panel)
         panel.delegate = self
@@ -116,18 +115,17 @@ final class TextQRCodeWindowController: NSWindowController, NSWindowDelegate {
         originalTitle.textColor = .labelColor
         stack.addArrangedSubview(originalTitle)
 
-        let textScrollView = NSScrollView()
+        let textScrollView = AdaptiveQRCodeScrollView()
         textScrollView.translatesAutoresizingMaskIntoConstraints = false
         textScrollView.hasVerticalScroller = true
         textScrollView.hasHorizontalScroller = false
         textScrollView.autohidesScrollers = true
         textScrollView.drawsBackground = true
-        textScrollView.backgroundColor = NSColor.white.withAlphaComponent(0.045)
+        textScrollView.backgroundColor = AdaptiveChrome.cardBackground
         textScrollView.borderType = .noBorder
         textScrollView.wantsLayer = true
         textScrollView.layer?.cornerRadius = 8
         textScrollView.layer?.cornerCurve = .continuous
-        textScrollView.layer?.borderColor = NSColor.white.withAlphaComponent(0.08).cgColor
         textScrollView.layer?.borderWidth = 1
 
         let textView = NSTextView()
@@ -210,5 +208,25 @@ final class TextQRCodeWindowController: NSWindowController, NSWindowDelegate {
         let scaled = output.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         guard let cgImage = ciContext.createCGImage(scaled, from: scaled.extent) else { return nil }
         return NSImage(cgImage: cgImage, size: NSSize(width: 350, height: 350))
+    }
+}
+
+private final class AdaptiveQRCodeScrollView: NSScrollView {
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        applyAppearance()
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        applyAppearance()
+    }
+
+    private func applyAppearance() {
+        backgroundColor = AdaptiveChrome.cardBackground
+        layer?.borderColor = AdaptiveChrome.resolvedCGColor(
+            AdaptiveChrome.border,
+            for: effectiveAppearance
+        )
     }
 }

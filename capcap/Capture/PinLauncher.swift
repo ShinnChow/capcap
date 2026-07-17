@@ -3243,10 +3243,10 @@ private final class PinToolbarView: NSView {
         let path = NSBezierPath(roundedRect: bounds.insetBy(dx: 0.5, dy: 0.5),
                                 xRadius: bounds.height / 2,
                                 yRadius: bounds.height / 2)
-        NSColor(white: 0.08, alpha: 0.78).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
 
-        NSColor.white.withAlphaComponent(0.18).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 1
         path.stroke()
     }
@@ -3318,7 +3318,7 @@ private final class PinToolbarZoomButton: NSButton {
             string: value,
             attributes: [
                 .font: NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .medium),
-                .foregroundColor: NSColor.white.withAlphaComponent(0.9),
+                .foregroundColor: NSColor.labelColor,
             ]
         )
         setAccessibilityLabel(value)
@@ -3375,6 +3375,11 @@ private class PinToolbarIconButton: NSButton {
         layer?.cornerRadius = min(bounds.width, bounds.height) / 2
     }
 
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
+        updateAppearance()
+    }
+
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
     }
@@ -3388,7 +3393,7 @@ private class PinToolbarIconButton: NSButton {
     }
 
     private func updateAppearance() {
-        contentTintColor = isActive ? .white : NSColor.white.withAlphaComponent(0.88)
+        contentTintColor = isActive ? .white : .labelColor
         layer?.backgroundColor = (isActive
             ? accentGreen.withAlphaComponent(0.86)
             : NSColor.clear
@@ -3497,10 +3502,10 @@ private final class TextPinToolbarView: NSView {
             xRadius: bounds.height / 2,
             yRadius: bounds.height / 2
         )
-        NSColor(white: 0.08, alpha: 0.78).setFill()
+        AdaptiveChrome.toolbarBackground.setFill()
         path.fill()
 
-        NSColor.white.withAlphaComponent(0.18).setStroke()
+        AdaptiveChrome.border.setStroke()
         path.lineWidth = 1
         path.stroke()
     }
