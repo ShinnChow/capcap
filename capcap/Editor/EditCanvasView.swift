@@ -3548,6 +3548,8 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
 
     private var didFinish = false
     private var wasCanceled = false
+    private var textStorageObserver: NSObjectProtocol?
+    private var sizeUpdateGeneration: UInt = 0
     private static let insertNewlineIgnoringFieldEditorSelector = #selector(NSResponder.insertNewlineIgnoringFieldEditor(_:))
     private static let insertLineBreakSelector = #selector(NSResponder.insertLineBreak(_:))
 
@@ -3558,6 +3560,10 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        stopObservingFieldEditor()
     }
 
     private func configure() {
@@ -3605,13 +3611,34 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     func commit() {
         guard !didFinish else { return }
         didFinish = true
-        onCommit?(stringValue)
+        let text = liveEditorText
+        stopObservingFieldEditor()
+        onCommit?(text)
     }
 
     func cancel() {
         guard !didFinish else { return }
         didFinish = true
+        stopObservingFieldEditor()
         onCancel?()
+    }
+
+    func controlTextDidBeginEditing(_ obj: Notification) {
+        guard let textView = currentEditor() as? NSTextView else { return }
+        observeTextChanges(in: textView)
+    }
+
+    func observeTextChanges(in textView: NSTextView) {
+        guard let textStorage = textView.textStorage else { return }
+        stopObservingFieldEditor()
+        textStorageObserver = NotificationCenter.default.addObserver(
+            forName: NSTextStorage.didProcessEditingNotification,
+            object: textStorage,
+            queue: .main
+        ) { [weak self, weak textView] _ in
+            guard let self, let textView else { return }
+            self.scheduleSizeToFitText(using: textView.string)
+        }
     }
 
     func controlTextDidChange(_ obj: Notification) {
@@ -3619,6 +3646,7 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     }
 
     func controlTextDidEndEditing(_ obj: Notification) {
+        stopObservingFieldEditor()
         guard !didFinish else { return }
         if wasCanceled {
             cancel()
@@ -3692,8 +3720,16 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// Recompute width/height from the current string + font, keeping the
     /// top edge anchored so text grows downward only when font size changes.
     func sizeToFitText() {
+        sizeToFitText(using: liveEditorText)
+    }
+
+    private var liveEditorText: String {
+        (currentEditor() as? NSTextView)?.string ?? stringValue
+    }
+
+    private func sizeToFitText(using text: String) {
         guard let font = font else { return }
-        let contentSize = TextAnnotation.editorSize(for: stringValue, font: font)
+        let contentSize = TextAnnotation.editorSize(for: text, font: font)
         let size = hasCallout
             ? NSSize(
                 width: contentSize.width + TextAnnotation.calloutHorizontalPadding * 2,
@@ -3705,7 +3741,30 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
         var f = frame
         f.size = size
         f.origin.y = prevTop - size.height
+        guard f != frame else { return }
         frame = f
         onChange?()
+    }
+
+    private func stopObservingFieldEditor() {
+        sizeUpdateGeneration &+= 1
+        guard let textStorageObserver else { return }
+        NotificationCenter.default.removeObserver(textStorageObserver)
+        self.textStorageObserver = nil
+    }
+
+    /// Input methods update marked text inside a TextKit editing transaction.
+    /// Resizing the field synchronously from that transaction can make TextKit
+    /// enumerate an invalidated range, so coalesce the resize onto the next
+    /// main-queue turn after the marked-text update has completed.
+    private func scheduleSizeToFitText(using text: String) {
+        sizeUpdateGeneration &+= 1
+        let generation = sizeUpdateGeneration
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  !self.didFinish,
+                  generation == self.sizeUpdateGeneration else { return }
+            self.sizeToFitText(using: text)
+        }
     }
 }
