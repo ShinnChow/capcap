@@ -3,6 +3,34 @@ import Carbon
 import QuartzCore
 import UniformTypeIdentifiers
 
+enum EditorToolbarPlacement {
+    private static let edgeMargin: CGFloat = 8
+
+    static func primaryToolbarRect(
+        referenceRect: NSRect,
+        in bounds: NSRect,
+        size: NSSize,
+        topSafeInset: CGFloat
+    ) -> NSRect {
+        let width = size.width
+        let height = size.height
+        let margin = edgeMargin
+        let minimumX = bounds.minX + margin
+        let maximumX = bounds.maxX - width - margin
+        let x = max(minimumX, min(maximumX, referenceRect.midX - width / 2))
+
+        let minimumY = bounds.minY + margin
+        let maximumY = bounds.maxY - max(0, topSafeInset) - height - margin
+        var y = referenceRect.minY - height - margin
+        if y < minimumY {
+            y = min(referenceRect.maxY + margin, maximumY)
+        }
+        y = max(minimumY, min(maximumY, y))
+
+        return NSRect(x: x, y: y, width: width, height: height)
+    }
+}
+
 class EditWindowController {
     private var canvasView: EditCanvasView?
     private var beautifyContainerView: BeautifyContainerView?
@@ -2475,24 +2503,12 @@ class EditWindowController {
     }
 
     private func toolbarRect(in bounds: NSRect, size: NSSize) -> NSRect {
-        let width = size.width
-        let height = size.height
-        let margin: CGFloat = 8
-
-        let referenceRect = outerVisualRect(in: bounds)
-        let x = clampedX(
-            referenceRect.midX - width / 2,
-            width: width,
+        EditorToolbarPlacement.primaryToolbarRect(
+            referenceRect: outerVisualRect(in: bounds),
             in: bounds,
-            margin: margin
+            size: size,
+            topSafeInset: screen.safeAreaInsets.top
         )
-        var y = referenceRect.minY - height - margin
-        if y < margin {
-            y = min(referenceRect.maxY + margin, bounds.maxY - height - margin)
-        }
-        y = max(margin, min(bounds.maxY - height - margin, y))
-
-        return NSRect(x: x, y: y, width: width, height: height)
     }
 
     /// Frame for the vertical side toolbar. Prefers the right of the
