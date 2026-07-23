@@ -273,7 +273,7 @@ class SettingsView: NSView {
     private var aboutUpdateStatusLabel: NSTextField?
     private var aboutUpdateButton: NSButton?
 
-    // Error log card (About pane) — expandable diagnostic log viewer.
+    // Error log card (About pane) — expandable macOS crash report viewer.
     private var errorLogTitleLabel: NSTextField?
     private var errorLogStatusLabel: NSTextField?
     private var errorLogChevron: NSImageView?
@@ -1981,7 +1981,7 @@ class SettingsView: NSView {
         infoCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
 
         // Error log card — collapsed by default, expands to show the most
-        // recent diagnostic log so users can copy it into a bug report.
+        // recent crash report so users can copy it into a bug report.
         let errorLogCard = buildErrorLogCard()
         stack.addArrangedSubview(errorLogCard)
         errorLogCard.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
@@ -2187,7 +2187,7 @@ class SettingsView: NSView {
         }
     }
 
-    /// Reads the latest diagnostic log into the text view on first expansion.
+    /// Reads the latest crash report into the text view on first expansion.
     private func loadErrorLogIfNeeded() {
         guard !errorLogLoaded else { return }
         renderErrorLogContent()
@@ -2216,7 +2216,7 @@ class SettingsView: NSView {
         }
     }
 
-    /// Syncs the header status label to whether a diagnostic log exists.
+    /// Syncs the header status label to whether a crash report exists.
     private func refreshErrorLogStatus() {
         errorLogEntry = CrashLogReader.latestLogFile()
         guard let label = errorLogStatusLabel else { return }
@@ -2237,7 +2237,7 @@ class SettingsView: NSView {
         }
     }
 
-    /// Copies the diagnostic log to the clipboard, flashing the button as feedback.
+    /// Copies the crash report to the clipboard, flashing the button as feedback.
     @objc private func copyErrorLog() {
         guard errorLogEntry != nil,
               let text = errorLogTextView?.string, !text.isEmpty else { return }
@@ -2254,7 +2254,7 @@ class SettingsView: NSView {
         }
     }
 
-    /// Reveals the diagnostic log file in Finder.
+    /// Reveals the crash report file in Finder.
     @objc private func revealErrorLog() {
         guard let url = errorLogEntry?.url else { return }
         NSWorkspace.shared.activateFileViewerSelecting([url])
@@ -2265,7 +2265,7 @@ class SettingsView: NSView {
         reloadErrorLogFromDisk()
     }
 
-    /// Deletes all capcap diagnostic logs and resets the visible error-log UI.
+    /// Deletes all capcap crash reports and resets the visible error-log UI.
     @objc private func clearErrorLog() {
         CrashLogReader.deleteAllLogs()
         errorLogEntry = nil

@@ -186,8 +186,7 @@ final class OverlayPanelPool {
             ) else { return }
             self.finishWarmup(
                 panel: panel,
-                displayID: displayID,
-                timedOut: false
+                displayID: displayID
             )
         }
         panel.contentView = warmupView
@@ -198,8 +197,7 @@ final class OverlayPanelPool {
             guard let panel else { return }
             self?.finishWarmup(
                 panel: panel,
-                displayID: displayID,
-                timedOut: true
+                displayID: displayID
             )
         }
         warmupTimeoutsByDisplayID[displayID] = timeout
@@ -218,22 +216,12 @@ final class OverlayPanelPool {
 
     private func finishWarmup(
         panel: OverlayPanel,
-        displayID: CGDirectDisplayID,
-        timedOut: Bool
+        displayID: CGDirectDisplayID
     ) {
         guard warmingPanelsByDisplayID[displayID] === panel else { return }
         _ = takeWarmingPanel(displayID: displayID)
         resetForStorage(panel)
         storePooled(panel, displayID: displayID)
-
-        guard timedOut else { return }
-        DispatchQueue.global(qos: .utility).async {
-            DiagnosticLog.log(
-                "overlay-prewarm",
-                "presentation-surface-timeout",
-                metadata: ["displayID": displayID]
-            )
-        }
     }
 
     private func storePooled(_ panel: OverlayPanel, displayID: CGDirectDisplayID) {

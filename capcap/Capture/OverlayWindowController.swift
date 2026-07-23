@@ -404,8 +404,8 @@ class OverlayWindowController {
                     for selectionView in self.selectionViewsByDisplayID.values {
                         selectionView.refreshHoverAtCurrentMouseLocation()
                     }
-                case .failure(let error):
-                    self.logPreparationFailure("window-enumeration", error: error)
+                case .failure:
+                    break
                 }
             }
         }
@@ -425,9 +425,8 @@ class OverlayWindowController {
                 )
             }
             resumePendingSelectionIfReady(displayID: displayID)
-        case .failure(let displayID, let error):
+        case .failure(let displayID, _):
             failedSnapshotDisplayIDs.insert(displayID)
-            logPreparationFailure("screen-snapshot-\(displayID)", error: error)
             if pendingSelection?.displayID == displayID {
                 finishSelectionCaptureFailure()
             }
@@ -437,17 +436,6 @@ class OverlayWindowController {
                screenSnapshots[pendingSelection.displayID] == nil {
                 finishSelectionCaptureFailure()
             }
-        }
-    }
-
-    private func logPreparationFailure(_ operation: String, error: Error) {
-        let message = String(describing: error)
-        DispatchQueue.global(qos: .utility).async {
-            DiagnosticLog.log(
-                "overlay-prepare",
-                "async-preparation-failed",
-                metadata: ["operation": operation, "error": message]
-            )
         }
     }
 
@@ -1205,8 +1193,7 @@ extension OverlayWindowController: SelectionViewDelegate {
                 preSnapshot: preSnapshot,
                 directWindowImage: image
             )
-        case .failure(let error):
-            logPreparationFailure("window-snapshot-\(request.windowID ?? 0)", error: error)
+        case .failure:
             finishInitialSelection(
                 request,
                 preSnapshot: preSnapshot,

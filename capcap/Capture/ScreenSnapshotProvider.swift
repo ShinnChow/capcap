@@ -45,9 +45,7 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
                     processID: processID,
                     cacheEpoch: cacheEpoch
                 )
-            } catch {
-                NSLog("capcap: Screen snapshot prewarm failed: \(error)")
-            }
+            } catch {}
         }
     }
 
@@ -64,9 +62,7 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
                 )
             } catch is CancellationError {
                 return
-            } catch {
-                NSLog("capcap: Screen snapshot metadata refresh failed: \(error)")
-            }
+            } catch {}
         }
     }
 
