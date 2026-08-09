@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "항목 %d개 삭제";
 "historyPanelDeletedSelectedOne" = "항목 %d개 삭제됨";
 "historyPanelDeletedSelected" = "항목 %d개 삭제됨";
+"historyPanelLockFailed" = "잠금을 변경할 수 없습니다";
+"historyClearedKeptLockedOne" = "기록을 삭제했으며 잠긴 항목 %d개를 유지했습니다";
+"historyClearedKeptLocked" = "기록을 삭제했으며 잠긴 항목 %d개를 유지했습니다";
 "historyPanelFilterAll" = "전체";
 "historyPanelFilterScreenshots" = "스크린샷";
 "historyPanelFilterGIF" = "GIF";

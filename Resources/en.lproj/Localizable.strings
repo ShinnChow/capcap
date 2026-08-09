@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "Delete %d Items";
 "historyPanelDeletedSelectedOne" = "Deleted %d Item";
 "historyPanelDeletedSelected" = "Deleted %d Items";
+"historyPanelLockFailed" = "Could not change lock";
+"historyClearedKeptLockedOne" = "History cleared, %d locked item kept";
+"historyClearedKeptLocked" = "History cleared, %d locked items kept";
 "historyPanelFilterAll" = "All";
 "historyPanelFilterScreenshots" = "Screenshots";
 "historyPanelFilterGIF" = "GIF";

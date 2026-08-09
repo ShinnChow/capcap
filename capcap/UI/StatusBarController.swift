@@ -421,7 +421,7 @@ class StatusBarController: NSObject {
     }
 
     @objc private func clearHistoryClicked() {
-        HistoryManager.shared.clearAll {
+        HistoryManager.shared.clearAll { _ in
             ToastWindow.show(message: L10n.historyCleared)
         }
     }

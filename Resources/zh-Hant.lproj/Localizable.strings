@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "刪除 %d 個項目";
 "historyPanelDeletedSelectedOne" = "已刪除 %d 個項目";
 "historyPanelDeletedSelected" = "已刪除 %d 個項目";
+"historyPanelLockFailed" = "無法更改鎖定";
+"historyClearedKeptLockedOne" = "已清除歷史記錄，保留了 %d 個已鎖定項";
+"historyClearedKeptLocked" = "已清除歷史記錄，保留了 %d 個已鎖定項";
 "historyPanelFilterAll" = "全部";
 "historyPanelFilterScreenshots" = "截圖";
 "historyPanelFilterGIF" = "GIF";
