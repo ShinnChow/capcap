@@ -78,7 +78,7 @@ final class HistoryRetentionPolicyTests: XCTestCase {
         let old    = try makeFile(name: "old.png",    contents: Data([0x02]), age: 30)
         let newer  = try makeFile(name: "newer.png",  contents: Data([0x03]), age: 20)
         let newest = try makeFile(name: "newest.png", contents: Data([0x04]), age: 10)
-        HistoryManager.setLocked(true, on: oldest)
+        XCTAssertTrue(HistoryManager.setLocked(true, on: oldest))
 
         // limit 2 keeps the 2 newest non-locked; `oldest` is locked and therefore exempt + preserved.
         XCTAssertEqual(HistoryRetentionPolicy.pruneMedia(in: directoryURL, limit: 2), 1)
@@ -95,7 +95,7 @@ final class HistoryRetentionPolicyTests: XCTestCase {
         let old    = try makeFile(name: "old.txt",    contents: Data("old".utf8), age: 30)
         let newer  = try makeFile(name: "newer.txt",  contents: Data("newer".utf8), age: 20)
         let newest = try makeFile(name: "newest.txt", contents: Data("newest".utf8), age: 10)
-        HistoryManager.setLocked(true, on: oldest)
+        XCTAssertTrue(HistoryManager.setLocked(true, on: oldest))
 
         // limit 2 keeps the 2 newest non-locked text files; `oldest` is locked → exempt + preserved.
         XCTAssertEqual(HistoryRetentionPolicy.pruneText(in: directoryURL, limit: 2), 1)
