@@ -88,6 +88,7 @@ class OverlayWindowController {
     private let snapshotProvider: ScreenSnapshotProviding
     private let eventTrackingStateProvider: () -> Bool
     private let eventTrackingDismissal: () -> Void
+    private let colorSamplerActiveProvider: () -> Bool
     private let modalWindowProvider: () -> NSWindow?
     private let modalWindowDismissal: (NSWindow) -> Void
     private let triggerContext: CaptureTriggerContext?
@@ -242,6 +243,9 @@ class OverlayWindowController {
         eventTrackingDismissal: @escaping () -> Void = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         },
+        colorSamplerActiveProvider: @escaping () -> Bool = {
+            ColorPickerRunner.shared.isActive
+        },
         modalWindowProvider: @escaping () -> NSWindow? = {
             OverlayWindowController.currentApplicationModalWindow()
         },
@@ -265,6 +269,7 @@ class OverlayWindowController {
         self.windowImageLoader = windowImageLoader
         self.eventTrackingStateProvider = eventTrackingStateProvider
         self.eventTrackingDismissal = eventTrackingDismissal
+        self.colorSamplerActiveProvider = colorSamplerActiveProvider
         self.modalWindowProvider = modalWindowProvider
         self.modalWindowDismissal = modalWindowDismissal
         self.onFirstFramePresented = onFirstFramePresented
@@ -302,6 +307,7 @@ class OverlayWindowController {
         self.eventTrackingDismissal = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
+        self.colorSamplerActiveProvider = { ColorPickerRunner.shared.isActive }
         self.modalWindowProvider = {
             OverlayWindowController.currentApplicationModalWindow()
         }
@@ -342,6 +348,7 @@ class OverlayWindowController {
         self.eventTrackingDismissal = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
+        self.colorSamplerActiveProvider = { ColorPickerRunner.shared.isActive }
         self.modalWindowProvider = {
             OverlayWindowController.currentApplicationModalWindow()
         }
@@ -707,6 +714,9 @@ class OverlayWindowController {
                 return nil
             }
             if event.keyCode == 53 { // Escape
+                if self?.colorSamplerActiveProvider() == true {
+                    return event
+                }
                 self?.cancel()
                 return nil
             }
@@ -738,6 +748,7 @@ class OverlayWindowController {
                 return
             }
             if event.keyCode == 53 {
+                guard self?.colorSamplerActiveProvider() != true else { return }
                 self?.cancel()
             }
         }
