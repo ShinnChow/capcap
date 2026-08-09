@@ -107,3 +107,36 @@ final class HistoryCloudBadgeView: NSView {
         nil
     }
 }
+
+final class HistoryLockBadgeView: NSView {
+    private let label = NSTextField(labelWithString: "🔒")
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = true
+        layer?.backgroundColor = NSColor.clear.cgColor
+
+        label.font = NSFont.systemFont(ofSize: 15, weight: .regular)
+        label.alignment = .center
+        label.isSelectable = false
+        label.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(label)
+
+        NSLayoutConstraint.activate([
+            label.centerXAnchor.constraint(equalTo: centerXAnchor),
+            label.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -0.5)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        NSSize(width: 24, height: 22)
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+}

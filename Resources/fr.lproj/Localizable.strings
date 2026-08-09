@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "Supprimer %d éléments";
 "historyPanelDeletedSelectedOne" = "%d élément supprimé";
 "historyPanelDeletedSelected" = "%d éléments supprimés";
+"historyPanelLockFailed" = "Impossible de changer le verrouillage";
+"historyClearedKeptLockedOne" = "Historique effacé, %d élément verrouillé conservé";
+"historyClearedKeptLocked" = "Historique effacé, %d éléments verrouillés conservés";
 "historyPanelFilterAll" = "Tout";
 "historyPanelFilterScreenshots" = "Captures";
 "historyPanelFilterGIF" = "GIF";

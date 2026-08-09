@@ -527,15 +527,15 @@ final class HistoryManager {
         return NSImage(contentsOf: entry.fileURL)
     }
 
-    func clearAll(completion: (() -> Void)? = nil) {
+    func clearAll(completion: ((Int) -> Void)? = nil) {
         queue.async { [weak self] in
             guard let self = self else { return }
-            self.removeAllEntries(includeRecordingMedia: true)
+            let keptCount = self.removeAllEntries(includeRecordingMedia: true)
             self.clearCopiedEntryPromotions()
             self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
-                completion?()
+                completion?(keptCount)
             }
         }
     }
@@ -678,11 +678,34 @@ final class HistoryManager {
         try? data.write(to: copiedEntryPromotionsURL, options: .atomic)
     }
 
-    private func removeAllEntries(includeRecordingMedia: Bool) {
+    @discardableResult
+    private func removeAllEntries(includeRecordingMedia: Bool) -> Int {
         let fm = FileManager.default
-        for url in fileURLsToRemove(includeRecordingMedia: includeRecordingMedia) {
+        let candidates = fileURLsToRemove(includeRecordingMedia: includeRecordingMedia)
+        let decision = Self.partitionEntriesForRemoval(candidates)
+        for url in decision.remove {
             try? fm.removeItem(at: url)
         }
+        return decision.keptCount
+    }
+
+    /// Partitions `candidates` into the entries "delete all history" may remove
+    /// and the count it must keep. A locked entry is never removed by the bulk
+    /// path, so it stays out of `remove` and is counted in `keptCount`. Pure and
+    /// `@testable`-visible so the bulk decision can be exercised headlessly
+    /// without driving the shared `HistoryManager` directory. Delete-selected
+    /// (`remove(_:)`) and the Settings cache toggle intentionally bypass this.
+    static func partitionEntriesForRemoval(_ candidates: [URL]) -> (remove: [URL], keptCount: Int) {
+        var remove: [URL] = []
+        var keptCount = 0
+        for url in candidates {
+            if isLocked(url: url) {
+                keptCount += 1
+            } else {
+                remove.append(url)
+            }
+        }
+        return (remove, keptCount)
     }
 
     private func removeStoredHistoryEntries(withExtensions extensions: Set<String>) {
@@ -769,19 +792,28 @@ final class HistoryManager {
         }
     }
 
-    /// Marks `fileURL` as locked so retention pruning leaves it untouched and it
-    /// does not consume a slot in the count/byte cap. Mirrors the cloudURL xattr
-    /// helpers: persistence is centralized here so retention stays a pure read.
-    static func setLocked(_ locked: Bool, on fileURL: URL) {
-        fileURL.withUnsafeFileSystemRepresentation { fsPath in
-            guard let fsPath = fsPath else { return }
+    /// Marks `fileURL` as locked (`true`) or unlocked (`false`) by setting or
+    /// removing the `com.capcap.locked` extended attribute, mirroring the
+    /// cloudURL xattr helpers so retention pruning stays a pure read.
+    ///
+    /// Returns whether the on-disk state now matches the requested state:
+    /// locking succeeds when `setxattr` writes the marker; unlocking succeeds
+    /// when the attribute is removed OR when it was already absent (`ENOATTR`),
+    /// because an already-unlocked file is the requested state, not a failure.
+    /// Any other failure (missing path, permission denied, …) returns `false`.
+    @discardableResult
+    static func setLocked(_ locked: Bool, on fileURL: URL) -> Bool {
+        fileURL.withUnsafeFileSystemRepresentation { fsPath -> Bool in
+            guard let fsPath = fsPath else { return false }
             if locked {
                 let marker = "1"
-                marker.withCString { cstr in
-                    _ = setxattr(fsPath, lockedXattrKey, cstr, strlen(cstr), 0, 0)
+                return marker.withCString { cstr in
+                    setxattr(fsPath, lockedXattrKey, cstr, strlen(cstr), 0, 0) == 0
                 }
             } else {
-                _ = removexattr(fsPath, lockedXattrKey, 0)
+                if removexattr(fsPath, lockedXattrKey, 0) == 0 { return true }
+                let reason = errno
+                return reason == ENOATTR
             }
         }
     }

@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "%d件の項目を削除";
 "historyPanelDeletedSelectedOne" = "%d件の項目を削除しました";
 "historyPanelDeletedSelected" = "%d件の項目を削除しました";
+"historyPanelLockFailed" = "ロックを変更できません";
+"historyClearedKeptLockedOne" = "履歴を削除しました、%d件のロック済み項目を保持";
+"historyClearedKeptLocked" = "履歴を削除しました、%d件のロック済み項目を保持";
 "historyPanelFilterAll" = "すべて";
 "historyPanelFilterScreenshots" = "スクリーンショット";
 "historyPanelFilterGIF" = "GIF";

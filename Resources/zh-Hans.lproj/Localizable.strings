@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "删除%d个项目";
 "historyPanelDeletedSelectedOne" = "已删除%d个项目";
 "historyPanelDeletedSelected" = "已删除%d个项目";
+"historyPanelLockFailed" = "无法更改锁定";
+"historyClearedKeptLockedOne" = "已清除历史记录，保留了 %d 个已锁定项";
+"historyClearedKeptLocked" = "已清除历史记录，保留了 %d 个已锁定项";
 "historyPanelFilterAll" = "全部";
 "historyPanelFilterScreenshots" = "截图";
 "historyPanelFilterGIF" = "GIF";

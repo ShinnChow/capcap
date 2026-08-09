@@ -1554,8 +1554,12 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
                 }
                 clearSelection()
             } else {
-                HistoryManager.shared.clearAll {
-                    ToastWindow.show(message: L10n.historyCleared)
+                HistoryManager.shared.clearAll { keptCount in
+                    if keptCount > 0 {
+                        ToastWindow.show(message: L10n.historyClearedKeptLocked(keptCount))
+                    } else {
+                        ToastWindow.show(message: L10n.historyCleared)
+                    }
                 }
             }
             onRequestDismiss?()
@@ -3610,6 +3614,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private let textPreviewLabel = HistoryPanelCenteredTextView()
     private let overlayLabel = HistoryPanelCenteredTextView()
     private let cloudBadgeView = HistoryCloudBadgeView()
+    private let lockBadgeView = HistoryLockBadgeView()
     private let cloudActionBarView = HistoryCloudActionBarView()
     private let badgeView = HistoryMediaBadgeView()
     private let selectionBadgeView = HistorySelectionBadgeView()
@@ -3690,6 +3695,9 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         cloudBadgeView.isHidden = entry.cloudURL == nil
         addSubview(cloudBadgeView)
 
+        lockBadgeView.isHidden = !HistoryManager.isLocked(url: entry.fileURL)
+        addSubview(lockBadgeView)
+
         cloudActionBarView.isHidden = true
         cloudActionBarView.alphaValue = 0
         addSubview(cloudActionBarView)
@@ -3747,8 +3755,13 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     @objc private func toggleLock() {
         let url = entry.fileURL
         let locked = !HistoryManager.isLocked(url: url)
-        HistoryManager.setLocked(locked, on: url)
-        ToastWindow.show(message: locked ? L10n.historyPanelItemLocked : L10n.historyPanelItemUnlocked)
+        if HistoryManager.setLocked(locked, on: url) {
+            ToastWindow.show(message: locked ? L10n.historyPanelItemLocked : L10n.historyPanelItemUnlocked)
+            lockBadgeView.isHidden = !locked
+            needsLayout = true
+        } else {
+            ToastWindow.show(message: L10n.historyPanelLockFailed)
+        }
     }
 
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -3803,6 +3816,15 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
                 y: imageView.frame.maxY - badgeSize.height - 7,
                 width: badgeSize.width,
                 height: badgeSize.height
+            )
+        }
+        if !lockBadgeView.isHidden {
+            let lockSize = lockBadgeView.intrinsicContentSize
+            lockBadgeView.frame = NSRect(
+                x: imageView.frame.maxX - lockSize.width - 7,
+                y: imageView.frame.maxY - lockSize.height - 7,
+                width: lockSize.width,
+                height: lockSize.height
             )
         }
         metaLabel.frame = NSRect(
@@ -3904,6 +3926,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         overlayLabel.alphaValue = 0
 
         cloudBadgeView.isHidden = entry.cloudURL == nil
+        lockBadgeView.isHidden = !HistoryManager.isLocked(url: entry.fileURL)
         cloudActionBarView.isHidden = true
         cloudActionBarView.alphaValue = 0
         cloudActionBarView.setPressedActionKind(nil)

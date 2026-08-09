@@ -138,6 +138,9 @@
 "historyPanelDeleteSelected" = "Удалить объектов: %d";
 "historyPanelDeletedSelectedOne" = "Удалён %d объект";
 "historyPanelDeletedSelected" = "Удалено объектов: %d";
+"historyPanelLockFailed" = "Не удалось изменить блокировку";
+"historyClearedKeptLockedOne" = "История очищена, сохранён %d заблокированный объект";
+"historyClearedKeptLocked" = "История очищена, сохранено заблокированных объектов: %d";
 "historyPanelFilterAll" = "Все";
 "historyPanelFilterScreenshots" = "Снимки";
 "historyPanelFilterGIF" = "GIF";
