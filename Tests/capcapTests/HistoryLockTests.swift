@@ -78,7 +78,7 @@ final class HistoryLockTests: XCTestCase {
         let candidates = [locked, plain]
         let decision = HistoryManager.partitionEntriesForRemoval(candidates)
 
-        XCTAssertEqual(decision.keptCount, 1)
+        XCTAssertEqual(decision.kept, [locked])
         XCTAssertEqual(decision.remove, [plain])
 
         // Performing the removal the way production does leaves the locked file on disk.
