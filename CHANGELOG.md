@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.5] - 2026-08-10
+
+### Added
+- Allow popup menus as capture targets (6cad61e)
+
+### Fixed
+- Keep the drawing cursor visible while annotating (3bd9884)
+- Round odd capture dimensions up to even values (da46954)
+- Preserve real-time GIF duration for non-multiple source frame rates (915387b)
+- Remove the blank strip from window-snap captures (5548cb7)
+- Defer overlay presentation until modal capture is ready (c1fd78f)
+- Improve drawing cursor and color picker exit behavior (c9d6c71)
+
+### Changed
+- Make external recording compatibility the default (f5e6dc4)
+- Switch the magnifier color format shortcut to F (7fc5ed6)
+
 ## [1.7.4] - 2026-08-07
 
 ### Fixed
