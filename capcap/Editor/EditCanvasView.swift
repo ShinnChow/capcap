@@ -68,6 +68,18 @@ class EditCanvasView: NSView {
     /// (without it, normal screenshots show only gradient because the editor
     /// overlay is transparent over the desktop passthrough).
     var externalBaseImage: NSImage?
+    /// Normal editing sits above the frozen desktop snapshot. Give images
+    /// with an alpha channel an opaque, preview-only surface so their
+    /// translucent pixels are composited exactly once instead of revealing
+    /// the original window (and its shadow) underneath. Beautify disables
+    /// this because its container supplies the intended preview background.
+    var drawsTransparencyBackdrop = true {
+        didSet {
+            if oldValue != drawsTransparencyBackdrop {
+                needsDisplay = true
+            }
+        }
+    }
 
     // Current drawing properties (set by toolbar)
     var currentColor: NSColor = EditorStyleDefaults.primaryColor {
@@ -1527,6 +1539,9 @@ class EditCanvasView: NSView {
         }
 
         if let image = previewImage ?? externalBaseImage ?? overrideBaseImage ?? windowBaseImage {
+            if drawsTransparencyBackdrop, Self.hasAlphaChannel(image) {
+                BeautifyRenderer.drawCheckerboard(in: bounds)
+            }
             image.draw(in: NSRect(origin: .zero, size: bounds.size))
         }
 
@@ -1712,6 +1727,16 @@ class EditCanvasView: NSView {
 
         if didClip {
             context.restoreGState()
+        }
+    }
+
+    static func hasAlphaChannel(_ image: NSImage) -> Bool {
+        guard let cgImage = image.cgImagePreservingBacking() else { return false }
+        switch cgImage.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast:
+            return false
+        default:
+            return true
         }
     }
 

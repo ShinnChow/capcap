@@ -164,7 +164,13 @@ enum PinLauncher {
         window.backgroundColor = .clear
         window.isMovableByWindowBackground = false
         window.acceptsMouseMovedEvents = true
-        window.hasShadow = true
+        // A transparent image already owns its visible silhouette (and window
+        // captures commonly include their own soft shadow inside transparent
+        // padding). Asking WindowServer for another shadow outlines the pin's
+        // rectangular backing window, leaving a dark seam just outside the
+        // image's original shadow. Keep the native lift for opaque screenshots
+        // only; transparent pins must composite exactly as their pixels specify.
+        window.hasShadow = shouldUseSystemWindowShadow(for: image)
         window.isReleasedWhenClosed = false
         window.pinSource = source
 
@@ -231,6 +237,64 @@ enum PinLauncher {
               image.size.width > 0, image.size.height > 0
         else { return nil }
         return image
+    }
+
+    static func shouldUseSystemWindowShadow(for image: NSImage) -> Bool {
+        guard let cgImage = image.cgImagePreservingBacking() else { return true }
+
+        switch cgImage.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast:
+            return true
+        default:
+            break
+        }
+
+        let maxX = cgImage.width - 1
+        let maxY = cgImage.height - 1
+        guard maxX >= 0, maxY >= 0 else { return true }
+
+        let samplePoints = [
+            CGPoint(x: 0, y: 0),
+            CGPoint(x: maxX, y: 0),
+            CGPoint(x: 0, y: maxY),
+            CGPoint(x: maxX, y: maxY),
+            CGPoint(x: maxX / 2, y: 0),
+            CGPoint(x: maxX / 2, y: maxY),
+            CGPoint(x: 0, y: maxY / 2),
+            CGPoint(x: maxX, y: maxY / 2),
+        ]
+
+        for point in samplePoints {
+            guard let alpha = alphaValue(in: cgImage, at: point) else { return true }
+            if alpha < 255 {
+                return false
+            }
+        }
+        return true
+    }
+
+    private static func alphaValue(in image: CGImage, at point: CGPoint) -> UInt8? {
+        guard let pixelImage = image.cropping(to: CGRect(origin: point, size: CGSize(width: 1, height: 1))) else {
+            return nil
+        }
+
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let didDraw = pixel.withUnsafeMutableBytes { bytes -> Bool in
+            guard let context = CGContext(
+                data: bytes.baseAddress,
+                width: 1,
+                height: 1,
+                bitsPerComponent: 8,
+                bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                return false
+            }
+            context.draw(pixelImage, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return true
+        }
+        return didDraw ? pixel[3] : nil
     }
 
     /// Scales `size` down to fit within the active screen (with a margin),
