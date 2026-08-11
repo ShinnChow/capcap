@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Keep the PIN toolbar aligned with screenshot content when images include transparent shadow padding
 - Replace the PIN move control with copy and cross-app image drag actions, and reduce the close control size
-- Keep PIN close and zoom controls readable at small scales with adaptive button hiding and balanced icon sizing
+- Keep PIN close and zoom controls readable at small scales with adaptive button hiding, balanced icon sizing, and a plain red close symbol
 
 ## [1.7.5] - 2026-08-10
 
