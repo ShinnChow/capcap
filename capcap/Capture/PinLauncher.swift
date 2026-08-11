@@ -2066,7 +2066,6 @@ final class PinToolbarView: NSView {
     static let preferredWidth: CGFloat = 202
     static let preferredHeight = FloatingControlChrome.height
     static let iconButtonSide: CGFloat = 24
-    static let closeVisualSide: CGFloat = 18
     static let zoomMinimumWidth: CGFloat = 40
 
     private static let horizontalInset: CGFloat = 6
@@ -2116,8 +2115,7 @@ final class PinToolbarView: NSView {
         symbolName: "xmark",
         accessibilityLabel: L10n.pinToolbarClose,
         style: .destructive,
-        symbolPointSize: 10,
-        destructiveBackgroundSide: closeVisualSide
+        symbolPointSize: 14
     )
     private var trackingArea: NSTrackingArea?
 
@@ -2369,17 +2367,14 @@ private class PinToolbarIconButton: NSButton {
         didSet { updateAppearance() }
     }
     private let style: Style
-    private let destructiveBackgroundSide: CGFloat?
 
     init(
         symbolName: String,
         accessibilityLabel: String,
         style: Style = .standard,
-        symbolPointSize: CGFloat = 12,
-        destructiveBackgroundSide: CGFloat? = nil
+        symbolPointSize: CGFloat = 12
     ) {
         self.style = style
-        self.destructiveBackgroundSide = destructiveBackgroundSide
         super.init(frame: .zero)
         title = ""
         isBordered = false
@@ -2413,21 +2408,6 @@ private class PinToolbarIconButton: NSButton {
         updateAppearance()
     }
 
-    override func draw(_ dirtyRect: NSRect) {
-        if style == .destructive, let destructiveBackgroundSide {
-            let side = min(destructiveBackgroundSide, bounds.width, bounds.height)
-            let rect = NSRect(
-                x: bounds.midX - side / 2,
-                y: bounds.midY - side / 2,
-                width: side,
-                height: side
-            )
-            NSColor.systemRed.withAlphaComponent(0.92).setFill()
-            NSBezierPath(ovalIn: rect).fill()
-        }
-        super.draw(dirtyRect)
-    }
-
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
         true
     }
@@ -2449,16 +2429,8 @@ private class PinToolbarIconButton: NSButton {
                 for: effectiveAppearance
             )
         case .destructive:
-            contentTintColor = .white
-            if destructiveBackgroundSide == nil {
-                layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
-                    NSColor.systemRed.withAlphaComponent(0.92),
-                    for: effectiveAppearance
-                )
-            } else {
-                layer?.backgroundColor = NSColor.clear.cgColor
-                needsDisplay = true
-            }
+            contentTintColor = .systemRed
+            layer?.backgroundColor = NSColor.clear.cgColor
         }
     }
 }

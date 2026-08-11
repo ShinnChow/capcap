@@ -167,7 +167,9 @@ final class PinWindowInteractionTests: XCTestCase {
         XCTAssertTrue(labels.contains(L10n.pinToolbarDrag))
         XCTAssertFalse(labels.contains("Move pinned image"))
         XCTAssertEqual(closeButton.frame.size, copyButton.frame.size)
-        XCTAssertLessThan(PinToolbarView.closeVisualSide, PinToolbarView.iconButtonSide)
+        XCTAssertEqual(closeButton.contentTintColor, .systemRed)
+        let closeBackground = try XCTUnwrap(closeButton.layer?.backgroundColor)
+        XCTAssertEqual(closeBackground.alpha, 0, accuracy: 0.001)
         XCTAssertTrue(didCopy)
     }
 
