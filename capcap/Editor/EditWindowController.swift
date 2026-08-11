@@ -4186,7 +4186,7 @@ private class MosaicSubToolbar: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     private func setup() {
-        var x = Self.leadingPad
+        let x = Self.leadingPad
         let midY = bounds.midY
 
         let s = HUDSlider(

@@ -4493,6 +4493,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private var videoPlayer: AVPlayer?
     private var currentIndex: Int
     private var loadGeneration = 0
+    private var windowSizingTask: Task<Void, Never>?
     private var placementScreen: NSScreen?
     var onClose: (() -> Void)?
 
@@ -4557,6 +4558,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     override func close() {
+        windowSizingTask?.cancel()
+        windowSizingTask = nil
         stopVideoPlayback()
         stopPreviewKeyMonitoring()
         stopActionHoverTracking()
@@ -4566,6 +4569,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     func windowWillClose(_ notification: Notification) {
+        windowSizingTask?.cancel()
+        windowSizingTask = nil
         stopVideoPlayback()
         stopPreviewKeyMonitoring()
         stopActionHoverTracking()
@@ -4838,6 +4843,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         on screen: NSScreen?,
         animated: Bool
     ) {
+        windowSizingTask?.cancel()
+        windowSizingTask = nil
         guard let window,
               let targetScreen = screen ?? window.screen ?? NSScreen.main ?? NSScreen.screens.first else { return }
         let visibleFrame = targetScreen.visibleFrame
@@ -4853,9 +4860,29 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
             return
         }
-        let pixelSize = Self.pixelSize(for: entry)
+
+        if case .video = entry.kind {
+            let url = entry.fileURL
+            let expectedIndex = currentIndex
+            windowSizingTask = Task { @MainActor [weak self] in
+                guard let pixelSize = try? await VideoAssetMetadata.pixelSize(for: url),
+                      !Task.isCancelled,
+                      let self,
+                      self.currentIndex == expectedIndex else { return }
+                self.applyWindowFrame(pixelSize: pixelSize, on: targetScreen, animated: animated)
+            }
+            return
+        }
+
+        let pixelSize = Self.imagePixelSize(for: entry)
         guard pixelSize.width > 0, pixelSize.height > 0 else { return }
 
+        applyWindowFrame(pixelSize: pixelSize, on: targetScreen, animated: animated)
+    }
+
+    private func applyWindowFrame(pixelSize: NSSize, on targetScreen: NSScreen, animated: Bool) {
+        guard let window else { return }
+        let visibleFrame = targetScreen.visibleFrame
         let titlebarHeight = max(0, window.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 100, height: 100)).height - 100)
         let horizontalMargin = max(64, floor(visibleFrame.width * 0.08))
         let verticalMargin: CGFloat = 32
@@ -4887,14 +4914,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         window.setFrame(NSRect(origin: origin, size: frameSize), display: true, animate: animated)
     }
 
-    private static func pixelSize(for entry: HistoryEntry) -> NSSize {
-        if case .video = entry.kind {
-            let asset = AVURLAsset(url: entry.fileURL)
-            guard let track = asset.tracks(withMediaType: .video).first else { return .zero }
-            let transformedSize = track.naturalSize.applying(track.preferredTransform)
-            return NSSize(width: abs(transformedSize.width), height: abs(transformedSize.height))
-        }
-
+    private static func imagePixelSize(for entry: HistoryEntry) -> NSSize {
         let url = entry.fileURL
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
               let properties = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],

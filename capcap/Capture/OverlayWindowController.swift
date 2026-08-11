@@ -757,7 +757,7 @@ class OverlayWindowController {
         // legacy ⌘+C handling with a global monitor so it still fires when
         // another app is focused underneath.
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
+            _ = self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
         }
         mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             self?.refreshMagnifierLensPanelContent()
