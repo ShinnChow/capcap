@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Finder 이미지를 고정했습니다. X 키를 눌러 닫기";
 "pinFromClipboardHint" = "클립보드 이미지를 고정했습니다. X 키를 눌러 닫기";
 "pinFromClipboardTextHint" = "클립보드 텍스트를 고정했습니다. 더블 클릭하여 편집";
+"pinToolbarClose" = "고정 이미지 닫기";
+"pinToolbarCopy" = "고정 이미지 복사";
+"pinToolbarDrag" = "고정 이미지 드래그";
 "pinToolbarEdit" = "고정 이미지 편집";
 "pinToolbarEditText" = "텍스트 편집";
 

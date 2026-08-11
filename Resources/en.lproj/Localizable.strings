@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Pinned Finder image, press X to close";
 "pinFromClipboardHint" = "Pinned clipboard image, press X to close";
 "pinFromClipboardTextHint" = "Pinned clipboard text, double-click to edit";
+"pinToolbarClose" = "Close pinned image";
+"pinToolbarCopy" = "Copy pinned image";
+"pinToolbarDrag" = "Drag pinned image";
 "pinToolbarEdit" = "Edit pinned image";
 "pinToolbarEditText" = "Edit text";
 

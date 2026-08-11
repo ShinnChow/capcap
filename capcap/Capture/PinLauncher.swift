@@ -928,6 +928,12 @@ private enum PinZoom {
 }
 
 enum PinImageLayout {
+    static let fullNormalizedContentRect = NSRect(x: 0, y: 0, width: 1, height: 1)
+
+    private static let contentAnalysisMaxPixelDimension = 1024
+    private static let contentAlphaThreshold: UInt8 = 250
+    private static let requiredOpaqueCoverage = 0.5
+
     static func scaledSize(baseSize: NSSize, scale: CGFloat) -> NSSize {
         guard baseSize.width > 0, baseSize.height > 0, scale > 0 else { return .zero }
         return NSSize(
@@ -966,6 +972,97 @@ enum PinImageLayout {
         )
     }
 
+    /// Finds the mostly opaque rectangular body of an image while ignoring
+    /// transparent padding and soft screenshot shadows around its edges.
+    /// The returned rect uses AppKit's bottom-left coordinate system.
+    static func normalizedContentRect(for source: CGImage) -> NSRect {
+        switch source.alphaInfo {
+        case .none, .noneSkipFirst, .noneSkipLast:
+            return fullNormalizedContentRect
+        default:
+            break
+        }
+
+        let longestEdge = max(source.width, source.height)
+        guard longestEdge > 0 else { return fullNormalizedContentRect }
+
+        let analysisScale = min(
+            1,
+            CGFloat(contentAnalysisMaxPixelDimension) / CGFloat(longestEdge)
+        )
+        let width = max(1, Int((CGFloat(source.width) * analysisScale).rounded()))
+        let height = max(1, Int((CGFloat(source.height) * analysisScale).rounded()))
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+
+        let didDraw = pixels.withUnsafeMutableBytes { bytes -> Bool in
+            guard let context = CGContext(
+                data: bytes.baseAddress,
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bytesPerRow: width * 4,
+                space: CGColorSpaceCreateDeviceRGB(),
+                bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+            ) else {
+                return false
+            }
+
+            context.interpolationQuality = .medium
+            context.draw(source, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard didDraw else { return fullNormalizedContentRect }
+
+        var opaquePixelsByColumn = [Int](repeating: 0, count: width)
+        var opaquePixelsByRow = [Int](repeating: 0, count: height)
+        for y in 0..<height {
+            for x in 0..<width {
+                let alpha = pixels[(y * width + x) * 4 + 3]
+                guard alpha >= contentAlphaThreshold else { continue }
+                opaquePixelsByColumn[x] += 1
+                opaquePixelsByRow[y] += 1
+            }
+        }
+
+        // A screenshot body spans most of both axes; isolated opaque artwork
+        // does not. This keeps transparent images from producing a misleading
+        // toolbar anchor while reliably excluding rectangular window shadows.
+        let requiredColumnCoverage = max(1, Int(ceil(CGFloat(height) * requiredOpaqueCoverage)))
+        let requiredRowCoverage = max(1, Int(ceil(CGFloat(width) * requiredOpaqueCoverage)))
+        guard let left = opaquePixelsByColumn.firstIndex(where: { $0 >= requiredColumnCoverage }),
+              let right = opaquePixelsByColumn.lastIndex(where: { $0 >= requiredColumnCoverage }),
+              let top = opaquePixelsByRow.firstIndex(where: { $0 >= requiredRowCoverage }),
+              let bottom = opaquePixelsByRow.lastIndex(where: { $0 >= requiredRowCoverage })
+        else {
+            return fullNormalizedContentRect
+        }
+
+        return NSRect(
+            x: CGFloat(left) / CGFloat(width),
+            y: CGFloat(height - bottom - 1) / CGFloat(height),
+            width: CGFloat(right - left + 1) / CGFloat(width),
+            height: CGFloat(bottom - top + 1) / CGFloat(height)
+        )
+    }
+
+    static func contentRect(
+        in bounds: NSRect,
+        normalizedContentRect: NSRect
+    ) -> NSRect {
+        let normalized = normalizedContentRect.standardized
+            .intersection(fullNormalizedContentRect)
+        guard !normalized.isNull, normalized.width > 0, normalized.height > 0 else {
+            return bounds
+        }
+
+        return NSRect(
+            x: bounds.minX + normalized.minX * bounds.width,
+            y: bounds.minY + normalized.minY * bounds.height,
+            width: normalized.width * bounds.width,
+            height: normalized.height * bounds.height
+        )
+    }
+
     static func toolbarFrame(
         in bounds: NSRect,
         preferredSize: NSSize,
@@ -981,6 +1078,55 @@ enum PinImageLayout {
             width: width,
             height: height
         )
+    }
+}
+
+struct PinImageDragPayload {
+    let pasteboardItem: NSPasteboardItem
+    let temporaryFileURL: URL
+
+    private static let defaultTemporaryDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent("capcap-pin-drag", isDirectory: true)
+
+    static func make(
+        from image: NSImage,
+        in directory: URL = defaultTemporaryDirectory
+    ) -> PinImageDragPayload? {
+        guard let pngData = image.pngDataPreservingBacking() else { return nil }
+
+        do {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+            let fileURL = directory.appendingPathComponent(
+                "capcap-pin-\(UUID().uuidString).png",
+                isDirectory: false
+            )
+            try pngData.write(to: fileURL, options: .atomic)
+
+            let pasteboardItem = NSPasteboardItem()
+            pasteboardItem.setString(fileURL.absoluteString, forType: .fileURL)
+            pasteboardItem.setData(pngData, forType: .png)
+            if let tiffData = image.tiffDataPreservingBacking() {
+                pasteboardItem.setData(tiffData, forType: .tiff)
+            }
+            return PinImageDragPayload(
+                pasteboardItem: pasteboardItem,
+                temporaryFileURL: fileURL
+            )
+        } catch {
+            return nil
+        }
+    }
+
+    static func removeTemporaryFile(
+        at fileURL: URL,
+        after delay: TimeInterval = 600
+    ) {
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) {
+            try? FileManager.default.removeItem(at: fileURL)
+        }
     }
 }
 
@@ -1047,7 +1193,7 @@ private enum PinInteractivePreviewRenderer {
     }
 }
 
-final class PinContentView: NSView {
+final class PinContentView: NSView, NSDraggingSource {
     var image: NSImage? {
         didSet {
             prepareInteractivePreview(for: image)
@@ -1092,6 +1238,8 @@ final class PinContentView: NSView {
     private var usesLowResolutionPreview: Bool {
         isZoomingInteractively || isWindowAnimating
     }
+    private var normalizedImageContentRect = PinImageLayout.fullNormalizedContentRect
+    private var dragTemporaryFileURLs: [ObjectIdentifier: URL] = [:]
     private var imageTrackingArea: NSTrackingArea?
     private var isToolbarVisible = false
     private var isOCRSelectionEnabled = false {
@@ -1152,9 +1300,11 @@ final class PinContentView: NSView {
         toolbar.onOCR = { [weak self] in
             self?.toggleOCRSelection()
         }
-        toolbar.onMoveMouseDown = { [weak self] event in
-            guard self?.usesLowResolutionPreview == false else { return }
-            self?.performPinWindowDrag(with: event)
+        toolbar.onCopy = { [weak self] in
+            self?.copyPinnedImage()
+        }
+        toolbar.onDrag = { [weak self] event in
+            self?.beginPinnedImageDrag(with: event)
         }
         toolbar.onResetZoom = { [weak self] in
             self?.resetZoomTo100Percent()
@@ -1172,6 +1322,49 @@ final class PinContentView: NSView {
             self?.handleMagnify(event, focusesAtEventLocation: false)
         }
         addSubview(toolbar)
+    }
+
+    private func copyPinnedImage() {
+        guard let image else { return }
+        ClipboardManager.copyToClipboard(image: image)
+        ToastWindow.show()
+    }
+
+    private func beginPinnedImageDrag(with event: NSEvent) {
+        guard !usesLowResolutionPreview,
+              let image,
+              let payload = PinImageDragPayload.make(from: image)
+        else {
+            return
+        }
+
+        let location = convert(event.locationInWindow, from: nil)
+        let imageSize = image.size
+        let previewScale: CGFloat
+        if imageSize.width > 0, imageSize.height > 0 {
+            previewScale = min(1, 180 / imageSize.width, 120 / imageSize.height)
+        } else {
+            previewScale = 1
+        }
+        let previewSize = NSSize(
+            width: max(1, imageSize.width * previewScale),
+            height: max(1, imageSize.height * previewScale)
+        )
+        let draggingItem = NSDraggingItem(pasteboardWriter: payload.pasteboardItem)
+        draggingItem.setDraggingFrame(
+            NSRect(
+                x: location.x - previewSize.width / 2,
+                y: location.y - previewSize.height / 2,
+                width: previewSize.width,
+                height: previewSize.height
+            ),
+            contents: image
+        )
+
+        let session = beginDraggingSession(with: [draggingItem], event: event, source: self)
+        session.draggingFormation = .none
+        session.animatesToStartingPositionsOnCancelOrFail = true
+        dragTemporaryFileURLs[ObjectIdentifier(session)] = payload.temporaryFileURL
     }
 
     private func editPinnedImage() {
@@ -1192,11 +1385,13 @@ final class PinContentView: NSView {
         let generation = UUID()
         interactivePreviewGeneration = generation
         interactivePreviewImage = nil
+        normalizedImageContentRect = PinImageLayout.fullNormalizedContentRect
 
         guard let image,
               let source = image.cgImagePreservingBacking()
         else { return }
 
+        normalizedImageContentRect = PinImageLayout.normalizedContentRect(for: source)
         let logicalSize = image.size
         PinInteractivePreviewRenderer.makePreview(from: source) { [weak self] preview in
             guard let self,
@@ -1430,6 +1625,26 @@ final class PinContentView: NSView {
 
     private func performPinWindowDrag(with event: NSEvent) {
         pinWindow?.performDrag(with: event)
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession,
+        sourceOperationMaskFor context: NSDraggingContext
+    ) -> NSDragOperation {
+        .copy
+    }
+
+    func draggingSession(
+        _ session: NSDraggingSession,
+        endedAt screenPoint: NSPoint,
+        operation: NSDragOperation
+    ) {
+        guard let fileURL = dragTemporaryFileURLs.removeValue(
+            forKey: ObjectIdentifier(session)
+        ) else {
+            return
+        }
+        PinImageDragPayload.removeTemporaryFile(at: fileURL)
     }
 
     override func scrollWheel(with event: NSEvent) {
@@ -1758,8 +1973,12 @@ final class PinContentView: NSView {
     }
 
     private func updateToolbarFrame() {
-        toolbar.frame = PinImageLayout.toolbarFrame(
+        let contentRect = PinImageLayout.contentRect(
             in: bounds,
+            normalizedContentRect: normalizedImageContentRect
+        )
+        toolbar.frame = PinImageLayout.toolbarFrame(
+            in: contentRect,
             preferredSize: NSSize(
                 width: PinToolbarView.preferredWidth,
                 height: PinToolbarView.preferredHeight
@@ -1844,12 +2063,19 @@ final class PinContentView: NSView {
 // MARK: - Pin Toolbar
 
 final class PinToolbarView: NSView {
-    static let preferredWidth: CGFloat = 174
+    static let preferredWidth: CGFloat = 202
     static let preferredHeight = FloatingControlChrome.height
+    static let iconButtonSide: CGFloat = 24
+    static let closeVisualSide: CGFloat = 18
+    static let zoomMinimumWidth: CGFloat = 40
+
+    private static let horizontalInset: CGFloat = 6
+    private static let itemGap: CGFloat = 4
 
     var onEdit: (() -> Void)?
     var onOCR: (() -> Void)?
-    var onMoveMouseDown: ((NSEvent) -> Void)?
+    var onCopy: (() -> Void)?
+    var onDrag: ((NSEvent) -> Void)?
     var onResetZoom: (() -> Void)?
     var onClose: (() -> Void)?
     var onPointerEvent: (() -> Void)?
@@ -1865,14 +2091,34 @@ final class PinToolbarView: NSView {
         }
     }
 
-    private let editButton = PinToolbarIconButton(symbolName: "pencil", accessibilityLabel: L10n.pinToolbarEdit)
-    private let ocrButton = PinToolbarIconButton(symbolName: "text.viewfinder", accessibilityLabel: L10n.tipOCR)
-    private let moveButton = PinToolbarMoveButton(symbolName: "arrow.up.and.down.and.arrow.left.and.right",
-                                                  accessibilityLabel: "Move pinned image")
+    private let editButton = PinToolbarIconButton(
+        symbolName: "pencil",
+        accessibilityLabel: L10n.pinToolbarEdit,
+        symbolPointSize: 14
+    )
+    private let ocrButton = PinToolbarIconButton(
+        symbolName: "text.viewfinder",
+        accessibilityLabel: L10n.tipOCR,
+        symbolPointSize: 14
+    )
+    private let copyButton = PinToolbarIconButton(
+        symbolName: "doc.on.doc",
+        accessibilityLabel: L10n.pinToolbarCopy,
+        symbolPointSize: 14
+    )
+    private let dragButton = PinToolbarDragButton(
+        symbolName: "cursorarrow.motionlines",
+        accessibilityLabel: L10n.pinToolbarDrag,
+        symbolPointSize: 14
+    )
     private let zoomLabel = PinToolbarZoomButton()
-    private let closeButton = PinToolbarIconButton(symbolName: "xmark",
-                                                   accessibilityLabel: "Close pinned image",
-                                                   style: .destructive)
+    private let closeButton = PinToolbarIconButton(
+        symbolName: "xmark",
+        accessibilityLabel: L10n.pinToolbarClose,
+        style: .destructive,
+        symbolPointSize: 10,
+        destructiveBackgroundSide: closeVisualSide
+    )
     private var trackingArea: NSTrackingArea?
 
     override init(frame frameRect: NSRect) {
@@ -1902,53 +2148,79 @@ final class PinToolbarView: NSView {
         ocrButton.toolTip = L10n.tipOCR
         ocrButton.target = self
         ocrButton.action = #selector(ocrTapped)
-        moveButton.onMouseDown = { [weak self] event in
-            self?.onMoveMouseDown?(event)
+        copyButton.toolTip = L10n.pinToolbarCopy
+        copyButton.target = self
+        copyButton.action = #selector(copyTapped)
+        dragButton.toolTip = L10n.pinToolbarDrag
+        dragButton.onDrag = { [weak self] event in
+            self?.onPointerEvent?()
+            self?.onDrag?(event)
         }
 
         zoomLabel.onClick = { [weak self] in
             self?.onResetZoom?()
         }
+        closeButton.toolTip = L10n.pinToolbarClose
         closeButton.target = self
         closeButton.action = #selector(closeTapped)
 
         zoomLabel.alignment = .center
 
         addSubview(closeButton)
-        addSubview(moveButton)
+        addSubview(dragButton)
         addSubview(editButton)
         addSubview(ocrButton)
+        addSubview(copyButton)
         addSubview(zoomLabel)
     }
 
     override func layout() {
         super.layout()
 
-        let horizontalInset = min(6, max(2, bounds.width / 24))
-        let gap = min(4, max(1, bounds.width / 50))
-        let labelWidth = min(48, max(24, bounds.width * 0.28))
-        let availableButtonWidth = max(
-            0,
-            bounds.width - horizontalInset * 2 - labelWidth - gap * 4
-        )
-        let buttonSide = min(
-            FloatingControlChrome.buttonSide,
-            max(0, availableButtonWidth / 4),
-            max(0, bounds.height - 4)
-        )
-        let buttonY = (bounds.height - buttonSide) / 2
-        var x = horizontalInset
-
-        for button in [closeButton, moveButton, editButton, ocrButton] {
-            button.frame = NSRect(x: x, y: buttonY, width: buttonSide, height: buttonSide)
-            x += buttonSide + gap
+        let optionalButtons = [dragButton, editButton, ocrButton, copyButton]
+        var hiddenButtonCount = 0
+        while hiddenButtonCount < optionalButtons.count,
+              Self.requiredWidth(
+                  optionalButtonCount: optionalButtons.count - hiddenButtonCount
+              ) > bounds.width {
+            hiddenButtonCount += 1
         }
+
+        for (index, button) in optionalButtons.enumerated() {
+            button.isHidden = index < hiddenButtonCount
+        }
+
+        let buttonSide = min(Self.iconButtonSide, max(0, bounds.height - 4))
+        let buttonY = (bounds.height - buttonSide) / 2
+        var x = Self.horizontalInset
+        closeButton.frame = NSRect(
+            x: x,
+            y: buttonY,
+            width: buttonSide,
+            height: buttonSide
+        )
+        x += buttonSide + Self.itemGap
+
+        for button in optionalButtons.dropFirst(hiddenButtonCount) {
+            button.frame = NSRect(x: x, y: buttonY, width: buttonSide, height: buttonSide)
+            x += buttonSide + Self.itemGap
+        }
+        zoomLabel.isHidden = false
         zoomLabel.frame = NSRect(
             x: x,
             y: max(0, buttonY + 4),
-            width: max(0, bounds.width - horizontalInset - x),
+            width: max(0, bounds.width - Self.horizontalInset - x),
             height: max(0, buttonSide - 8)
         )
+    }
+
+    private static func requiredWidth(optionalButtonCount: Int) -> CGFloat {
+        let iconCount = 1 + max(0, optionalButtonCount)
+        let gapCount = iconCount
+        return horizontalInset * 2
+            + CGFloat(iconCount) * iconButtonSide
+            + CGFloat(gapCount) * itemGap
+            + zoomMinimumWidth
     }
 
     override func viewDidChangeEffectiveAppearance() {
@@ -2027,6 +2299,10 @@ final class PinToolbarView: NSView {
         onOCR?()
     }
 
+    @objc private func copyTapped() {
+        onCopy?()
+    }
+
     @objc private func closeTapped() {
         onClose?()
     }
@@ -2093,13 +2369,17 @@ private class PinToolbarIconButton: NSButton {
         didSet { updateAppearance() }
     }
     private let style: Style
+    private let destructiveBackgroundSide: CGFloat?
 
     init(
         symbolName: String,
         accessibilityLabel: String,
-        style: Style = .standard
+        style: Style = .standard,
+        symbolPointSize: CGFloat = 12,
+        destructiveBackgroundSide: CGFloat? = nil
     ) {
         self.style = style
+        self.destructiveBackgroundSide = destructiveBackgroundSide
         super.init(frame: .zero)
         title = ""
         isBordered = false
@@ -2111,7 +2391,7 @@ private class PinToolbarIconButton: NSButton {
         setAccessibilityLabel(accessibilityLabel)
 
         if let image = NSImage(systemSymbolName: symbolName, accessibilityDescription: accessibilityLabel) {
-            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+            let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .semibold)
             self.image = image.withSymbolConfiguration(config)
         }
         updateAppearance()
@@ -2131,6 +2411,21 @@ private class PinToolbarIconButton: NSButton {
     override func viewDidChangeEffectiveAppearance() {
         super.viewDidChangeEffectiveAppearance()
         updateAppearance()
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        if style == .destructive, let destructiveBackgroundSide {
+            let side = min(destructiveBackgroundSide, bounds.width, bounds.height)
+            let rect = NSRect(
+                x: bounds.midX - side / 2,
+                y: bounds.midY - side / 2,
+                width: side,
+                height: side
+            )
+            NSColor.systemRed.withAlphaComponent(0.92).setFill()
+            NSBezierPath(ovalIn: rect).fill()
+        }
+        super.draw(dirtyRect)
     }
 
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool {
@@ -2155,19 +2450,46 @@ private class PinToolbarIconButton: NSButton {
             )
         case .destructive:
             contentTintColor = .white
-            layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
-                NSColor.systemRed.withAlphaComponent(0.92),
-                for: effectiveAppearance
-            )
+            if destructiveBackgroundSide == nil {
+                layer?.backgroundColor = AdaptiveChrome.resolvedCGColor(
+                    NSColor.systemRed.withAlphaComponent(0.92),
+                    for: effectiveAppearance
+                )
+            } else {
+                layer?.backgroundColor = NSColor.clear.cgColor
+                needsDisplay = true
+            }
         }
     }
 }
 
-private final class PinToolbarMoveButton: PinToolbarIconButton {
-    var onMouseDown: ((NSEvent) -> Void)?
+private final class PinToolbarDragButton: PinToolbarIconButton {
+    var onDrag: ((NSEvent) -> Void)?
+    private var mouseDownPoint: NSPoint?
+    private var didStartDrag = false
 
     override func mouseDown(with event: NSEvent) {
-        onMouseDown?(event)
+        mouseDownPoint = convert(event.locationInWindow, from: nil)
+        didStartDrag = false
+    }
+
+    override func mouseDragged(with event: NSEvent) {
+        guard !didStartDrag, let mouseDownPoint else { return }
+        let point = convert(event.locationInWindow, from: nil)
+        guard hypot(point.x - mouseDownPoint.x, point.y - mouseDownPoint.y) > 3 else {
+            return
+        }
+        didStartDrag = true
+        onDrag?(event)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        mouseDownPoint = nil
+        didStartDrag = false
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .openHand)
     }
 }
 
