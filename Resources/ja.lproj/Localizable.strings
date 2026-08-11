@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardTextHint" = "クリップボードのテキストをピン留めしました。ダブルクリックで編集";
+"pinToolbarClose" = "ピン留め画像を閉じる";
+"pinToolbarCopy" = "ピン留め画像をコピー";
+"pinToolbarDrag" = "ピン留め画像をドラッグ";
 "pinToolbarEdit" = "ピン留め画像を編集";
 "pinToolbarEditText" = "テキストを編集";
 

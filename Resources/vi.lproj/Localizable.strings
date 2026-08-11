@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Đã ghim ảnh từ Finder, nhấn X để đóng";
 "pinFromClipboardHint" = "Đã ghim ảnh từ clipboard, nhấn X để đóng";
 "pinFromClipboardTextHint" = "Đã ghim văn bản từ clipboard, bấm đúp để sửa";
+"pinToolbarClose" = "Đóng ảnh đã ghim";
+"pinToolbarCopy" = "Sao chép ảnh đã ghim";
+"pinToolbarDrag" = "Kéo ảnh đã ghim";
 "pinToolbarEdit" = "Sửa ảnh đã ghim";
 "pinToolbarEditText" = "Sửa văn bản";
 

@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 "pinFromClipboardTextHint" = "已钉起剪贴板文本，双击可编辑";
+"pinToolbarClose" = "关闭钉图";
+"pinToolbarCopy" = "复制钉图";
+"pinToolbarDrag" = "拖拽钉图";
 "pinToolbarEdit" = "编辑钉图";
 "pinToolbarEditText" = "编辑文字";
 

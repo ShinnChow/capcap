@@ -165,6 +165,9 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
     static var pinFromClipboardTextHint: String { s("pinFromClipboardTextHint") }
+    static var pinToolbarClose: String { s("pinToolbarClose") }
+    static var pinToolbarCopy: String { s("pinToolbarCopy") }
+    static var pinToolbarDrag: String { s("pinToolbarDrag") }
     static var pinToolbarEdit: String { s("pinToolbarEdit") }
     static var pinToolbarEditText: String { s("pinToolbarEditText") }
 

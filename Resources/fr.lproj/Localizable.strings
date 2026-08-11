@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Image Finder épinglée, appuyez sur X pour fermer";
 "pinFromClipboardHint" = "Image du presse-papiers épinglée, appuyez sur X pour fermer";
 "pinFromClipboardTextHint" = "Texte du presse-papiers épinglé, double-cliquez pour modifier";
+"pinToolbarClose" = "Fermer l'image épinglée";
+"pinToolbarCopy" = "Copier l'image épinglée";
+"pinToolbarDrag" = "Faire glisser l'image épinglée";
 "pinToolbarEdit" = "Modifier l'image épinglée";
 "pinToolbarEditText" = "Modifier le texte";
 
