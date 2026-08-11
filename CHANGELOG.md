@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Simplify PIN windows with proportional scaling, an in-image hover toolbar, and no thumbnail navigator or zoom step buttons
+
 ## [1.7.5] - 2026-08-10
 
 ### Added
