@@ -1985,13 +1985,17 @@ extension OverlayWindowController: SelectionViewDelegate {
             screen: screen,
             preSnapshot: preSnapshot
         ) {
-            if let usableDirectImage {
-                let maskedImage = WindowEffects.applyingAlphaMask(from: usableDirectImage, to: snapshotWindowImage)
-                if let maskedImage {
-                    return maskedImage
-                }
+            guard let displayID = screen.deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? CGDirectDisplayID else {
+                return WindowEffects.roundedCorners(snapshotWindowImage)
             }
-            return WindowEffects.roundedCorners(snapshotWindowImage)
+            return WindowEffects.compositedWindowImage(
+                snapshotImage: snapshotWindowImage,
+                directWindowImage: usableDirectImage,
+                captureRect: captureRect,
+                displayBounds: CGDisplayBounds(displayID)
+            )
         }
 
         return usableDirectImage
