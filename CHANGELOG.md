@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.6] - 2026-08-13
+
 ### Changed
 - Simplify PIN windows with proportional scaling, an in-image hover toolbar, and no thumbnail navigator or zoom step buttons
 
 ### Fixed
+- Preserve pixels for display-filling window captures instead of punching holes into full-screen window snapshots
 - Keep the PIN toolbar aligned with screenshot content when images include transparent shadow padding
 - Replace the PIN move control with copy and cross-app image drag actions, and reduce the close control size
 - Keep PIN close and zoom controls readable at small scales with adaptive button hiding, balanced icon sizing, and a plain red close symbol
