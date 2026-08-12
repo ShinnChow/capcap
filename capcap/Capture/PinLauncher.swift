@@ -925,6 +925,7 @@ private enum PinZoom {
     static let interactivePreviewMaxPixelDimension = 1280
     static let interactivePreviewEndDelay: TimeInterval = 0.1
     static let toolbarAnimationDuration: TimeInterval = 0.16
+    static let toolbarHoverDuration: TimeInterval = 2.0
 }
 
 enum PinImageLayout {
@@ -1242,6 +1243,8 @@ final class PinContentView: NSView, NSDraggingSource {
     private var dragTemporaryFileURLs: [ObjectIdentifier: URL] = [:]
     private var imageTrackingArea: NSTrackingArea?
     private var isToolbarVisible = false
+    private var toolbarAutoHideTimer: Timer?
+    private var toolbarIsSuppressedAfterAutoHide = false
     private var isOCRSelectionEnabled = false {
         didSet {
             toolbar.isOCRActive = isOCRSelectionEnabled
@@ -1269,6 +1272,7 @@ final class PinContentView: NSView, NSDraggingSource {
     deinit {
         interactiveZoomEndTimer?.invalidate()
         windowAnimationTimer?.invalidate()
+        toolbarAutoHideTimer?.invalidate()
         ocrRecognitionTask?.cancel()
     }
 
@@ -1986,10 +1990,6 @@ final class PinContentView: NSView, NSDraggingSource {
         )
     }
 
-    private func shouldShowToolbar(at point: NSPoint) -> Bool {
-        imageHoverRect().contains(point)
-    }
-
     private func updateImageInteractionGeometry() {
         updateToolbarFrame()
         updateOCROverlayFrame()
@@ -2005,6 +2005,8 @@ final class PinContentView: NSView, NSDraggingSource {
 
         let rect = imageHoverRect()
         guard rect.width > 0, rect.height > 0 else {
+            cancelToolbarAutoHide()
+            toolbarIsSuppressedAfterAutoHide = false
             setToolbarVisible(false, animated: false)
             return
         }
@@ -2021,17 +2023,82 @@ final class PinContentView: NSView, NSDraggingSource {
 
     private func updateToolbarVisibility(for event: NSEvent, animated: Bool) {
         let point = convert(event.locationInWindow, from: nil)
-        setToolbarVisible(shouldShowToolbar(at: point), animated: animated)
+        updateToolbarHover(at: point, animated: animated)
     }
 
     private func refreshToolbarVisibility(animated: Bool) {
+        guard let window else {
+            cancelToolbarAutoHide()
+            toolbarIsSuppressedAfterAutoHide = false
+            setToolbarVisible(false, animated: false)
+            return
+        }
+
+        let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        updateToolbarHover(at: point, animated: animated)
+    }
+
+    private func updateToolbarHover(at point: NSPoint, animated: Bool) {
+        let overImage = imageHoverRect().contains(point)
+        let overToolbar = toolbar.frame.contains(point)
+
+        guard overImage else {
+            cancelToolbarAutoHide()
+            toolbarIsSuppressedAfterAutoHide = false
+            setToolbarVisible(false, animated: animated)
+            return
+        }
+
+        if overToolbar {
+            cancelToolbarAutoHide()
+            toolbarIsSuppressedAfterAutoHide = false
+            setToolbarVisible(true, animated: animated)
+            return
+        }
+
+        // Hovering over the pinned image outside of the toolbar only keeps the
+        // toolbar visible for a short time. Once that time expires the toolbar
+        // stays hidden until the pointer reaches the toolbar region again.
+        if toolbarIsSuppressedAfterAutoHide {
+            setToolbarVisible(false, animated: animated)
+            return
+        }
+
+        setToolbarVisible(true, animated: animated)
+        scheduleToolbarAutoHideIfNeeded()
+    }
+
+    private func scheduleToolbarAutoHideIfNeeded() {
+        guard toolbarAutoHideTimer == nil else { return }
+        let timer = Timer(
+            timeInterval: PinZoom.toolbarHoverDuration,
+            repeats: false
+        ) { [weak self] _ in
+            self?.toolbarAutoHideTimer = nil
+            self?.handleToolbarAutoHide()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        toolbarAutoHideTimer = timer
+    }
+
+    private func handleToolbarAutoHide() {
         guard let window else {
             setToolbarVisible(false, animated: false)
             return
         }
 
         let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
-        setToolbarVisible(shouldShowToolbar(at: point), animated: animated)
+        let overImage = imageHoverRect().contains(point)
+        let overToolbar = toolbar.frame.contains(point)
+        guard overImage, !overToolbar else { return }
+
+        toolbarIsSuppressedAfterAutoHide = true
+        setToolbarVisible(false, animated: true)
+    }
+
+    private func cancelToolbarAutoHide() {
+        toolbarAutoHideTimer?.invalidate()
+        toolbarAutoHideTimer = nil
     }
 
     private func setToolbarVisible(_ visible: Bool, animated: Bool) {
