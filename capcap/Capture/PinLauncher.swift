@@ -1227,6 +1227,7 @@ final class PinContentView: NSView, NSDraggingSource {
             guard isZoomingInteractively != oldValue else { return }
             refreshOCROverlayVisibility()
             needsDisplay = true
+            refreshToolbarVisibility(animated: true)
         }
     }
     private var isWindowAnimating = false {
@@ -1234,6 +1235,7 @@ final class PinContentView: NSView, NSDraggingSource {
             guard isWindowAnimating != oldValue else { return }
             refreshOCROverlayVisibility()
             needsDisplay = true
+            refreshToolbarVisibility(animated: true)
         }
     }
     private var usesLowResolutionPreview: Bool {
@@ -2039,6 +2041,13 @@ final class PinContentView: NSView, NSDraggingSource {
     }
 
     private func updateToolbarHover(at point: NSPoint, animated: Bool) {
+        if usesLowResolutionPreview {
+            cancelToolbarAutoHide()
+            toolbarIsSuppressedAfterAutoHide = false
+            setToolbarVisible(true, animated: animated)
+            return
+        }
+
         let overImage = imageHoverRect().contains(point)
         let overToolbar = toolbar.frame.contains(point)
 
