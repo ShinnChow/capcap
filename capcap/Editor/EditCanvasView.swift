@@ -274,7 +274,33 @@ class EditCanvasView: NSView {
         if let text = annotation as? TextAnnotation {
             return text.translatedBodyPreservingCalloutTip(by: delta)
         }
+        if let mosaic = annotation as? MosaicAnnotation {
+            return translatedMosaic(mosaic, by: delta)
+        }
         return annotation.translated(by: delta)
+    }
+
+    /// Move a mosaic by re-pixelating the underlying image at the new frame
+    /// position. The mosaic is an edited region of the screenshot, not a
+    /// movable texture, so the frame itself decides what gets pixelated.
+    private func translatedMosaic(_ mosaic: MosaicAnnotation, by delta: NSPoint) -> Annotation {
+        let newRect = mosaic.rect.offsetBy(dx: delta.x, dy: delta.y)
+        guard
+            let baseImage = resolveBaseImageForEditing(),
+            let region = MosaicTool.createMosaicRegion(
+                rect: newRect,
+                imageSize: bounds.size,
+                baseImage: baseImage,
+                blockSize: mosaic.blockSize
+            )
+        else {
+            return mosaic.translated(by: delta)
+        }
+        return MosaicAnnotation(
+            rect: region.rect,
+            pixelatedImage: region.pixelatedImage,
+            blockSize: mosaic.blockSize
+        )
     }
 
     private struct PendingTextCreate {
@@ -629,7 +655,12 @@ class EditCanvasView: NSView {
         }
         recordUndo()
         for idx in indexes {
-            annotations[idx] = annotations[idx].translated(by: delta)
+            let annotation = annotations[idx]
+            if let mosaic = annotation as? MosaicAnnotation {
+                annotations[idx] = translatedMosaic(mosaic, by: delta)
+            } else {
+                annotations[idx] = annotation.translated(by: delta)
+            }
         }
         needsDisplay = true
         refreshCursorAtCurrentLocation()
@@ -685,7 +716,12 @@ class EditCanvasView: NSView {
             return false
         }
         let offset = pasteOffset(forPasting: sources)
-        let pasted = sources.map { $0.translated(by: offset) }
+        let pasted = sources.map { source in
+            if let mosaic = source as? MosaicAnnotation {
+                return translatedMosaic(mosaic, by: offset)
+            }
+            return source.translated(by: offset)
+        }
         let firstNewIndex = annotations.count
         recordUndo()
         annotations.append(contentsOf: pasted)
