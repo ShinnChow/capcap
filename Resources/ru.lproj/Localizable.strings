@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "Показывать закрепления на всех рабочих столах";
 "pinAcrossSpacesHint" = "Новые закрепленные изображения появляются на каждом рабочем столе и полноэкранном Space";
 "historyCacheToggleLabel" = "Кэшировать снимки";
-"historyCacheToggleHint" = "Сохраняет недавние снимки, выбранные цвета и ссылки загрузок для быстрого повторного копирования из строки меню";
+"historyCacheToggleHint" = "Сохраняет недавние снимки, выбранные цвета и ссылки загрузок для быстрого повторного копирования из панели истории";
 "clipboardTextCacheToggleLabel" = "Кэшировать текст буфера обмена";
 "clipboardTextCacheToggleHint" = "Сохраняет скопированный текст в истории для быстрого повторного использования";
 "clipboardTextHistoryLimitLabel" = "Лимит истории текста";
@@ -127,7 +127,6 @@
 "settings" = "Настройки";
 "quitApp" = "Завершить capcap";
 "historyMenu" = "История";
-"historyEmpty" = "История пуста";
 "historyClear" = "Очистить историю";
 "historyCleared" = "История очищена";
 "historyShowInFinder" = "Показать в Finder";

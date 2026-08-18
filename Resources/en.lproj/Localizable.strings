@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "Show Pins Across Desktops";
 "pinAcrossSpacesHint" = "New pinned images appear on every desktop and full-screen Space";
 "historyCacheToggleLabel" = "Cache Screenshots";
-"historyCacheToggleHint" = "Store recent screenshots, picked colors, and upload links for quick reuse from the menu bar";
+"historyCacheToggleHint" = "Store recent screenshots, picked colors, and upload links for quick reuse from the history panel";
 "clipboardTextCacheToggleLabel" = "Cache Clipboard Text";
 "clipboardTextCacheToggleHint" = "Store copied text in history for quick reuse";
 "clipboardTextHistoryLimitLabel" = "Text History Limit";
@@ -127,7 +127,6 @@
 "settings" = "Settings";
 "quitApp" = "Quit capcap";
 "historyMenu" = "History";
-"historyEmpty" = "No history yet";
 "historyClear" = "Clear History";
 "historyCleared" = "History cleared";
 "historyShowInFinder" = "Show in Finder";

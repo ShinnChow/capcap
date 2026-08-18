@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "貼圖跨桌面顯示";
 "pinAcrossSpacesHint" = "開啟後新貼圖會出現在所有桌面與全螢幕空間";
 "historyCacheToggleLabel" = "快取截圖";
-"historyCacheToggleHint" = "保存最近截圖、取色和上傳結果，方便從選單列快速再次複製";
+"historyCacheToggleHint" = "保存最近截圖、取色和上傳結果，方便從歷史面板快速再次複製";
 "clipboardTextCacheToggleLabel" = "快取剪貼簿文字";
 "clipboardTextCacheToggleHint" = "將複製的文字保存到歷史記錄，方便從歷史記錄快速重複使用";
 "clipboardTextHistoryLimitLabel" = "文字歷史數量";
@@ -127,7 +127,6 @@
 "settings" = "設定";
 "quitApp" = "結束 capcap";
 "historyMenu" = "歷史記錄";
-"historyEmpty" = "尚無歷史記錄";
 "historyClear" = "清除歷史記錄";
 "historyCleared" = "歷史記錄已清除";
 "historyShowInFinder" = "在 Finder 中顯示";
