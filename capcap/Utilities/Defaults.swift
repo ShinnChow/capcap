@@ -257,7 +257,6 @@ enum L10n {
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
     static var historyMenu: String { s("historyMenu") }
-    static var historyEmpty: String { s("historyEmpty") }
     static var historyClear: String { s("historyClear") }
     static var historyCleared: String { s("historyCleared") }
     static var historyShowInFinder: String { s("historyShowInFinder") }

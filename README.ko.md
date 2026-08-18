@@ -47,7 +47,7 @@
 - **긴 스크린샷 병합**: 선택 영역 안에서 스크롤하며 실시간 미리보기를 보고 병합한 뒤 계속 편집합니다.
 - **꾸미기와 고정**: 배경, 모서리, 그림자, 여백을 조정하거나 결과 이미지를 항상 위에 고정합니다.
 - **Finder 이미지 직접 편집**: Finder에서 이미지 하나를 선택하고 같은 단축키를 누르면 원본을 건드리지 않고 편집기에 엽니다.
-- **메뉴 막대 기록**: 최근 스크린샷, 색상, 업로드 링크를 로컬에 보관해 빠르게 다시 복사합니다.
+- **기록 패널**: 최근 스크린샷, 색상, 업로드 링크를 로컬에 보관해 전용 패널에서 빠르게 다시 복사합니다.
 - **내 이미지 호스트 업로드**: Tencent COS, Qiniu Kodo, Aliyun OSS를 설정할 수 있으며 자격 증명은 Mac에만 저장됩니다.
 - **순수 AppKit**: SwiftUI, Electron, 외부 의존성 없이 작고 빠르게 동작합니다.
 
@@ -55,8 +55,7 @@
 
 <table>
 <tr>
-  <td width="50%" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>창을 클릭해 캡처</b><br/>capcap이 창 경계를 자동으로 감지합니다.</sub></td>
-  <td width="50%" align="center"><img src="images/history.png" alt="Menu bar history" /><br/><sub><b>메뉴 막대 기록</b><br/>최근 이미지와 색상을 바로 다시 복사합니다.</sub></td>
+  <td colspan="2" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>창을 클릭해 캡처</b><br/>capcap이 창 경계를 자동으로 감지합니다.</sub></td>
 </tr>
 <tr>
   <td width="50%" align="center"><img src="images/scroll-stitch.png" alt="Scroll capture" /><br/><sub><b>긴 페이지 병합</b><br/>스크롤하며 결과를 실시간으로 확인합니다.</sub></td>
