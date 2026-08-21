@@ -95,7 +95,7 @@ struct HistoryEntry {
 }
 
 private let cloudURLXattrKey = "com.capcap.cloudURL"
-private let lockedXattrKey = "com.capcap.locked"
+private let favoriteXattrKey = "com.capcap.favorite"
 
 final class HistoryManager {
     static let shared = HistoryManager()
@@ -629,7 +629,7 @@ final class HistoryManager {
     }
 
     /// Keeps only the copied-promotion records whose entry survives "delete all
-    /// history" (the locked `keptURLs`), mirroring `removeCopiedEntryPromotions`
+    /// history" (the favorite `keptURLs`), mirroring `removeCopiedEntryPromotions`
     /// but inverted. Promotion keys are standardized file paths
     /// (`HistoryCopyPromotionPolicy.key(for:)`), so a kept entry keeps its rank
     /// intact instead of silently demoting by creation date. Empty `keptURLs`
@@ -700,7 +700,7 @@ final class HistoryManager {
     }
 
     /// Partitions `candidates` into the entries "delete all history" may remove
-    /// and the entries it must keep (the locked ones). A locked entry is never
+    /// and the entries it must keep (the favorited ones). A favorited entry is never
     /// removed by the bulk path, so it stays out of `remove` and is returned in
     /// `kept`; `clearAll` uses `kept` to preserve those entries' copied-promotion
     /// rank instead of wiping it. Pure and `@testable`-visible so the bulk
@@ -711,7 +711,7 @@ final class HistoryManager {
         var remove: [URL] = []
         var kept: [URL] = []
         for url in candidates {
-            if isLocked(url: url) {
+            if isFavorite(url: url) {
                 kept.append(url)
             } else {
                 remove.append(url)
@@ -804,37 +804,37 @@ final class HistoryManager {
         }
     }
 
-    /// Marks `fileURL` as locked (`true`) or unlocked (`false`) by setting or
-    /// removing the `com.capcap.locked` extended attribute, mirroring the
+    /// Marks `fileURL` as favorited (`true`) or unfavorited (`false`) by setting or
+    /// removing the `com.capcap.favorite` extended attribute, mirroring the
     /// cloudURL xattr helpers so retention pruning stays a pure read.
     ///
     /// Returns whether the on-disk state now matches the requested state:
-    /// locking succeeds when `setxattr` writes the marker; unlocking succeeds
+    /// favoriting succeeds when `setxattr` writes the marker; unfavoriting succeeds
     /// when the attribute is removed OR when it was already absent (`ENOATTR`),
-    /// because an already-unlocked file is the requested state, not a failure.
+    /// because an already-unfavorited file is the requested state, not a failure.
     /// Any other failure (missing path, permission denied, …) returns `false`.
     /// The result is intentionally non-discardable: a caller that ignores it can
     /// silently claim success for a write that never persisted (review point 3).
-    static func setLocked(_ locked: Bool, on fileURL: URL) -> Bool {
+    static func setFavorite(_ favorite: Bool, on fileURL: URL) -> Bool {
         fileURL.withUnsafeFileSystemRepresentation { fsPath -> Bool in
             guard let fsPath = fsPath else { return false }
-            if locked {
+            if favorite {
                 let marker = "1"
                 return marker.withCString { cstr in
-                    setxattr(fsPath, lockedXattrKey, cstr, strlen(cstr), 0, 0) == 0
+                    setxattr(fsPath, favoriteXattrKey, cstr, strlen(cstr), 0, 0) == 0
                 }
             } else {
-                if removexattr(fsPath, lockedXattrKey, 0) == 0 { return true }
+                if removexattr(fsPath, favoriteXattrKey, 0) == 0 { return true }
                 let reason = errno
                 return reason == ENOATTR
             }
         }
     }
 
-    static func isLocked(url fileURL: URL) -> Bool {
+    static func isFavorite(url fileURL: URL) -> Bool {
         return fileURL.withUnsafeFileSystemRepresentation { fsPath -> Bool in
             guard let fsPath = fsPath else { return false }
-            return getxattr(fsPath, lockedXattrKey, nil, 0, 0, 0) > 0
+            return getxattr(fsPath, favoriteXattrKey, nil, 0, 0, 0) > 0
         }
     }
 
