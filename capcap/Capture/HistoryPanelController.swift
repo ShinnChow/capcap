@@ -891,8 +891,28 @@ private enum HistoryPanelPresentation {
     }
 }
 
-private enum HistoryPanelFilter: CaseIterable {
+enum HistoryFavoritePolicy {
+    static let minimumFavoriteCountForFilter = 1
+
+    static func shouldShowFilter(for entries: [HistoryEntry]) -> Bool {
+        entries.lazy
+            .filter { HistoryManager.isFavorite(url: $0.fileURL) }
+            .prefix(minimumFavoriteCountForFilter)
+            .count >= minimumFavoriteCountForFilter
+    }
+
+    static func toggleTargets(clicked: HistoryEntry, selected: [HistoryEntry]) -> [HistoryEntry] {
+        selected.count > 1 ? selected : [clicked]
+    }
+
+    static func nextFavoriteState(for entries: [HistoryEntry]) -> Bool {
+        entries.contains { !HistoryManager.isFavorite(url: $0.fileURL) }
+    }
+}
+
+enum HistoryPanelFilter: CaseIterable, Equatable {
     case all
+    case favorites
     case screenshots
     case gif
     case mp4
@@ -902,6 +922,7 @@ private enum HistoryPanelFilter: CaseIterable {
     var title: String {
         switch self {
         case .all: return L10n.historyPanelFilterAll
+        case .favorites: return L10n.historyPanelFavorite
         case .screenshots: return L10n.historyPanelFilterScreenshots
         case .gif: return L10n.historyPanelFilterGIF
         case .mp4: return L10n.historyPanelFilterMP4
@@ -910,9 +931,16 @@ private enum HistoryPanelFilter: CaseIterable {
         }
     }
 
+    var symbolName: String? {
+        switch self {
+        case .favorites: return "star.fill"
+        case .all, .screenshots, .gif, .mp4, .colors, .text: return nil
+        }
+    }
+
     var searchScope: HistorySearchScope? {
         switch self {
-        case .all:
+        case .all, .favorites:
             return .colorsAndText
         case .colors:
             return .colors
@@ -925,7 +953,7 @@ private enum HistoryPanelFilter: CaseIterable {
 
     var searchPlaceholder: String? {
         switch self {
-        case .all:
+        case .all, .favorites:
             return L10n.historyPanelSearchColorsAndText
         case .colors:
             return L10n.historyPanelSearchColors
@@ -1239,6 +1267,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         for (filter, button) in filterButtons {
             button.title = filter.title
         }
+        visibleCollectionTiles.forEach { $0.refreshFavoriteState() }
         updateDeleteButtonPresentation()
         infoButton.updateAccessibilityLabel(
             isShowingShortcutGuide ? L10n.historyPanelShortcutGuideHide : L10n.historyPanelShortcutGuide
@@ -1554,8 +1583,12 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
                 }
                 clearSelection()
             } else {
-                HistoryManager.shared.clearAll {
-                    ToastWindow.show(message: L10n.historyCleared)
+                HistoryManager.shared.clearAll { keptCount in
+                    if keptCount > 0 {
+                        ToastWindow.show(message: L10n.historyClearedKeptFavorites(keptCount))
+                    } else {
+                        ToastWindow.show(message: L10n.historyCleared)
+                    }
                 }
             }
             onRequestDismiss?()
@@ -1756,6 +1789,40 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             }
         }
         return selected.isEmpty ? [tile.entry] : selected
+    }
+
+    private func handleFavoriteToggle(for tile: HistoryPanelTileView) {
+        window?.makeKey()
+        setDeleteConfirmation(false, animated: true)
+
+        let targets = HistoryFavoritePolicy.toggleTargets(
+            clicked: tile.entry,
+            selected: selectedEntries()
+        )
+        let shouldFavorite = HistoryFavoritePolicy.nextFavoriteState(for: targets)
+        var didChangeAnyEntry = false
+        var didFail = false
+
+        for entry in targets {
+            let isFavorite = HistoryManager.isFavorite(url: entry.fileURL)
+            guard isFavorite != shouldFavorite else { continue }
+            if HistoryManager.setFavorite(shouldFavorite, on: entry.fileURL) {
+                didChangeAnyEntry = true
+            } else {
+                didFail = true
+            }
+        }
+
+        if didFail {
+            ToastWindow.show(message: L10n.historyPanelFavoriteFailed)
+        } else if didChangeAnyEntry {
+            ToastWindow.show(message: shouldFavorite
+                ? L10n.historyPanelItemFavorited
+                : L10n.historyPanelItemUnfavorited)
+        }
+
+        availableFilters = Self.availableFilters(for: allEntries)
+        applySelectedFilter(resetScrollPosition: false)
     }
 
     private func selectedImageEntries() -> [HistoryEntry] {
@@ -2151,7 +2218,11 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private static func availableFilters(for entries: [HistoryEntry]) -> Set<HistoryPanelFilter> {
         var filters: Set<HistoryPanelFilter> = [.all]
         for filter in HistoryPanelFilter.allCases where filter != .all {
-            if entries.contains(where: { entryMatches($0, filter: filter) }) {
+            if filter == .favorites {
+                if HistoryFavoritePolicy.shouldShowFilter(for: entries) {
+                    filters.insert(filter)
+                }
+            } else if entries.contains(where: { entryMatches($0, filter: filter) }) {
                 filters.insert(filter)
             }
         }
@@ -2162,6 +2233,8 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         switch filter {
         case .all:
             return true
+        case .favorites:
+            return HistoryManager.isFavorite(url: entry.fileURL)
         case .screenshots:
             guard case .image = entry.kind else { return false }
             return entry.fileURL.pathExtension.lowercased() != "gif"
@@ -2370,6 +2443,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             },
             onPrimaryClick: { [weak self] tile, event in
                 self?.handlePrimaryClick(for: tile, event: event)
+            },
+            onFavoriteToggle: { [weak self] tile in
+                self?.handleFavoriteToggle(for: tile)
             },
             dragEntriesProvider: { [weak self] tile in
                 self?.dragEntries(for: tile) ?? [tile.entry]
@@ -2860,7 +2936,7 @@ private final class HistoryPanelShortcutRowView: NSView {
 }
 
 private final class HistorySelectionBadgeView: NSView {
-    private static let size: CGFloat = 18
+    private static let size = HistoryItemCornerControlMetrics.size
     private let label = NSTextField(labelWithString: "")
 
     var order: Int? {
@@ -3293,11 +3369,14 @@ private final class HistoryPanelActionButton: NSControl {
 private final class HistoryPanelFilterButton: NSControl {
     let filter: HistoryPanelFilter
     private let label = NSTextField(labelWithString: "")
+    private let iconView = NSImageView()
 
     var title: String {
         get { label.stringValue }
         set {
             label.stringValue = newValue
+            toolTip = newValue
+            setAccessibilityLabel(newValue)
             invalidateIntrinsicContentSize()
         }
     }
@@ -3319,11 +3398,29 @@ private final class HistoryPanelFilterButton: NSControl {
         label.isSelectable = false
         addSubview(label)
 
+        iconView.imageScaling = .scaleProportionallyDown
+        iconView.translatesAutoresizingMaskIntoConstraints = false
+        addSubview(iconView)
+
+        if let symbolName = filter.symbolName {
+            let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+            iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+                .withSymbolConfiguration(config)
+            iconView.image?.isTemplate = true
+            label.isHidden = true
+        } else {
+            iconView.isHidden = true
+        }
+
         NSLayoutConstraint.activate([
             heightAnchor.constraint(equalToConstant: 28),
             label.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 18),
             label.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -18),
             label.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            iconView.centerYAnchor.constraint(equalTo: centerYAnchor),
+            iconView.widthAnchor.constraint(equalToConstant: 14),
+            iconView.heightAnchor.constraint(equalToConstant: 14),
         ])
 
         title = filter.title
@@ -3335,16 +3432,21 @@ private final class HistoryPanelFilterButton: NSControl {
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: label.intrinsicContentSize.width + 36, height: 28)
+        NSSize(
+            width: filter.symbolName == nil ? label.intrinsicContentSize.width + 36 : 40,
+            height: 28
+        )
     }
 
     private func applyAppearance() {
         if isSelected {
             layer?.backgroundColor = accentGreen.withAlphaComponent(0.95).cgColor
             label.textColor = .black
+            iconView.contentTintColor = .black
         } else {
             layer?.backgroundColor = NSColor.white.withAlphaComponent(0.10).cgColor
             label.textColor = NSColor.white.withAlphaComponent(0.66)
+            iconView.contentTintColor = NSColor.white.withAlphaComponent(0.72)
         }
     }
 
@@ -3558,6 +3660,7 @@ private final class HistoryPanelCollectionItem: NSCollectionViewItem {
         onHoverChanged: @escaping (HistoryPanelTileView, Bool) -> Void,
         onSelectionToggle: @escaping (HistoryPanelTileView, NSEvent) -> Void,
         onPrimaryClick: @escaping (HistoryPanelTileView, NSEvent) -> Void,
+        onFavoriteToggle: @escaping (HistoryPanelTileView) -> Void,
         dragEntriesProvider: @escaping (HistoryPanelTileView) -> [HistoryEntry]
     ) {
         if let tileView {
@@ -3572,6 +3675,7 @@ private final class HistoryPanelCollectionItem: NSCollectionViewItem {
             onHoverChanged: onHoverChanged,
             onSelectionToggle: onSelectionToggle,
             onPrimaryClick: onPrimaryClick,
+            onFavoriteToggle: onFavoriteToggle,
             dragEntriesProvider: dragEntriesProvider
         )
         tile.frame = view.bounds
@@ -3605,11 +3709,13 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     private let onHoverChanged: ((HistoryPanelTileView, Bool) -> Void)?
     private let onSelectionToggle: ((HistoryPanelTileView, NSEvent) -> Void)?
     private let onPrimaryClick: ((HistoryPanelTileView, NSEvent) -> Void)?
+    private let onFavoriteToggle: ((HistoryPanelTileView) -> Void)?
     private let dragEntriesProvider: ((HistoryPanelTileView) -> [HistoryEntry])?
     private let imageView = NSImageView()
     private let textPreviewLabel = HistoryPanelCenteredTextView()
     private let overlayLabel = HistoryPanelCenteredTextView()
     private let cloudBadgeView = HistoryCloudBadgeView()
+    private let favoriteButton = HistoryFavoriteButton()
     private let cloudActionBarView = HistoryCloudActionBarView()
     private let badgeView = HistoryMediaBadgeView()
     private let selectionBadgeView = HistorySelectionBadgeView()
@@ -3634,6 +3740,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         onHoverChanged: ((HistoryPanelTileView, Bool) -> Void)? = nil,
         onSelectionToggle: ((HistoryPanelTileView, NSEvent) -> Void)? = nil,
         onPrimaryClick: ((HistoryPanelTileView, NSEvent) -> Void)? = nil,
+        onFavoriteToggle: ((HistoryPanelTileView) -> Void)? = nil,
         dragEntriesProvider: ((HistoryPanelTileView) -> [HistoryEntry])? = nil
     ) {
         self.entry = entry
@@ -3642,6 +3749,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         self.onHoverChanged = onHoverChanged
         self.onSelectionToggle = onSelectionToggle
         self.onPrimaryClick = onPrimaryClick
+        self.onFavoriteToggle = onFavoriteToggle
         self.dragEntriesProvider = dragEntriesProvider
         super.init(frame: .zero)
         wantsLayer = true
@@ -3690,6 +3798,10 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         cloudBadgeView.isHidden = entry.cloudURL == nil
         addSubview(cloudBadgeView)
 
+        favoriteButton.target = self
+        favoriteButton.action = #selector(favoriteButtonClicked)
+        addSubview(favoriteButton)
+
         cloudActionBarView.isHidden = true
         cloudActionBarView.alphaValue = 0
         addSubview(cloudActionBarView)
@@ -3727,9 +3839,29 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
     override var isFlipped: Bool { true }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    @objc private func favoriteButtonClicked() {
+        onFavoriteToggle?(self)
+    }
+
+    func refreshFavoriteState() {
+        let isFavorite = HistoryManager.isFavorite(url: entry.fileURL)
+        favoriteButton.isFavorite = isFavorite
+        favoriteButton.updateAccessibilityLabel(
+            isFavorite ? L10n.historyPanelUnfavorite : L10n.historyPanelFavorite
+        )
+        favoriteButton.isHidden = !HistoryFavoriteButton.shouldBeVisible(
+            isFavorite: isFavorite,
+            isHovered: isHovered
+        )
+        needsLayout = true
+    }
+
     override func hitTest(_ point: NSPoint) -> NSView? {
         guard !isHidden, alphaValue > 0, frame.contains(point) else { return nil }
         let localPoint = convert(point, from: superview)
+        if !favoriteButton.isHidden, favoriteButton.frame.contains(localPoint) {
+            return favoriteButton
+        }
         if cloudActionKind(at: localPoint) != nil {
             return self
         }
@@ -3781,6 +3913,13 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
                 height: badgeSize.height
             )
         }
+        let favoriteSize = favoriteButton.intrinsicContentSize
+        favoriteButton.frame = NSRect(
+            x: selectionBadgeView.frame.midX - favoriteSize.width / 2,
+            y: imageView.frame.maxY - favoriteSize.height + HistoryItemCornerControlMetrics.favoritePreviewOverlap,
+            width: favoriteSize.width,
+            height: favoriteSize.height
+        )
         metaLabel.frame = NSRect(
             x: padding,
             y: imageView.frame.maxY + 9,
@@ -3835,6 +3974,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         if !hovered {
             cloudActionBarView.setPressedActionKind(nil)
         }
+        refreshFavoriteState()
         updateSelectionBadgeVisibility()
     }
 
@@ -3899,6 +4039,7 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         layer?.borderColor = selectedBorderColor
         layer?.borderWidth = 1
         layer?.backgroundColor = NSColor.white.withAlphaComponent(0.075).cgColor
+        refreshFavoriteState()
 
         mouseDownPoint = nil
         mouseDownHitSelectionBadge = false

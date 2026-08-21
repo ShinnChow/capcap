@@ -47,7 +47,7 @@
 - **Capture longue** : faites défiler dans la zone sélectionnée, prévisualisez l'assemblage, puis continuez l'édition.
 - **Embellir et épingler** : ajoutez fond, arrondis, ombre et marges, ou gardez l'image au-dessus des autres fenêtres.
 - **Modifier les images Finder** : sélectionnez une image dans Finder et ouvrez-la directement dans l'éditeur sans toucher au fichier d'origine.
-- **Panneau d'historique** : recopiez rapidement captures, couleurs et liens depuis un panneau dédié.
+- **Panneau d'historique** : recopiez rapidement captures, couleurs et liens, puis ajoutez des éléments aux favoris avec l'étoile affichée au survol.
 - **Téléversement vers votre hébergeur** : Tencent COS, Qiniu Kodo et Aliyun OSS sont pris en charge. Les identifiants restent sur votre Mac.
 - **AppKit pur** : pas de SwiftUI, pas d'Electron, pas de télémétrie.
 
