@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "고정 이미지를 모든 데스크톱에 표시";
 "pinAcrossSpacesHint" = "켜면 새 고정 이미지가 모든 데스크톱과 전체 화면 Space에 표시됩니다";
 "historyCacheToggleLabel" = "스크린샷 캐시";
-"historyCacheToggleHint" = "최근 스크린샷, 선택한 색상, 업로드 결과를 저장해 메뉴 막대에서 빠르게 다시 복사할 수 있습니다";
+"historyCacheToggleHint" = "최근 스크린샷, 선택한 색상, 업로드 결과를 저장해 기록 패널에서 빠르게 다시 복사할 수 있습니다";
 "clipboardTextCacheToggleLabel" = "클립보드 텍스트 캐시";
 "clipboardTextCacheToggleHint" = "복사한 텍스트를 기록에 저장해 빠르게 재사용할 수 있습니다";
 "clipboardTextHistoryLimitLabel" = "텍스트 기록 한도";
@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Finder 이미지를 고정했습니다. X 키를 눌러 닫기";
 "pinFromClipboardHint" = "클립보드 이미지를 고정했습니다. X 키를 눌러 닫기";
 "pinFromClipboardTextHint" = "클립보드 텍스트를 고정했습니다. 더블 클릭하여 편집";
+"pinToolbarClose" = "고정 이미지 닫기";
+"pinToolbarCopy" = "고정 이미지 복사";
+"pinToolbarDrag" = "고정 이미지 드래그";
 "pinToolbarEdit" = "고정 이미지 편집";
 "pinToolbarEditText" = "텍스트 편집";
 
@@ -124,7 +127,6 @@
 "settings" = "설정";
 "quitApp" = "capcap 종료";
 "historyMenu" = "기록";
-"historyEmpty" = "기록 없음";
 "historyClear" = "기록 지우기";
 "historyCleared" = "기록 지움";
 "historyShowInFinder" = "Finder에 표시";

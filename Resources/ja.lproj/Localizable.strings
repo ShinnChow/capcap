@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "ピン画像をすべてのデスクトップに表示";
 "pinAcrossSpacesHint" = "オンにすると新しいピン画像がすべてのデスクトップとフルスクリーン操作スペースに表示されます";
 "historyCacheToggleLabel" = "スクリーンショットをキャッシュ";
-"historyCacheToggleHint" = "最近のスクリーンショット、取得した色、アップロード結果を保存し、メニューバーからすばやく再コピーできます";
+"historyCacheToggleHint" = "最近のスクリーンショット、取得した色、アップロード結果を保存し、履歴パネルからすばやく再コピーできます";
 "clipboardTextCacheToggleLabel" = "クリップボードのテキストをキャッシュ";
 "clipboardTextCacheToggleHint" = "コピーしたテキストを履歴に保存してすばやく再利用できます";
 "clipboardTextHistoryLimitLabel" = "テキスト履歴の上限";
@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "Finder の画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardHint" = "クリップボードの画像をピン留めしました。X キーで閉じる";
 "pinFromClipboardTextHint" = "クリップボードのテキストをピン留めしました。ダブルクリックで編集";
+"pinToolbarClose" = "ピン留め画像を閉じる";
+"pinToolbarCopy" = "ピン留め画像をコピー";
+"pinToolbarDrag" = "ピン留め画像をドラッグ";
 "pinToolbarEdit" = "ピン留め画像を編集";
 "pinToolbarEditText" = "テキストを編集";
 
@@ -124,7 +127,6 @@
 "settings" = "設定";
 "quitApp" = "capcap を終了";
 "historyMenu" = "履歴";
-"historyEmpty" = "履歴がありません";
 "historyClear" = "履歴を消去";
 "historyCleared" = "履歴を消去しました";
 "historyShowInFinder" = "Finder に表示";

@@ -15,7 +15,7 @@
 "pinAcrossSpaces" = "贴图跨桌面显示";
 "pinAcrossSpacesHint" = "开启后新贴图会出现在所有桌面与全屏空间";
 "historyCacheToggleLabel" = "缓存截图";
-"historyCacheToggleHint" = "保存最近截图、取色和上传结果，便于从菜单栏快速再次复制";
+"historyCacheToggleHint" = "保存最近截图、取色和上传结果，便于从历史面板快速再次复制";
 "clipboardTextCacheToggleLabel" = "缓存剪贴板文本";
 "clipboardTextCacheToggleHint" = "将复制的文本保存到历史记录，便于从历史记录快速复用";
 "clipboardTextHistoryLimitLabel" = "文本历史数量";
@@ -59,6 +59,9 @@
 "pinFromFinderHint" = "已钉起 Finder 选中的图片，按 X 关闭";
 "pinFromClipboardHint" = "已钉起剪贴板图片，按 X 关闭";
 "pinFromClipboardTextHint" = "已钉起剪贴板文本，双击可编辑";
+"pinToolbarClose" = "关闭钉图";
+"pinToolbarCopy" = "复制钉图";
+"pinToolbarDrag" = "拖拽钉图";
 "pinToolbarEdit" = "编辑钉图";
 "pinToolbarEditText" = "编辑文字";
 
@@ -124,7 +127,6 @@
 "settings" = "设置";
 "quitApp" = "退出 capcap";
 "historyMenu" = "历史";
-"historyEmpty" = "暂无历史";
 "historyClear" = "清除历史";
 "historyCleared" = "历史已清除";
 "historyShowInFinder" = "在 Finder 中显示";

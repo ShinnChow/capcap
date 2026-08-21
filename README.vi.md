@@ -47,7 +47,7 @@
 - **Chụp dài**: cuộn trong vùng chọn, xem bản ghép trực tiếp, rồi tiếp tục chỉnh sửa ảnh đã ghép.
 - **Làm đẹp và ghim**: thêm nền, bo góc, bóng, khoảng đệm, hoặc ghim ảnh nổi trên các cửa sổ khác.
 - **Chỉnh ảnh từ Finder**: chọn một ảnh trong Finder và mở thẳng vào trình chỉnh sửa mà không sửa tệp gốc.
-- **Lịch sử cục bộ**: sao chép lại nhanh ảnh chụp, màu đã chọn và liên kết tải lên từ thanh menu.
+- **Bảng lịch sử**: sao chép lại nhanh ảnh chụp, màu đã chọn và liên kết tải lên từ bảng chuyên dụng.
 - **Tải lên dịch vụ ảnh riêng**: hỗ trợ Tencent COS, Qiniu Kodo và Aliyun OSS. Thông tin xác thực chỉ lưu trên Mac của bạn.
 - **AppKit thuần**: không SwiftUI, không Electron, không đo lường từ xa.
 
@@ -55,8 +55,7 @@
 
 <table>
 <tr>
-  <td width="50%" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>Chụp cửa sổ một lần bấm</b><br/>capcap tự phát hiện viền cửa sổ.</sub></td>
-  <td width="50%" align="center"><img src="images/history.png" alt="Menu bar history" /><br/><sub><b>Lịch sử trên thanh menu</b><br/>Sao chép lại ảnh và màu gần đây.</sub></td>
+  <td colspan="2" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>Chụp cửa sổ một lần bấm</b><br/>capcap tự phát hiện viền cửa sổ.</sub></td>
 </tr>
 <tr>
   <td width="50%" align="center"><img src="images/scroll-stitch.png" alt="Scroll capture" /><br/><sub><b>Ghép trang dài</b><br/>Cuộn và xem kết quả ghép trực tiếp.</sub></td>

@@ -105,6 +105,64 @@ enum WindowEffects {
         return NSImage(cgImage: out, size: image.size)
     }
 
+    /// Shape pixels cropped from the frozen display as a clicked window.
+    ///
+    /// For an ordinary window, the independent ScreenCaptureKit image provides
+    /// the most accurate system corner/transparency mask. A display-filling
+    /// window is different: its frozen display crop already defines the full
+    /// visible target, while the independent-window alpha can contain
+    /// compositor-only transparent bands (notably full-screen Chromium on
+    /// macOS Tahoe). Applying that unrelated alpha byte-for-byte punches holes
+    /// into otherwise valid screen pixels and later clips annotations to the
+    /// same holes (issue #153).
+    ///
+    /// When the selected window spans the display width and at least 90% of its
+    /// height, keep the display crop and synthesize only the outer rounded
+    /// silhouette. This preserves the normal exact-mask path for ordinary and
+    /// partially off-screen windows.
+    static func compositedWindowImage(
+        snapshotImage: NSImage,
+        directWindowImage: NSImage?,
+        captureRect: CGRect,
+        displayBounds: CGRect
+    ) -> NSImage {
+        if shouldBorrowDirectWindowAlpha(
+            captureRect: captureRect,
+            displayBounds: displayBounds
+        ),
+           let directWindowImage,
+           let maskedImage = applyingAlphaMask(from: directWindowImage, to: snapshotImage) {
+            return maskedImage
+        }
+
+        return roundedCorners(snapshotImage)
+    }
+
+    static func shouldBorrowDirectWindowAlpha(
+        captureRect: CGRect,
+        displayBounds: CGRect
+    ) -> Bool {
+        let capture = captureRect.standardized
+        let display = displayBounds.standardized
+        guard capture.width > 0,
+              capture.height > 0,
+              display.width > 0,
+              display.height > 0,
+              !capture.isInfinite,
+              !display.isInfinite else {
+            return true
+        }
+
+        let edgeTolerance: CGFloat = 1
+        let spansDisplayWidth = capture.minX <= display.minX + edgeTolerance
+            && capture.maxX >= display.maxX - edgeTolerance
+        let visibleCapture = capture.intersection(display)
+        let fillsMostOfDisplayHeight = !visibleCapture.isNull
+            && visibleCapture.height >= display.height * 0.9
+
+        return !(spansDisplayWidth && fillsMostOfDisplayHeight)
+    }
+
     private static func continuousCornerMask(
         pixelWidth: Int,
         pixelHeight: Int,
