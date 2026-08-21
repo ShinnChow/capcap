@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.7] - 2026-08-21
+
+### Fixed
+- Re-pixelate mosaic annotations at their new position when moving, nudging, or pasting (a1e8fda)
+- Refresh pinned-image toolbar visibility during scaling and window animations (b14b8b9)
+
+### Changed
+- Move history reuse from the menu-bar submenu into the dedicated history panel (ca33969)
+
 ## [1.7.6] - 2026-08-13
 
 ### Changed
