@@ -95,6 +95,7 @@ struct HistoryEntry {
 }
 
 private let cloudURLXattrKey = "com.capcap.cloudURL"
+private let favoriteXattrKey = "com.capcap.favorite"
 
 final class HistoryManager {
     static let shared = HistoryManager()
@@ -526,15 +527,15 @@ final class HistoryManager {
         return NSImage(contentsOf: entry.fileURL)
     }
 
-    func clearAll(completion: (() -> Void)? = nil) {
+    func clearAll(completion: ((Int) -> Void)? = nil) {
         queue.async { [weak self] in
             guard let self = self else { return }
-            self.removeAllEntries(includeRecordingMedia: true)
-            self.clearCopiedEntryPromotions()
+            let kept = self.removeAllEntries(includeRecordingMedia: true)
+            self.keepCopiedEntryPromotions(forKeptURLs: kept)
             self.invalidateEntriesCache()
             DispatchQueue.main.async {
                 NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
-                completion?()
+                completion?(kept.count)
             }
         }
     }
@@ -627,11 +628,21 @@ final class HistoryManager {
         return snapshot
     }
 
-    private func clearCopiedEntryPromotions() {
+    /// Keeps only the copied-promotion records whose entry survives "delete all
+    /// history" (the favorite `keptURLs`), mirroring `removeCopiedEntryPromotions`
+    /// but inverted. Promotion keys are standardized file paths
+    /// (`HistoryCopyPromotionPolicy.key(for:)`), so a kept entry keeps its rank
+    /// intact instead of silently demoting by creation date. Empty `keptURLs`
+    /// keeps nothing, reproducing the previous wipe-all behaviour.
+    private func keepCopiedEntryPromotions(forKeptURLs keptURLs: [URL]) {
+        let keptKeys = Set(keptURLs.map { $0.standardizedFileURL.path })
         entriesCacheLock.lock()
-        copiedEntryPromotions.removeAll()
+        let previousCount = copiedEntryPromotions.count
+        let snapshot = copiedEntryPromotions.filter { keptKeys.contains($0.key) }
+        copiedEntryPromotions = snapshot
         entriesCacheLock.unlock()
-        persistCopiedEntryPromotions([:])
+        guard snapshot.count != previousCount else { return }
+        persistCopiedEntryPromotions(snapshot)
     }
 
     private func removeCopiedEntryPromotions(for urls: [URL]) {
@@ -677,11 +688,36 @@ final class HistoryManager {
         try? data.write(to: copiedEntryPromotionsURL, options: .atomic)
     }
 
-    private func removeAllEntries(includeRecordingMedia: Bool) {
+    @discardableResult
+    private func removeAllEntries(includeRecordingMedia: Bool) -> [URL] {
         let fm = FileManager.default
-        for url in fileURLsToRemove(includeRecordingMedia: includeRecordingMedia) {
+        let candidates = fileURLsToRemove(includeRecordingMedia: includeRecordingMedia)
+        let decision = Self.partitionEntriesForRemoval(candidates)
+        for url in decision.remove {
             try? fm.removeItem(at: url)
         }
+        return decision.kept
+    }
+
+    /// Partitions `candidates` into the entries "delete all history" may remove
+    /// and the entries it must keep (the favorited ones). A favorited entry is never
+    /// removed by the bulk path, so it stays out of `remove` and is returned in
+    /// `kept`; `clearAll` uses `kept` to preserve those entries' copied-promotion
+    /// rank instead of wiping it. Pure and `@testable`-visible so the bulk
+    /// decision can be exercised headlessly without driving the shared
+    /// `HistoryManager` directory. Delete-selected (`remove(_:)`) and the
+    /// Settings cache toggle intentionally bypass this.
+    static func partitionEntriesForRemoval(_ candidates: [URL]) -> (remove: [URL], kept: [URL]) {
+        var remove: [URL] = []
+        var kept: [URL] = []
+        for url in candidates {
+            if isFavorite(url: url) {
+                kept.append(url)
+            } else {
+                remove.append(url)
+            }
+        }
+        return (remove, kept)
     }
 
     private func removeStoredHistoryEntries(withExtensions extensions: Set<String>) {
@@ -765,6 +801,40 @@ final class HistoryManager {
             guard read > 0 else { return nil }
             guard let str = String(bytes: buf[0..<read], encoding: .utf8) else { return nil }
             return URL(string: str)
+        }
+    }
+
+    /// Marks `fileURL` as favorited (`true`) or unfavorited (`false`) by setting or
+    /// removing the `com.capcap.favorite` extended attribute, mirroring the
+    /// cloudURL xattr helpers so retention pruning stays a pure read.
+    ///
+    /// Returns whether the on-disk state now matches the requested state:
+    /// favoriting succeeds when `setxattr` writes the marker; unfavoriting succeeds
+    /// when the attribute is removed OR when it was already absent (`ENOATTR`),
+    /// because an already-unfavorited file is the requested state, not a failure.
+    /// Any other failure (missing path, permission denied, …) returns `false`.
+    /// The result is intentionally non-discardable: a caller that ignores it can
+    /// silently claim success for a write that never persisted (review point 3).
+    static func setFavorite(_ favorite: Bool, on fileURL: URL) -> Bool {
+        fileURL.withUnsafeFileSystemRepresentation { fsPath -> Bool in
+            guard let fsPath = fsPath else { return false }
+            if favorite {
+                let marker = "1"
+                return marker.withCString { cstr in
+                    setxattr(fsPath, favoriteXattrKey, cstr, strlen(cstr), 0, 0) == 0
+                }
+            } else {
+                if removexattr(fsPath, favoriteXattrKey, 0) == 0 { return true }
+                let reason = errno
+                return reason == ENOATTR
+            }
+        }
+    }
+
+    static func isFavorite(url fileURL: URL) -> Bool {
+        return fileURL.withUnsafeFileSystemRepresentation { fsPath -> Bool in
+            guard let fsPath = fsPath else { return false }
+            return getxattr(fsPath, favoriteXattrKey, nil, 0, 0, 0) > 0
         }
     }
 
