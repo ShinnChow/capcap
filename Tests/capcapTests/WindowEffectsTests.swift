@@ -46,7 +46,7 @@ final class WindowEffectsTests: XCTestCase {
         XCTAssertEqual(try alpha(at: CGPoint(x: 90, y: 50), in: result), 255)
     }
 
-    func testOrdinaryWindowStillBorrowsDirectWindowAlpha() throws {
+    func testOrdinaryWindowRejectsSubstantialTransparentEdgeBand() throws {
         let snapshot = makeOpaqueImage(width: 100, height: 100)
         let directWindow = makeImage(width: 100, height: 100) { context in
             context.setFillColor(NSColor.white.cgColor)
@@ -60,7 +60,26 @@ final class WindowEffectsTests: XCTestCase {
             displayBounds: CGRect(x: 0, y: 0, width: 100, height: 100)
         )
 
-        XCTAssertEqual(try alpha(at: CGPoint(x: 90, y: 50), in: result), 0)
+        XCTAssertEqual(try alpha(at: CGPoint(x: 90, y: 50), in: result), 255)
+    }
+
+    func testOrdinaryWindowStillBorrowsReliableDirectWindowAlpha() throws {
+        let snapshot = makeOpaqueImage(width: 100, height: 100)
+        let directWindow = makeImage(width: 100, height: 100) { context in
+            context.setFillColor(NSColor.white.cgColor)
+            context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+            context.clear(CGRect(x: 40, y: 40, width: 20, height: 20))
+        }
+
+        let result = WindowEffects.compositedWindowImage(
+            snapshotImage: snapshot,
+            directWindowImage: directWindow,
+            captureRect: CGRect(x: 10, y: 10, width: 80, height: 80),
+            displayBounds: CGRect(x: 0, y: 0, width: 100, height: 100)
+        )
+
+        XCTAssertEqual(try alpha(at: CGPoint(x: 50, y: 50), in: result), 0)
+        XCTAssertEqual(try alpha(at: CGPoint(x: 90, y: 50), in: result), 255)
     }
 
     private func makeOpaqueImage(width: Int, height: Int) -> NSImage {
