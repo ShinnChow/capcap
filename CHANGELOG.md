@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.8] - 2026-08-21
+
+### Added
+- Add history favorites to protect entries from retention pruning and history clearing (82226f6, 8523d3a, 5399560, a3cf2aa)
+
+### Changed
+- Replace history locks with favorites and preserve kept entries' promotion rank (a3cf2aa, 5399560)
+
 ## [1.7.7] - 2026-08-21
 
 ### Fixed
