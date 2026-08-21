@@ -108,24 +108,37 @@ final class HistoryCloudBadgeView: NSView {
     }
 }
 
-final class HistoryLockBadgeView: NSView {
-    private let label = NSTextField(labelWithString: "🔒")
+enum HistoryItemCornerControlMetrics {
+    static let size: CGFloat = 18
+    static let favoriteSymbolPointSize: CGFloat = 14
+    static let favoritePreviewOverlap: CGFloat = 7
+}
+
+final class HistoryFavoriteButton: NSButton {
+    static func symbolName(isFavorite: Bool) -> String {
+        isFavorite ? "star.fill" : "star"
+    }
+
+    static func shouldBeVisible(isFavorite: Bool, isHovered: Bool) -> Bool {
+        isFavorite || isHovered
+    }
+
+    var isFavorite = false {
+        didSet { updateAppearance() }
+    }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        layer?.backgroundColor = NSColor.clear.cgColor
-
-        label.font = NSFont.systemFont(ofSize: 15, weight: .regular)
-        label.alignment = .center
-        label.isSelectable = false
-        label.translatesAutoresizingMaskIntoConstraints = false
-        addSubview(label)
-
-        NSLayoutConstraint.activate([
-            label.centerXAnchor.constraint(equalTo: centerXAnchor),
-            label.centerYAnchor.constraint(equalTo: centerYAnchor, constant: -0.5)
-        ])
+        layer?.cornerRadius = HistoryItemCornerControlMetrics.size / 2
+        layer?.cornerCurve = .continuous
+        layer?.backgroundColor = NSColor.black.withAlphaComponent(0.46).cgColor
+        isBordered = false
+        setButtonType(.momentaryChange)
+        imagePosition = .imageOnly
+        imageScaling = .scaleProportionallyDown
+        focusRingType = .none
+        updateAppearance()
     }
 
     required init?(coder: NSCoder) {
@@ -133,10 +146,30 @@ final class HistoryLockBadgeView: NSView {
     }
 
     override var intrinsicContentSize: NSSize {
-        NSSize(width: 24, height: 22)
+        NSSize(
+            width: HistoryItemCornerControlMetrics.size,
+            height: HistoryItemCornerControlMetrics.size
+        )
     }
 
-    override func hitTest(_ point: NSPoint) -> NSView? {
-        nil
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    func updateAccessibilityLabel(_ label: String) {
+        toolTip = label
+        setAccessibilityLabel(label)
+    }
+
+    private func updateAppearance() {
+        let symbolName = Self.symbolName(isFavorite: isFavorite)
+        let config = NSImage.SymbolConfiguration(
+            pointSize: HistoryItemCornerControlMetrics.favoriteSymbolPointSize,
+            weight: .semibold
+        )
+        image = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil)?
+            .withSymbolConfiguration(config)
+        image?.isTemplate = true
+        contentTintColor = isFavorite
+            ? accentGreen.withAlphaComponent(0.98)
+            : NSColor.white.withAlphaComponent(0.88)
     }
 }

@@ -47,7 +47,7 @@
 - **Chụp dài**: cuộn trong vùng chọn, xem bản ghép trực tiếp, rồi tiếp tục chỉnh sửa ảnh đã ghép.
 - **Làm đẹp và ghim**: thêm nền, bo góc, bóng, khoảng đệm, hoặc ghim ảnh nổi trên các cửa sổ khác.
 - **Chỉnh ảnh từ Finder**: chọn một ảnh trong Finder và mở thẳng vào trình chỉnh sửa mà không sửa tệp gốc.
-- **Bảng lịch sử**: sao chép lại nhanh ảnh chụp, màu đã chọn và liên kết tải lên từ bảng chuyên dụng.
+- **Bảng lịch sử**: sao chép lại nhanh ảnh chụp, màu và liên kết, đồng thời thêm mục yêu thích bằng biểu tượng ngôi sao khi di chuột.
 - **Tải lên dịch vụ ảnh riêng**: hỗ trợ Tencent COS, Qiniu Kodo và Aliyun OSS. Thông tin xác thực chỉ lưu trên Mac của bạn.
 - **AppKit thuần**: không SwiftUI, không Electron, không đo lường từ xa.
 

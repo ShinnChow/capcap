@@ -73,36 +73,36 @@ final class HistoryRetentionPolicyTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: oldest.path))
     }
 
-    func testPruneMediaSparesLockedFiles() throws {
+    func testPruneMediaSparesFavoriteFiles() throws {
         let oldest = try makeFile(name: "oldest.png", contents: Data([0x01]), age: 40)
         let old    = try makeFile(name: "old.png",    contents: Data([0x02]), age: 30)
         let newer  = try makeFile(name: "newer.png",  contents: Data([0x03]), age: 20)
         let newest = try makeFile(name: "newest.png", contents: Data([0x04]), age: 10)
-        XCTAssertTrue(HistoryManager.setLocked(true, on: oldest))
+        XCTAssertTrue(HistoryManager.setFavorite(true, on: oldest))
 
-        // limit 2 keeps the 2 newest non-locked; `oldest` is locked and therefore exempt + preserved.
+        // limit 2 keeps the 2 newest non-favorites; `oldest` is a favorite and therefore exempt + preserved.
         XCTAssertEqual(HistoryRetentionPolicy.pruneMedia(in: directoryURL, limit: 2), 1)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: oldest.path),  // locked → survives
-            "locked file must survive pruning")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path),    // next-oldest non-locked beyond cap → removed
-            "non-locked file beyond the cap should be the one pruned")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: oldest.path),
+            "favorite file must survive pruning")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path),
+            "non-favorite file beyond the cap should be the one pruned")
         XCTAssertTrue(FileManager.default.fileExists(atPath: newer.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: newest.path))
     }
 
-    func testPruneTextSparesLockedFiles() throws {
+    func testPruneTextSparesFavoriteFiles() throws {
         let oldest = try makeFile(name: "oldest.txt", contents: Data("oldest".utf8), age: 40)
         let old    = try makeFile(name: "old.txt",    contents: Data("old".utf8), age: 30)
         let newer  = try makeFile(name: "newer.txt",  contents: Data("newer".utf8), age: 20)
         let newest = try makeFile(name: "newest.txt", contents: Data("newest".utf8), age: 10)
-        XCTAssertTrue(HistoryManager.setLocked(true, on: oldest))
+        XCTAssertTrue(HistoryManager.setFavorite(true, on: oldest))
 
-        // limit 2 keeps the 2 newest non-locked text files; `oldest` is locked → exempt + preserved.
+        // limit 2 keeps the 2 newest non-favorite text files; `oldest` is a favorite and remains preserved.
         XCTAssertEqual(HistoryRetentionPolicy.pruneText(in: directoryURL, limit: 2), 1)
-        XCTAssertTrue(FileManager.default.fileExists(atPath: oldest.path),  // locked → survives
-            "locked file must survive pruning")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path),    // next-oldest non-locked beyond cap → removed
-            "non-locked file beyond the cap should be the one pruned")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: oldest.path),
+            "favorite file must survive pruning")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: old.path),
+            "non-favorite file beyond the cap should be the one pruned")
         XCTAssertTrue(FileManager.default.fileExists(atPath: newer.path))
         XCTAssertTrue(FileManager.default.fileExists(atPath: newest.path))
     }

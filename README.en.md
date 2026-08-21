@@ -53,7 +53,7 @@
 - **Scroll-stitch long content.** Capture a scrolling area, watch the stitched preview live, and keep editing the merged result.
 - **Beautify and pin.** Wrap shots in gradient or wallpaper backgrounds with rounded corners and shadow, or pin the final image floating above any window.
 - **Edit Finder images too.** Select a single image file in Finder and trigger the same shortcut to load it straight into the editor — the original is never touched.
-- **History panel.** Recent screenshots and picked colors are one click away from re-copying — local-only, configurable size.
+- **History panel.** Recent screenshots and picked colors are one click away from re-copying, with hover stars for favorites — local-only, configurable size.
 - **One-click upload to your own image host.** Optional: configure Tencent COS, Qiniu Kodo, or Aliyun OSS once and the editor's upload button copies a public URL straight to your clipboard. Credentials stay on your Mac.
 - **Built with pure AppKit.** No SwiftUI, no Electron, no telemetry. Small, fast, and respectful of macOS.
 
@@ -206,7 +206,7 @@ Open Settings from the menu bar to configure:
 
 ## History
 
-The history panel reads recent screenshots, recordings, picked colors, and text from `~/Library/Application Support/capcap/History`. Click an entry to copy it again, or use the panel to filter, search, preview, delete selected or all history, and open the cache folder in Finder.
+The history panel reads recent screenshots, recordings, picked colors, and text from `~/Library/Application Support/capcap/History`. Hover an entry and click its bottom-right star to favorite it; as soon as an entry is favorited, a star tab appears, and clicking a star while multiple entries are selected favorites the whole selection. Favorites survive automatic pruning and Delete All History. You can also filter, search, preview, delete selected entries, and open the cache folder in Finder.
 
 ## Project Structure
 

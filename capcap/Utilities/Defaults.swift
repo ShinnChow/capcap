@@ -270,13 +270,13 @@ enum L10n {
         let key = count == 1 ? "historyPanelDeletedSelectedOne" : "historyPanelDeletedSelected"
         return String(format: s(key), count)
     }
-    static var historyPanelLock: String { s("historyPanelLock") }
-    static var historyPanelUnlock: String { s("historyPanelUnlock") }
-    static var historyPanelItemLocked: String { s("historyPanelItemLocked") }
-    static var historyPanelItemUnlocked: String { s("historyPanelItemUnlocked") }
-    static var historyPanelLockFailed: String { s("historyPanelLockFailed") }
-    static func historyClearedKeptLocked(_ count: Int) -> String {
-        let key = count == 1 ? "historyClearedKeptLockedOne" : "historyClearedKeptLocked"
+    static var historyPanelFavorite: String { s("historyPanelFavorite") }
+    static var historyPanelUnfavorite: String { s("historyPanelUnfavorite") }
+    static var historyPanelItemFavorited: String { s("historyPanelItemFavorited") }
+    static var historyPanelItemUnfavorited: String { s("historyPanelItemUnfavorited") }
+    static var historyPanelFavoriteFailed: String { s("historyPanelFavoriteFailed") }
+    static func historyClearedKeptFavorites(_ count: Int) -> String {
+        let key = count == 1 ? "historyClearedKeptFavoriteOne" : "historyClearedKeptFavorites"
         return String(format: s(key), count)
     }
     static var historyPanelFilterAll: String { s("historyPanelFilterAll") }
