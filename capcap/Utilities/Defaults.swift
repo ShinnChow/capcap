@@ -165,6 +165,9 @@ enum L10n {
     static var pinFromFinderHint: String { s("pinFromFinderHint") }
     static var pinFromClipboardHint: String { s("pinFromClipboardHint") }
     static var pinFromClipboardTextHint: String { s("pinFromClipboardTextHint") }
+    static var pinToolbarClose: String { s("pinToolbarClose") }
+    static var pinToolbarCopy: String { s("pinToolbarCopy") }
+    static var pinToolbarDrag: String { s("pinToolbarDrag") }
     static var pinToolbarEdit: String { s("pinToolbarEdit") }
     static var pinToolbarEditText: String { s("pinToolbarEditText") }
 
@@ -254,7 +257,6 @@ enum L10n {
     static var settings: String { s("settings") }
     static var quitApp: String { s("quitApp") }
     static var historyMenu: String { s("historyMenu") }
-    static var historyEmpty: String { s("historyEmpty") }
     static var historyClear: String { s("historyClear") }
     static var historyCleared: String { s("historyCleared") }
     static var historyShowInFinder: String { s("historyShowInFinder") }

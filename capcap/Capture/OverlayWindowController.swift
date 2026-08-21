@@ -88,6 +88,7 @@ class OverlayWindowController {
     private let snapshotProvider: ScreenSnapshotProviding
     private let eventTrackingStateProvider: () -> Bool
     private let eventTrackingDismissal: () -> Void
+    private let colorSamplerActiveProvider: () -> Bool
     private let modalWindowProvider: () -> NSWindow?
     private let modalWindowDismissal: (NSWindow) -> Void
     private let triggerContext: CaptureTriggerContext?
@@ -242,6 +243,9 @@ class OverlayWindowController {
         eventTrackingDismissal: @escaping () -> Void = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         },
+        colorSamplerActiveProvider: @escaping () -> Bool = {
+            ColorPickerRunner.shared.isActive
+        },
         modalWindowProvider: @escaping () -> NSWindow? = {
             OverlayWindowController.currentApplicationModalWindow()
         },
@@ -265,6 +269,7 @@ class OverlayWindowController {
         self.windowImageLoader = windowImageLoader
         self.eventTrackingStateProvider = eventTrackingStateProvider
         self.eventTrackingDismissal = eventTrackingDismissal
+        self.colorSamplerActiveProvider = colorSamplerActiveProvider
         self.modalWindowProvider = modalWindowProvider
         self.modalWindowDismissal = modalWindowDismissal
         self.onFirstFramePresented = onFirstFramePresented
@@ -302,6 +307,7 @@ class OverlayWindowController {
         self.eventTrackingDismissal = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
+        self.colorSamplerActiveProvider = { ColorPickerRunner.shared.isActive }
         self.modalWindowProvider = {
             OverlayWindowController.currentApplicationModalWindow()
         }
@@ -342,6 +348,7 @@ class OverlayWindowController {
         self.eventTrackingDismissal = {
             OverlayWindowController.dismissActiveEventTrackingSurface()
         }
+        self.colorSamplerActiveProvider = { ColorPickerRunner.shared.isActive }
         self.modalWindowProvider = {
             OverlayWindowController.currentApplicationModalWindow()
         }
@@ -707,6 +714,9 @@ class OverlayWindowController {
                 return nil
             }
             if event.keyCode == 53 { // Escape
+                if self?.colorSamplerActiveProvider() == true {
+                    return event
+                }
                 self?.cancel()
                 return nil
             }
@@ -738,6 +748,7 @@ class OverlayWindowController {
                 return
             }
             if event.keyCode == 53 {
+                guard self?.colorSamplerActiveProvider() != true else { return }
                 self?.cancel()
             }
         }
@@ -746,7 +757,7 @@ class OverlayWindowController {
         // legacy ⌘+C handling with a global monitor so it still fires when
         // another app is focused underneath.
         magnifierLensPanelKeyDownGlobalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
-            self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
+            _ = self?.handleMagnifierLensPanelCopyShortcut(for: event, allowsPlainC: false)
         }
         mouseMovedLocalMonitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged]) { [weak self] event in
             self?.refreshMagnifierLensPanelContent()
@@ -1974,13 +1985,17 @@ extension OverlayWindowController: SelectionViewDelegate {
             screen: screen,
             preSnapshot: preSnapshot
         ) {
-            if let usableDirectImage {
-                let maskedImage = WindowEffects.applyingAlphaMask(from: usableDirectImage, to: snapshotWindowImage)
-                if let maskedImage {
-                    return maskedImage
-                }
+            guard let displayID = screen.deviceDescription[
+                NSDeviceDescriptionKey("NSScreenNumber")
+            ] as? CGDirectDisplayID else {
+                return WindowEffects.roundedCorners(snapshotWindowImage)
             }
-            return WindowEffects.roundedCorners(snapshotWindowImage)
+            return WindowEffects.compositedWindowImage(
+                snapshotImage: snapshotWindowImage,
+                directWindowImage: usableDirectImage,
+                captureRect: captureRect,
+                displayBounds: CGDisplayBounds(displayID)
+            )
         }
 
         return usableDirectImage

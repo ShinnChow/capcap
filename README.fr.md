@@ -47,7 +47,7 @@
 - **Capture longue** : faites défiler dans la zone sélectionnée, prévisualisez l'assemblage, puis continuez l'édition.
 - **Embellir et épingler** : ajoutez fond, arrondis, ombre et marges, ou gardez l'image au-dessus des autres fenêtres.
 - **Modifier les images Finder** : sélectionnez une image dans Finder et ouvrez-la directement dans l'éditeur sans toucher au fichier d'origine.
-- **Historique local** : recopiez rapidement captures, couleurs et liens depuis la barre des menus.
+- **Panneau d'historique** : recopiez rapidement captures, couleurs et liens depuis un panneau dédié.
 - **Téléversement vers votre hébergeur** : Tencent COS, Qiniu Kodo et Aliyun OSS sont pris en charge. Les identifiants restent sur votre Mac.
 - **AppKit pur** : pas de SwiftUI, pas d'Electron, pas de télémétrie.
 
@@ -55,8 +55,7 @@
 
 <table>
 <tr>
-  <td width="50%" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>Capture de fenêtre en un clic</b><br/>capcap détecte automatiquement les bords.</sub></td>
-  <td width="50%" align="center"><img src="images/history.png" alt="Menu bar history" /><br/><sub><b>Historique dans la barre des menus</b><br/>Recopiez vite les captures et couleurs récentes.</sub></td>
+  <td colspan="2" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>Capture de fenêtre en un clic</b><br/>capcap détecte automatiquement les bords.</sub></td>
 </tr>
 <tr>
   <td width="50%" align="center"><img src="images/scroll-stitch.png" alt="Scroll capture" /><br/><sub><b>Assembler les longues pages</b><br/>Faites défiler et voyez le résultat en direct.</sub></td>

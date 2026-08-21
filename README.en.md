@@ -53,7 +53,7 @@
 - **Scroll-stitch long content.** Capture a scrolling area, watch the stitched preview live, and keep editing the merged result.
 - **Beautify and pin.** Wrap shots in gradient or wallpaper backgrounds with rounded corners and shadow, or pin the final image floating above any window.
 - **Edit Finder images too.** Select a single image file in Finder and trigger the same shortcut to load it straight into the editor — the original is never touched.
-- **Menu bar history.** Recent screenshots and picked colors are one click away from re-copying — local-only, configurable size.
+- **History panel.** Recent screenshots and picked colors are one click away from re-copying — local-only, configurable size.
 - **One-click upload to your own image host.** Optional: configure Tencent COS, Qiniu Kodo, or Aliyun OSS once and the editor's upload button copies a public URL straight to your clipboard. Credentials stay on your Mac.
 - **Built with pure AppKit.** No SwiftUI, no Electron, no telemetry. Small, fast, and respectful of macOS.
 
@@ -61,13 +61,9 @@
 
 <table>
 <tr>
-  <td width="50%" align="center">
+  <td colspan="2" align="center">
     <img src="images/window-snap.png" alt="Smart window detection — green dashed bounds snap to an app window" /><br/>
     <sub><b>Snap to any window in one click</b><br/>No precise dragging — capcap detects window bounds for you.</sub>
-  </td>
-  <td width="50%" align="center">
-    <img src="images/history.png" alt="Menu bar history with screenshot thumbnails and picked color hex codes" /><br/>
-    <sub><b>History at the menu bar</b><br/>Re-copy any recent screenshot or picked hex color in a click.</sub>
   </td>
 </tr>
 <tr>
@@ -100,7 +96,7 @@
 - **Color picker** — use the macOS color sampler, copy the picked hex value, and keep it in history.
 - **Pin to screen** — float the current screenshot above other windows as a draggable reference image.
 - **Save or copy** — save as PNG, confirm to copy PNG/TIFF data to the clipboard, or cancel without output.
-- **Recent history** — menu bar history with thumbnails and picked colors for quick re-copy, with a configurable cache size.
+- **Recent history** — a dedicated panel for screenshots, recordings, picked colors, and text, with filters, search, quick re-copy, and a configurable cache size.
 - **Image-host upload** — optional one-click upload to Tencent COS, Qiniu Kodo, or Aliyun OSS; the public URL is copied to the clipboard and stored alongside the thumbnail in History. Credentials live only in your local UserDefaults; pick one provider as the default and the editor's upload button lights up.
 - **Custom trigger** — use the default double-tap `⌘`, or record a custom global shortcut in Settings.
 - **External recording compatibility** — selection overlays and the editor are visible to external screen recorders by default, with no extra setting.
@@ -210,7 +206,7 @@ Open Settings from the menu bar to configure:
 
 ## History
 
-The menu bar **History** submenu stores recent screenshots and picked colors in `~/Library/Application Support/capcap/History`. Click an image entry to copy it back to the clipboard, click a color entry to copy its hex value, or clear the full history from the submenu.
+The history panel reads recent screenshots, recordings, picked colors, and text from `~/Library/Application Support/capcap/History`. Click an entry to copy it again, or use the panel to filter, search, preview, delete selected or all history, and open the cache folder in Finder.
 
 ## Project Structure
 

@@ -47,7 +47,7 @@
 - **スクロール撮影**：選択範囲内をスクロールしながらフレームを結合し、結果をそのまま編集できます。
 - **美化とピン留め**：角丸、影、余白、グラデーションや壁紙背景を加えたり、画像を前面に固定できます。
 - **Finder の画像を直接編集**：Finder で画像を 1 つ選択して同じショートカットを押すと、元ファイルを変更せずにエディタで開けます。
-- **メニューバー履歴**：最近のスクリーンショット、抽出した色、アップロード URL をローカルに保持し、すぐ再コピーできます。
+- **履歴パネル**：最近のスクリーンショット、抽出した色、アップロード URL をローカルに保持し、専用パネルからすぐ再コピーできます。
 - **自分の画像ホストへアップロード**：Tencent COS、Qiniu Kodo、Aliyun OSS を設定できます。資格情報は Mac 上にのみ保存されます。
 - **純粋な AppKit 実装**：SwiftUI、Electron、外部依存なしで小さく高速に動きます。
 
@@ -55,8 +55,7 @@
 
 <table>
 <tr>
-  <td width="50%" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>ウィンドウをクリックして撮影</b><br/>capcap がウィンドウ境界を自動検出します。</sub></td>
-  <td width="50%" align="center"><img src="images/history.png" alt="Menu bar history" /><br/><sub><b>メニューバー履歴</b><br/>最近の画像や色をすぐ再コピーできます。</sub></td>
+  <td colspan="2" align="center"><img src="images/window-snap.png" alt="Smart window detection" /><br/><sub><b>ウィンドウをクリックして撮影</b><br/>capcap がウィンドウ境界を自動検出します。</sub></td>
 </tr>
 <tr>
   <td width="50%" align="center"><img src="images/scroll-stitch.png" alt="Scroll capture" /><br/><sub><b>長いページを結合</b><br/>スクロールしながらライブプレビューで結合します。</sub></td>
