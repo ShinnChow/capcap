@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.9] - 2026-08-22
+
+### Fixed
+- Correct fixed-image crop bounds and refresh selection handles (e180f5a)
+- Reject unreliable window alpha masks (b2dfd4b)
+
+### Changed
+- Improve history filter scrolling and notch layout (57988c0)
+
 ## [1.7.8] - 2026-08-21
 
 ### Added
