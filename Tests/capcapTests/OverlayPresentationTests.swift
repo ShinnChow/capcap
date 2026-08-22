@@ -9,6 +9,51 @@ final class OverlayPresentationTests: XCTestCase {
         super.tearDown()
     }
 
+    func testReenablingSelectionInteractionInvalidatesHandleDisplay() {
+        let selectionView = DisplayInvalidationTrackingSelectionView(
+            frame: NSRect(x: 0, y: 0, width: 500, height: 400)
+        )
+        selectionView.updateSelectionRect(NSRect(x: 100, y: 80, width: 240, height: 180))
+
+        let initialInvalidationCount = selectionView.displayInvalidationCount
+        selectionView.selectionInteractionEnabled = false
+        XCTAssertGreaterThan(selectionView.displayInvalidationCount, initialInvalidationCount)
+
+        let disabledInvalidationCount = selectionView.displayInvalidationCount
+        selectionView.selectionInteractionEnabled = true
+        XCTAssertGreaterThan(selectionView.displayInvalidationCount, disabledInvalidationCount)
+    }
+
+    func testWindowCaptureEditorActivatesHandlesOnInitialPresentation() throws {
+        _ = NSApplication.shared
+        let previousBeautifyAutoEnabled = Defaults.beautifyAutoEnabled
+        Defaults.beautifyAutoEnabled = false
+        defer { Defaults.beautifyAutoEnabled = previousBeautifyAutoEnabled }
+
+        let selectionView = SelectionView(frame: NSRect(x: 0, y: 0, width: 1000, height: 800))
+        let selectionRect = NSRect(x: 160, y: 120, width: 480, height: 320)
+        selectionView.updateSelectionRect(selectionRect)
+        let controller = EditWindowController(
+            captureRect: selectionRect,
+            screen: try XCTUnwrap(NSScreen.main),
+            selectionRect: selectionRect,
+            selectionViewRect: selectionRect,
+            hostSelectionView: selectionView,
+            windowBaseImage: NSImage(size: selectionRect.size),
+            isWindowCapture: true,
+            onComplete: { _ in }
+        )
+        controller.show()
+        defer { controller.tearDown() }
+
+        let chrome = try XCTUnwrap(
+            selectionView.subviews.compactMap { $0 as? SelectionChromeOverlay }.first
+        )
+        XCTAssertTrue(chrome.isActiveAndVisible)
+        XCTAssertEqual(chrome.selectionRectInView, selectionRect)
+        XCTAssertTrue(selectionView.selectionInteractionEnabled)
+    }
+
     func testOverlayIsInteractiveBeforeTwoSecondPreparationFinishes() {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider(delay: 2)
@@ -940,6 +985,15 @@ final class OverlayPresentationTests: XCTestCase {
         RunLoop.main.run(until: Date(timeIntervalSinceNow: 0.05))
     }
 
+}
+
+private final class DisplayInvalidationTrackingSelectionView: SelectionView {
+    private(set) var displayInvalidationCount = 0
+
+    override func setNeedsDisplay(_ invalidRect: NSRect) {
+        displayInvalidationCount += 1
+        super.setNeedsDisplay(invalidRect)
+    }
 }
 
 private final class ControlledScreenSnapshotProvider: ScreenSnapshotProviding {
