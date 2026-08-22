@@ -80,9 +80,15 @@ class SelectionView: NSView {
         didSet {
             if selectionInteractionEnabled != oldValue {
                 refreshCursorRects()
+                needsDisplay = true
             }
         }
     }
+    /// Optional bounds for moving/resizing an established selection. Image
+    /// crop mode uses the original image frame so handles can reveal only
+    /// pixels that actually exist, while normal screen capture continues to
+    /// use the full overlay bounds.
+    var selectionAdjustmentBounds: NSRect?
     var aspectRatio: CGFloat? = nil
     var selectionSizeLabelOverride: String? {
         didSet { needsDisplay = true }
@@ -159,8 +165,7 @@ class SelectionView: NSView {
     /// the in-rect `.move` gesture so the selection stays on screen.
     func moveByExternalDrag(deltaFromOriginal delta: CGSize, originalRect: NSRect) {
         var newRect = originalRect.offsetBy(dx: delta.width, dy: delta.height)
-        newRect.origin.x = max(0, min(bounds.width - newRect.width, newRect.origin.x))
-        newRect.origin.y = max(0, min(bounds.height - newRect.height, newRect.origin.y))
+        newRect = clampedForMove(newRect)
         selectionRect = newRect
         state = .selected
         delegate?.selectionDidChange(rect: newRect, inView: self)
@@ -184,7 +189,7 @@ class SelectionView: NSView {
             handle: handle,
             currentPoint: currentPoint,
             aspectRatio: aspectRatio,
-            bounds: bounds
+            bounds: selectionAdjustmentBounds ?? bounds
         )
         selectionRect = newRect
         state = .selected
@@ -386,9 +391,7 @@ class SelectionView: NSView {
             let dx = point.x - dragStart.x
             let dy = point.y - dragStart.y
             var newRect = dragOriginalRect.offsetBy(dx: dx, dy: dy)
-            // Clamp to view bounds
-            newRect.origin.x = max(0, min(bounds.width - newRect.width, newRect.origin.x))
-            newRect.origin.y = max(0, min(bounds.height - newRect.height, newRect.origin.y))
+            newRect = clampedForMove(newRect)
             selectionRect = newRect
             delegate?.selectionDidChange(rect: newRect, inView: self)
             needsDisplay = true
@@ -400,7 +403,7 @@ class SelectionView: NSView {
                 handle: handle,
                 currentPoint: point,
                 aspectRatio: aspectRatio,
-                bounds: bounds
+                bounds: selectionAdjustmentBounds ?? bounds
             )
             selectionRect = newRect
             delegate?.selectionDidChange(rect: newRect, inView: self)
@@ -409,6 +412,20 @@ class SelectionView: NSView {
         case .none:
             break
         }
+    }
+
+    private func clampedForMove(_ rect: NSRect) -> NSRect {
+        let adjustmentBounds = selectionAdjustmentBounds ?? bounds
+        var result = rect
+        result.origin.x = max(
+            adjustmentBounds.minX,
+            min(adjustmentBounds.maxX - result.width, result.origin.x)
+        )
+        result.origin.y = max(
+            adjustmentBounds.minY,
+            min(adjustmentBounds.maxY - result.height, result.origin.y)
+        )
+        return result
     }
 
     override func mouseUp(with event: NSEvent) {
@@ -796,6 +813,10 @@ class SelectionView: NSView {
         bounds: NSRect
     ) -> NSRect {
         let minimumSize: CGFloat = 5
+        let boundedPoint = NSPoint(
+            x: max(bounds.minX, min(bounds.maxX, currentPoint.x)),
+            y: max(bounds.minY, min(bounds.maxY, currentPoint.y))
+        )
         var minX = original.minX
         var minY = original.minY
         var maxX = original.maxX
@@ -803,25 +824,25 @@ class SelectionView: NSView {
 
         switch handle {
         case .topLeft:
-            minX = min(currentPoint.x, maxX - minimumSize)
-            maxY = max(currentPoint.y, minY + minimumSize)
+            minX = min(boundedPoint.x, maxX - minimumSize)
+            maxY = max(boundedPoint.y, minY + minimumSize)
         case .topRight:
-            maxX = max(currentPoint.x, minX + minimumSize)
-            maxY = max(currentPoint.y, minY + minimumSize)
+            maxX = max(boundedPoint.x, minX + minimumSize)
+            maxY = max(boundedPoint.y, minY + minimumSize)
         case .bottomLeft:
-            minX = min(currentPoint.x, maxX - minimumSize)
-            minY = min(currentPoint.y, maxY - minimumSize)
+            minX = min(boundedPoint.x, maxX - minimumSize)
+            minY = min(boundedPoint.y, maxY - minimumSize)
         case .bottomRight:
-            maxX = max(currentPoint.x, minX + minimumSize)
-            minY = min(currentPoint.y, maxY - minimumSize)
+            maxX = max(boundedPoint.x, minX + minimumSize)
+            minY = min(boundedPoint.y, maxY - minimumSize)
         case .topCenter:
-            maxY = max(currentPoint.y, minY + minimumSize)
+            maxY = max(boundedPoint.y, minY + minimumSize)
         case .bottomCenter:
-            minY = min(currentPoint.y, maxY - minimumSize)
+            minY = min(boundedPoint.y, maxY - minimumSize)
         case .leftCenter:
-            minX = min(currentPoint.x, maxX - minimumSize)
+            minX = min(boundedPoint.x, maxX - minimumSize)
         case .rightCenter:
-            maxX = max(currentPoint.x, minX + minimumSize)
+            maxX = max(boundedPoint.x, minX + minimumSize)
         }
 
         let unconstrained = NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)

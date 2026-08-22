@@ -52,6 +52,7 @@ class OverlayWindowController {
         let selectionSizeLabelOverride: String?
         let selectionLocked: Bool
         let selectionInteractionEnabled: Bool
+        let selectionAdjustmentBounds: NSRect?
         let preSnapshot: CGImage?
         let overrideBaseImage: NSImage?
         let windowBaseImage: NSImage?
@@ -161,27 +162,32 @@ class OverlayWindowController {
         let selectionSizeLabelOverride: String?
         let selectionLocked: Bool
         let selectionInteractionEnabled: Bool
+        let selectionAdjustmentBounds: NSRect?
 
         init(selectionView: SelectionView) {
             selectionSizeLabelOverride = selectionView.selectionSizeLabelOverride
             selectionLocked = selectionView.selectionLocked
             selectionInteractionEnabled = selectionView.selectionInteractionEnabled
+            selectionAdjustmentBounds = selectionView.selectionAdjustmentBounds
         }
 
         init(
             selectionSizeLabelOverride: String?,
             selectionLocked: Bool,
-            selectionInteractionEnabled: Bool
+            selectionInteractionEnabled: Bool,
+            selectionAdjustmentBounds: NSRect? = nil
         ) {
             self.selectionSizeLabelOverride = selectionSizeLabelOverride
             self.selectionLocked = selectionLocked
             self.selectionInteractionEnabled = selectionInteractionEnabled
+            self.selectionAdjustmentBounds = selectionAdjustmentBounds
         }
 
         func apply(to selectionView: SelectionView) {
             selectionView.selectionSizeLabelOverride = selectionSizeLabelOverride
             selectionView.selectionLocked = selectionLocked
             selectionView.selectionInteractionEnabled = selectionInteractionEnabled
+            selectionView.selectionAdjustmentBounds = selectionAdjustmentBounds
         }
     }
 
@@ -1000,9 +1006,12 @@ class OverlayWindowController {
             imageSize: presetImage.size,
             displaySize: displayMetrics.canvasSize
         )
-        // Lock immediately so user can't drag/resize a fixed-image canvas.
+        // Keep clicks outside the image from starting a new selection. For a
+        // fixed image the existing frame remains adjustable, and its original
+        // bounds cap how far crop handles can reveal content.
         selectionView.selectionLocked = true
-        selectionView.selectionInteractionEnabled = false
+        selectionView.selectionInteractionEnabled = true
+        selectionView.selectionAdjustmentBounds = viewRect
 
         // Drive the same path as a real selection completion. The captureRect
         // is irrelevant because the editor uses overrideBaseImage, but we
@@ -1046,6 +1055,7 @@ class OverlayWindowController {
         selectionView.selectionSizeLabelOverride = suspendedDraft.selectionSizeLabelOverride
         selectionView.selectionLocked = suspendedDraft.selectionLocked
         selectionView.selectionInteractionEnabled = suspendedDraft.selectionInteractionEnabled
+        selectionView.selectionAdjustmentBounds = suspendedDraft.selectionAdjustmentBounds
 
         activeSelectionView = selectionView
         activeScreen = screen
@@ -1181,6 +1191,7 @@ class OverlayWindowController {
             selectionSizeLabelOverride: selectionViewState.selectionSizeLabelOverride,
             selectionLocked: selectionViewState.selectionLocked,
             selectionInteractionEnabled: selectionViewState.selectionInteractionEnabled,
+            selectionAdjustmentBounds: selectionViewState.selectionAdjustmentBounds,
             preSnapshot: context.preSnapshot,
             overrideBaseImage: context.overrideBaseImage,
             windowBaseImage: context.windowBaseImage,
@@ -1792,7 +1803,8 @@ extension OverlayWindowController: SelectionViewDelegate {
             displaySize: displayMetrics.canvasSize
         )
         selectionView.selectionLocked = true
-        selectionView.selectionInteractionEnabled = false
+        selectionView.selectionInteractionEnabled = true
+        selectionView.selectionAdjustmentBounds = viewRect
 
         activeSelectionView = selectionView
         activeScreen = screen
@@ -1908,7 +1920,8 @@ extension OverlayWindowController: SelectionViewDelegate {
                 selectionViewState: SelectionViewState(
                     selectionSizeLabelOverride: nil,
                     selectionLocked: false,
-                    selectionInteractionEnabled: true
+                    selectionInteractionEnabled: true,
+                    selectionAdjustmentBounds: context.selectionViewState.selectionAdjustmentBounds
                 ),
                 preSnapshot: context.preSnapshot,
                 overrideBaseImage: context.overrideBaseImage,
