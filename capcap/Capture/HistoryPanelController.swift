@@ -12,6 +12,7 @@ private enum HistoryPanelLayout {
     static let searchTransitionDuration: TimeInterval = 0.26
     static let actionsHiddenOffset: CGFloat = 152
     static let searchHiddenOffset: CGFloat = searchFieldWidth + 20
+    static let filterFadeWidth: CGFloat = 20
 }
 
 final class HistoryPanelController {
@@ -475,10 +476,11 @@ private final class HistoryNotchWindowController: NSWindowController {
     }
 }
 
-private struct HistoryNotchGeometry {
+struct HistoryNotchGeometry {
     var notchWidth: CGFloat
     var notchHeight: CGFloat
     var screenWidth: CGFloat
+    var notchLeadingX: CGFloat
 
     let expandedHorizontalMargin: CGFloat = 24
     let expandedBottomInset: CGFloat = 0
@@ -487,19 +489,22 @@ private struct HistoryNotchGeometry {
         let screenFrame = screen?.frame ?? NSRect(x: 0, y: 0, width: 1200, height: 800)
         let safeTop = screen?.safeAreaInsets.top ?? 0
         var notchWidth: CGFloat = 200
+        var notchLeadingX = (screenFrame.width - notchWidth) / 2
 
         if let screen, safeTop > 0 {
             let leftWidth = screen.auxiliaryTopLeftArea?.width ?? 0
             let rightWidth = screen.auxiliaryTopRightArea?.width ?? 0
             if leftWidth > 0, rightWidth > 0 {
                 notchWidth = max(120, screenFrame.width - leftWidth - rightWidth)
+                notchLeadingX = leftWidth
             }
         }
 
         return HistoryNotchGeometry(
             notchWidth: notchWidth,
             notchHeight: safeTop > 0 ? safeTop : 24,
-            screenWidth: screenFrame.width
+            screenWidth: screenFrame.width,
+            notchLeadingX: notchLeadingX
         )
     }
 
@@ -517,6 +522,33 @@ private struct HistoryNotchGeometry {
 
     var expandedSize: NSSize {
         NSSize(width: expandedWidth, height: contentHeight + expandedBottomInset)
+    }
+
+    func filterViewportWidth(headerInset: CGFloat) -> CGFloat {
+        let expandedLeadingX = (screenWidth - expandedWidth) / 2
+        let notchLeadingInExpandedPanel = notchLeadingX - expandedLeadingX
+        return max(1, floor(notchLeadingInExpandedPanel - headerInset))
+    }
+}
+
+enum HistoryPanelFilterRevealAnchor: Equatable {
+    case leading
+    case trailing
+    case nearest
+}
+
+enum HistoryPanelFilterRevealPolicy {
+    static func anchor(selectedIndex: Int, filterCount: Int) -> HistoryPanelFilterRevealAnchor {
+        guard filterCount >= 4, selectedIndex >= 0, selectedIndex < filterCount else {
+            return .nearest
+        }
+        if selectedIndex == 1 {
+            return .leading
+        }
+        if selectedIndex == filterCount - 2 {
+            return .trailing
+        }
+        return .nearest
     }
 }
 
@@ -565,6 +597,7 @@ private final class HistoryNotchRootView: NSView {
         contentView.alphaValue = 0
         contentView.isHidden = true
         shellView.addSubview(contentView)
+        contentView.updateNotchGeometry(geometry)
 
         collapsedLabel.font = NSFont.systemFont(ofSize: 12, weight: .semibold)
         collapsedLabel.textColor = NSColor.white.withAlphaComponent(0.90)
@@ -605,6 +638,7 @@ private final class HistoryNotchRootView: NSView {
 
     func updateGeometry(for screen: NSScreen?) {
         geometry = HistoryNotchGeometry.geometry(for: screen)
+        contentView.updateNotchGeometry(geometry)
         currentSize = isExpanded ? expandedSize : collapsedSize
         needsLayout = true
         layoutSubtreeIfNeeded()
@@ -977,6 +1011,177 @@ private final class HistoryPanelScrollView: NSScrollView {
     }
 }
 
+private final class HistoryPanelFilterDocumentView: NSView {
+    override var isFlipped: Bool { true }
+}
+
+private final class HistoryPanelFilterScrollView: NSScrollView {
+    private let documentContainer = HistoryPanelFilterDocumentView()
+    private let toolbar = NSStackView()
+    private let fadeMaskLayer = CAGradientLayer()
+
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+
+        drawsBackground = false
+        borderType = .noBorder
+        hasHorizontalScroller = false
+        hasVerticalScroller = false
+        horizontalScroller = nil
+        verticalScroller = nil
+        autohidesScrollers = false
+        horizontalScrollElasticity = .allowed
+        verticalScrollElasticity = .none
+        usesPredominantAxisScrolling = false
+        contentView.postsBoundsChangedNotifications = true
+        documentView = documentContainer
+
+        toolbar.orientation = .horizontal
+        toolbar.alignment = .centerY
+        toolbar.spacing = 8
+        toolbar.setContentHuggingPriority(.required, for: .horizontal)
+        documentContainer.addSubview(toolbar)
+
+        wantsLayer = true
+        fadeMaskLayer.startPoint = CGPoint(x: 0, y: 0.5)
+        fadeMaskLayer.endPoint = CGPoint(x: 1, y: 0.5)
+        layer?.mask = fadeMaskLayer
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override var intrinsicContentSize: NSSize {
+        let contentSize = toolbar.fittingSize
+        return NSSize(width: contentSize.width, height: 28)
+    }
+
+    override func layout() {
+        super.layout()
+        layoutDocument()
+    }
+
+    override func reflectScrolledClipView(_ cView: NSClipView) {
+        super.reflectScrolledClipView(cView)
+        updateFadeMask()
+    }
+
+    func addFilterButton(_ button: NSView) {
+        toolbar.addArrangedSubview(button)
+        contentDidChange()
+    }
+
+    func contentDidChange() {
+        toolbar.needsLayout = true
+        toolbar.layoutSubtreeIfNeeded()
+        invalidateIntrinsicContentSize()
+        needsLayout = true
+    }
+
+    func reveal(_ view: NSView) {
+        layoutSubtreeIfNeeded()
+        let visibleFilters = toolbar.arrangedSubviews.filter { !$0.isHidden }
+        if let selectedIndex = visibleFilters.firstIndex(where: { $0 === view }) {
+            switch HistoryPanelFilterRevealPolicy.anchor(
+                selectedIndex: selectedIndex,
+                filterCount: visibleFilters.count
+            ) {
+            case .leading:
+                scroll(toX: 0)
+                return
+            case .trailing:
+                scroll(toX: .greatestFiniteMagnitude)
+                return
+            case .nearest:
+                break
+            }
+        }
+
+        let visibleBounds = contentView.bounds
+        let viewFrame = view.convert(view.bounds, to: documentContainer)
+        let leadingPadding: CGFloat = 4
+        let trailingPadding = HistoryPanelLayout.filterFadeWidth + 4
+        var targetX = visibleBounds.origin.x
+
+        if viewFrame.minX < visibleBounds.minX + leadingPadding {
+            targetX = viewFrame.minX - leadingPadding
+        } else if viewFrame.maxX > visibleBounds.maxX - trailingPadding {
+            targetX = viewFrame.maxX - visibleBounds.width + trailingPadding
+        }
+
+        scroll(toX: targetX)
+    }
+
+    private func layoutDocument() {
+        toolbar.layoutSubtreeIfNeeded()
+        let toolbarSize = toolbar.fittingSize
+        let viewportSize = contentView.bounds.size
+        let documentWidth = max(viewportSize.width, toolbarSize.width)
+        documentContainer.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: documentWidth,
+            height: viewportSize.height
+        )
+        toolbar.frame = NSRect(
+            x: 0,
+            y: max(0, (viewportSize.height - toolbarSize.height) / 2),
+            width: toolbarSize.width,
+            height: toolbarSize.height
+        )
+
+        scroll(toX: contentView.bounds.origin.x)
+        updateFadeMask()
+    }
+
+    private func scroll(toX proposedX: CGFloat) {
+        let maximumX = max(0, documentContainer.bounds.width - contentView.bounds.width)
+        let clampedX = min(max(0, proposedX), maximumX)
+        guard abs(contentView.bounds.origin.x - clampedX) > 0.5 else {
+            updateFadeMask()
+            return
+        }
+        contentView.scroll(to: NSPoint(x: clampedX, y: 0))
+        super.reflectScrolledClipView(contentView)
+        updateFadeMask()
+    }
+
+    private func updateFadeMask() {
+        let width = bounds.width
+        guard width > 0 else { return }
+
+        let maximumX = max(0, documentContainer.bounds.width - contentView.bounds.width)
+        let originX = contentView.bounds.origin.x
+        let hasContentBefore = originX > 0.5
+        let hasContentAfter = originX < maximumX - 0.5
+        let opaque = NSColor.black.cgColor
+        let transparent = NSColor.clear.cgColor
+        let fadeFraction = min(0.45, HistoryPanelLayout.filterFadeWidth / width)
+
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        switch (hasContentBefore, hasContentAfter) {
+        case (true, true):
+            fadeMaskLayer.colors = [transparent, opaque, opaque, transparent]
+            fadeMaskLayer.locations = [0, NSNumber(value: fadeFraction), NSNumber(value: 1 - fadeFraction), 1]
+        case (true, false):
+            fadeMaskLayer.colors = [transparent, opaque, opaque]
+            fadeMaskLayer.locations = [0, NSNumber(value: fadeFraction), 1]
+        case (false, true):
+            fadeMaskLayer.colors = [opaque, opaque, transparent]
+            fadeMaskLayer.locations = [0, NSNumber(value: 1 - fadeFraction), 1]
+        case (false, false):
+            fadeMaskLayer.colors = [opaque, opaque]
+            fadeMaskLayer.locations = [0, 1]
+        }
+
+        fadeMaskLayer.frame = bounds
+        fadeMaskLayer.contentsScale = window?.backingScaleFactor ?? NSScreen.main?.backingScaleFactor ?? 2
+        CATransaction.commit()
+    }
+}
+
 private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource, NSCollectionViewDelegate {
     private static let pageSize = 30
     private static let initialPreviewCount = 18
@@ -993,6 +1198,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
 
     private var selectedFilter: HistoryPanelFilter = .all
     private var filterButtons: [HistoryPanelFilter: HistoryPanelFilterButton] = [:]
+    private let filterScrollView = HistoryPanelFilterScrollView()
     private let entriesQueue = DispatchQueue(label: "capcap.historyPanelEntries", qos: .userInitiated)
     private let scrollView = HistoryPanelScrollView()
     private let collectionView = NSCollectionView()
@@ -1044,6 +1250,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private var searchApplyWorkItem: DispatchWorkItem?
     private var searchGeneration = 0
     private var searchAnimationGeneration = 0
+    private var filterViewportWidthConstraint: NSLayoutConstraint?
 
     init(
         presentation: HistoryPanelPresentation,
@@ -1097,24 +1304,30 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         updateCollectionLayout()
     }
 
+    func updateNotchGeometry(_ geometry: HistoryNotchGeometry) {
+        guard presentation == .notch else { return }
+        filterViewportWidthConstraint?.constant = geometry.filterViewportWidth(
+            headerInset: presentation.headerInset
+        )
+        needsLayout = true
+    }
+
     private func setupUI() {
         let header = NSView()
         header.translatesAutoresizingMaskIntoConstraints = false
         addSubview(header)
 
-        let toolbar = NSStackView()
-        toolbar.orientation = .horizontal
-        toolbar.alignment = .centerY
-        toolbar.spacing = 8
-        toolbar.translatesAutoresizingMaskIntoConstraints = false
-        header.addSubview(toolbar)
+        filterScrollView.translatesAutoresizingMaskIntoConstraints = false
+        filterScrollView.setContentHuggingPriority(.defaultHigh, for: .horizontal)
+        filterScrollView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        header.addSubview(filterScrollView)
 
         for filter in HistoryPanelFilter.allCases {
             let button = HistoryPanelFilterButton(filter: filter)
             button.target = self
             button.action = #selector(filterClicked(_:))
             filterButtons[filter] = button
-            toolbar.addArrangedSubview(button)
+            filterScrollView.addFilterButton(button)
         }
         updateFilterAvailability(availableFilters: [.all])
 
@@ -1209,6 +1422,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             equalTo: header.trailingAnchor,
             constant: HistoryPanelLayout.searchHiddenOffset
         )
+        let filterViewportWidth = filterScrollView.widthAnchor.constraint(equalToConstant: 1)
+        filterViewportWidth.isActive = presentation == .notch
+        filterViewportWidthConstraint = filterViewportWidth
         actionButtonsTrailingConstraint = actionButtonsTrailing
         searchFieldTrailingConstraint = searchFieldTrailing
         NSLayoutConstraint.activate([
@@ -1217,10 +1433,17 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             header.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -headerInset),
             header.heightAnchor.constraint(equalToConstant: HistoryPanelLayout.headerHeight),
 
-            toolbar.leadingAnchor.constraint(equalTo: header.leadingAnchor),
-            toolbar.centerYAnchor.constraint(equalTo: header.centerYAnchor),
-            toolbar.trailingAnchor.constraint(lessThanOrEqualTo: actionButtonsContainer.leadingAnchor, constant: -12),
-            toolbar.trailingAnchor.constraint(lessThanOrEqualTo: searchField.leadingAnchor, constant: -12),
+            filterScrollView.leadingAnchor.constraint(equalTo: header.leadingAnchor),
+            filterScrollView.centerYAnchor.constraint(equalTo: header.centerYAnchor),
+            filterScrollView.heightAnchor.constraint(equalToConstant: 28),
+            filterScrollView.trailingAnchor.constraint(
+                lessThanOrEqualTo: actionButtonsContainer.leadingAnchor,
+                constant: -12
+            ),
+            filterScrollView.trailingAnchor.constraint(
+                lessThanOrEqualTo: searchField.leadingAnchor,
+                constant: -12
+            ),
 
             deleteWidth,
             deleteButton.heightAnchor.constraint(equalToConstant: 28),
@@ -1267,6 +1490,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         for (filter, button) in filterButtons {
             button.title = filter.title
         }
+        filterScrollView.contentDidChange()
         visibleCollectionTiles.forEach { $0.refreshFavoriteState() }
         updateDeleteButtonPresentation()
         infoButton.updateAccessibilityLabel(
@@ -1557,12 +1781,16 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         for (filter, button) in filterButtons {
             button.isHidden = !availableFilters.contains(filter)
         }
+        filterScrollView.contentDidChange()
         updateFilterSelection()
     }
 
     private func updateFilterSelection() {
         for (filter, button) in filterButtons {
             button.isSelected = filter == selectedFilter
+        }
+        if let selectedButton = filterButtons[selectedFilter], !selectedButton.isHidden {
+            filterScrollView.reveal(selectedButton)
         }
     }
 
