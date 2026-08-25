@@ -111,6 +111,7 @@ final class HistoryCloudBadgeView: NSView {
 enum HistoryItemCornerControlMetrics {
     static let size: CGFloat = 18
     static let favoriteSymbolPointSize: CGFloat = 14
+    static let horizontalPreviewOverlap: CGFloat = 5
     static let favoritePreviewOverlap: CGFloat = 7
 }
 

@@ -135,6 +135,7 @@ final class HistoryFavoriteTests: XCTestCase {
         XCTAssertEqual(HistoryFavoriteButton.symbolName(isFavorite: true), "star.fill")
         XCTAssertEqual(HistoryItemCornerControlMetrics.size, 18)
         XCTAssertEqual(HistoryItemCornerControlMetrics.favoriteSymbolPointSize, 14)
+        XCTAssertEqual(HistoryItemCornerControlMetrics.horizontalPreviewOverlap, 5)
         XCTAssertEqual(HistoryItemCornerControlMetrics.favoritePreviewOverlap, 7)
     }
 

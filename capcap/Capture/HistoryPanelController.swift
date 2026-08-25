@@ -4127,7 +4127,8 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         }
         let selectionSize = selectionBadgeView.intrinsicContentSize
         selectionBadgeView.frame = NSRect(
-            x: imageView.frame.maxX - selectionSize.width + 5,
+            x: imageView.frame.maxX - selectionSize.width
+                + HistoryItemCornerControlMetrics.horizontalPreviewOverlap,
             y: imageView.frame.minY - 5,
             width: selectionSize.width,
             height: selectionSize.height
@@ -4135,8 +4136,9 @@ private final class HistoryPanelTileView: NSView, NSDraggingSource {
         if !badgeView.isHidden {
             let badgeSize = badgeView.intrinsicContentSize
             badgeView.frame = NSRect(
-                x: imageView.frame.minX + 7,
-                y: imageView.frame.maxY - badgeSize.height - 7,
+                x: imageView.frame.minX - HistoryItemCornerControlMetrics.horizontalPreviewOverlap,
+                y: imageView.frame.maxY - badgeSize.height
+                    + HistoryItemCornerControlMetrics.favoritePreviewOverlap,
                 width: badgeSize.width,
                 height: badgeSize.height
             )
