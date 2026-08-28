@@ -225,6 +225,22 @@ class EditWindowController {
         isScrollCapturing || isScrollCaptureFinalizing
     }
 
+    private var shouldShowSelectionChrome: Bool {
+        Self.shouldShowSelectionChrome(
+            hasPreviewImage: canvasView?.hasPreviewImage == true,
+            isScrollCaptureBusy: isScrollCaptureBusy,
+            isCropping: isCropping
+        )
+    }
+
+    static func shouldShowSelectionChrome(
+        hasPreviewImage: Bool,
+        isScrollCaptureBusy: Bool,
+        isCropping: Bool
+    ) -> Bool {
+        !hasPreviewImage && !isScrollCaptureBusy && !isCropping
+    }
+
     private var isLiveScreenCaptureSession: Bool {
         overrideBaseImage == nil && onRecordingSelection != nil
     }
@@ -1124,9 +1140,15 @@ class EditWindowController {
                 in: hostSelectionView.bounds
             )
         }
+        updateSelectionChromePresentation()
+    }
+
+    private func updateSelectionChromePresentation() {
+        let isVisible = shouldShowSelectionChrome
+        selectionChromeOverlay?.isHidden = !isVisible
         selectionChromeOverlay?.update(
             rect: selectionViewRect,
-            active: canvasView?.hasPreviewImage != true
+            active: isVisible
         )
     }
 
@@ -2723,6 +2745,7 @@ class EditWindowController {
         hostSelectionView?.annotationToolActive = !isBlocked
         hostSelectionView?.selectionInteractionEnabled = !(isBlocked || hasPreview)
         canvasScrollView?.isInteractionEnabled = (activeTool != .none) || hasPreview || hasFixedImage || isBeautifyActive
+        updateSelectionChromePresentation()
         hostSelectionView?.needsDisplay = true
     }
 

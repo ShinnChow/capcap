@@ -54,6 +54,38 @@ final class OverlayPresentationTests: XCTestCase {
         XCTAssertTrue(selectionView.selectionInteractionEnabled)
     }
 
+    func testSelectionChromeIsHiddenThroughoutScrollCaptureLifecycle() {
+        XCTAssertTrue(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: false,
+                isScrollCaptureBusy: false,
+                isCropping: false
+            )
+        )
+        XCTAssertFalse(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: false,
+                isScrollCaptureBusy: true,
+                isCropping: false
+            ),
+            "The green dashed border and handles must not be captured in scroll frames"
+        )
+        XCTAssertFalse(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: false,
+                isScrollCaptureBusy: false,
+                isCropping: true
+            )
+        )
+        XCTAssertFalse(
+            EditWindowController.shouldShowSelectionChrome(
+                hasPreviewImage: true,
+                isScrollCaptureBusy: false,
+                isCropping: false
+            )
+        )
+    }
+
     func testOverlayIsInteractiveBeforeTwoSecondPreparationFinishes() {
         _ = NSApplication.shared
         let provider = ControlledScreenSnapshotProvider(delay: 2)
