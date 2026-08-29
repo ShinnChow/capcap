@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.10] - 2026-08-29
+
+### Fixed
+- Limit screenshot capture queue depth to one (9e2102b)
+- Hide selection chrome during scroll capture (a6b8d91)
+
+### Changed
+- Align history corner controls with preview overlap (21a0c34)
+
 ## [1.7.9] - 2026-08-22
 
 ### Fixed
