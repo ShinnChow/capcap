@@ -337,9 +337,9 @@
 "settingsQuit" = "アプリを終了";
 
 "toolbarSettingsPrimaryTitle" = "メインツールバー";
-"toolbarSettingsPrimaryHint" = "ツールは選択範囲の上または下に表示されます";
+"toolbarSettingsPrimaryHint" = "ツールは選択範囲の上または下に表示されます。ドラッグで位置を調整し、クリックでショートカットを設定します";
 "toolbarSettingsSideTitle" = "サイドツールバー";
-"toolbarSettingsSideHint" = "ツールは選択範囲の左または右に表示されます";
+"toolbarSettingsSideHint" = "ツールは選択範囲の左または右に表示されます。ドラッグで位置を調整し、クリックでショートカットを設定します";
 "toolbarSettingsHiddenTitle" = "非表示のツール";
 "toolbarSettingsHiddenHint" = "ここにドラッグしたツールはどのツールバーにも表示されません";
 "toolbarSettingsFootnote" = "ツールバーは選択範囲の位置に応じて上下／左右のレイアウトに自動で切り替わります";
@@ -350,6 +350,7 @@
 "toolbarSettingsShortcutRestore" = "デフォルトのショートカットに戻す";
 "toolbarSettingsShortcutResetAll" = "エディタのショートカットをリセット";
 "toolbarSettingsShortcutNone" = "未設定";
+"toolbarSettingsShortcutUnavailable" = "N/A";
 "toolbarSettingsAdditionalShortcuts" = "その他の編集操作";
 "toolbarSettingsReset" = "デフォルトに戻す";
 "toolbarSettingsCancel" = "キャンセル";

@@ -210,8 +210,11 @@ final class ToolbarSettingsPane: NSView {
         hint: NSTextField,
         grid: ToolbarSlotGridView
     ) {
+        hint.lineBreakMode = .byWordWrapping
+        hint.maximumNumberOfLines = 2
         stack.addArrangedSubview(title)
         stack.addArrangedSubview(hint)
+        hint.widthAnchor.constraint(equalTo: stack.widthAnchor).isActive = true
         stack.setCustomSpacing(2, after: title)
         stack.setCustomSpacing(10, after: hint)
         stack.addArrangedSubview(grid)

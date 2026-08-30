@@ -538,6 +538,7 @@ enum L10n {
     static var toolbarSettingsShortcutRestore: String { s("toolbarSettingsShortcutRestore") }
     static var toolbarSettingsShortcutResetAll: String { s("toolbarSettingsShortcutResetAll") }
     static var toolbarSettingsShortcutNone: String { s("toolbarSettingsShortcutNone") }
+    static var toolbarSettingsShortcutUnavailable: String { s("toolbarSettingsShortcutUnavailable") }
     static var toolbarSettingsAdditionalShortcuts: String { s("toolbarSettingsAdditionalShortcuts") }
     static var toolbarSettingsReset: String { s("toolbarSettingsReset") }
     static var toolbarSettingsCancel: String { s("toolbarSettingsCancel") }
