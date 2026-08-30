@@ -503,7 +503,7 @@
 "ocrTranslating" = "번역 중";
 "ocrTranslateFailedPrefix" = "실패";
 "ocrNoProviderTitle" = "번역 서비스가 설정되지 않음";
-"ocrNoProviderHint" = "설정 → 번역 에서 AI 서비스를 추가하세요";
+"ocrNoProviderHint" = "설정 → 번역에서 번역 서비스를 활성화하세요";
 "ocrOpenSettings" = "설정 열기";
 "ocrLineCopied" = "줄 복사됨";
 "copyImageTextCopying" = "복사 중";
@@ -538,6 +538,8 @@
 "translationTestFailed" = "테스트 실패";
 "translationTestFailedTitle" = "저장했지만 연결 테스트에 실패했습니다";
 "translationProviderCustom" = "사용자 정의 OpenAI 호환";
+"translationAppleSubtitle" = "Apple 온디바이스 모델을 사용하며 언어 데이터를 다운로드할 수 있습니다";
+"translationErrAppleUnavailable" = "Apple Translation은 macOS 15 이상이 필요합니다";
 "translationMoveUp" = "위로 이동";
 "translationMoveDown" = "아래로 이동";
 

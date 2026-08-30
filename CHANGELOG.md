@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Add an Apple Translation provider for on-device text translation on macOS 15 and later
+
 ## [1.7.10] - 2026-08-29
 
 ### Fixed

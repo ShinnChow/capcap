@@ -54,8 +54,9 @@
 - **Beautify and pin.** Wrap shots in gradient or wallpaper backgrounds with rounded corners and shadow, or pin the final image floating above any window.
 - **Edit Finder images too.** Select a single image file in Finder and trigger the same shortcut to load it straight into the editor — the original is never touched.
 - **History panel.** Recent screenshots and picked colors are one click away from re-copying, with hover stars for favorites — local-only, configurable size.
+- **OCR and on-device translation.** Apple Vision recognizes image text locally; on macOS 15+, Apple Translation can translate it on device, while your own AI or DeepL providers remain available.
 - **One-click upload to your own image host.** Optional: configure Tencent COS, Qiniu Kodo, or Aliyun OSS once and the editor's upload button copies a public URL straight to your clipboard. Credentials stay on your Mac.
-- **Built with pure AppKit.** No SwiftUI, no Electron, no telemetry. Small, fast, and respectful of macOS.
+- **Native AppKit interface.** No Electron and no telemetry. Small, fast, and respectful of macOS.
 
 ## Showcase
 

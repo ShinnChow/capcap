@@ -48,8 +48,9 @@
 - **Embellir et épingler** : ajoutez fond, arrondis, ombre et marges, ou gardez l'image au-dessus des autres fenêtres.
 - **Modifier les images Finder** : sélectionnez une image dans Finder et ouvrez-la directement dans l'éditeur sans toucher au fichier d'origine.
 - **Panneau d'historique** : recopiez rapidement captures, couleurs et liens, puis ajoutez des éléments aux favoris avec l'étoile affichée au survol.
+- **OCR et traduction sur l’appareil** : Apple Vision reconnaît localement le texte des images ; sous macOS 15 et versions ultérieures, Apple Translation peut le traduire sur l’appareil, tout en conservant vos fournisseurs IA ou DeepL.
 - **Téléversement vers votre hébergeur** : Tencent COS, Qiniu Kodo et Aliyun OSS sont pris en charge. Les identifiants restent sur votre Mac.
-- **AppKit pur** : pas de SwiftUI, pas d'Electron, pas de télémétrie.
+- **Interface AppKit native** : pas d’Electron ni de télémétrie.
 
 ## Aperçu
 

@@ -503,7 +503,7 @@
 "ocrTranslating" = "Перевод";
 "ocrTranslateFailedPrefix" = "Ошибка";
 "ocrNoProviderTitle" = "Служба перевода не настроена";
-"ocrNoProviderHint" = "Добавьте ИИ-службу в Настройки → Перевод";
+"ocrNoProviderHint" = "Включите службу в Настройки → Перевод";
 "ocrOpenSettings" = "Открыть настройки";
 "ocrLineCopied" = "Строка скопирована";
 "copyImageTextCopying" = "Копирование";
@@ -538,6 +538,8 @@
 "translationTestFailed" = "Проверка не пройдена";
 "translationTestFailedTitle" = "Сохранено, но проверка соединения не удалась";
 "translationProviderCustom" = "Свой совместимый с OpenAI";
+"translationAppleSubtitle" = "Использует модели Apple на устройстве и может загружать языковые данные";
+"translationErrAppleUnavailable" = "Для Apple Translation требуется macOS 15 или новее";
 "translationMoveUp" = "Переместить вверх";
 "translationMoveDown" = "Переместить вниз";
 

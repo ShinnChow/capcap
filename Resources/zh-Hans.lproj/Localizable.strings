@@ -503,7 +503,7 @@
 "ocrTranslating" = "翻译中";
 "ocrTranslateFailedPrefix" = "翻译失败";
 "ocrNoProviderTitle" = "未配置翻译服务";
-"ocrNoProviderHint" = "前往「设置 → 翻译」添加 AI 服务";
+"ocrNoProviderHint" = "请前往「设置 → 翻译」启用翻译服务";
 "ocrOpenSettings" = "打开设置";
 "ocrLineCopied" = "已复制该行";
 "copyImageTextCopying" = "正在复制";
@@ -538,6 +538,8 @@
 "translationTestFailed" = "测试失败";
 "translationTestFailedTitle" = "已保存，但连接测试失败";
 "translationProviderCustom" = "自定义 OpenAI 兼容";
+"translationAppleSubtitle" = "使用 Apple 设备端模型，可能需要下载语言数据";
+"translationErrAppleUnavailable" = "Apple Translation 需要 macOS 15 或更高版本";
 "translationMoveUp" = "上移";
 "translationMoveDown" = "下移";
 
