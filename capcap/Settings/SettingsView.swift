@@ -303,6 +303,7 @@ class SettingsView: NSView {
     private var detailScrollView: NSScrollView!
     private var paneContainer: NSView!
     private var paneViews: [SettingsTab: NSView] = [:]
+    private var toolbarPane: ToolbarSettingsPane?
     private var uploadPane: UploadSettingsPane?
     private var filenameRuleCard: FilenameRuleCard?
     private var screenshotQualityTitleLabel: NSTextField!
@@ -592,6 +593,9 @@ class SettingsView: NSView {
         // starts fresh next time the user opens it.
         if selectedTab == .upload && tab != .upload {
             uploadPane?.clearLogs()
+        }
+        if selectedTab == .toolbar && tab != .toolbar {
+            toolbarPane?.cancelShortcutRecording()
         }
         selectedTab = tab
         for btn in tabButtons {
@@ -1907,6 +1911,7 @@ class SettingsView: NSView {
         let host = NSView()
         host.translatesAutoresizingMaskIntoConstraints = false
         let pane = ToolbarSettingsPane()
+        toolbarPane = pane
         host.addSubview(pane)
         NSLayoutConstraint.activate([
             pane.topAnchor.constraint(equalTo: host.topAnchor),
@@ -1915,6 +1920,10 @@ class SettingsView: NSView {
             pane.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
         return host
+    }
+
+    func cancelToolbarShortcutRecording() {
+        toolbarPane?.cancelShortcutRecording()
     }
 
     private func buildUploadPane() -> NSView {

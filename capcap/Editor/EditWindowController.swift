@@ -442,25 +442,64 @@ class EditWindowController {
     /// primary and the side toolbar share the same wiring — a tool behaves
     /// identically regardless of which bar it was dragged to.
     private func wireToolbarCallbacks(_ tv: ToolbarView) {
-        tv.onToolSelected = { [weak self] tool in self?.selectTool(tool) }
-        tv.onUndo = { [weak self] in _ = self?.canvasView?.undo() }
-        tv.onRedo = { [weak self] in _ = self?.canvasView?.redo() }
-        tv.onColorPicker = { [weak self] in self?.runColorPicker() }
-        tv.onScrollCapture = { [weak self] in self?.toggleScrollCapture() }
-        tv.onBeautify = { [weak self] in self?.toggleBeautify() }
-        tv.onInsertImage = { [weak self] in self?.showInsertImageMenu() }
-        tv.onQRCode = { [weak self] in self?.performQRCodeRecognition() }
-        tv.onOCR = { [weak self] in self?.performOCR() }
-        tv.onScreenshotTranslate = { [weak self] in self?.performScreenshotTranslation() }
-        tv.onSave = { [weak self] in self?.save() }
-        tv.onUpload = { [weak self] in self?.upload() }
-        tv.onPin = { [weak self] in self?.pin() }
-        tv.onRecord = { [weak self] in self?.record() }
-        tv.onClose = { [weak self] in self?.close() }
-        tv.onConfirm = { [weak self] in self?.confirm() }
+        tv.onItemTriggered = { [weak self] item in
+            _ = self?.performToolbarItem(item, togglesSelectedTool: true)
+        }
         tv.onMoveSelectionStart = { [weak self] in self?.handleMoveSelectionStart() }
         tv.onMoveSelectionDrag = { [weak self] delta in self?.handleMoveSelectionDrag(delta: delta) }
         tv.onMoveSelectionEnd = { [weak self] in self?.handleMoveSelectionEnd() }
+    }
+
+    @discardableResult
+    private func performToolbarItem(
+        _ item: ToolbarItemID,
+        togglesSelectedTool: Bool
+    ) -> Bool {
+        if let tool = item.editTool {
+            selectTool(togglesSelectedTool && activeTool == tool ? .none : tool)
+            return true
+        }
+
+        switch item {
+        case .insertImage:
+            showInsertImageMenu()
+        case .colorPicker:
+            runColorPicker()
+        case .undo:
+            _ = canvasView?.undo()
+        case .redo:
+            _ = canvasView?.redo()
+        case .scrollCapture:
+            toggleScrollCapture()
+        case .beautify:
+            toggleBeautify()
+        case .qrCode:
+            performQRCodeRecognition()
+        case .ocr:
+            performOCR()
+        case .screenshotTranslate:
+            performScreenshotTranslation()
+        case .save:
+            save()
+        case .upload:
+            guard Defaults.hasUsableUploadProvider else { return false }
+            upload()
+        case .pin:
+            pin()
+        case .record:
+            guard onRecordingSelection != nil else { return false }
+            record()
+        case .close:
+            close()
+        case .confirm:
+            confirm()
+        case .moveSelection:
+            return false
+        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .spotlight,
+             .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
+            return false
+        }
+        return true
     }
 
     /// Primary + side toolbars currently on screen.
@@ -2330,6 +2369,13 @@ class EditWindowController {
         confirm()
     }
 
+    @discardableResult
+    func pinFromKeyboard() -> Bool {
+        guard !isScrollCaptureBusy, !isCropping else { return false }
+        pin()
+        return true
+    }
+
     /// Called by the overlay's local mouse monitor before AppKit dispatches a
     /// left click. This lets the editor preserve the selection's established
     /// double-click-to-copy gesture even while the annotation canvas owns the
@@ -2440,19 +2486,15 @@ class EditWindowController {
 
     func handleEditorShortcutFromKeyboard(for event: NSEvent) -> Bool {
         guard !isScrollCaptureBusy, !isCropping else { return false }
-        guard let shortcut = EditorKeyboardShortcut(event: event) else { return false }
+        guard let shortcut = EditorShortcutRegistry.action(matching: event) else { return false }
 
         switch shortcut {
         case .select:
             selectTool(.none)
-        case .tool(let tool):
-            selectTool(tool)
-        case .fill:
+        case .shapeFill:
             return toggleShapeFillFromKeyboard()
-        case .pin:
-            pin()
-        case .close:
-            close()
+        case .toolbar(let item):
+            return performToolbarItem(item, togglesSelectedTool: false)
         }
         return true
     }
@@ -2811,41 +2853,6 @@ class EditWindowController {
     }
 }
 
-private enum EditorKeyboardShortcut {
-    case select
-    case tool(EditTool)
-    case fill
-    case pin
-    case close
-
-    init?(event: NSEvent) {
-        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
-        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-        guard modifiers.intersection(blockedModifiers).isEmpty else { return nil }
-        guard let key = event.charactersIgnoringModifiers?.lowercased(), key.count == 1 else {
-            return nil
-        }
-
-        switch key {
-        case "v": self = .select
-        case "r": self = .tool(.rectangle)
-        case "o": self = .tool(.ellipse)
-        case "l": self = .tool(.line)
-        case "a": self = .tool(.arrow)
-        case "d": self = .tool(.pen)
-        case "h": self = .tool(.marker)
-        case "m": self = .tool(.mosaic)
-        case "e": self = .tool(.eraser)
-        case "f": self = .fill
-        case "t": self = .tool(.text)
-        case "n": self = .tool(.numbered)
-        case "p": self = .pin
-        case "x": self = .close
-        default: return nil
-        }
-    }
-}
-
 // MARK: - Main Toolbar View
 
 let accentGreen = NSColor(red: 0, green: 212.0/255.0, blue: 106.0/255.0, alpha: 1.0)
@@ -2931,22 +2938,7 @@ class ToolbarView: NSView {
         }
     }
 
-    var onToolSelected: ((EditTool) -> Void)?
-    var onUndo: (() -> Void)?
-    var onRedo: (() -> Void)?
-    var onColorPicker: (() -> Void)?
-    var onScrollCapture: (() -> Void)?
-    var onBeautify: (() -> Void)?
-    var onInsertImage: (() -> Void)?
-    var onQRCode: (() -> Void)?
-    var onOCR: (() -> Void)?
-    var onScreenshotTranslate: (() -> Void)?
-    var onSave: (() -> Void)?
-    var onUpload: (() -> Void)?
-    var onPin: (() -> Void)?
-    var onRecord: (() -> Void)?
-    var onClose: (() -> Void)?
-    var onConfirm: (() -> Void)?
+    var onItemTriggered: ((ToolbarItemID) -> Void)?
     /// Press-and-drag callbacks for the "move selection" handle. The first
     /// fires on mouseDown so the controller can capture the starting rect;
     /// the second fires on every drag with the cumulative window-space
@@ -2958,10 +2950,6 @@ class ToolbarView: NSView {
     /// Every button keyed by its id — drives selection state, enable/disable,
     /// and frame lookups. `MoveSelectionDragHandle` values are not `ToolButton`s.
     private var buttons: [ToolbarItemID: NSView] = [:]
-    /// Last tool the controller selected. Tracked so a second click on the
-    /// already-selected tool button toggles back to "no tool" (adjust mode).
-    private var currentTool: EditTool = .none
-
     init(items: [ToolbarItemID], orientation: Orientation) {
         self.items = items
         self.orientation = orientation
@@ -2977,7 +2965,6 @@ class ToolbarView: NSView {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     func updateSelection(tool: EditTool) {
-        currentTool = tool
         for (id, view) in buttons {
             guard id.kind == .toggleTool, let btn = view as? ToolButton else { continue }
             btn.isSelected = (id.editTool == tool)
@@ -3073,29 +3060,8 @@ class ToolbarView: NSView {
     @objc private func buttonTapped(_ sender: ToolButton) {
         guard sender.tag >= 0, sender.tag < items.count else { return }
         let id = items[sender.tag]
-        switch id {
-        case .rectangle, .ellipse, .arrow, .line, .pen, .marker, .spotlight, .mosaic, .eraser, .magnifier, .numbered, .text, .emoji:
-            guard let tool = id.editTool else { return }
-            // Click an already-selected tool to deselect it and enter adjust
-            // mode (no tool, but existing marks remain draggable).
-            onToolSelected?(tool == currentTool ? .none : tool)
-        case .insertImage:   onInsertImage?()
-        case .colorPicker:   onColorPicker?()
-        case .undo:          onUndo?()
-        case .redo:          onRedo?()
-        case .scrollCapture: onScrollCapture?()
-        case .beautify:      onBeautify?()
-        case .qrCode:        onQRCode?()
-        case .ocr:           onOCR?()
-        case .screenshotTranslate: onScreenshotTranslate?()
-        case .save:          onSave?()
-        case .upload:        onUpload?()
-        case .pin:           onPin?()
-        case .record:        onRecord?()
-        case .close:         onClose?()
-        case .confirm:       onConfirm?()
-        case .moveSelection: break  // handled by MoveSelectionDragHandle
-        }
+        guard id != .moveSelection else { return }
+        onItemTriggered?(id)
     }
 }
 

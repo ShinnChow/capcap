@@ -25,6 +25,12 @@ final class ToolbarItemTile: NSView {
     weak var grid: ToolbarSlotGridView?
     private var hoverTip: String?
     private var hoverTrackingArea: NSTrackingArea?
+    var isRecordingShortcut = false {
+        didSet {
+            refreshTooltip()
+            needsDisplay = true
+        }
+    }
 
     init(itemID: ToolbarItemID) {
         self.itemID = itemID
@@ -85,6 +91,11 @@ final class ToolbarItemTile: NSView {
         grid?.beginDrag(from: self, startEvent: event)
     }
 
+    override func rightMouseDown(with event: NSEvent) {
+        ToolTipWindow.hide()
+        grid?.showShortcutMenu(for: self, event: event)
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         if window == nil { ToolTipWindow.hide() }
@@ -102,19 +113,45 @@ final class ToolbarItemTile: NSView {
         let body = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 7, yRadius: 7)
         NSColor.white.withAlphaComponent(0.08).setFill()
         body.fill()
-        NSColor.white.withAlphaComponent(0.10).setStroke()
-        body.lineWidth = 1
+        (isRecordingShortcut ? accentGreen : NSColor.white.withAlphaComponent(0.10)).setStroke()
+        body.lineWidth = isRecordingShortcut ? 2 : 1
         body.stroke()
 
         if let icon = tintedSymbol(itemID.symbolName, pointSize: 15, color: iconColor) {
             let size = icon.size
             icon.draw(in: NSRect(
                 x: bounds.midX - size.width / 2,
-                y: bounds.midY - size.height / 2,
+                y: bounds.midY - size.height / 2 + 3,
                 width: size.width,
                 height: size.height
             ))
         }
+
+        drawShortcutBadge()
+    }
+
+    private func drawShortcutBadge() {
+        let display = isRecordingShortcut
+            ? "…"
+            : itemID.editorShortcutDisplay
+        guard let display, !display.isEmpty else { return }
+
+        let badgeRect = NSRect(x: 3, y: 2, width: bounds.width - 6, height: 11)
+        let badge = NSBezierPath(roundedRect: badgeRect, xRadius: 4, yRadius: 4)
+        (isRecordingShortcut ? accentGreen.withAlphaComponent(0.28) : NSColor.black.withAlphaComponent(0.48)).setFill()
+        badge.fill()
+
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center
+        let attributes: [NSAttributedString.Key: Any] = [
+            .font: NSFont.monospacedSystemFont(ofSize: 7.5, weight: .semibold),
+            .foregroundColor: NSColor.white.withAlphaComponent(0.95),
+            .paragraphStyle: paragraph,
+        ]
+        (display as NSString).draw(
+            in: badgeRect.offsetBy(dx: 0, dy: 0.5),
+            withAttributes: attributes
+        )
     }
 }
 
@@ -131,6 +168,8 @@ final class ToolbarSlotGridView: NSView {
 
     /// Fired after a drag-and-drop edit changes any grid's contents.
     var onLayoutChanged: (() -> Void)?
+    var onShortcutEdit: ((ToolbarItemID) -> Void)?
+    var onShortcutContextMenu: ((ToolbarItemID, NSView, NSEvent) -> Void)?
     /// Supplies all sibling grids so a drag can move tiles across sections.
     var gridProvider: (() -> [ToolbarSlotGridView])?
 
@@ -210,6 +249,13 @@ final class ToolbarSlotGridView: NSView {
     func refreshTooltips() {
         for tile in tiles {
             tile.refreshTooltip()
+            tile.needsDisplay = true
+        }
+    }
+
+    func setShortcutRecordingItem(_ item: ToolbarItemID?) {
+        for tile in tiles {
+            tile.isRecordingShortcut = tile.itemID == item
         }
     }
 
@@ -367,7 +413,10 @@ final class ToolbarSlotGridView: NSView {
         for grid in grids { grid.dropIndicator = nil }
         NSCursor.arrow.set()
 
-        guard dragging else { return }  // a plain click — nothing moved
+        guard dragging else {
+            onShortcutEdit?(draggedID)
+            return
+        }
 
         let destGrid = targetGrid ?? sourceGrid
         var destItems = destGrid.items
@@ -383,6 +432,10 @@ final class ToolbarSlotGridView: NSView {
             initialFrames: initialFrame.map { [draggedID: $0] } ?? [:]
         )
         onLayoutChanged?()
+    }
+
+    func showShortcutMenu(for tile: ToolbarItemTile, event: NSEvent) {
+        onShortcutContextMenu?(tile.itemID, tile, event)
     }
 
     /// Finds the grid (and insertion index) under a window-space point.

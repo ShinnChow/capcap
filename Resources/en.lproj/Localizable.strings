@@ -47,9 +47,9 @@
 "selectedImagePinShortcutHeader" = "Pin Selected Image";
 "selectedImagePinShortcutDefaultDisplay" = "Not set";
 "selectedImagePinShortcutClear" = "Clear Pin Selected Image Shortcut";
-"clipboardImagePinShortcutHeader" = "Pin Clipboard Image";
+"clipboardImagePinShortcutHeader" = "Pin Current or Clipboard Image";
 "clipboardImagePinShortcutDefaultDisplay" = "Not set";
-"clipboardImagePinShortcutClear" = "Clear Pin Clipboard Image Shortcut";
+"clipboardImagePinShortcutClear" = "Clear Pin Current or Clipboard Image Shortcut";
 "clipboardTextPinShortcutHeader" = "Pin Clipboard Text";
 "clipboardTextPinShortcutDefaultDisplay" = "Not set";
 "clipboardTextPinShortcutClear" = "Clear Pin Clipboard Text Shortcut";
@@ -343,9 +343,21 @@
 "toolbarSettingsHiddenTitle" = "Hidden tools";
 "toolbarSettingsHiddenHint" = "Tools dragged here won't appear in any toolbar";
 "toolbarSettingsFootnote" = "Toolbars switch automatically between top/bottom and left/right based on the selection's position";
+"toolbarSettingsShortcutHint" = "Click a tool to record its shortcut, drag to reposition it, or right-click for more options";
+"toolbarSettingsShortcutRecording" = "Press a new shortcut for “%@” or press Esc to cancel";
+"toolbarSettingsShortcutRecord" = "Record Shortcut";
+"toolbarSettingsShortcutClear" = "Clear Shortcut";
+"toolbarSettingsShortcutRestore" = "Restore Default Shortcut";
+"toolbarSettingsShortcutResetAll" = "Reset Editor Shortcuts";
+"toolbarSettingsShortcutNone" = "Not Set";
+"toolbarSettingsAdditionalShortcuts" = "Additional editor actions";
 "toolbarSettingsReset" = "Reset to Default";
 "toolbarSettingsCancel" = "Cancel";
 "toolbarSettingsApply" = "Apply";
+"editorShortcutSelect" = "Selection tool";
+"editorShortcutShapeFill" = "Toggle shape fill";
+"editorShortcutConflict" = "This shortcut is already assigned to “%@”";
+"editorShortcutReserved" = "This key is reserved for an editor system action and cannot be reassigned";
 
 /* About pane */
 "aboutTagline" = "Menu bar screenshot tool";

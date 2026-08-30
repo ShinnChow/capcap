@@ -47,9 +47,9 @@
 "selectedImagePinShortcutHeader" = "Épingler l'image sélectionnée";
 "selectedImagePinShortcutDefaultDisplay" = "Non défini";
 "selectedImagePinShortcutClear" = "Effacer le raccourci d'épinglage de l'image sélectionnée";
-"clipboardImagePinShortcutHeader" = "Épingler l'image du presse-papiers";
+"clipboardImagePinShortcutHeader" = "Épingler l’image actuelle ou celle du presse-papiers";
 "clipboardImagePinShortcutDefaultDisplay" = "Non défini";
-"clipboardImagePinShortcutClear" = "Effacer le raccourci d'épinglage du presse-papiers";
+"clipboardImagePinShortcutClear" = "Effacer le raccourci d’épinglage de l’image actuelle ou du presse-papiers";
 "clipboardTextPinShortcutHeader" = "Épingler le texte du presse-papiers";
 "clipboardTextPinShortcutDefaultDisplay" = "Non défini";
 "clipboardTextPinShortcutClear" = "Effacer le raccourci d'épinglage du texte du presse-papiers";
@@ -343,9 +343,21 @@
 "toolbarSettingsHiddenTitle" = "Outils masqués";
 "toolbarSettingsHiddenHint" = "Les outils déposés ici n'apparaissent dans aucune barre d'outils";
 "toolbarSettingsFootnote" = "Les barres d'outils basculent automatiquement entre haut/bas et gauche/droite selon la position de la sélection";
+"toolbarSettingsShortcutHint" = "Cliquez sur un outil pour enregistrer son raccourci, faites-le glisser pour le déplacer ou faites un clic droit pour plus d’options";
+"toolbarSettingsShortcutRecording" = "Appuyez sur un nouveau raccourci pour « %@ » ou sur Échap pour annuler";
+"toolbarSettingsShortcutRecord" = "Enregistrer le raccourci";
+"toolbarSettingsShortcutClear" = "Effacer le raccourci";
+"toolbarSettingsShortcutRestore" = "Rétablir le raccourci par défaut";
+"toolbarSettingsShortcutResetAll" = "Réinitialiser les raccourcis de l’éditeur";
+"toolbarSettingsShortcutNone" = "Non défini";
+"toolbarSettingsAdditionalShortcuts" = "Actions d’édition supplémentaires";
 "toolbarSettingsReset" = "Réinitialiser";
 "toolbarSettingsCancel" = "Annuler";
 "toolbarSettingsApply" = "Appliquer";
+"editorShortcutSelect" = "Outil de sélection";
+"editorShortcutShapeFill" = "Changer le remplissage des formes";
+"editorShortcutConflict" = "Ce raccourci est déjà attribué à « %@ »";
+"editorShortcutReserved" = "Cette touche est réservée à une action système de l’éditeur et ne peut pas être réattribuée";
 
 /* About pane */
 "aboutTagline" = "Outil de capture d'écran dans la barre des menus";

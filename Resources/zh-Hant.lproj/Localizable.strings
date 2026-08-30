@@ -47,9 +47,9 @@
 "selectedImagePinShortcutHeader" = "釘選所選圖片";
 "selectedImagePinShortcutDefaultDisplay" = "未設定";
 "selectedImagePinShortcutClear" = "清除釘選所選圖片快捷鍵";
-"clipboardImagePinShortcutHeader" = "釘選剪貼簿圖片";
+"clipboardImagePinShortcutHeader" = "釘選目前或剪貼簿圖片";
 "clipboardImagePinShortcutDefaultDisplay" = "未設定";
-"clipboardImagePinShortcutClear" = "清除釘選剪貼簿圖片快捷鍵";
+"clipboardImagePinShortcutClear" = "清除釘選目前或剪貼簿圖片快捷鍵";
 "clipboardTextPinShortcutHeader" = "釘選剪貼簿文字";
 "clipboardTextPinShortcutDefaultDisplay" = "未設定";
 "clipboardTextPinShortcutClear" = "清除釘選剪貼簿文字快捷鍵";
@@ -343,9 +343,21 @@
 "toolbarSettingsHiddenTitle" = "隱藏工具";
 "toolbarSettingsHiddenHint" = "拖到這裡的工具不會出現在任何工具列";
 "toolbarSettingsFootnote" = "工具列會依選取範圍的位置，自動在上/下與左/右配置間切換";
+"toolbarSettingsShortcutHint" = "點按工具可錄製快捷鍵，拖動可調整位置，右鍵可清除或恢復預設";
+"toolbarSettingsShortcutRecording" = "請按下「%@」的新快捷鍵，按 Esc 取消";
+"toolbarSettingsShortcutRecord" = "錄製快捷鍵";
+"toolbarSettingsShortcutClear" = "清除快捷鍵";
+"toolbarSettingsShortcutRestore" = "恢復預設快捷鍵";
+"toolbarSettingsShortcutResetAll" = "重設編輯器快捷鍵";
+"toolbarSettingsShortcutNone" = "未設定";
+"toolbarSettingsAdditionalShortcuts" = "其他編輯操作";
 "toolbarSettingsReset" = "重設為預設值";
 "toolbarSettingsCancel" = "取消";
 "toolbarSettingsApply" = "套用";
+"editorShortcutSelect" = "選取工具";
+"editorShortcutShapeFill" = "切換形狀填滿";
+"editorShortcutConflict" = "此快捷鍵已指派給「%@」";
+"editorShortcutReserved" = "此按鍵用於編輯器系統操作，無法重新指派";
 
 /* About pane */
 "aboutTagline" = "選單列截圖工具";
