@@ -130,6 +130,8 @@
 "historyClear" = "Xóa lịch sử";
 "historyCleared" = "Đã xóa lịch sử";
 "historyShowInFinder" = "Hiển thị trong Finder";
+"historyPanelLock" = "Khóa bảng lịch sử";
+"historyPanelUnlock" = "Mở khóa bảng lịch sử";
 "historyPanelFavorite" = "Yêu thích";
 "historyPanelUnfavorite" = "Bỏ yêu thích";
 "historyPanelItemFavorited" = "Đã thêm vào mục yêu thích";

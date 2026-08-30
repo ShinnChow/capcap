@@ -130,6 +130,8 @@
 "historyClear" = "기록 지우기";
 "historyCleared" = "기록 지움";
 "historyShowInFinder" = "Finder에 표시";
+"historyPanelLock" = "히스토리 패널 잠그기";
+"historyPanelUnlock" = "히스토리 패널 잠금 해제";
 "historyPanelFavorite" = "즐겨찾기";
 "historyPanelUnfavorite" = "즐겨찾기에서 제거";
 "historyPanelItemFavorited" = "즐겨찾기에 추가됨";

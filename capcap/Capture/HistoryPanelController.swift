@@ -10,15 +10,22 @@ private enum HistoryPanelLayout {
     static let verticalGap: CGFloat = 12
     static let searchFieldWidth: CGFloat = 252
     static let searchTransitionDuration: TimeInterval = 0.26
-    static let actionsHiddenOffset: CGFloat = 152
+    static let actionsHiddenOffset: CGFloat = 188
     static let searchHiddenOffset: CGFloat = searchFieldWidth + 20
     static let filterFadeWidth: CGFloat = 20
+}
+
+enum HistoryPanelDismissalPolicy {
+    static func shouldDismissAutomatically(isLocked: Bool) -> Bool {
+        !isLocked
+    }
 }
 
 final class HistoryPanelController {
     private let onEditEntry: (HistoryEntry) -> Void
     private var dialogPanel: NSPanel?
     private var dialogOutsideMonitors: [Any] = []
+    private var isDialogLocked = false
     private var notchController: HistoryNotchWindowController?
 
     init(onEditEntry: @escaping (HistoryEntry) -> Void) {
@@ -146,7 +153,10 @@ final class HistoryPanelController {
 
         let content = HistoryPanelContentView(
             presentation: .dialog,
-            onRequestDismiss: { [weak self] in self?.closeDialog() },
+            onRequestDismiss: { [weak self] in self?.requestCloseDialog() },
+            onLockStateChanged: { [weak self] isLocked in
+                self?.isDialogLocked = isLocked
+            },
             onEditEntry: onEditEntry
         )
         content.frame = chrome.bounds
@@ -165,13 +175,19 @@ final class HistoryPanelController {
         stopDialogOutsideMonitoring()
         dialogPanel?.orderOut(nil)
         dialogPanel = nil
+        isDialogLocked = false
+    }
+
+    private func requestCloseDialog() {
+        guard HistoryPanelDismissalPolicy.shouldDismissAutomatically(isLocked: isDialogLocked) else { return }
+        closeDialog()
     }
 
     private func startDialogOutsideMonitoring(for panel: NSPanel) {
         let local = NSEvent.addLocalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self, weak panel] event in
             guard let self, let panel else { return event }
             if !self.event(event, isInside: panel) {
-                self.closeDialog()
+                self.requestCloseDialog()
             }
             return event
         }
@@ -183,7 +199,7 @@ final class HistoryPanelController {
             DispatchQueue.main.async {
                 guard let self, let panel else { return }
                 if !self.event(event, isInside: panel) {
-                    self.closeDialog()
+                    self.requestCloseDialog()
                 }
             }
         }
@@ -240,6 +256,7 @@ private final class HistoryNotchWindowController: NSWindowController {
     private var suppressCollapseUntil: Date?
     private var holdsOpenUntilMouseEntersHoverRegion = false
     private var commandOpenedMouseHasEnteredHoverRegion = false
+    private var isLocked = false
 
     private let expandDelay: TimeInterval = 0.03
     private let collapseDelay: TimeInterval = 0.35
@@ -274,7 +291,10 @@ private final class HistoryNotchWindowController: NSWindowController {
 
         super.init(window: panel)
         rootView.onRequestDismiss = { [weak self] in
-            self?.collapse()
+            self?.requestCollapse()
+        }
+        rootView.onLockStateChanged = { [weak self] isLocked in
+            self?.lockStateDidChange(isLocked)
         }
         panel.orderFrontRegardless()
         startMouseMonitoring()
@@ -303,6 +323,7 @@ private final class HistoryNotchWindowController: NSWindowController {
 
     func toggleFromUserRequest(holdOpenUntilMouseEnters: Bool = false) {
         if rootView.isExpanded {
+            rootView.setLocked(false)
             collapse()
         } else {
             expand(holdOpenUntilMouseEnters: holdOpenUntilMouseEnters)
@@ -332,6 +353,20 @@ private final class HistoryNotchWindowController: NSWindowController {
             guard let self, self.isCollapsing else { return }
             self.isCollapsing = false
             self.window?.ignoresMouseEvents = true
+        }
+    }
+
+    private func requestCollapse() {
+        guard HistoryPanelDismissalPolicy.shouldDismissAutomatically(isLocked: isLocked) else { return }
+        collapse()
+    }
+
+    private func lockStateDidChange(_ isLocked: Bool) {
+        self.isLocked = isLocked
+        if isLocked {
+            cancelCollapse()
+        } else {
+            handleMouseMove()
         }
     }
 
@@ -366,6 +401,11 @@ private final class HistoryNotchWindowController: NSWindowController {
         guard let window else { return }
         let mouse = NSEvent.mouseLocation
         if rootView.isExpanded {
+            if isLocked {
+                cancelCollapse()
+                rootView.syncHoverStateWithCurrentMouse()
+                return
+            }
             let rect = expandedHoverRect(in: window)
             if rect.contains(mouse) {
                 commandOpenedMouseHasEnteredHoverRegion = true
@@ -421,7 +461,7 @@ private final class HistoryNotchWindowController: NSWindowController {
         guard collapseWorkItem == nil else { return }
         let workItem = DispatchWorkItem { [weak self] in
             self?.collapseWorkItem = nil
-            self?.collapse()
+            self?.requestCollapse()
         }
         collapseWorkItem = workItem
         DispatchQueue.main.asyncAfter(deadline: .now() + collapseDelay, execute: workItem)
@@ -574,6 +614,12 @@ private final class HistoryNotchRootView: NSView {
         }
     }
 
+    var onLockStateChanged: ((Bool) -> Void)? {
+        didSet {
+            contentView.onLockStateChanged = onLockStateChanged
+        }
+    }
+
     init(onEditEntry: @escaping (HistoryEntry) -> Void) {
         contentView = HistoryPanelContentView(presentation: .notch, onEditEntry: onEditEntry)
         super.init(frame: .zero)
@@ -692,6 +738,10 @@ private final class HistoryNotchRootView: NSView {
     func syncHoverStateWithCurrentMouse() {
         guard isExpanded else { return }
         contentView.syncHoverStateWithCurrentMouse()
+    }
+
+    func setLocked(_ isLocked: Bool) {
+        contentView.setLocked(isLocked)
     }
 
     private func layoutShell(animated: Bool) {
@@ -1195,6 +1245,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private let presentation: HistoryPanelPresentation
     private let onEditEntry: (HistoryEntry) -> Void
     var onRequestDismiss: (() -> Void)?
+    var onLockStateChanged: ((Bool) -> Void)?
 
     private var selectedFilter: HistoryPanelFilter = .all
     private var filterButtons: [HistoryPanelFilter: HistoryPanelFilterButton] = [:]
@@ -1210,6 +1261,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         accessibilityLabel: L10n.historyPanelShortcutGuide
     )
     private let finderButton = HistoryPanelActionButton(symbolName: "folder", accessibilityLabel: L10n.historyShowInFinder)
+    private let lockButton = HistoryPanelActionButton(symbolName: "lock", accessibilityLabel: L10n.historyPanelLock)
     private let settingsButton = HistoryPanelActionButton(symbolName: "gearshape", accessibilityLabel: L10n.settings)
     private let actionButtonsContainer = NSStackView()
     private let searchField = HistoryPanelSearchField()
@@ -1241,6 +1293,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     private var hoverSyncWorkItem: DispatchWorkItem?
     private var isScrollingContent = false
     private var isShowingShortcutGuide = false
+    private var isLocked = false
     private var isSearchMode = false
     private var isSearchInputActive = false
     private var searchMouseMovementMonitor: Any?
@@ -1255,10 +1308,12 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     init(
         presentation: HistoryPanelPresentation,
         onRequestDismiss: (() -> Void)? = nil,
+        onLockStateChanged: ((Bool) -> Void)? = nil,
         onEditEntry: @escaping (HistoryEntry) -> Void = { _ in }
     ) {
         self.presentation = presentation
         self.onRequestDismiss = onRequestDismiss
+        self.onLockStateChanged = onLockStateChanged
         self.onEditEntry = onEditEntry
         shortcutGuideView = HistoryPanelShortcutGuideView(presentation: presentation)
         super.init(frame: .zero)
@@ -1337,6 +1392,9 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         infoButton.target = self
         infoButton.action = #selector(toggleShortcutGuideClicked)
 
+        lockButton.target = self
+        lockButton.action = #selector(toggleLockClicked)
+
         settingsButton.target = self
         settingsButton.action = #selector(openSettingsClicked)
 
@@ -1350,6 +1408,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         actionButtonsContainer.addArrangedSubview(deleteButton)
         actionButtonsContainer.addArrangedSubview(infoButton)
         actionButtonsContainer.addArrangedSubview(finderButton)
+        actionButtonsContainer.addArrangedSubview(lockButton)
         actionButtonsContainer.addArrangedSubview(settingsButton)
         header.addSubview(actionButtonsContainer)
 
@@ -1498,6 +1557,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         )
         shortcutGuideView.reload()
         finderButton.updateAccessibilityLabel(L10n.historyShowInFinder)
+        updateLockButtonPresentation()
         settingsButton.updateAccessibilityLabel(L10n.settings)
         searchField.clearAccessibilityLabel = L10n.historyPanelClearSearch
         updateSearchPlaceholder()
@@ -1525,6 +1585,13 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
             isScrollingContent = false
             clearActiveHoverTile()
         }
+    }
+
+    func setLocked(_ isLocked: Bool) {
+        guard self.isLocked != isLocked else { return }
+        self.isLocked = isLocked
+        updateLockButtonPresentation()
+        onLockStateChanged?(isLocked)
     }
 
     @objc private func historyDidUpdate() {
@@ -1828,6 +1895,17 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
     @objc private func toggleShortcutGuideClicked() {
         setDeleteConfirmation(false, animated: true)
         setShortcutGuideVisible(!isShowingShortcutGuide)
+    }
+
+    @objc private func toggleLockClicked() {
+        setDeleteConfirmation(false, animated: true)
+        setLocked(!isLocked)
+    }
+
+    private func updateLockButtonPresentation() {
+        lockButton.isSelected = isLocked
+        lockButton.updateAccessibilityLabel(isLocked ? L10n.historyPanelUnlock : L10n.historyPanelLock)
+        lockButton.updateSymbol(isLocked ? "lock.fill" : "lock")
     }
 
     private func setShortcutGuideVisible(_ visible: Bool) {
@@ -3576,6 +3654,12 @@ private final class HistoryPanelActionButton: NSControl {
     func updateAccessibilityLabel(_ label: String) {
         toolTip = label
         setAccessibilityLabel(label)
+    }
+
+    func updateSymbol(_ symbolName: String) {
+        let config = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
+        iconView.image = NSImage(systemSymbolName: symbolName, accessibilityDescription: toolTip)?
+            .withSymbolConfiguration(config)
     }
 
     override func mouseDown(with event: NSEvent) {

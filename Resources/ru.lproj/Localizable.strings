@@ -130,6 +130,8 @@
 "historyClear" = "Очистить историю";
 "historyCleared" = "История очищена";
 "historyShowInFinder" = "Показать в Finder";
+"historyPanelLock" = "Заблокировать панель истории";
+"historyPanelUnlock" = "Разблокировать панель истории";
 "historyPanelFavorite" = "Добавить в избранное";
 "historyPanelUnfavorite" = "Удалить из избранного";
 "historyPanelItemFavorited" = "Добавлено в избранное";

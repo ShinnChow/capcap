@@ -130,6 +130,8 @@
 "historyClear" = "清除歷史記錄";
 "historyCleared" = "歷史記錄已清除";
 "historyShowInFinder" = "在 Finder 中顯示";
+"historyPanelLock" = "鎖定歷史面板";
+"historyPanelUnlock" = "解鎖歷史面板";
 "historyPanelFavorite" = "收藏";
 "historyPanelUnfavorite" = "取消收藏";
 "historyPanelItemFavorited" = "已收藏";
