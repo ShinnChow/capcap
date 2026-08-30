@@ -110,48 +110,86 @@ final class ToolbarItemTile: NSView {
     }
 
     override func draw(_ dirtyRect: NSRect) {
-        let body = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 7, yRadius: 7)
+        let body = NSBezierPath(roundedRect: bounds.insetBy(dx: 1, dy: 1), xRadius: 8, yRadius: 8)
         NSColor.white.withAlphaComponent(0.08).setFill()
         body.fill()
         (isRecordingShortcut ? accentGreen : NSColor.white.withAlphaComponent(0.10)).setStroke()
         body.lineWidth = isRecordingShortcut ? 2 : 1
         body.stroke()
 
+        let shortcutDisplay = isRecordingShortcut
+            ? "…"
+            : itemID.editorShortcutDisplay ?? L10n.toolbarSettingsShortcutUnavailable
         if let icon = tintedSymbol(itemID.symbolName, pointSize: 15, color: iconColor) {
             let size = icon.size
+            let centerY = bounds.maxY - 13.5
             icon.draw(in: NSRect(
                 x: bounds.midX - size.width / 2,
-                y: bounds.midY - size.height / 2 + 3,
+                y: centerY - size.height / 2,
                 width: size.width,
                 height: size.height
             ))
         }
 
-        drawShortcutBadge()
+        drawShortcutBadge(shortcutDisplay)
     }
 
-    private func drawShortcutBadge() {
-        let display = isRecordingShortcut
-            ? "…"
-            : itemID.editorShortcutDisplay
-        guard let display, !display.isEmpty else { return }
-
-        let badgeRect = NSRect(x: 3, y: 2, width: bounds.width - 6, height: 11)
-        let badge = NSBezierPath(roundedRect: badgeRect, xRadius: 4, yRadius: 4)
+    private func drawShortcutBadge(_ display: String) {
+        let badgeRect = NSRect(x: 3, y: 3, width: bounds.width - 6, height: 13)
+        let badge = NSBezierPath(roundedRect: badgeRect, xRadius: 4.5, yRadius: 4.5)
         (isRecordingShortcut ? accentGreen.withAlphaComponent(0.28) : NSColor.black.withAlphaComponent(0.48)).setFill()
         badge.fill()
 
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
+        paragraph.lineBreakMode = .byClipping
+        let font = NSFont.monospacedSystemFont(ofSize: 8, weight: .semibold)
         let attributes: [NSAttributedString.Key: Any] = [
-            .font: NSFont.monospacedSystemFont(ofSize: 7.5, weight: .semibold),
+            .font: font,
             .foregroundColor: NSColor.white.withAlphaComponent(0.95),
             .paragraphStyle: paragraph,
         ]
-        (display as NSString).draw(
-            in: badgeRect.offsetBy(dx: 0, dy: 0.5),
+        let textRect = badgeRect.insetBy(dx: 2, dy: 0)
+        let fittedDisplay = Self.fittedShortcutDisplay(
+            display,
+            maximumWidth: textRect.width,
+            font: font
+        )
+        let textHeight = ceil((fittedDisplay as NSString).size(withAttributes: attributes).height)
+        (fittedDisplay as NSString).draw(
+            in: NSRect(
+                x: textRect.minX,
+                y: badgeRect.midY - textHeight / 2,
+                width: textRect.width,
+                height: textHeight
+            ),
             withAttributes: attributes
         )
+    }
+
+    private static func fittedShortcutDisplay(
+        _ display: String,
+        maximumWidth: CGFloat,
+        font: NSFont
+    ) -> String {
+        let singleLine = display
+            .replacingOccurrences(of: "\n", with: " ")
+            .replacingOccurrences(of: "\r", with: " ")
+        let measurementAttributes: [NSAttributedString.Key: Any] = [.font: font]
+        guard (singleLine as NSString).size(withAttributes: measurementAttributes).width > maximumWidth else {
+            return singleLine
+        }
+
+        let suffix = ".."
+        var prefix = ""
+        for character in singleLine {
+            let candidate = prefix + String(character) + suffix
+            if (candidate as NSString).size(withAttributes: measurementAttributes).width > maximumWidth {
+                break
+            }
+            prefix.append(character)
+        }
+        return prefix + suffix
     }
 }
 
@@ -160,7 +198,8 @@ final class ToolbarItemTile: NSView {
 /// A wrapping grid of tool tiles for one toolbar section, with drag-and-drop
 /// reordering both within the grid and across sibling grids.
 final class ToolbarSlotGridView: NSView {
-    static let tile: CGFloat = 34
+    static let tileWidth: CGFloat = 34
+    static let tileHeight: CGFloat = 44
     static let gap: CGFloat = 8
 
     let section: ToolbarSection
@@ -262,11 +301,11 @@ final class ToolbarSlotGridView: NSView {
     // MARK: Geometry
 
     private func currentColumns() -> Int {
-        max(1, Int((bounds.width + Self.gap) / (Self.tile + Self.gap)))
+        max(1, Int((bounds.width + Self.gap) / (Self.tileWidth + Self.gap)))
     }
 
     private func rowHeight(rows: Int) -> CGFloat {
-        CGFloat(rows) * Self.tile + CGFloat(max(0, rows - 1)) * Self.gap
+        CGFloat(rows) * Self.tileHeight + CGFloat(max(0, rows - 1)) * Self.gap
     }
 
     /// Rows to display — at least 2, and always enough to show the drop bar.
@@ -301,18 +340,19 @@ final class ToolbarSlotGridView: NSView {
         let col = index % cols
         let row = index / cols
         return NSRect(
-            x: CGFloat(col) * (Self.tile + Self.gap),
-            y: CGFloat(row) * (Self.tile + Self.gap),
-            width: Self.tile,
-            height: Self.tile
+            x: CGFloat(col) * (Self.tileWidth + Self.gap),
+            y: CGFloat(row) * (Self.tileHeight + Self.gap),
+            width: Self.tileWidth,
+            height: Self.tileHeight
         )
     }
 
     /// Insertion index nearest a point in this grid's coordinate space.
     func insertionIndex(at point: NSPoint) -> Int {
-        let cell = Self.tile + Self.gap
-        let col = Int((point.x + Self.tile / 2) / cell)
-        let row = max(0, Int(point.y / cell))
+        let horizontalCell = Self.tileWidth + Self.gap
+        let verticalCell = Self.tileHeight + Self.gap
+        let col = Int((point.x + Self.tileWidth / 2) / horizontalCell)
+        let row = max(0, Int(point.y / verticalCell))
         let index = row * columns + min(max(0, col), columns)
         return min(max(0, index), items.count)
     }
@@ -338,7 +378,7 @@ final class ToolbarSlotGridView: NSView {
                 x: slot.minX - Self.gap / 2 - 1.5,
                 y: slot.minY,
                 width: 3,
-                height: Self.tile
+                height: Self.tileHeight
             )
             accentGreen.setFill()
             NSBezierPath(roundedRect: bar, xRadius: 1.5, yRadius: 1.5).fill()
@@ -456,7 +496,7 @@ final class ToolbarSlotGridView: NSView {
     private static func makeGhost(for id: ToolbarItemID) -> NSView {
         let ghost = ToolbarItemTile(itemID: id)
         ghost.clearTooltip()
-        ghost.frame = NSRect(x: 0, y: 0, width: tile, height: tile)
+        ghost.frame = NSRect(x: 0, y: 0, width: tileWidth, height: tileHeight)
         ghost.alphaValue = 0.95
         ghost.shadow = {
             let shadow = NSShadow()

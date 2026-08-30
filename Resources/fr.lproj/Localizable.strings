@@ -337,9 +337,9 @@
 "settingsQuit" = "Quitter l'application";
 
 "toolbarSettingsPrimaryTitle" = "Barre principale";
-"toolbarSettingsPrimaryHint" = "Les outils apparaissent au-dessus ou en dessous de la sélection";
+"toolbarSettingsPrimaryHint" = "Les outils apparaissent au-dessus ou en dessous de la sélection, faites glisser pour ajuster la position et cliquez pour définir un raccourci";
 "toolbarSettingsSideTitle" = "Barre latérale";
-"toolbarSettingsSideHint" = "Les outils apparaissent à gauche ou à droite de la sélection";
+"toolbarSettingsSideHint" = "Les outils apparaissent à gauche ou à droite de la sélection, faites glisser pour ajuster la position et cliquez pour définir un raccourci";
 "toolbarSettingsHiddenTitle" = "Outils masqués";
 "toolbarSettingsHiddenHint" = "Les outils déposés ici n'apparaissent dans aucune barre d'outils";
 "toolbarSettingsFootnote" = "Les barres d'outils basculent automatiquement entre haut/bas et gauche/droite selon la position de la sélection";
@@ -350,6 +350,7 @@
 "toolbarSettingsShortcutRestore" = "Rétablir le raccourci par défaut";
 "toolbarSettingsShortcutResetAll" = "Réinitialiser les raccourcis de l’éditeur";
 "toolbarSettingsShortcutNone" = "Non défini";
+"toolbarSettingsShortcutUnavailable" = "N/A";
 "toolbarSettingsAdditionalShortcuts" = "Actions d’édition supplémentaires";
 "toolbarSettingsReset" = "Réinitialiser";
 "toolbarSettingsCancel" = "Annuler";

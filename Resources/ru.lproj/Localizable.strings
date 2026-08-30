@@ -337,9 +337,9 @@
 "settingsQuit" = "Завершить приложение";
 
 "toolbarSettingsPrimaryTitle" = "Основная панель";
-"toolbarSettingsPrimaryHint" = "Инструменты появляются над или под выделением";
+"toolbarSettingsPrimaryHint" = "Инструменты появляются над или под выделением, перетащите для изменения положения и нажмите для настройки сочетания клавиш";
 "toolbarSettingsSideTitle" = "Боковая панель";
-"toolbarSettingsSideHint" = "Инструменты появляются слева или справа от выделения";
+"toolbarSettingsSideHint" = "Инструменты появляются слева или справа от выделения, перетащите для изменения положения и нажмите для настройки сочетания клавиш";
 "toolbarSettingsHiddenTitle" = "Скрытые инструменты";
 "toolbarSettingsHiddenHint" = "Инструменты, перетащенные сюда, не появляются ни на одной панели";
 "toolbarSettingsFootnote" = "Панели автоматически переключаются между расположением сверху/снизу и слева/справа в зависимости от положения выделения";
@@ -350,6 +350,7 @@
 "toolbarSettingsShortcutRestore" = "Восстановить сочетание по умолчанию";
 "toolbarSettingsShortcutResetAll" = "Сбросить сочетания редактора";
 "toolbarSettingsShortcutNone" = "Не задано";
+"toolbarSettingsShortcutUnavailable" = "N/A";
 "toolbarSettingsAdditionalShortcuts" = "Дополнительные действия редактора";
 "toolbarSettingsReset" = "Сбросить";
 "toolbarSettingsCancel" = "Отмена";

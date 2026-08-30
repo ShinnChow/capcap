@@ -337,9 +337,9 @@
 "settingsQuit" = "Quit App";
 
 "toolbarSettingsPrimaryTitle" = "Main toolbar";
-"toolbarSettingsPrimaryHint" = "Tools appear above or below the selection";
+"toolbarSettingsPrimaryHint" = "Tools appear above or below the selection, drag to reposition, click to set a shortcut";
 "toolbarSettingsSideTitle" = "Side toolbar";
-"toolbarSettingsSideHint" = "Tools appear to the left or right of the selection";
+"toolbarSettingsSideHint" = "Tools appear to the left or right of the selection, drag to reposition, click to set a shortcut";
 "toolbarSettingsHiddenTitle" = "Hidden tools";
 "toolbarSettingsHiddenHint" = "Tools dragged here won't appear in any toolbar";
 "toolbarSettingsFootnote" = "Toolbars switch automatically between top/bottom and left/right based on the selection's position";
@@ -350,6 +350,7 @@
 "toolbarSettingsShortcutRestore" = "Restore Default Shortcut";
 "toolbarSettingsShortcutResetAll" = "Reset Editor Shortcuts";
 "toolbarSettingsShortcutNone" = "Not Set";
+"toolbarSettingsShortcutUnavailable" = "N/A";
 "toolbarSettingsAdditionalShortcuts" = "Additional editor actions";
 "toolbarSettingsReset" = "Reset to Default";
 "toolbarSettingsCancel" = "Cancel";

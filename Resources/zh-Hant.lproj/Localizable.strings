@@ -337,9 +337,9 @@
 "settingsQuit" = "結束 App";
 
 "toolbarSettingsPrimaryTitle" = "主要工具列";
-"toolbarSettingsPrimaryHint" = "工具會顯示在選取範圍的上方或下方";
+"toolbarSettingsPrimaryHint" = "工具會顯示在選取範圍的上方或下方，拖曳調整位置，點擊設定快捷鍵";
 "toolbarSettingsSideTitle" = "側邊工具列";
-"toolbarSettingsSideHint" = "工具會顯示在選取範圍的左側或右側";
+"toolbarSettingsSideHint" = "工具會顯示在選取範圍的左側或右側，拖曳調整位置，點擊設定快捷鍵";
 "toolbarSettingsHiddenTitle" = "隱藏工具";
 "toolbarSettingsHiddenHint" = "拖到這裡的工具不會出現在任何工具列";
 "toolbarSettingsFootnote" = "工具列會依選取範圍的位置，自動在上/下與左/右配置間切換";
@@ -350,6 +350,7 @@
 "toolbarSettingsShortcutRestore" = "恢復預設快捷鍵";
 "toolbarSettingsShortcutResetAll" = "重設編輯器快捷鍵";
 "toolbarSettingsShortcutNone" = "未設定";
+"toolbarSettingsShortcutUnavailable" = "N/A";
 "toolbarSettingsAdditionalShortcuts" = "其他編輯操作";
 "toolbarSettingsReset" = "重設為預設值";
 "toolbarSettingsCancel" = "取消";
