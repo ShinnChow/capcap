@@ -47,9 +47,9 @@
 "selectedImagePinShortcutHeader" = "選択画像をピン留め";
 "selectedImagePinShortcutDefaultDisplay" = "未設定";
 "selectedImagePinShortcutClear" = "選択画像ピン留めショートカットを消去";
-"clipboardImagePinShortcutHeader" = "クリップボード画像をピン留め";
+"clipboardImagePinShortcutHeader" = "現在またはクリップボードの画像をピン留め";
 "clipboardImagePinShortcutDefaultDisplay" = "未設定";
-"clipboardImagePinShortcutClear" = "クリップボード画像ピン留めショートカットを消去";
+"clipboardImagePinShortcutClear" = "現在またはクリップボード画像のピン留めショートカットを消去";
 "clipboardTextPinShortcutHeader" = "クリップボードテキストをピン留め";
 "clipboardTextPinShortcutDefaultDisplay" = "未設定";
 "clipboardTextPinShortcutClear" = "クリップボードテキストピン留めショートカットを消去";
@@ -343,9 +343,21 @@
 "toolbarSettingsHiddenTitle" = "非表示のツール";
 "toolbarSettingsHiddenHint" = "ここにドラッグしたツールはどのツールバーにも表示されません";
 "toolbarSettingsFootnote" = "ツールバーは選択範囲の位置に応じて上下／左右のレイアウトに自動で切り替わります";
+"toolbarSettingsShortcutHint" = "ツールをクリックしてショートカットを記録し、ドラッグで移動、右クリックでその他の操作を表示";
+"toolbarSettingsShortcutRecording" = "「%@」の新しいショートカットを押すか Esc でキャンセル";
+"toolbarSettingsShortcutRecord" = "ショートカットを記録";
+"toolbarSettingsShortcutClear" = "ショートカットを消去";
+"toolbarSettingsShortcutRestore" = "デフォルトのショートカットに戻す";
+"toolbarSettingsShortcutResetAll" = "エディタのショートカットをリセット";
+"toolbarSettingsShortcutNone" = "未設定";
+"toolbarSettingsAdditionalShortcuts" = "その他の編集操作";
 "toolbarSettingsReset" = "デフォルトに戻す";
 "toolbarSettingsCancel" = "キャンセル";
 "toolbarSettingsApply" = "適用";
+"editorShortcutSelect" = "選択ツール";
+"editorShortcutShapeFill" = "図形の塗りつぶしを切り替え";
+"editorShortcutConflict" = "このショートカットはすでに「%@」に割り当てられています";
+"editorShortcutReserved" = "このキーはエディタのシステム操作用に予約されているため再割り当てできません";
 
 /* About pane */
 "aboutTagline" = "メニューバー スクリーンショットツール";

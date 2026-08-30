@@ -47,9 +47,9 @@
 "selectedImagePinShortcutHeader" = "Ghim ảnh đã chọn";
 "selectedImagePinShortcutDefaultDisplay" = "Chưa đặt";
 "selectedImagePinShortcutClear" = "Xóa phím tắt ghim ảnh đã chọn";
-"clipboardImagePinShortcutHeader" = "Ghim ảnh từ clipboard";
+"clipboardImagePinShortcutHeader" = "Ghim ảnh hiện tại hoặc ảnh từ clipboard";
 "clipboardImagePinShortcutDefaultDisplay" = "Chưa đặt";
-"clipboardImagePinShortcutClear" = "Xóa phím tắt ghim ảnh từ clipboard";
+"clipboardImagePinShortcutClear" = "Xóa phím tắt ghim ảnh hiện tại hoặc ảnh từ clipboard";
 "clipboardTextPinShortcutHeader" = "Ghim văn bản từ clipboard";
 "clipboardTextPinShortcutDefaultDisplay" = "Chưa đặt";
 "clipboardTextPinShortcutClear" = "Xóa phím tắt ghim văn bản từ clipboard";
@@ -343,9 +343,21 @@
 "toolbarSettingsHiddenTitle" = "Công cụ ẩn";
 "toolbarSettingsHiddenHint" = "Công cụ kéo vào đây sẽ không xuất hiện trên thanh công cụ nào";
 "toolbarSettingsFootnote" = "Thanh công cụ tự động chuyển giữa trên/dưới và trái/phải dựa trên vị trí của vùng chọn";
+"toolbarSettingsShortcutHint" = "Bấm công cụ để ghi phím tắt, kéo để đổi vị trí hoặc bấm chuột phải để xem thêm tùy chọn";
+"toolbarSettingsShortcutRecording" = "Nhấn phím tắt mới cho “%@” hoặc nhấn Esc để hủy";
+"toolbarSettingsShortcutRecord" = "Ghi phím tắt";
+"toolbarSettingsShortcutClear" = "Xóa phím tắt";
+"toolbarSettingsShortcutRestore" = "Khôi phục phím tắt mặc định";
+"toolbarSettingsShortcutResetAll" = "Đặt lại phím tắt trình chỉnh sửa";
+"toolbarSettingsShortcutNone" = "Chưa đặt";
+"toolbarSettingsAdditionalShortcuts" = "Thao tác chỉnh sửa bổ sung";
 "toolbarSettingsReset" = "Đặt lại mặc định";
 "toolbarSettingsCancel" = "Hủy";
 "toolbarSettingsApply" = "Áp dụng";
+"editorShortcutSelect" = "Công cụ chọn";
+"editorShortcutShapeFill" = "Bật tắt tô hình";
+"editorShortcutConflict" = "Phím tắt này đã được gán cho “%@”";
+"editorShortcutReserved" = "Phím này được dành cho thao tác hệ thống của trình chỉnh sửa và không thể gán lại";
 
 /* About pane */
 "aboutTagline" = "Công cụ chụp màn hình trên thanh menu";

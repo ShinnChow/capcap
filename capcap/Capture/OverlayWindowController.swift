@@ -215,6 +215,11 @@ class OverlayWindowController {
         editController?.confirmFromKeyboard()
     }
 
+    @discardableResult
+    func pinFromKeyboard() -> Bool {
+        editController?.pinFromKeyboard() ?? false
+    }
+
     static func prewarmPresentationSurfaces() {
         OverlayPanelPool.shared.prewarm(screens: NSScreen.screens)
     }
