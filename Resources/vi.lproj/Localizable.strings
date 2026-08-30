@@ -503,7 +503,7 @@
 "ocrTranslating" = "Đang dịch";
 "ocrTranslateFailedPrefix" = "Thất bại";
 "ocrNoProviderTitle" = "Chưa cấu hình dịch vụ dịch";
-"ocrNoProviderHint" = "Thêm dịch vụ AI trong Cài đặt → Dịch";
+"ocrNoProviderHint" = "Bật nhà cung cấp trong Cài đặt → Dịch";
 "ocrOpenSettings" = "Mở Cài đặt";
 "ocrLineCopied" = "Đã sao chép dòng";
 "copyImageTextCopying" = "Đang sao chép";
@@ -538,6 +538,8 @@
 "translationTestFailed" = "Kiểm tra thất bại";
 "translationTestFailedTitle" = "Đã lưu, nhưng kiểm tra kết nối thất bại";
 "translationProviderCustom" = "Tùy chỉnh tương thích OpenAI";
+"translationAppleSubtitle" = "Sử dụng mô hình trên thiết bị của Apple và có thể cần tải dữ liệu ngôn ngữ";
+"translationErrAppleUnavailable" = "Apple Translation yêu cầu macOS 15 trở lên";
 "translationMoveUp" = "Di chuyển lên";
 "translationMoveDown" = "Di chuyển xuống";
 

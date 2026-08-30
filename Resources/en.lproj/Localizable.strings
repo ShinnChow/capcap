@@ -503,7 +503,7 @@
 "ocrTranslating" = "Translating";
 "ocrTranslateFailedPrefix" = "Failed";
 "ocrNoProviderTitle" = "No translation service configured";
-"ocrNoProviderHint" = "Add an AI service in Settings → Translation";
+"ocrNoProviderHint" = "Enable a provider in Settings → Translation";
 "ocrOpenSettings" = "Open Settings";
 "ocrLineCopied" = "Line copied";
 "copyImageTextCopying" = "Copying";
@@ -538,6 +538,8 @@
 "translationTestFailed" = "Test failed";
 "translationTestFailedTitle" = "Saved, but the connection test failed";
 "translationProviderCustom" = "Custom OpenAI-compatible";
+"translationAppleSubtitle" = "Uses Apple’s on-device models and may download language data";
+"translationErrAppleUnavailable" = "Apple Translation requires macOS 15 or later";
 "translationMoveUp" = "Move up";
 "translationMoveDown" = "Move down";
 

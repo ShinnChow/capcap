@@ -503,7 +503,7 @@
 "ocrTranslating" = "翻訳中";
 "ocrTranslateFailedPrefix" = "失敗";
 "ocrNoProviderTitle" = "翻訳サービスが設定されていません";
-"ocrNoProviderHint" = "設定 → 翻訳 で AI サービスを追加してください";
+"ocrNoProviderHint" = "設定 → 翻訳 で翻訳サービスを有効にしてください";
 "ocrOpenSettings" = "設定を開く";
 "ocrLineCopied" = "行をコピーしました";
 "copyImageTextCopying" = "コピー中";
@@ -538,6 +538,8 @@
 "translationTestFailed" = "テスト失敗";
 "translationTestFailedTitle" = "保存しましたが、接続テストに失敗しました";
 "translationProviderCustom" = "カスタム OpenAI 互換";
+"translationAppleSubtitle" = "Apple のオンデバイスモデルを使用し、言語データのダウンロードが必要な場合があります";
+"translationErrAppleUnavailable" = "Apple Translation には macOS 15 以降が必要です";
 "translationMoveUp" = "上へ移動";
 "translationMoveDown" = "下へ移動";
 

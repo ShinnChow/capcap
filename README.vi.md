@@ -48,8 +48,9 @@
 - **Làm đẹp và ghim**: thêm nền, bo góc, bóng, khoảng đệm, hoặc ghim ảnh nổi trên các cửa sổ khác.
 - **Chỉnh ảnh từ Finder**: chọn một ảnh trong Finder và mở thẳng vào trình chỉnh sửa mà không sửa tệp gốc.
 - **Bảng lịch sử**: sao chép lại nhanh ảnh chụp, màu và liên kết, đồng thời thêm mục yêu thích bằng biểu tượng ngôi sao khi di chuột.
+- **OCR và dịch trên thiết bị**: Apple Vision nhận dạng văn bản trong ảnh ngay trên máy; từ macOS 15, Apple Translation có thể dịch trên thiết bị, đồng thời vẫn hỗ trợ nhà cung cấp AI hoặc DeepL của bạn.
 - **Tải lên dịch vụ ảnh riêng**: hỗ trợ Tencent COS, Qiniu Kodo và Aliyun OSS. Thông tin xác thực chỉ lưu trên Mac của bạn.
-- **AppKit thuần**: không SwiftUI, không Electron, không đo lường từ xa.
+- **Giao diện AppKit gốc**: không Electron và không đo lường từ xa.
 
 ## Xem trước
 

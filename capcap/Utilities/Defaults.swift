@@ -781,6 +781,8 @@ enum L10n {
     static var translationTestFailed: String { s("translationTestFailed") }
     static var translationTestFailedTitle: String { s("translationTestFailedTitle") }
     static var translationProviderCustom: String { s("translationProviderCustom") }
+    static var translationAppleSubtitle: String { s("translationAppleSubtitle") }
+    static var translationErrAppleUnavailable: String { s("translationErrAppleUnavailable") }
     static var translationMoveUp: String { s("translationMoveUp") }
     static var translationMoveDown: String { s("translationMoveDown") }
 
