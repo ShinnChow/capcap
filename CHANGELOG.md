@@ -7,10 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.11] - 2026-08-30
+
 ### Added
-- Add an Apple Translation provider for on-device text translation on macOS 15 and later
-- Add configurable shortcuts for editor toolbar actions while preserving the existing mnemonic defaults
-- Route the image pin shortcut to the active editor image or the clipboard according to context
+- Add an Apple Translation provider for on-device text translation on macOS 15 and later (3e7220a)
+- Add configurable shortcuts for editor toolbar actions while preserving the existing mnemonic defaults (f366cde)
+- Route the image pin shortcut to the active editor image or the clipboard according to context (f366cde)
+- Add history panel lock controls (46988db)
+
+### Changed
+- Improve toolbar shortcut tile layout and localization (c96c233)
 
 ## [1.7.10] - 2026-08-29
 
