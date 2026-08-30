@@ -130,6 +130,8 @@
 "historyClear" = "Clear History";
 "historyCleared" = "History cleared";
 "historyShowInFinder" = "Show in Finder";
+"historyPanelLock" = "Lock History Panel";
+"historyPanelUnlock" = "Unlock History Panel";
 "historyPanelFavorite" = "Favorite";
 "historyPanelUnfavorite" = "Remove from Favorites";
 "historyPanelItemFavorited" = "Added to favorites";

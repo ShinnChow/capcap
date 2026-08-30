@@ -130,6 +130,8 @@
 "historyClear" = "Effacer l'historique";
 "historyCleared" = "Historique effacé";
 "historyShowInFinder" = "Afficher dans le Finder";
+"historyPanelLock" = "Verrouiller le panneau d’historique";
+"historyPanelUnlock" = "Déverrouiller le panneau d’historique";
 "historyPanelFavorite" = "Ajouter aux favoris";
 "historyPanelUnfavorite" = "Retirer des favoris";
 "historyPanelItemFavorited" = "Ajouté aux favoris";
