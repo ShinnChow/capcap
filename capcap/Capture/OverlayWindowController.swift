@@ -676,7 +676,14 @@ class OverlayWindowController {
                     displayID: displayID
                 )
             }
-            if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
+            if let draft = suspendedDraft,
+               screen == screenForSuspendedDraft(draft),
+               let snapshot = draft.preSnapshot {
+                // Restore the frozen desktop before presenting the overlay. The
+                // editor exports from this same snapshot, not the live windows
+                // that may have moved or scrolled while the draft was suspended.
+                selectionView.setBackgroundSnapshot(cgImage: snapshot, pointSize: screen.frame.size)
+            } else if let displayID = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID,
                let snapshot = screenSnapshots[displayID] {
                 selectionView.setBackgroundSnapshot(cgImage: snapshot, pointSize: screen.frame.size)
             }

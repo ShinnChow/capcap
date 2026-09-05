@@ -4,6 +4,49 @@ import XCTest
 
 @MainActor
 final class OverlayPresentationTests: XCTestCase {
+    func testResumingSuspendedSelectionRestoresFrozenDesktopAcrossRepeatedSuspends() throws {
+        _ = NSApplication.shared
+        let provider = ControlledScreenSnapshotProvider()
+        var draft: OverlayWindowController.SuspendedEditDraft?
+        let controller = OverlayWindowController(
+            snapshotProvider: provider,
+            onSuspend: { draft = $0 },
+            onComplete: { _ in }
+        )
+        defer { controller.cancel() }
+        controller.activate()
+        let view = try XCTUnwrap(controller.activeSelectionViews.first)
+        let screen = try XCTUnwrap(view.window?.screen)
+        let displayID = try XCTUnwrap(
+            view.window?.screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? CGDirectDisplayID
+        )
+        let snapshot = makeImage()
+        provider.emit(.image(displayID: displayID, image: snapshot))
+        drainMainRunLoop()
+        let rect = selectionRect(in: view)
+        controller.selectionDidComplete(rect: rect, inView: view, isWindowSelection: false, windowID: nil)
+        controller.selectionMaskDidDoubleClick(inView: view)
+
+        for _ in 0..<2 {
+            let saved = try XCTUnwrap(draft)
+            XCTAssertTrue(saved.preSnapshot === snapshot)
+            let resumed = OverlayWindowController(
+                suspendedDraft: saved,
+                onSuspend: { draft = $0 },
+                onComplete: { _ in }
+            )
+            defer { resumed.cancel() }
+            resumed.activate()
+            let restoredView = try XCTUnwrap(resumed.activeSelectionViews.first {
+                $0.window?.screen == screen
+            })
+            XCTAssertTrue(resumed.hasActiveEditor)
+            let background = try XCTUnwrap(restoredView.backgroundSnapshot)
+            XCTAssertTrue(background.cgImage(forProposedRect: nil, context: nil, hints: nil) === snapshot)
+            resumed.selectionMaskDidDoubleClick(inView: restoredView)
+        }
+    }
+
     override func tearDown() {
         ToastWindow.dismiss()
         super.tearDown()
