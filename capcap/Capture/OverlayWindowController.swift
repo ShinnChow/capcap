@@ -99,6 +99,9 @@ class OverlayWindowController {
     private var expectedSnapshotDisplayIDs = Set<CGDirectDisplayID>()
     private var failedSnapshotDisplayIDs = Set<CGDirectDisplayID>()
     private var snapshotCancellation: ScreenSnapshotCancellation?
+    private var snapshotDeadline: DispatchWorkItem?
+    private var snapshotTimeout: TimeInterval = 8
+    private var windowCaptureTimeout: TimeInterval = 2
     private var windowCaptureTask: Task<Void, Never>?
     private var pendingWindowCapture: PendingWindowCapture?
     private var snapshotCaptureFinished = false
@@ -248,6 +251,8 @@ class OverlayWindowController {
                 pointSize: pointSize
             )
         },
+        snapshotTimeout: TimeInterval = 8,
+        windowCaptureTimeout: TimeInterval = 2,
         eventTrackingStateProvider: @escaping () -> Bool = {
             OverlayWindowController.isRunningEventTrackingMode
         },
@@ -278,6 +283,8 @@ class OverlayWindowController {
         self.snapshotProvider = snapshotProvider
         self.windowSnapshotLoader = windowSnapshotLoader
         self.windowImageLoader = windowImageLoader
+        self.snapshotTimeout = snapshotTimeout
+        self.windowCaptureTimeout = windowCaptureTimeout
         self.eventTrackingStateProvider = eventTrackingStateProvider
         self.eventTrackingDismissal = eventTrackingDismissal
         self.colorSamplerActiveProvider = colorSamplerActiveProvider
@@ -450,6 +457,15 @@ class OverlayWindowController {
               !sessionEnded else { return }
         triggerContext?.mark(.snapshotCaptureStarted)
         let context = triggerContext
+        let deadline = DispatchWorkItem { [weak self] in
+            guard let self, self.presentationGeneration == generation,
+                  !self.sessionEnded, !self.snapshotCaptureFinished else { return }
+            self.snapshotCancellation?()
+            self.snapshotCancellation = nil
+            self.handleSnapshotEvent(.finished, generation: generation)
+        }
+        snapshotDeadline = deadline
+        DispatchQueue.main.asyncAfter(deadline: .now() + snapshotTimeout, execute: deadline)
         snapshotCancellation = snapshotProvider.capture(targets: targets) { [weak self] event in
             context?.mark(.snapshotResultReady)
             MainRunLoopScheduler.perform {
@@ -507,7 +523,8 @@ class OverlayWindowController {
     }
 
     private func handleSnapshotEvent(_ event: ScreenSnapshotEvent, generation: Int) {
-        guard generation == presentationGeneration, !sessionEnded else { return }
+        guard generation == presentationGeneration, !sessionEnded,
+              !snapshotCaptureFinished else { return }
         triggerContext?.mark(.snapshotResultApplied)
 
         switch event {
@@ -537,6 +554,8 @@ class OverlayWindowController {
                 generation: generation
             )
         case .finished:
+            snapshotDeadline?.cancel()
+            snapshotDeadline = nil
             snapshotCaptureFinished = true
             if let pendingSelection,
                screenSnapshots[pendingSelection.displayID] == nil {
@@ -1215,6 +1234,8 @@ class OverlayWindowController {
         presentationGeneration += 1
         snapshotCancellation?()
         snapshotCancellation = nil
+        snapshotDeadline?.cancel()
+        snapshotDeadline = nil
         windowCaptureTask?.cancel()
         windowCaptureTask = nil
         pendingWindowCapture = nil
@@ -1546,10 +1567,13 @@ extension OverlayWindowController: SelectionViewDelegate {
             request: request,
             preSnapshot: preSnapshot
         )
+        let timeout = windowCaptureTimeout
         windowCaptureTask = Task.detached(priority: .userInitiated) { [weak self] in
             let result: Result<NSImage?, Error>
             do {
-                result = .success(try await windowImageLoader(windowID, pointSize))
+                result = .success(try await AsyncDeadline.run(seconds: timeout) {
+                    try await windowImageLoader(windowID, pointSize)
+                })
             } catch {
                 result = .failure(error)
             }

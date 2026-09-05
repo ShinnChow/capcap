@@ -260,6 +260,8 @@ struct ScreenCapturer {
         )
 
         let config = SCStreamConfiguration()
+        config.ignoreShadowsDisplay = false
+        config.ignoreShadowsSingleWindow = false
         config.sourceRect = localRect
         config.width = max(Int(ceil(rect.width * scale)), 1)
         config.height = max(Int(ceil(rect.height * scale)), 1)
