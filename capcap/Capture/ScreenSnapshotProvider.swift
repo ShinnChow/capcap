@@ -167,6 +167,11 @@ final class ScreenSnapshotProvider: ScreenSnapshotProviding {
         configuration.capturesAudio = false
         configuration.showsCursor = false
         configuration.captureResolution = .best
+        // SCScreenshotManager also consults the single-window flag when
+        // compositing a display on macOS 26. Set both explicitly, otherwise
+        // native window shadows disappear from region screenshots (#167)
+        configuration.ignoreShadowsDisplay = false
+        configuration.ignoreShadowsSingleWindow = false
         // SCScreenshotManager needs one frame. Keeping the stream default here
         // leaves multiple full-resolution IOSurfaces resident after a 5K
         // capture even though no subsequent frame can be consumed.

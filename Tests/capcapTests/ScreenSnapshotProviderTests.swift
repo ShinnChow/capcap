@@ -17,6 +17,8 @@ final class ScreenSnapshotProviderTests: XCTestCase {
         XCTAssertEqual(configuration.queueDepth, 1)
         XCTAssertFalse(configuration.capturesAudio)
         XCTAssertFalse(configuration.showsCursor)
+        XCTAssertFalse(configuration.ignoreShadowsDisplay)
+        XCTAssertFalse(configuration.ignoreShadowsSingleWindow)
         XCTAssertEqual(configuration.captureResolution, .best)
     }
 }

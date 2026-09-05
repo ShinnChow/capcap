@@ -2894,7 +2894,25 @@ private final class ClosureMenuItem: NSMenuItem {
     }
 }
 
-private final class EditorScrollView: NSScrollView {
+final class EditorScrollView: NSScrollView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        horizontalScrollElasticity = .none
+        verticalScrollElasticity = .none
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func scrollWheel(with event: NSEvent) {
+        // Screen-backed annotations must stay aligned with the frozen desktop.
+        // Only a taller, self-contained image (such as a scroll capture) pans.
+        guard let canvas = editorCanvasView,
+              canvas.hasPreviewImage || canvas.overrideBaseImage != nil,
+              let documentView,
+              documentView.frame.height > contentView.bounds.height + 0.5 else { return }
+        super.scrollWheel(with: event)
+    }
+
     weak var editorCanvasView: EditCanvasView?
     /// When `true`, every viewport click is captured (drawing tools, long
     /// screenshot preview, beautify chrome). When `false` the scroll view
