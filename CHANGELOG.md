@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.12] - 2026-09-05
+
+### Added
+- Add a click activation option for the history notch (e531676)
+
+### Fixed
+- Preserve screenshot shadows and annotation positions while preventing stalled capture workflows (aec9e6a)
+- Exclude the selection overlay from scroll captures (fd122d5)
+
 ## [1.7.11] - 2026-08-30
 
 ### Added
