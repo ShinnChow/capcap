@@ -25,6 +25,7 @@ final class ToolbarItemTile: NSView {
     weak var grid: ToolbarSlotGridView?
     private var hoverTip: String?
     private var hoverTrackingArea: NSTrackingArea?
+    private var tooltipScrollObserver: NSObjectProtocol?
     var isRecordingShortcut = false {
         didSet {
             refreshTooltip()
@@ -43,6 +44,12 @@ final class ToolbarItemTile: NSView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    deinit {
+        if let tooltipScrollObserver {
+            NotificationCenter.default.removeObserver(tooltipScrollObserver)
+        }
+    }
+
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
     override func resetCursorRects() {
@@ -55,6 +62,14 @@ final class ToolbarItemTile: NSView {
 
     func clearTooltip() {
         hoverTip = nil
+        dismissTooltip()
+    }
+
+    private func dismissTooltip() {
+        if let tooltipScrollObserver {
+            NotificationCenter.default.removeObserver(tooltipScrollObserver)
+            self.tooltipScrollObserver = nil
+        }
         ToolTipWindow.hide()
     }
 
@@ -76,6 +91,19 @@ final class ToolbarItemTile: NSView {
     override func mouseEntered(with event: NSEvent) {
         super.mouseEntered(with: event)
         guard let tip = hoverTip, let window else { return }
+        dismissTooltip()
+        // Scrolling can move the tile away without delivering mouseExited
+        // Cancel both visible and delayed tips when their screen anchor changes
+        if let clipView = enclosingScrollView?.contentView {
+            clipView.postsBoundsChangedNotifications = true
+            tooltipScrollObserver = NotificationCenter.default.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: clipView,
+                queue: .main
+            ) { [weak self] _ in
+                self?.dismissTooltip()
+            }
+        }
         let frameInWindow = convert(bounds, to: nil)
         let frameOnScreen = window.convertToScreen(frameInWindow)
         ToolTipWindow.show(text: tip, anchor: frameOnScreen)
@@ -83,22 +111,22 @@ final class ToolbarItemTile: NSView {
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
-        ToolTipWindow.hide()
+        dismissTooltip()
     }
 
     override func mouseDown(with event: NSEvent) {
-        ToolTipWindow.hide()
+        dismissTooltip()
         grid?.beginDrag(from: self, startEvent: event)
     }
 
     override func rightMouseDown(with event: NSEvent) {
-        ToolTipWindow.hide()
+        dismissTooltip()
         grid?.showShortcutMenu(for: self, event: event)
     }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window == nil { ToolTipWindow.hide() }
+        if window == nil { dismissTooltip() }
     }
 
     private var iconColor: NSColor {
