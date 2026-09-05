@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "ダイアログ";
 "historyPanelDialogModeHint" = "メニューまたはショートカットから横スクロールのプレビューパネルを開きます";
 "historyPanelNotchMode" = "ノッチ";
-"historyPanelNotchModeHint" = "上部ノッチにマウスを入れると展開し、離れると自動で隠れます";
+"historyPanelNotchModeHint" = "上部ノッチでホバーまたはクリックして開き、離れると自動で隠れます";
 "countdownLabel" = "カウントダウン秒数";
 "countdownHint" = "⌥ Option を押しながら ⌘ をダブルタップするか、スクリーンショットのショートカットを押すと、撮影前にカウントダウンが始まります。Esc でキャンセル";
 "countdownSecondsSuffix" = "秒";
@@ -681,3 +681,7 @@
 "finderUploadUnknownSize" = "サイズ不明";
 "finderUploadReadFailed" = "ファイルを読み込めません %@";
 "finderUploadCompleted" = "%d 個のファイルをアップロードしてリンクをコピーしました";
+
+"historyNotchTriggerLabel" = "ノッチの起動方法";
+"historyNotchTriggerHover" = "ホバーで開く";
+"historyNotchTriggerClick" = "クリックで開く";

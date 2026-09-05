@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "Dialog";
 "historyPanelDialogModeHint" = "Open a horizontal preview panel from the menu or shortcut";
 "historyPanelNotchMode" = "Notch";
-"historyPanelNotchModeHint" = "Hover near the top notch to expand, leave to hide";
+"historyPanelNotchModeHint" = "Open at the top notch by hovering or clicking, leave to hide";
 "countdownLabel" = "Countdown Seconds";
 "countdownHint" = "Hold ⌥ Option then double-tap ⌘ or press the screenshot shortcut to start a countdown before capture, Esc cancels";
 "countdownSecondsSuffix" = "s";
@@ -681,3 +681,7 @@
 "finderUploadUnknownSize" = "Unknown size";
 "finderUploadReadFailed" = "Cannot read file %@";
 "finderUploadCompleted" = "Uploaded %d files and copied links";
+
+"historyNotchTriggerLabel" = "Notch activation";
+"historyNotchTriggerHover" = "Open on hover";
+"historyNotchTriggerClick" = "Open on click";

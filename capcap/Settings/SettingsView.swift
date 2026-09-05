@@ -78,6 +78,8 @@ class SettingsView: NSView {
     private var historyPanelModePreview: HistoryPanelModePreviewView!
     private var historyPanelDialogOption: HistoryPanelModeOptionView!
     private var historyPanelNotchOption: HistoryPanelModeOptionView!
+    private var historyNotchTriggerLabel: NSTextField?
+    private var historyNotchTriggerPopup: NSPopUpButton?
     private var countdownSlider: SettingsTickSlider!
     private var countdownValueLabel: NSTextField!
     private var countdownTitleLabel: NSTextField!
@@ -989,6 +991,10 @@ class SettingsView: NSView {
         historyPanelNotchOption?.isEnabled = notchEnabled
         historyPanelDialogOption?.isSelected = mode == .dialog
         historyPanelNotchOption?.isSelected = mode == .notch
+        let triggerEnabled = notchEnabled && mode == .notch
+        historyNotchTriggerPopup?.isEnabled = triggerEnabled
+        historyNotchTriggerPopup?.selectItem(at: Defaults.HistoryNotchTriggerMode.allCases.firstIndex(of: Defaults.historyNotchTriggerMode) ?? 0)
+        historyNotchTriggerLabel?.textColor = NSColor.white.withAlphaComponent(triggerEnabled ? 0.94 : 0.4)
 
         historyPanelDisplayModeTitleLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.94 : 0.4)
         historyPanelDisplayModeHintLabel?.textColor = NSColor.white.withAlphaComponent(on ? 0.58 : 0.35)
@@ -1565,6 +1571,26 @@ class SettingsView: NSView {
         optionRow.addArrangedSubview(notch)
         inner.addArrangedSubview(optionRow)
         optionRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
+
+        let triggerRow = NSStackView()
+        triggerRow.orientation = .horizontal
+        triggerRow.alignment = .centerY
+        triggerRow.spacing = 10
+        let triggerLabel = primaryLabel(L10n.historyNotchTriggerLabel)
+        historyNotchTriggerLabel = triggerLabel
+        triggerRow.addArrangedSubview(triggerLabel)
+        triggerRow.addArrangedSubview(flexSpacer())
+        let triggerPopup = NSPopUpButton(frame: .zero, pullsDown: false)
+        triggerPopup.controlSize = .small
+        triggerPopup.font = NSFont.systemFont(ofSize: 12)
+        triggerPopup.addItems(withTitles: Defaults.HistoryNotchTriggerMode.allCases.map { $0.localizedTitle })
+        triggerPopup.setAccessibilityLabel(L10n.historyNotchTriggerLabel)
+        triggerPopup.target = self
+        triggerPopup.action = #selector(historyNotchTriggerChanged(_:))
+        historyNotchTriggerPopup = triggerPopup
+        triggerRow.addArrangedSubview(triggerPopup)
+        inner.addArrangedSubview(triggerRow)
+        triggerRow.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
         updateHistoryPanelModeControlsEnabled()
 
@@ -3170,6 +3196,12 @@ class SettingsView: NSView {
         Defaults.clipboardTextCacheEnabled = sender.state == .on
         updateHistoryCacheControlsEnabled()
         updateHistoryPanelModeControlsEnabled()
+    }
+
+    @objc private func historyNotchTriggerChanged(_ sender: NSPopUpButton) {
+        let modes = Defaults.HistoryNotchTriggerMode.allCases
+        guard modes.indices.contains(sender.indexOfSelectedItem) else { return }
+        Defaults.historyNotchTriggerMode = modes[sender.indexOfSelectedItem]
     }
 
     @objc private func historyPanelModeOptionClicked(_ sender: HistoryPanelModeOptionView) {
@@ -5249,6 +5281,11 @@ class SettingsView: NSView {
         historyPanelDialogModeHintLabel?.stringValue = L10n.historyPanelDialogModeHint
         historyPanelNotchModeTitleLabel?.stringValue = L10n.historyPanelNotchMode
         historyPanelNotchModeHintLabel?.stringValue = L10n.historyPanelNotchModeHint
+        historyNotchTriggerLabel?.stringValue = L10n.historyNotchTriggerLabel
+        historyNotchTriggerPopup?.setAccessibilityLabel(L10n.historyNotchTriggerLabel)
+        for (index, mode) in Defaults.HistoryNotchTriggerMode.allCases.enumerated() {
+            historyNotchTriggerPopup?.item(at: index)?.title = mode.localizedTitle
+        }
         updateHistoryPanelModeControlsEnabled()
         windowShadowTitleLabel?.stringValue = L10n.windowShadowToggleLabel
         windowShadowSubtitleLabel?.stringValue = L10n.windowShadowToggleHint

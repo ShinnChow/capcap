@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "Dialogue";
 "historyPanelDialogModeHint" = "Ouvre un panneau d'aperçus horizontaux depuis le menu ou le raccourci";
 "historyPanelNotchMode" = "Encoche";
-"historyPanelNotchModeHint" = "Survolez l'encoche en haut pour développer, quittez pour masquer";
+"historyPanelNotchModeHint" = "Ouvrez l’encoche en haut au survol ou au clic, quittez pour masquer";
 "countdownLabel" = "Secondes du compte à rebours";
 "countdownHint" = "Maintenez ⌥ Option puis double-appuyez sur ⌘ ou utilisez le raccourci de capture pour lancer un compte à rebours avant la capture, Échap pour annuler";
 "countdownSecondsSuffix" = "s";
@@ -681,3 +681,7 @@
 "finderUploadUnknownSize" = "Taille inconnue";
 "finderUploadReadFailed" = "Impossible de lire le fichier %@";
 "finderUploadCompleted" = "%d fichiers téléversés et liens copiés";
+
+"historyNotchTriggerLabel" = "Activation de l’encoche";
+"historyNotchTriggerHover" = "Ouvrir au survol";
+"historyNotchTriggerClick" = "Ouvrir au clic";
