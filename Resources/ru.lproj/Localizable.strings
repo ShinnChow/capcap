@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "Диалог";
 "historyPanelDialogModeHint" = "Открывает горизонтальную панель предпросмотра из меню или по сочетанию";
 "historyPanelNotchMode" = "Вырез";
-"historyPanelNotchModeHint" = "Наведение на верхний вырез раскрывает панель, выход скрывает";
+"historyPanelNotchModeHint" = "Открытие у верхнего выреза наведением или нажатием, скрытие при уходе курсора";
 "countdownLabel" = "Секунды обратного отсчёта";
 "countdownHint" = "Удерживайте ⌥ Option, затем дважды нажмите ⌘ или сочетание для снимка, чтобы запустить обратный отсчёт перед захватом, Esc — отмена";
 "countdownSecondsSuffix" = "с";
@@ -681,3 +681,7 @@
 "finderUploadUnknownSize" = "Размер неизвестен";
 "finderUploadReadFailed" = "Не удалось прочитать файл %@";
 "finderUploadCompleted" = "Загружено файлов: %d, ссылки скопированы";
+
+"historyNotchTriggerLabel" = "Активация выреза";
+"historyNotchTriggerHover" = "Открывать при наведении";
+"historyNotchTriggerClick" = "Открывать по нажатию";

@@ -105,6 +105,9 @@ enum L10n {
     static var historyPanelDialogModeHint: String { s("historyPanelDialogModeHint") }
     static var historyPanelNotchMode: String { s("historyPanelNotchMode") }
     static var historyPanelNotchModeHint: String { s("historyPanelNotchModeHint") }
+    static var historyNotchTriggerLabel: String { s("historyNotchTriggerLabel") }
+    static var historyNotchTriggerHover: String { s("historyNotchTriggerHover") }
+    static var historyNotchTriggerClick: String { s("historyNotchTriggerClick") }
     static var countdownLabel: String { s("countdownLabel") }
     static var countdownHint: String { s("countdownHint") }
     static var countdownSecondsSuffix: String { s("countdownSecondsSuffix") }
@@ -2241,6 +2244,25 @@ struct Defaults {
             + ((offset + clipboardTextHistoryLimitStep / 2) / clipboardTextHistoryLimitStep)
             * clipboardTextHistoryLimitStep
         return min(max(snapped, clipboardTextHistoryLimitMin), clipboardTextHistoryLimitMax)
+    }
+
+    enum HistoryNotchTriggerMode: String, CaseIterable {
+        case hover
+        case click
+
+        var localizedTitle: String {
+            switch self {
+            case .hover: return L10n.historyNotchTriggerHover
+            case .click: return L10n.historyNotchTriggerClick
+            }
+        }
+    }
+
+    static var historyNotchTriggerMode: HistoryNotchTriggerMode {
+        get {
+            HistoryNotchTriggerMode(rawValue: defaults.string(forKey: "historyNotchTriggerMode") ?? "") ?? .hover
+        }
+        set { defaults.set(newValue.rawValue, forKey: "historyNotchTriggerMode") }
     }
 
     static var historyPanelDialogEnabled: Bool {

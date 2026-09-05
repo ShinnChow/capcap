@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "팝업";
 "historyPanelDialogModeHint" = "메뉴 또는 단축키로 가로 미리보기 패널 열기";
 "historyPanelNotchMode" = "노치";
-"historyPanelNotchModeHint" = "상단 노치에 마우스를 올리면 펼쳐지고 벗어나면 자동으로 숨김";
+"historyPanelNotchModeHint" = "상단 노치에 마우스를 올리거나 클릭하여 열고 벗어나면 자동으로 숨김";
 "countdownLabel" = "카운트다운 초";
 "countdownHint" = "⌥ Option 을 누른 채 ⌘ 를 두 번 누르거나 스크린샷 단축키를 누르면 캡처 전에 카운트다운이 시작되며 Esc 로 취소";
 "countdownSecondsSuffix" = "초";
@@ -681,3 +681,7 @@
 "finderUploadUnknownSize" = "크기 알 수 없음";
 "finderUploadReadFailed" = "파일을 읽을 수 없음 %@";
 "finderUploadCompleted" = "%d개 파일을 업로드하고 링크를 복사함";
+
+"historyNotchTriggerLabel" = "노치 활성화 방식";
+"historyNotchTriggerHover" = "마우스를 올려 열기";
+"historyNotchTriggerClick" = "클릭하여 열기";

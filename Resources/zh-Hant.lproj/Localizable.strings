@@ -25,7 +25,7 @@
 "historyPanelDialogMode" = "彈窗";
 "historyPanelDialogModeHint" = "透過選單或快捷鍵開啟橫向預覽面板";
 "historyPanelNotchMode" = "瀏海";
-"historyPanelNotchModeHint" = "滑鼠進入螢幕頂部瀏海自動展開，移出後自動收起";
+"historyPanelNotchModeHint" = "懸停或點擊螢幕頂部瀏海展開，移出後自動收起";
 "countdownLabel" = "倒數秒數";
 "countdownHint" = "按住 ⌥ Option 後連按兩下 ⌘，或按下截圖快捷鍵，即可先倒數再截圖，按 Esc 取消";
 "countdownSecondsSuffix" = "秒";
@@ -681,3 +681,7 @@
 "finderUploadUnknownSize" = "未知大小";
 "finderUploadReadFailed" = "無法讀取檔案 %@";
 "finderUploadCompleted" = "已上傳 %d 個檔案並複製連結";
+
+"historyNotchTriggerLabel" = "瀏海觸發方式";
+"historyNotchTriggerHover" = "滑鼠懸停開啟";
+"historyNotchTriggerClick" = "滑鼠點擊開啟";
