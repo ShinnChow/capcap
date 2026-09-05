@@ -9,6 +9,36 @@ final class OverlayPresentationTests: XCTestCase {
         super.tearDown()
     }
 
+    func testScrollCaptureExcludesSelectionOverlayAndHintThroughoutFinalization() {
+        _ = NSApplication.shared
+        let selectionWindow = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 400, height: 300),
+            styleMask: .borderless, backing: .buffered, defer: false
+        )
+        let hintWindow = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 100, height: 30),
+            styleMask: .borderless, backing: .buffered, defer: false
+        )
+        let selection = SelectionView(frame: selectionWindow.contentView!.bounds)
+        selectionWindow.contentView = selection
+        selection.scrollCaptureActive = true
+
+        let excluded = EditWindowController.scrollCaptureExcludedWindowNumbers(
+            selectionWindow: selection.window, hintWindow: hintWindow
+        )
+        XCTAssertGreaterThan(selectionWindow.windowNumber, 0)
+        XCTAssertGreaterThan(hintWindow.windowNumber, 0)
+        XCTAssertEqual(Set(excluded), Set([
+            CGWindowID(selectionWindow.windowNumber), CGWindowID(hintWindow.windowNumber)
+        ]))
+
+        // stopAndStitch captures once more after ordinary overlay drawing resumes.
+        selection.scrollCaptureActive = false
+        XCTAssertEqual(excluded, EditWindowController.scrollCaptureExcludedWindowNumbers(
+            selectionWindow: selection.window, hintWindow: hintWindow
+        ))
+    }
+
     func testReenablingSelectionInteractionInvalidatesHandleDisplay() {
         let selectionView = DisplayInvalidationTrackingSelectionView(
             frame: NSRect(x: 0, y: 0, width: 500, height: 400)
