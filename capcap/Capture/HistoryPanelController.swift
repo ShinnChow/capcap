@@ -1084,15 +1084,14 @@ enum HistoryPanelFilter: CaseIterable, Equatable {
     }
 }
 
-private final class HistoryPanelScrollView: NSScrollView {
-    override func layout() {
-        super.layout()
-        horizontalScroller?.isHidden = true
-    }
-
-    override func reflectScrolledClipView(_ cView: NSClipView) {
-        super.reflectScrolledClipView(cView)
-        horizontalScroller?.isHidden = true
+final class HistoryPanelScrollView: NSScrollView {
+    // NSCollectionView enables the horizontal scroller when its flow layout is
+    // attached. Hiding that scroller still reserves 17 points in legacy mode,
+    // making the clip view shorter than the cards. Keep it disabled at the
+    // property boundary so both scroller styles preserve the full viewport.
+    override var hasHorizontalScroller: Bool {
+        get { super.hasHorizontalScroller }
+        set { super.hasHorizontalScroller = false }
     }
 }
 
