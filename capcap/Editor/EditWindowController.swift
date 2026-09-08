@@ -3075,6 +3075,8 @@ class ToolbarView: NSView {
             selectedColor: id.selectedColor
         )
         btn.hoverTip = id.tooltip
+        btn.setAccessibilityLabel(id.tooltip)
+        btn.setAccessibilityIdentifier("capcap.toolbar.\(id.rawValue)")
         btn.target = self
         btn.action = #selector(buttonTapped(_:))
         btn.tag = index
