@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.13] - 2026-09-08
+
+### Fixed
+- Improve agent capture and annotation workflows (1aea847)
+- Fix text tool glyph localization (8a772b6)
+- Dismiss toolbar tooltips when scrolling (933978c)
+- Fix frozen background restoration for suspended screenshots (f6e4c4f)
+
+### Changed
+- Disable horizontal scroller reservation in history panel (193e295)
+
 ## [1.7.12] - 2026-09-05
 
 ### Added
