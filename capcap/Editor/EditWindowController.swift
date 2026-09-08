@@ -3126,7 +3126,9 @@ class ToolButton: NSButton {
 
         if let img = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
             let config = NSImage.SymbolConfiguration(pointSize: 14, weight: .medium)
-            image = img.withSymbolConfiguration(config)
+            // Keep the text tool's Aa glyph independent of the system language.
+            let localizedImage = symbolName == "textformat" ? img.withLocale(Locale(identifier: "en")) : img
+            image = localizedImage.withSymbolConfiguration(config)
         }
 
         contentTintColor = normalColor

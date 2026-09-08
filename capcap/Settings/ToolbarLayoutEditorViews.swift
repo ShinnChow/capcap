@@ -6,7 +6,9 @@ func tintedSymbol(_ name: String, pointSize: CGFloat, color: NSColor) -> NSImage
         return nil
     }
     let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
-    guard let symbol = base.withSymbolConfiguration(config) else { return nil }
+    // Match the editor's fixed Aa glyph in toolbar customization previews.
+    let localizedImage = name == "textformat" ? base.withLocale(Locale(identifier: "en")) : base
+    guard let symbol = localizedImage.withSymbolConfiguration(config) else { return nil }
     let tinted = NSImage(size: symbol.size, flipped: false) { rect in
         symbol.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
         color.set()
