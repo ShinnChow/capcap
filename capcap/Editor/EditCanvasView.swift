@@ -98,6 +98,7 @@ class EditCanvasView: NSView {
     /// Border style for newly drawn rectangles/ellipses.
     var currentShapeStrokeStyle: ShapeStrokeStyle = Defaults.lastShapeStrokeStyle
     var currentLineWidth: CGFloat = EditorStyleDefaults.standardLineWidth
+    var currentNumberSize: CGFloat = EditorStyleDefaults.numberSize
     var currentArrowStyle: ArrowStyle = Defaults.lastArrowStyle
     /// Base width for the marker brush. Drawn at `× MarkerAnnotation.brushScale`.
     var currentMarkerLineWidth: CGFloat = EditorStyleDefaults.markerLineWidth
@@ -1018,7 +1019,7 @@ class EditCanvasView: NSView {
         if let a = a as? NumberAnnotation, let b = b as? NumberAnnotation {
             return a.center == b.center && a.tip == b.tip
                 && a.controlPoint == b.controlPoint && a.number == b.number
-                && a.color == b.color
+                && a.color == b.color && a.size == b.size
         }
         if let a = a as? MosaicAnnotation, let b = b as? MosaicAnnotation {
             return a.rect == b.rect && a.blockSize == b.blockSize
@@ -1333,7 +1334,7 @@ class EditCanvasView: NSView {
                 pending.current.x - pending.start.x,
                 pending.current.y - pending.start.y
             )
-            let tip: NSPoint? = dragDist >= NumberAnnotation.arrowMinDistance
+            let tip: NSPoint? = dragDist >= NumberAnnotation.arrowMinDistance(for: currentNumberSize)
                 ? pending.current
                 : nil
             recordUndo()
@@ -1341,7 +1342,8 @@ class EditCanvasView: NSView {
                 center: pending.start,
                 tip: tip,
                 number: numberCounter,
-                color: currentColor
+                color: currentColor,
+                size: currentNumberSize
             ))
             numberCounter += 1
             needsDisplay = true
@@ -1734,7 +1736,8 @@ class EditCanvasView: NSView {
                 center: pending.start,
                 tip: tip,
                 number: numberCounter,
-                color: currentColor
+                color: currentColor,
+                size: currentNumberSize
             )
             preview.draw(in: context, bounds: bounds)
         }
@@ -2464,7 +2467,7 @@ class EditCanvasView: NSView {
         }
         return NSPoint(
             x: number.center.x,
-            y: number.center.y + NumberAnnotation.arrowMinDistance + 4
+            y: number.center.y + number.arrowMinDistance + 4
         )
     }
 
@@ -2539,7 +2542,7 @@ class EditCanvasView: NSView {
         let s = EditCanvasView.numberStepButtonSize
         let gap: CGFloat = 4          // spacing between the two buttons
         let dropBelow: CGFloat = 7    // clearance under the badge circle
-        let centerY = number.center.y - NumberAnnotation.radius - dropBelow - s / 2
+        let centerY = number.center.y - number.radius - dropBelow - s / 2
         let centerX = increment
             ? number.center.x + gap / 2 + s / 2
             : number.center.x - gap / 2 - s / 2
@@ -3119,7 +3122,7 @@ class EditCanvasView: NSView {
             // badge so the user can ditch the arrow without precisely
             // landing on the badge center.
             let dist = hypot(currentMouse.x - number.center.x, currentMouse.y - number.center.y)
-            if dist < NumberAnnotation.arrowMinDistance {
+            if dist < number.arrowMinDistance {
                 annotations[state.index] = number.withTip(nil)
             } else {
                 annotations[state.index] = number.withTip(currentMouse)
