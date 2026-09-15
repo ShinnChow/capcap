@@ -143,8 +143,7 @@
 "historyPanelDeletedSelectedOne" = "Deleted %d Item";
 "historyPanelDeletedSelected" = "Deleted %d Items";
 "historyPanelFavoriteFailed" = "Could not change favorite";
-"historyClearedKeptFavoriteOne" = "History cleared, %d favorite kept";
-"historyClearedKeptFavorites" = "History cleared, %d favorites kept";
+"historyDeletedSkippingFavorites" = "Items deleted: %d, favorites skipped: %d";
 "historyPanelFilterAll" = "All";
 "historyPanelFilterScreenshots" = "Screenshots";
 "historyPanelFilterGIF" = "GIF";

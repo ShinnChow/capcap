@@ -143,8 +143,7 @@
 "historyPanelDeletedSelectedOne" = "항목 %d개 삭제됨";
 "historyPanelDeletedSelected" = "항목 %d개 삭제됨";
 "historyPanelFavoriteFailed" = "즐겨찾기를 변경할 수 없습니다";
-"historyClearedKeptFavoriteOne" = "기록을 삭제했으며 즐겨찾기 %d개를 유지했습니다";
-"historyClearedKeptFavorites" = "기록을 삭제했으며 즐겨찾기 %d개를 유지했습니다";
+"historyDeletedSkippingFavorites" = "항목 %d개 삭제, 즐겨찾기 %d개 건너뜀";
 "historyPanelFilterAll" = "전체";
 "historyPanelFilterScreenshots" = "스크린샷";
 "historyPanelFilterGIF" = "GIF";

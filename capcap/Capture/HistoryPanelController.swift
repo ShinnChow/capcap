@@ -1906,15 +1906,20 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
                     clearSelection()
                     return
                 }
-                HistoryManager.shared.remove(entriesToDelete) { removedCount in
-                    guard removedCount > 0 else { return }
-                    ToastWindow.show(message: L10n.historyPanelDeletedSelected(removedCount))
+                HistoryManager.shared.remove(entriesToDelete) { removedCount, skippedCount in
+                    if skippedCount > 0 {
+                        ToastWindow.show(message: L10n.historyDeletedSkippingFavorites(
+                            removed: removedCount, skipped: skippedCount))
+                    } else if removedCount > 0 {
+                        ToastWindow.show(message: L10n.historyPanelDeletedSelected(removedCount))
+                    }
                 }
                 clearSelection()
             } else {
-                HistoryManager.shared.clearAll { keptCount in
-                    if keptCount > 0 {
-                        ToastWindow.show(message: L10n.historyClearedKeptFavorites(keptCount))
+                HistoryManager.shared.clearAll { removedCount, skippedCount in
+                    if skippedCount > 0 {
+                        ToastWindow.show(message: L10n.historyDeletedSkippingFavorites(
+                            removed: removedCount, skipped: skippedCount))
                     } else {
                         ToastWindow.show(message: L10n.historyCleared)
                     }
