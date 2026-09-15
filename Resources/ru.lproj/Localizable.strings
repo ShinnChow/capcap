@@ -143,8 +143,7 @@
 "historyPanelDeletedSelectedOne" = "Удалён %d объект";
 "historyPanelDeletedSelected" = "Удалено объектов: %d";
 "historyPanelFavoriteFailed" = "Не удалось изменить избранное";
-"historyClearedKeptFavoriteOne" = "История очищена, сохранён %d избранный объект";
-"historyClearedKeptFavorites" = "История очищена, сохранено избранных объектов: %d";
+"historyDeletedSkippingFavorites" = "Удалено объектов: %d, избранных пропущено: %d";
 "historyPanelFilterAll" = "Все";
 "historyPanelFilterScreenshots" = "Снимки";
 "historyPanelFilterGIF" = "GIF";

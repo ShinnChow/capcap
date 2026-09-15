@@ -143,8 +143,7 @@
 "historyPanelDeletedSelectedOne" = "%d élément supprimé";
 "historyPanelDeletedSelected" = "%d éléments supprimés";
 "historyPanelFavoriteFailed" = "Impossible de modifier les favoris";
-"historyClearedKeptFavoriteOne" = "Historique effacé, %d favori conservé";
-"historyClearedKeptFavorites" = "Historique effacé, %d favoris conservés";
+"historyDeletedSkippingFavorites" = "Éléments supprimés : %d, favoris ignorés : %d";
 "historyPanelFilterAll" = "Tout";
 "historyPanelFilterScreenshots" = "Captures";
 "historyPanelFilterGIF" = "GIF";
