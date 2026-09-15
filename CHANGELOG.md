@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.14] - 2026-09-15
+
+### Added
+- Add adjustable number annotation sizing (66b86a2)
+
+### Fixed
+- Preserve favorite history items when clearing history and disabling caches (bbdca22)
+
+### Changed
+- Refine agent verification and testing guidance (54104cd)
+
 ## [1.7.13] - 2026-09-08
 
 ### Fixed
