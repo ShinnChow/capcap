@@ -119,6 +119,8 @@ Homebrew cask 现在位于统一的 `realskyrin/tap` Homebrew tap：
 
 ```bash
 brew tap realskyrin/tap
+# 将 capcap 加入 Homebrew 信任列表，允许加载其 Cask
+brew trust realskyrin/capcap
 brew install --cask realskyrin/tap/capcap
 ```
 
