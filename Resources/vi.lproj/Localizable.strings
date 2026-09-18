@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "Cách mở tại vùng khuyết";
 "historyNotchTriggerHover" = "Mở khi di chuột qua";
 "historyNotchTriggerClick" = "Mở khi nhấp chuột";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Cơ bản";
+"settingsGeneralCapture" = "Chụp và ghim";
+"settingsGeneralRecording" = "Ghi hình";
+"settingsGeneralHistory" = "Lịch sử";
+"settingsGeneralFiles" = "Tệp và đầu ra";

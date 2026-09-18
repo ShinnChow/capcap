@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "Notch activation";
 "historyNotchTriggerHover" = "Open on hover";
 "historyNotchTriggerClick" = "Open on click";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Basics";
+"settingsGeneralCapture" = "Capture & Pin";
+"settingsGeneralRecording" = "Recording";
+"settingsGeneralHistory" = "History";
+"settingsGeneralFiles" = "Files & Output";

@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "Активация выреза";
 "historyNotchTriggerHover" = "Открывать при наведении";
 "historyNotchTriggerClick" = "Открывать по нажатию";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Основные";
+"settingsGeneralCapture" = "Снимки и закрепление";
+"settingsGeneralRecording" = "Запись";
+"settingsGeneralHistory" = "История";
+"settingsGeneralFiles" = "Файлы и вывод";

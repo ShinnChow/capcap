@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "ノッチの起動方法";
 "historyNotchTriggerHover" = "ホバーで開く";
 "historyNotchTriggerClick" = "クリックで開く";
+
+/* General settings categories */
+"settingsGeneralBasic" = "基本";
+"settingsGeneralCapture" = "撮影とピン留め";
+"settingsGeneralRecording" = "録画";
+"settingsGeneralHistory" = "履歴";
+"settingsGeneralFiles" = "ファイルと出力";

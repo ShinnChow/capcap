@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "瀏海觸發方式";
 "historyNotchTriggerHover" = "滑鼠懸停開啟";
 "historyNotchTriggerClick" = "滑鼠點擊開啟";
+
+/* General settings categories */
+"settingsGeneralBasic" = "基本";
+"settingsGeneralCapture" = "截圖與貼圖";
+"settingsGeneralRecording" = "錄製";
+"settingsGeneralHistory" = "歷史記錄";
+"settingsGeneralFiles" = "檔案與輸出";

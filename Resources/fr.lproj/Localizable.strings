@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "Activation de l’encoche";
 "historyNotchTriggerHover" = "Ouvrir au survol";
 "historyNotchTriggerClick" = "Ouvrir au clic";
+
+/* General settings categories */
+"settingsGeneralBasic" = "Général";
+"settingsGeneralCapture" = "Capture et épingles";
+"settingsGeneralRecording" = "Enregistrement";
+"settingsGeneralHistory" = "Historique";
+"settingsGeneralFiles" = "Fichiers et sortie";

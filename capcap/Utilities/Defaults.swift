@@ -515,6 +515,11 @@ enum L10n {
 
     // Settings sidebar tabs
     static var settingsTabGeneral: String { s("settingsTabGeneral") }
+    static var settingsGeneralBasic: String { s("settingsGeneralBasic") }
+    static var settingsGeneralCapture: String { s("settingsGeneralCapture") }
+    static var settingsGeneralRecording: String { s("settingsGeneralRecording") }
+    static var settingsGeneralHistory: String { s("settingsGeneralHistory") }
+    static var settingsGeneralFiles: String { s("settingsGeneralFiles") }
     static var settingsTabShortcuts: String { s("settingsTabShortcuts") }
     static var settingsTabPermissions: String { s("settingsTabPermissions") }
     static var settingsTabUpload: String { s("settingsTabUpload") }

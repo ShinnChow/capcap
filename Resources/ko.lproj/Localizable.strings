@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "노치 활성화 방식";
 "historyNotchTriggerHover" = "마우스를 올려 열기";
 "historyNotchTriggerClick" = "클릭하여 열기";
+
+/* General settings categories */
+"settingsGeneralBasic" = "기본";
+"settingsGeneralCapture" = "캡처 및 고정";
+"settingsGeneralRecording" = "녹화";
+"settingsGeneralHistory" = "기록";
+"settingsGeneralFiles" = "파일 및 출력";

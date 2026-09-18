@@ -684,3 +684,10 @@
 "historyNotchTriggerLabel" = "刘海触发方式";
 "historyNotchTriggerHover" = "鼠标悬停打开";
 "historyNotchTriggerClick" = "鼠标点击打开";
+
+/* General settings categories */
+"settingsGeneralBasic" = "基础";
+"settingsGeneralCapture" = "截图与贴图";
+"settingsGeneralRecording" = "录制";
+"settingsGeneralHistory" = "历史记录";
+"settingsGeneralFiles" = "文件与输出";
