@@ -2471,6 +2471,7 @@ private final class HistoryPanelContentView: NSView, NSCollectionViewDataSource,
         guard !previewEntries.isEmpty else { return }
         HotkeyManager.shared.unregisterHistoryPreview()
         previewController?.close()
+        guard previewController?.window?.isVisible != true else { return }
         let controller = HistoryPreviewWindowController(
             entries: previewEntries,
             initialEntry: entry,
@@ -4978,6 +4979,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     private let titlebarPositionLabel = NSTextField(labelWithString: "")
     private let titlebarActionStack = NSStackView()
     private let tooltipController = HistoryPreviewTooltipController()
+    private var editButton: HistoryPreviewActionButton?
+    private var isEditingText = false
+    private var isTextLoaded = false
     private var uploadButton: NSButton?
     private weak var hoveredActionButton: HistoryPreviewActionButton?
     private var qrCodeButton: HistoryPreviewActionButton?
@@ -5052,6 +5056,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     override func close() {
+        guard saveTextBeforeClosing() else { return }
         windowSizingTask?.cancel()
         windowSizingTask = nil
         stopVideoPlayback()
@@ -5060,6 +5065,16 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         tooltipController.close()
         (window as? HistoryPreviewPanel)?.onKeyDown = nil
         super.close()
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        saveTextBeforeClosing()
+    }
+
+    private func saveTextBeforeClosing() -> Bool {
+        guard isEditingText else { return true }
+        guard window?.attachedSheet == nil else { return false }
+        return saveCurrentText()
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -5102,6 +5117,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         textScrollView.isHidden = true
 
         textView.isEditable = false
+        textView.allowsUndo = true
         textView.isSelectable = true
         textView.isRichText = false
         textView.drawsBackground = false
@@ -5166,6 +5182,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             ]
         case .text:
             actions = [
+                ("pencil", L10n.imageMergeContinueEditing, "E", #selector(editCurrent)),
                 ("doc.on.doc", L10n.historyPreviewCopyText, "C", #selector(copyCurrent)),
                 ("character.bubble", L10n.historyPreviewTranslateText, "T", #selector(translateCurrent)),
                 ("qrcode", L10n.historyPreviewConvertToQRCode, "Q", #selector(showQRCodeCurrent)),
@@ -5188,7 +5205,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             button.heightAnchor.constraint(equalToConstant: 24).isActive = true
             stack.addArrangedSubview(button)
             actionButtons.append(button)
-            if action.3 == #selector(uploadCurrent) {
+            if action.3 == #selector(editCurrent) {
+                editButton = button
+            } else if action.3 == #selector(uploadCurrent) {
                 uploadButton = button
             } else if action.3 == #selector(showQRCodeCurrent) {
                 qrCodeButton = button
@@ -5205,6 +5224,19 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
 
     private func handleKeyDown(_ event: NSEvent) -> Bool {
         let blockingModifiers = event.modifierFlags.intersection([.command, .control, .option, .shift])
+        guard window?.attachedSheet == nil, NSApp.modalWindow == nil else { return false }
+        if isEditingText {
+            if blockingModifiers == .command,
+               event.charactersIgnoringModifiers?.lowercased() == "s" {
+                saveCurrentText()
+                return true
+            }
+            if blockingModifiers.isEmpty, Int(event.keyCode) == kVK_Escape {
+                window?.performClose(nil)
+                return true
+            }
+            return false
+        }
         guard blockingModifiers.isEmpty else { return false }
         switch Int(event.keyCode) {
         case kVK_LeftArrow:
@@ -5214,7 +5246,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         case kVK_Escape, kVK_Space:
             close()
         case kVK_ANSI_E:
-            guard contentKind == .image else { return false }
+            guard contentKind == .image || contentKind == .text else { return false }
             editCurrent()
         case kVK_ANSI_P:
             guard contentKind == .image else { return false }
@@ -5237,7 +5269,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     private func move(by offset: Int) {
-        guard entries.count > 1 else { return }
+        guard !isEditingText, entries.count > 1 else { return }
         currentIndex = (currentIndex + offset + entries.count) % entries.count
         updateWindowFrame(for: currentEntry, on: placementScreen, animated: true)
         loadCurrentContent()
@@ -5253,6 +5285,8 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         case .video:
             loadCurrentVideo()
         case .text(let text):
+            isTextLoaded = false
+            editButton?.isEnabled = false
             text.load { [weak self] value in
                 guard let self, self.loadGeneration == generation else { return }
                 self.loadCurrentText(value)
@@ -5309,6 +5343,9 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
     }
 
     private func loadCurrentText(_ text: String) {
+        isTextLoaded = true
+        editButton?.isEnabled = true
+        textView.undoManager?.removeAllActions()
         stopVideoPlayback()
         videoView.isHidden = true
         imageView.image = nil
@@ -5510,6 +5547,7 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
             origin: .zero,
             size: NSSize(width: width, height: 24)
         )
+
     }
 
     private func updateTitlebarActionStackSize() {
@@ -5524,7 +5562,58 @@ private final class HistoryPreviewWindowController: NSWindowController, NSWindow
         )
     }
 
+    private func updateTextEditingControls() {
+        textView.isEditable = isEditingText
+        window?.isMovableByWindowBackground = !isEditingText
+        let title = isEditingText ? L10n.tipSave : L10n.imageMergeContinueEditing
+        editButton?.image = NSImage(
+            systemSymbolName: isEditingText ? "checkmark" : "pencil",
+            accessibilityDescription: title
+        )?.withSymbolConfiguration(NSImage.SymbolConfiguration(pointSize: 13, weight: .medium))
+        editButton?.contentTintColor = isEditingText ? .systemGreen : .secondaryLabelColor
+        editButton?.setAccessibilityLabel(title)
+        editButton?.hoverTip = Self.shortcutTooltip(title, key: isEditingText ? "⌘S" : "E")
+        for button in actionButtons where button !== editButton {
+            button.isEnabled = !isEditingText
+        }
+        tooltipController.hide()
+        hoveredActionButton = nil
+    }
+
+    @discardableResult
+    private func saveCurrentText() -> Bool {
+        guard isEditingText, case .text(let content) = currentEntry.kind else { return false }
+        do {
+            try content.save(textView.string)
+            isEditingText = false
+            updateTextEditingControls()
+            loadCurrentText(textView.string)
+            NotificationCenter.default.post(name: .historyDidUpdate, object: nil)
+            return true
+        } catch {
+            let alert = NSAlert()
+            alert.messageText = L10n.historyPreviewTextSaveFailed
+            alert.addButton(withTitle: L10n.tipCancel)
+            if let window { alert.beginSheetModal(for: window) }
+            return false
+        }
+    }
+
     @objc private func editCurrent() {
+        if contentKind == .text {
+            guard isTextLoaded else { return }
+            if isEditingText {
+                saveCurrentText()
+            } else {
+                isEditingText = true
+                updateTextEditingControls()
+                window?.makeFirstResponder(textView)
+                let endRange = NSRange(location: (textView.string as NSString).length, length: 0)
+                textView.setSelectedRange(endRange)
+                textView.scrollRangeToVisible(endRange)
+            }
+            return
+        }
         let entry = currentEntry
         close()
         onEdit(entry)

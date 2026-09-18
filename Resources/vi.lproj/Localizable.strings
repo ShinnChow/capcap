@@ -691,3 +691,5 @@
 "settingsGeneralRecording" = "Ghi hình";
 "settingsGeneralHistory" = "Lịch sử";
 "settingsGeneralFiles" = "Tệp và đầu ra";
+
+"historyPreviewTextSaveFailed" = "Không thể lưu văn bản, vui lòng thử lại";

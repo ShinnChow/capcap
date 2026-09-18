@@ -691,3 +691,5 @@
 "settingsGeneralRecording" = "録画";
 "settingsGeneralHistory" = "履歴";
 "settingsGeneralFiles" = "ファイルと出力";
+
+"historyPreviewTextSaveFailed" = "テキストを保存できませんでした、再試行してください";

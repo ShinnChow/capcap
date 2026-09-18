@@ -691,3 +691,5 @@
 "settingsGeneralRecording" = "Запись";
 "settingsGeneralHistory" = "История";
 "settingsGeneralFiles" = "Файлы и вывод";
+
+"historyPreviewTextSaveFailed" = "Не удалось сохранить текст, попробуйте ещё раз";

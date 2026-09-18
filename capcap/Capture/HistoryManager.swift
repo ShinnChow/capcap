@@ -60,6 +60,13 @@ final class HistoryTextContent {
         return loadedValue
     }
 
+    func save(_ text: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        try text.write(to: fileURL, atomically: true, encoding: .utf8)
+        Self.cache.setObject(CacheValue(text), forKey: cacheKey, cost: text.utf8.count)
+    }
+
     func load(completion: @escaping (String) -> Void) {
         if let loadedValue {
             if Thread.isMainThread {

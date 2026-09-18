@@ -691,3 +691,5 @@
 "settingsGeneralRecording" = "录制";
 "settingsGeneralHistory" = "历史记录";
 "settingsGeneralFiles" = "文件与输出";
+
+"historyPreviewTextSaveFailed" = "文本保存失败，请重试";

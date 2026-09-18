@@ -691,3 +691,5 @@
 "settingsGeneralRecording" = "Recording";
 "settingsGeneralHistory" = "History";
 "settingsGeneralFiles" = "Files & Output";
+
+"historyPreviewTextSaveFailed" = "Unable to save text, please try again";
