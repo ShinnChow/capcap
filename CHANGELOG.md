@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.15] - 2026-09-18
+
+### Fixed
+- Improve settings sidebar hover highlighting (c6855b0)
+
+### Changed
+- Split general settings into focused panes (b499524)
+- Document the Homebrew trust step (58e6484)
+
 ## [1.7.14] - 2026-09-15
 
 ### Added
