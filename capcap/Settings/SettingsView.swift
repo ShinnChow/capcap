@@ -51,14 +51,17 @@ enum SettingsTab: CaseIterable {
 
     var iconTint: NSColor {
         switch self {
-        case .capture, .recording, .history, .files: return .systemBlue
         case .general: return NSColor(calibratedRed: 0.62, green: 0.66, blue: 0.72, alpha: 1.0)
-        case .shortcuts: return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
-        case .toolbar: return NSColor(calibratedRed: 0.95, green: 0.54, blue: 0.62, alpha: 1.0)
+        case .shortcuts, .capture:
+            return NSColor(calibratedRed: 0.36, green: 0.66, blue: 0.98, alpha: 1.0)
+        case .toolbar, .recording:
+            return NSColor(calibratedRed: 0.95, green: 0.54, blue: 0.62, alpha: 1.0)
         case .upload: return NSColor(calibratedRed: 0.99, green: 0.72, blue: 0.32, alpha: 1.0)
-        case .translation: return NSColor(calibratedRed: 0.38, green: 0.80, blue: 0.78, alpha: 1.0)
+        case .translation, .files:
+            return NSColor(calibratedRed: 0.38, green: 0.80, blue: 0.78, alpha: 1.0)
         case .permissions: return NSColor(calibratedRed: 0.36, green: 0.78, blue: 0.50, alpha: 1.0)
-        case .about: return NSColor(calibratedRed: 0.70, green: 0.56, blue: 0.96, alpha: 1.0)
+        case .about, .history:
+            return NSColor(calibratedRed: 0.70, green: 0.56, blue: 0.96, alpha: 1.0)
         }
     }
 }
@@ -519,8 +522,15 @@ class SettingsView: NSView {
         let navigation = NSScrollView()
         navigation.translatesAutoresizingMaskIntoConstraints = false
         navigation.drawsBackground = false
-        navigation.hasVerticalScroller = true
-        navigation.autohidesScrollers = true
+        navigation.hasVerticalScroller = false
+        navigation.verticalScroller = nil
+        navigation.contentView.postsBoundsChangedNotifications = true
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(sidebarBoundsDidChange),
+            name: NSView.boundsDidChangeNotification,
+            object: navigation.contentView
+        )
         panel.addSubview(navigation)
         let document = FlippedView()
         document.translatesAutoresizingMaskIntoConstraints = false
@@ -581,6 +591,12 @@ class SettingsView: NSView {
         ])
 
         return panel
+    }
+
+    @objc private func sidebarBoundsDidChange() {
+        for button in tabButtons {
+            button.refreshHoverAtCurrentMouseLocation()
+        }
     }
 
     private func appVersionString() -> String {
@@ -5609,6 +5625,7 @@ private final class TabButton: NSControl {
     private let iconView = NSImageView()
     private let label = NSTextField(labelWithString: "")
     private var trackingArea: NSTrackingArea?
+    private var isHovered = false
 
     var isSelected: Bool = false {
         didSet { applyAppearance() }
@@ -5682,7 +5699,9 @@ private final class TabButton: NSControl {
             iconChip.layer?.borderColor = NSColor.white.withAlphaComponent(0.30).cgColor
             iconView.contentTintColor = .white
         } else {
-            layer?.backgroundColor = NSColor.clear.cgColor
+            layer?.backgroundColor = (
+                isHovered ? NSColor.white.withAlphaComponent(0.05) : NSColor.clear
+            ).cgColor
             layer?.borderWidth = 0
             label.textColor = NSColor.white.withAlphaComponent(0.82)
             iconChip.layer?.backgroundColor = NSColor.white.withAlphaComponent(0.06).cgColor
@@ -5707,15 +5726,28 @@ private final class TabButton: NSControl {
     }
 
     override func mouseEntered(with event: NSEvent) {
-        if !isSelected {
-            layer?.backgroundColor = NSColor.white.withAlphaComponent(0.05).cgColor
-        }
+        isHovered = true
+        applyAppearance()
     }
 
     override func mouseExited(with event: NSEvent) {
-        if !isSelected {
-            layer?.backgroundColor = NSColor.clear.cgColor
+        isHovered = false
+        applyAppearance()
+    }
+
+    func refreshHoverAtCurrentMouseLocation() {
+        guard let window else {
+            if isHovered {
+                isHovered = false
+                applyAppearance()
+            }
+            return
         }
+        let mouseLocation = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        let shouldHighlight = visibleRect.contains(mouseLocation)
+        guard isHovered != shouldHighlight else { return }
+        isHovered = shouldHighlight
+        applyAppearance()
     }
 
     override var acceptsFirstResponder: Bool { isEnabled }
