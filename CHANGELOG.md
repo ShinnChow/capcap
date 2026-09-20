@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.16] - 2026-09-21
+
+### Added
+- Enable editing and saving text history previews (4546582)
+- Show a brush footprint indicator for the highlighter (fc93f7f)
+
+### Fixed
+- Apply manual edits to recognized OCR text (9cb0eef)
+- Fix marker preview priority and clear OCR selections (b339259)
+
+### Changed
+- Enlarge editor toolbar buttons and symbols (afc96af)
+
 ## [1.7.15] - 2026-09-18
 
 ### Fixed
