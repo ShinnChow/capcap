@@ -1061,6 +1061,7 @@ class EditCanvasView: NSView {
 
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
+        defer { updateMarkerPreview(at: point) }
         setHoveredAnnotationIndex(nil)
         let isShiftSelecting = event.modifierFlags
             .intersection(.deviceIndependentFlagsMask)
@@ -3717,6 +3718,17 @@ class EditCanvasView: NSView {
         var next = point
         if activeTool != .marker { next = nil }
         if let p = next, !bounds.contains(p) { next = nil }
+        if dragState != nil || handleDragState != nil || activeTextField != nil {
+            next = nil
+        }
+        // An ongoing stroke can cross existing marks. Before drawing starts,
+        // those same marks and their controls take priority over the brush.
+        if let p = next, currentMarkerPoints == nil,
+           hitTestSelectionAction(at: p) != nil
+            || hitTestSelectionHandle(at: p) != nil
+            || hitTestAnnotation(at: p) != nil {
+            next = nil
+        }
         guard next != markerPreviewPoint else { return }
         let previous = markerPreviewPoint
         markerPreviewPoint = next
@@ -3755,6 +3767,9 @@ class EditCanvasView: NSView {
         // owns canvas tracking events. Preserve its eight directional cursors
         // before considering annotation-specific hover affordances.
         if hostSelectionView?.setResizeCursorIfNeeded(at: point, from: self) == true {
+            if currentMarkerPoints == nil {
+                updateMarkerPreview(at: nil)
+            }
             return
         }
         // Don't fight the text field's I-beam while editing.
@@ -3811,10 +3826,14 @@ class EditCanvasView: NSView {
     /// cursor. Used after operations that change what's draggable (undo,
     /// commit, tool change) so the cursor doesn't lie until the next move.
     private func refreshCursorAtCurrentLocation() {
-        guard let window else { return }
+        guard let window else {
+            updateMarkerPreview(at: nil)
+            return
+        }
         let mouseInScreen = NSEvent.mouseLocation
         let mouseInWindow = window.convertPoint(fromScreen: mouseInScreen)
         let local = convert(mouseInWindow, from: nil)
+        updateMarkerPreview(at: local)
         guard bounds.contains(local) else {
             setHoveredAnnotationIndex(nil)
             return

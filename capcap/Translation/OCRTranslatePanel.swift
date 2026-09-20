@@ -147,6 +147,11 @@ private final class OCRPreviewView: NSView, ImageAnalysisOverlayViewDelegate {
         lineOverlay.copySelectedTextToClipboard()
     }
 
+    func clearTextSelection() {
+        lineOverlay.clearSelection()
+        liveTextOverlay?.selectedRanges = []
+    }
+
     func selectAllLiveText() -> Bool {
         guard let liveTextOverlay,
               !liveTextOverlay.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
@@ -421,10 +426,14 @@ final class OCRLineSelectionOverlayView: NSView {
         lines.contains { !$0.tokens.isEmpty }
     }
 
-    private func clearSelection() {
+    func clearSelection() {
         selectedTokenRefs.removeAll()
         selectedLineIndices.removeAll()
         selectedText = ""
+        selectionStartPoint = nil
+        selectionStartTokenRef = nil
+        selectionStartLineIndex = nil
+        needsDisplay = true
     }
 
     private func selectionIndices(
@@ -1770,6 +1779,9 @@ final class OCRTranslatePanel: NSPanel, NSTextViewDelegate {
         guard let textView = notification.object as? NSTextView,
               textView === ocrTextView else { return }
         recognizedText = textView.string
+        // A previous image selection must not override the corrected text.
+        // Keep the analysis intact so a new image selection still works.
+        previewView.clearTextSelection()
         ocrCopyButton?.isEnabled = !recognizedText
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .isEmpty
