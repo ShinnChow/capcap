@@ -1301,7 +1301,7 @@ private final class DictionaryResultView: NSView {
 
 /// Floating dialog shown after text recognition or screenshot translation.
 /// It stays centered near the top of the target screen.
-final class OCRTranslatePanel: NSPanel {
+final class OCRTranslatePanel: NSPanel, NSTextViewDelegate {
 
     private enum Mode {
         case textRecognition
@@ -1581,7 +1581,11 @@ final class OCRTranslatePanel: NSPanel {
         inner.addArrangedSubview(header)
         header.widthAnchor.constraint(equalTo: inner.widthAnchor).isActive = true
 
-        let (scroll, textView) = makeTextScroll(editable: true, height: 116)
+        // Starts non-editable so the recognizing/no-text placeholders can never be
+        // mistaken for user content. `finishTextRecognition()` enables editing only
+        // once real recognized text is in place.
+        let (scroll, textView) = makeTextScroll(editable: false, height: 116)
+        textView.delegate = self
         textView.string = L10n.ocrRecognizing
         textView.textColor = .secondaryLabelColor
         ocrTextView = textView
@@ -1743,14 +1747,32 @@ final class OCRTranslatePanel: NSPanel {
     private func finishTextRecognition() {
         guard let textView = ocrTextView, let copyButton = ocrCopyButton else { return }
         if recognizedText.isEmpty {
+            textView.isEditable = false
             textView.string = L10n.ocrNoText
             textView.textColor = .secondaryLabelColor
             copyButton.isEnabled = false
         } else {
             textView.string = recognizedText
             textView.textColor = .labelColor
+            // Assigning `string` programmatically does not post a text-change
+            // notification, so enabling editing here cannot re-enter `textDidChange`.
+            textView.isEditable = true
             copyButton.isEnabled = true
         }
+    }
+
+    /// Mirrors manual corrections made in the OCR text view back into
+    /// `recognizedText`, so copying yields what the user sees rather than the
+    /// raw recognition result. Keeping the two in sync also lets the existing
+    /// staleness guard in `textRange(forOCRLineIndices:)` detect edited text and
+    /// skip line-range mapping that no longer matches.
+    func textDidChange(_ notification: Notification) {
+        guard let textView = notification.object as? NSTextView,
+              textView === ocrTextView else { return }
+        recognizedText = textView.string
+        ocrCopyButton?.isEnabled = !recognizedText
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .isEmpty
     }
 
     private func selectOCRText(_ text: String, lineIndices: [Int], copyWhenFinal: Bool) {
