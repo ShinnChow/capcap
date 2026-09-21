@@ -308,6 +308,10 @@
 "beautifyDefaultPaddingLabel" = "Marge par défaut";
 "textStrokeEffect" = "Contour";
 "textCalloutEffect" = "Annotation";
+"textFontLabel" = "Police";
+"textFontSystemDefault" = "Police système";
+"textFontDefaultLabel" = "Police de texte par défaut";
+"textFontDefaultHint" = "Police utilisée par les nouvelles annotations de texte";
 "shapeFillEffect" = "Remplir";
 "shapeFillNone" = "Contour";
 "shapeFillOpaque" = "Remplissage";

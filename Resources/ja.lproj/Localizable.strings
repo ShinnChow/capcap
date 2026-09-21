@@ -308,6 +308,10 @@
 "beautifyDefaultPaddingLabel" = "デフォルトの余白";
 "textStrokeEffect" = "縁取り";
 "textCalloutEffect" = "吹き出し";
+"textFontLabel" = "フォント";
+"textFontSystemDefault" = "システム標準";
+"textFontDefaultLabel" = "デフォルトのテキストフォント";
+"textFontDefaultHint" = "新しく作成するテキスト注釈に使うフォント";
 "shapeFillEffect" = "塗りつぶし";
 "shapeFillNone" = "枠線";
 "shapeFillOpaque" = "塗りつぶし";

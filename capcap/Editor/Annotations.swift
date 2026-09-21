@@ -2223,6 +2223,9 @@ struct TextAnnotation: Annotation {
     let origin: NSPoint
     let color: NSColor
     let fontSize: CGFloat
+    /// Font family name the glyphs are drawn with. `nil` keeps the historical
+    /// system bold face, so existing annotations render exactly as before.
+    var fontName: String? = nil
     var rotation: CGFloat = 0
     /// When true the glyphs get a black-or-white outline picked for maximum
     /// contrast against `color`, so the text reads against any background.
@@ -2255,8 +2258,31 @@ struct TextAnnotation: Annotation {
     /// covers the inner half, so the visible outline is roughly half of this.
     static let strokeWidthPercent: CGFloat = 6.0
 
+    /// Single resolution entry point for every place that needs the text
+    /// annotation's face — drawing, measuring, the live editor field and the
+    /// font-preview menus. `nil` (or a family that is no longer installed)
+    /// resolves to the system bold face the tool has always used. An installed
+    /// family prefers its bold variant and falls back to the regular one.
+    static func font(named fontName: String?, size: CGFloat) -> NSFont {
+        let fallback = NSFont.systemFont(ofSize: size, weight: .bold)
+        guard let family = fontName, !family.isEmpty else { return fallback }
+        let manager = NSFontManager.shared
+        if let bold = manager.font(withFamily: family, traits: .boldFontMask, weight: 9, size: size) {
+            return bold
+        }
+        if let regular = manager.font(withFamily: family, traits: [], weight: 5, size: size) {
+            return regular
+        }
+        return NSFont(name: family, size: size) ?? fallback
+    }
+
     static func font(forSize size: CGFloat) -> NSFont {
-        NSFont.systemFont(ofSize: size, weight: .bold)
+        font(named: nil, size: size)
+    }
+
+    /// The face this annotation actually renders with.
+    var resolvedFont: NSFont {
+        TextAnnotation.font(named: fontName, size: fontSize)
     }
 
     /// Light fills (white / yellow / green) get a black outline; every other
@@ -2334,7 +2360,7 @@ struct TextAnnotation: Annotation {
     /// trailing-caret padding + line leading (which made the box look skewed
     /// toward bottom-left of the text).
     var textBounds: NSRect {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = resolvedFont
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = TextAnnotation.lines(for: text)
         let lineHeight = TextAnnotation.lineHeight(for: font)
@@ -2357,7 +2383,7 @@ struct TextAnnotation: Annotation {
     }
 
     var textBlockRect: NSRect {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = resolvedFont
         let attrs: [NSAttributedString.Key: Any] = [.font: font]
         let lines = TextAnnotation.lines(for: text)
         let measuredWidth = lines
@@ -2444,7 +2470,7 @@ struct TextAnnotation: Annotation {
     }
 
     func draw(in context: CGContext, bounds: NSRect) {
-        let font = TextAnnotation.font(forSize: fontSize)
+        let font = resolvedFont
         let lines = TextAnnotation.lines(for: text)
         let lineHeight = TextAnnotation.lineHeight(for: font)
         NSGraphicsContext.saveGraphicsState()
@@ -2844,6 +2870,7 @@ struct TextAnnotation: Annotation {
             origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
             color: color,
             fontSize: fontSize,
+            fontName: fontName,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
@@ -2860,6 +2887,7 @@ struct TextAnnotation: Annotation {
             origin: NSPoint(x: origin.x + delta.x, y: origin.y + delta.y),
             color: color,
             fontSize: fontSize,
+            fontName: fontName,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
@@ -2884,6 +2912,7 @@ struct TextAnnotation: Annotation {
             origin: origin,
             color: color,
             fontSize: fontSize,
+            fontName: fontName,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
@@ -2921,8 +2950,8 @@ struct TextAnnotation: Annotation {
     /// grow downward in canvas coords, so the origin shifts by the full text
     /// block height delta to keep the cap line steady.
     func withFontSize(_ fontSize: CGFloat) -> Annotation {
-        let oldFont = TextAnnotation.font(forSize: self.fontSize)
-        let newFont = TextAnnotation.font(forSize: fontSize)
+        let oldFont = TextAnnotation.font(named: fontName, size: self.fontSize)
+        let newFont = TextAnnotation.font(named: fontName, size: fontSize)
         let oldHeight = TextAnnotation.editorSize(for: text, font: oldFont).height
         let newHeight = TextAnnotation.editorSize(for: text, font: newFont).height
         let newOrigin = NSPoint(x: origin.x, y: origin.y + (oldHeight - newHeight))
@@ -2931,6 +2960,31 @@ struct TextAnnotation: Annotation {
             origin: newOrigin,
             color: color,
             fontSize: fontSize,
+            fontName: fontName,
+            rotation: rotation,
+            hasStroke: hasStroke,
+            hasCallout: hasCallout,
+            calloutTip: calloutTip,
+            secondCalloutTip: secondCalloutTip
+        )
+    }
+
+    /// Re-typeset in another family at the same point size. Like
+    /// `withFontSize`, the visual cap line stays anchored: fonts grow downward
+    /// in canvas coords, so the origin absorbs the line-height delta instead of
+    /// letting the text jump when the face changes.
+    func withFontName(_ fontName: String?) -> TextAnnotation {
+        let oldFont = TextAnnotation.font(named: self.fontName, size: fontSize)
+        let newFont = TextAnnotation.font(named: fontName, size: fontSize)
+        let oldHeight = TextAnnotation.editorSize(for: text, font: oldFont).height
+        let newHeight = TextAnnotation.editorSize(for: text, font: newFont).height
+        let newOrigin = NSPoint(x: origin.x, y: origin.y + (oldHeight - newHeight))
+        return TextAnnotation(
+            text: text,
+            origin: newOrigin,
+            color: color,
+            fontSize: fontSize,
+            fontName: fontName,
             rotation: rotation,
             hasStroke: hasStroke,
             hasCallout: hasCallout,
