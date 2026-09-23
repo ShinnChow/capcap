@@ -120,7 +120,16 @@ class EditCanvasView: NSView {
     var currentFontSize: CGFloat = CGFloat(Defaults.lastTextFontSize) {
         didSet {
             guard let field = activeTextField else { return }
-            field.font = NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
+            field.font = TextAnnotation.font(named: currentFontName, size: currentFontSize)
+            field.sizeToFitText()
+        }
+    }
+    /// Font family for new text annotations. nil = the system bold default.
+    var currentFontName: String? = Defaults.textFontName {
+        didSet {
+            guard currentFontName != oldValue, let field = activeTextField else { return }
+            field.annotationFontName = currentFontName
+            field.font = TextAnnotation.font(named: currentFontName, size: currentFontSize)
             field.sizeToFitText()
         }
     }
@@ -459,6 +468,7 @@ class EditCanvasView: NSView {
             self?.beginTextEditing(
                 bottomLeft: annotation.origin,
                 fontSize: annotation.fontSize,
+                fontName: annotation.fontName,
                 color: annotation.color,
                 hasStroke: annotation.hasStroke,
                 hasCallout: annotation.hasCallout,
@@ -996,7 +1006,8 @@ class EditCanvasView: NSView {
     private func annotationsEqualEnough(_ a: Annotation, _ b: Annotation) -> Bool {
         if let a = a as? TextAnnotation, let b = b as? TextAnnotation {
             return a.text == b.text && a.origin == b.origin
-                && a.fontSize == b.fontSize && a.rotation == b.rotation
+                && a.fontSize == b.fontSize && a.fontName == b.fontName
+                && a.rotation == b.rotation
                 && a.color == b.color && a.hasStroke == b.hasStroke
                 && a.hasCallout == b.hasCallout
                 && a.calloutTip == b.calloutTip
@@ -1385,8 +1396,13 @@ class EditCanvasView: NSView {
                         : nil
                 }()
                 beginTextEditing(
-                    bottomLeft: newTextOrigin(forClickAt: pending.start, fontSize: currentFontSize),
+                    bottomLeft: newTextOrigin(
+                        forClickAt: pending.start,
+                        fontSize: currentFontSize,
+                        fontName: currentFontName
+                    ),
                     fontSize: currentFontSize,
+                    fontName: currentFontName,
                     color: currentColor,
                     hasStroke: currentTextStroke,
                     hasCallout: currentTextCallout,
@@ -1764,9 +1780,14 @@ class EditCanvasView: NSView {
         if let pending = pendingTextCreate, currentTextCallout {
             TextAnnotation(
                 text: "",
-                origin: newTextOrigin(forClickAt: pending.start, fontSize: currentFontSize),
+                origin: newTextOrigin(
+                    forClickAt: pending.start,
+                    fontSize: currentFontSize,
+                    fontName: currentFontName
+                ),
                 color: currentColor,
                 fontSize: currentFontSize,
+                fontName: currentFontName,
                 hasStroke: currentTextStroke,
                 hasCallout: true,
                 calloutTip: pending.current == pending.start ? nil : pending.current
@@ -1808,6 +1829,7 @@ class EditCanvasView: NSView {
             origin: field.annotationOrigin,
             color: field.annotationColor,
             fontSize: fontSize,
+            fontName: field.annotationFontName,
             rotation: field.rotation,
             hasStroke: field.hasStroke,
             hasCallout: field.hasCallout,
@@ -2174,8 +2196,8 @@ class EditCanvasView: NSView {
         activeTextField != nil
     }
 
-    private func newTextOrigin(forClickAt point: NSPoint, fontSize: CGFloat) -> NSPoint {
-        let font = TextAnnotation.font(forSize: fontSize)
+    private func newTextOrigin(forClickAt point: NSPoint, fontSize: CGFloat, fontName: String?) -> NSPoint {
+        let font = TextAnnotation.font(named: fontName, size: fontSize)
         return NSPoint(
             x: point.x,
             y: point.y - TextAnnotation.lineHeight(for: font)
@@ -2185,6 +2207,7 @@ class EditCanvasView: NSView {
     private func beginTextEditing(
         bottomLeft: NSPoint,
         fontSize: CGFloat,
+        fontName: String?,
         color: NSColor,
         hasStroke: Bool,
         hasCallout: Bool,
@@ -2194,7 +2217,7 @@ class EditCanvasView: NSView {
         rotation: CGFloat = 0,
         replacingIndex: Int? = nil
     ) {
-        let font = NSFont.systemFont(ofSize: fontSize, weight: .bold)
+        let font = TextAnnotation.font(named: fontName, size: fontSize)
         let lineHeight = TextAnnotation.lineHeight(for: font)
 
         // Capture the pre-edit state BEFORE we remove a re-edited annotation
@@ -2236,6 +2259,7 @@ class EditCanvasView: NSView {
 
         let field = EditableTextField(frame: fieldRect)
         field.font = font
+        field.annotationFontName = fontName
         field.annotationColor = color
         field.hasStroke = hasStroke
         field.hasCallout = hasCallout
@@ -2283,12 +2307,13 @@ class EditCanvasView: NSView {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let wasReEdit = editingOriginalIndex != nil
         if !trimmed.isEmpty {
-            let font = field.font ?? NSFont.systemFont(ofSize: currentFontSize, weight: .bold)
+            let font = field.font ?? TextAnnotation.font(named: field.annotationFontName, size: currentFontSize)
             let newAnnotation = TextAnnotation(
                 text: text,
                 origin: field.annotationOrigin,
                 color: field.annotationColor,
                 fontSize: font.pointSize,
+                fontName: field.annotationFontName,
                 rotation: field.rotation,
                 hasStroke: field.hasStroke,
                 hasCallout: field.hasCallout,
@@ -3914,6 +3939,9 @@ final class EditableTextField: NSTextField, NSTextFieldDelegate {
     /// shows plain text; the outline is rendered on the committed
     /// `TextAnnotation`, which adds it without shifting the glyphs.
     var hasStroke: Bool = false
+    /// Font family carried through the edit session so the committed
+    /// annotation keeps the family the user picked, not just the point size.
+    var annotationFontName: String?
     var annotationColor: NSColor = EditorStyleDefaults.primaryColor {
         didSet {
             updateAppearanceForCurrentMode()

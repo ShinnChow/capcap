@@ -308,6 +308,10 @@
 "beautifyDefaultPaddingLabel" = "Отступ по умолчанию";
 "textStrokeEffect" = "Обводка";
 "textCalloutEffect" = "Выноска";
+"textFontLabel" = "Шрифт";
+"textFontSystemDefault" = "Системный по умолчанию";
+"textFontDefaultLabel" = "Шрифт текста по умолчанию";
+"textFontDefaultHint" = "Шрифт для новых текстовых аннотаций";
 "shapeFillEffect" = "Заливка";
 "shapeFillNone" = "Контур";
 "shapeFillOpaque" = "Заливка";

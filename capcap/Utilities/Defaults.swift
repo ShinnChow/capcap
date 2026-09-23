@@ -493,6 +493,10 @@ enum L10n {
     // Text tool
     static var textStrokeEffect: String { s("textStrokeEffect") }
     static var textCalloutEffect: String { s("textCalloutEffect") }
+    static var textFontLabel: String { s("textFontLabel") }
+    static var textFontSystemDefault: String { s("textFontSystemDefault") }
+    static var textFontDefaultLabel: String { s("textFontDefaultLabel") }
+    static var textFontDefaultHint: String { s("textFontDefaultHint") }
 
     // Shape tool
     static var shapeFillEffect: String { s("shapeFillEffect") }
@@ -1759,6 +1763,27 @@ struct Defaults {
         }
         set {
             defaults.set(min(max(newValue, textFontSizeMin), textFontSizeMax), forKey: "lastTextFontSize")
+        }
+    }
+
+    /// Default font family for text annotations. Shared by the settings pane
+    /// and the editor's font picker (which also writes it, matching the
+    /// "remember last used" model of the other text-tool properties).
+    /// Normalized at the persistence boundary: a family that is no longer
+    /// installed reads back as nil, i.e. the system bold default.
+    static var textFontName: String? {
+        get {
+            guard let name = defaults.string(forKey: "textFontName"), !name.isEmpty else {
+                return nil
+            }
+            return FontCatalog.isInstalled(name) ? name : nil
+        }
+        set {
+            if let newValue, !newValue.isEmpty {
+                defaults.set(newValue, forKey: "textFontName")
+            } else {
+                defaults.removeObject(forKey: "textFontName")
+            }
         }
     }
 

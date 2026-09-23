@@ -308,6 +308,10 @@
 "beautifyDefaultPaddingLabel" = "Lề mặc định";
 "textStrokeEffect" = "Viền chữ";
 "textCalloutEffect" = "Chú thích";
+"textFontLabel" = "Phông chữ";
+"textFontSystemDefault" = "Mặc định hệ thống";
+"textFontDefaultLabel" = "Phông chữ văn bản mặc định";
+"textFontDefaultHint" = "Phông chữ dùng cho chú thích văn bản mới tạo";
 "shapeFillEffect" = "Tô màu";
 "shapeFillNone" = "Viền";
 "shapeFillOpaque" = "Tô màu";

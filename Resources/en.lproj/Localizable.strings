@@ -308,6 +308,10 @@
 "beautifyDefaultPaddingLabel" = "Default Padding";
 "textStrokeEffect" = "Stroke";
 "textCalloutEffect" = "Callout";
+"textFontLabel" = "Font";
+"textFontSystemDefault" = "System default";
+"textFontDefaultLabel" = "Default text font";
+"textFontDefaultHint" = "Font used by newly created text annotations";
 "shapeFillEffect" = "Fill";
 "shapeFillNone" = "Outline";
 "shapeFillOpaque" = "Fill";

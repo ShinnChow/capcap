@@ -308,6 +308,10 @@
 "beautifyDefaultPaddingLabel" = "默认边距";
 "textStrokeEffect" = "描边";
 "textCalloutEffect" = "标注";
+"textFontLabel" = "字体";
+"textFontSystemDefault" = "系统默认";
+"textFontDefaultLabel" = "默认文字字体";
+"textFontDefaultHint" = "新建文字标注使用的字体";
 "shapeFillEffect" = "填充";
 "shapeFillNone" = "线框";
 "shapeFillOpaque" = "填充";
