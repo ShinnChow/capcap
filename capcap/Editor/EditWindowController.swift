@@ -3222,7 +3222,27 @@ class ToolButton: NSButton {
         } else {
             contentTintColor = normalColor
         }
-        super.draw(dirtyRect)
+        // NSButtonCell lays out SF Symbols using their text alignment rect,
+        // which excludes some ascenders/descenders. Its rendering can clip
+        // those parts on a different backing scale. Draw the full symbol in
+        // points and let NSImage rasterize for the current graphics context.
+        guard let image else { return }
+        let color = isSelected ? selectedColor : normalColor
+        let tinted = NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
+            color.setFill()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
+        let imageRect = NSRect(
+            x: bounds.midX - image.size.width / 2,
+            y: bounds.midY - image.size.height / 2,
+            width: image.size.width,
+            height: image.size.height
+        )
+        tinted.draw(in: imageRect, from: .zero, operation: .sourceOver,
+                    fraction: !isEnabled ? 0.5 : (isHighlighted ? 0.65 : 1),
+                    respectFlipped: true, hints: nil)
     }
 }
 
