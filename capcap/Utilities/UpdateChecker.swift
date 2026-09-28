@@ -64,6 +64,14 @@ final class UpdateChecker {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0"
     }
 
+    static var isDebugBuild: Bool {
+        #if DEBUG
+        true
+        #else
+        false
+        #endif
+    }
+
     /// The version the user chose to skip, if any.
     var skippedVersion: String? {
         UserDefaults.standard.string(forKey: skippedVersionKey)
@@ -147,11 +155,18 @@ final class UpdateChecker {
             }
 
             let latest = Self.normalizeVersion(tag)
+            guard !latest.isEmpty else {
+                self.finish(.failed, completion: completion)
+                return
+            }
             let assets = json["assets"] as? [[String: Any]] ?? []
             let pageURL = (json["html_url"] as? String).flatMap(URL.init)
                 ?? URL(string: "https://github.com/\(self.repo)/releases/latest")!
 
-            guard Self.isVersion(latest, newerThan: self.currentVersion) else {
+            guard Self.shouldOfferRelease(latestVersion: latest,
+                                          currentVersion: self.currentVersion,
+                                          manual: manual,
+                                          isDebugBuild: Self.isDebugBuild) else {
                 self.finish(.upToDate, completion: completion)
                 return
             }
@@ -324,6 +339,16 @@ final class UpdateChecker {
             if x != y { return x > y }
         }
         return false
+    }
+
+    /// A manual check can replace a locally built Debug app with the latest
+    /// published Release even when their version numbers match or differ.
+    static func shouldOfferRelease(latestVersion: String,
+                                   currentVersion: String,
+                                   manual: Bool,
+                                   isDebugBuild: Bool) -> Bool {
+        (manual && isDebugBuild)
+            || isVersion(latestVersion, newerThan: currentVersion)
     }
 
     private static func dayKey(for date: Date) -> String {

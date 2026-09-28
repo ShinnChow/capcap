@@ -385,7 +385,7 @@
 "checkForUpdates" = "檢查更新";
 "updateChecking" = "正在檢查";
 "updateUpToDateStatus" = "已是最新版本";
-"updateNewVersionStatus" = "有新版本 v%@";
+"updateNewVersionStatus" = "可更新至 Release v%@";
 "updateFailedStatus" = "檢查失敗";
 "updateDownloadButton" = "下載";
 "updateRetryButton" = "重試";
@@ -397,7 +397,7 @@
 /* Updates — menu bar */
 "checkForUpdatesMenu" = "檢查更新";
 "checkingForUpdatesMenu" = "正在檢查更新";
-"updateAvailableMenu" = "有新版本 v%@ 可用";
+"updateAvailableMenu" = "可更新至 Release v%@";
 "updateDownloadingMenu" = "正在下載更新… %d%%";
 "updateInstallingMenu" = "正在安裝更新";
 "updateInstallFailedMenu" = "更新安裝失敗";
@@ -410,7 +410,7 @@
 "updateInstallingHUD" = "正在安裝";
 
 /* Updates — manual check result alert */
-"updateAvailableTitle" = "版本 v%@ 已可使用";
+"updateAvailableTitle" = "可更新至 Release v%@";
 "updateAvailableBody" = "capcap 會下載並安裝最新版本，完成後自動重新啟動";
 "updateUpToDateTitle" = "已是最新版本";
 "updateUpToDateBody" = "capcap v%@ 已是最新版本";

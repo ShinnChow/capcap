@@ -2778,7 +2778,11 @@ class SettingsView: NSView {
                 NSWorkspace.shared.open(url)
             }
         default:
-            UpdateChecker.shared.check(manual: true)
+            UpdateChecker.shared.check(manual: true) { state in
+                guard UpdateChecker.isDebugBuild,
+                      case .available(let version) = state else { return }
+                StatusBarController.presentUpdateAvailableAlert(version: version)
+            }
         }
     }
 

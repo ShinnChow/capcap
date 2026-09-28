@@ -385,7 +385,7 @@
 "checkForUpdates" = "업데이트 확인";
 "updateChecking" = "확인 중";
 "updateUpToDateStatus" = "최신 버전";
-"updateNewVersionStatus" = "새 버전 v%@";
+"updateNewVersionStatus" = "Release v%@ 사용 가능";
 "updateFailedStatus" = "확인 실패";
 "updateDownloadButton" = "다운로드";
 "updateRetryButton" = "다시 시도";
@@ -397,7 +397,7 @@
 /* Updates — menu bar */
 "checkForUpdatesMenu" = "업데이트 확인";
 "checkingForUpdatesMenu" = "업데이트 확인 중";
-"updateAvailableMenu" = "새 버전 v%@ 사용 가능";
+"updateAvailableMenu" = "Release v%@ 사용 가능";
 "updateDownloadingMenu" = "업데이트 다운로드 중… %d%%";
 "updateInstallingMenu" = "업데이트 설치 중";
 "updateInstallFailedMenu" = "업데이트 설치 실패";
@@ -410,7 +410,7 @@
 "updateInstallingHUD" = "설치 중";
 
 /* Updates — manual check result alert */
-"updateAvailableTitle" = "버전 v%@ 사용 가능";
+"updateAvailableTitle" = "Release v%@ 사용 가능";
 "updateAvailableBody" = "capcap이 최신 버전을 다운로드하고 설치한 후 자동으로 다시 시작합니다";
 "updateUpToDateTitle" = "최신 상태입니다";
 "updateUpToDateBody" = "capcap v%@ 가 최신 버전입니다";

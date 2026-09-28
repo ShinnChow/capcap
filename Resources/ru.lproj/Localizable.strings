@@ -385,7 +385,7 @@
 "checkForUpdates" = "Проверить обновления";
 "updateChecking" = "Проверка";
 "updateUpToDateStatus" = "Установлена последняя версия";
-"updateNewVersionStatus" = "Новая версия v%@";
+"updateNewVersionStatus" = "Доступна версия Release v%@";
 "updateFailedStatus" = "Не удалось проверить";
 "updateDownloadButton" = "Загрузить";
 "updateRetryButton" = "Повторить";
@@ -397,7 +397,7 @@
 /* Updates — menu bar */
 "checkForUpdatesMenu" = "Проверить обновления";
 "checkingForUpdatesMenu" = "Проверка обновлений";
-"updateAvailableMenu" = "Доступна новая версия v%@";
+"updateAvailableMenu" = "Доступна версия Release v%@";
 "updateDownloadingMenu" = "Загрузка обновления… %d%%";
 "updateInstallingMenu" = "Установка обновления";
 "updateInstallFailedMenu" = "Не удалось установить обновление";
@@ -410,7 +410,7 @@
 "updateInstallingHUD" = "Установка";
 
 /* Updates — manual check result alert */
-"updateAvailableTitle" = "Доступна версия v%@";
+"updateAvailableTitle" = "Доступна версия Release v%@";
 "updateAvailableBody" = "capcap загрузит и установит последнюю версию, затем автоматически перезапустится";
 "updateUpToDateTitle" = "У вас последняя версия";
 "updateUpToDateBody" = "capcap v%@ — это последняя версия";

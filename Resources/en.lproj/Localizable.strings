@@ -385,7 +385,7 @@
 "checkForUpdates" = "Check for Updates";
 "updateChecking" = "Checking";
 "updateUpToDateStatus" = "Up to date";
-"updateNewVersionStatus" = "New version v%@";
+"updateNewVersionStatus" = "Release v%@ available";
 "updateFailedStatus" = "Check failed";
 "updateDownloadButton" = "Download";
 "updateRetryButton" = "Retry";
@@ -397,7 +397,7 @@
 /* Updates — menu bar */
 "checkForUpdatesMenu" = "Check for Updates";
 "checkingForUpdatesMenu" = "Checking for Updates";
-"updateAvailableMenu" = "New Version v%@ Available";
+"updateAvailableMenu" = "Release v%@ Available";
 "updateDownloadingMenu" = "Downloading Update… %d%%";
 "updateInstallingMenu" = "Installing Update";
 "updateInstallFailedMenu" = "Update Install Failed";
@@ -410,7 +410,7 @@
 "updateInstallingHUD" = "Installing";
 
 /* Updates — manual check result alert */
-"updateAvailableTitle" = "Version v%@ is available";
+"updateAvailableTitle" = "Release v%@ is available";
 "updateAvailableBody" = "capcap will download and install the latest version, then relaunch automatically";
 "updateUpToDateTitle" = "You're up to date";
 "updateUpToDateBody" = "capcap v%@ is the latest version";

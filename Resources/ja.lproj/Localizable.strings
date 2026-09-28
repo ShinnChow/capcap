@@ -385,7 +385,7 @@
 "checkForUpdates" = "アップデートを確認";
 "updateChecking" = "確認中";
 "updateUpToDateStatus" = "最新です";
-"updateNewVersionStatus" = "新しいバージョン v%@";
+"updateNewVersionStatus" = "Release v%@ が利用可能";
 "updateFailedStatus" = "確認に失敗";
 "updateDownloadButton" = "ダウンロード";
 "updateRetryButton" = "再試行";
@@ -397,7 +397,7 @@
 /* Updates — menu bar */
 "checkForUpdatesMenu" = "アップデートを確認";
 "checkingForUpdatesMenu" = "アップデートを確認中";
-"updateAvailableMenu" = "新しいバージョン v%@ が利用可能";
+"updateAvailableMenu" = "Release v%@ が利用可能";
 "updateDownloadingMenu" = "アップデートをダウンロード中… %d%%";
 "updateInstallingMenu" = "アップデートをインストール中";
 "updateInstallFailedMenu" = "アップデートのインストールに失敗";
@@ -410,7 +410,7 @@
 "updateInstallingHUD" = "インストール中";
 
 /* Updates — manual check result alert */
-"updateAvailableTitle" = "バージョン v%@ が利用可能です";
+"updateAvailableTitle" = "Release v%@ が利用可能です";
 "updateAvailableBody" = "capcap は最新バージョンをダウンロードしてインストールし、自動的に再起動します";
 "updateUpToDateTitle" = "最新の状態です";
 "updateUpToDateBody" = "capcap v%@ が最新バージョンです";

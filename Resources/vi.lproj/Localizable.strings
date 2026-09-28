@@ -385,7 +385,7 @@
 "checkForUpdates" = "Kiểm tra cập nhật";
 "updateChecking" = "Đang kiểm tra";
 "updateUpToDateStatus" = "Đã cập nhật";
-"updateNewVersionStatus" = "Phiên bản mới v%@";
+"updateNewVersionStatus" = "Có bản Release v%@";
 "updateFailedStatus" = "Kiểm tra thất bại";
 "updateDownloadButton" = "Tải xuống";
 "updateRetryButton" = "Thử lại";
@@ -397,7 +397,7 @@
 /* Updates — menu bar */
 "checkForUpdatesMenu" = "Kiểm tra cập nhật";
 "checkingForUpdatesMenu" = "Đang kiểm tra cập nhật";
-"updateAvailableMenu" = "Có phiên bản mới v%@";
+"updateAvailableMenu" = "Có bản Release v%@";
 "updateDownloadingMenu" = "Đang tải cập nhật… %d%%";
 "updateInstallingMenu" = "Đang cài đặt cập nhật";
 "updateInstallFailedMenu" = "Cài đặt cập nhật thất bại";
@@ -410,7 +410,7 @@
 "updateInstallingHUD" = "Đang cài đặt";
 
 /* Updates — manual check result alert */
-"updateAvailableTitle" = "Đã có phiên bản v%@";
+"updateAvailableTitle" = "Đã có bản Release v%@";
 "updateAvailableBody" = "capcap sẽ tải xuống và cài đặt phiên bản mới nhất, rồi tự động mở lại";
 "updateUpToDateTitle" = "Bạn đang dùng bản mới nhất";
 "updateUpToDateBody" = "capcap v%@ là phiên bản mới nhất";
