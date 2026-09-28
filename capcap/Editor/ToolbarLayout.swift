@@ -108,8 +108,8 @@ extension ToolbarItemID {
         case .moveSelection: return "arrow.up.and.down.and.arrow.left.and.right"
         case .scrollCapture: return "arrow.up.and.down.text.horizontal"
         case .beautify:      return "sparkles"
-        case .ocr:           return "text.viewfinder"
-        case .screenshotTranslate: return "character.bubble"
+        case .ocr:           return "character.bubble"
+        case .screenshotTranslate: return "translate"
         case .save:          return "square.and.arrow.down"
         case .upload:        return "icloud.and.arrow.up"
         case .pin:           return "pin"
@@ -117,6 +117,20 @@ extension ToolbarItemID {
         case .close:         return "xmark"
         case .confirm:       return "checkmark"
         }
+    }
+
+    /// Keep the OCR symbol's Chinese glyph fixed regardless of the system locale.
+    func iconImage(pointSize: CGFloat) -> NSImage? {
+        guard let base = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) else {
+            return nil
+        }
+        let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
+        let locale: Locale? = switch self {
+        case .ocr: Locale(identifier: "zh-Hans")
+        case .text: Locale(identifier: "en")
+        default: nil
+        }
+        return (locale.map { base.withLocale($0) } ?? base).withSymbolConfiguration(config)
     }
 
     var localizedTitle: String {

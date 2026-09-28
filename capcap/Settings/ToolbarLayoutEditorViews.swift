@@ -1,14 +1,8 @@
 import AppKit
 
-/// Renders an SF Symbol flat-tinted to a single color.
-func tintedSymbol(_ name: String, pointSize: CGFloat, color: NSColor) -> NSImage? {
-    guard let base = NSImage(systemSymbolName: name, accessibilityDescription: nil) else {
-        return nil
-    }
-    let config = NSImage.SymbolConfiguration(pointSize: pointSize, weight: .medium)
-    // Match the editor's fixed Aa glyph in toolbar customization previews.
-    let localizedImage = name == "textformat" ? base.withLocale(Locale(identifier: "en")) : base
-    guard let symbol = localizedImage.withSymbolConfiguration(config) else { return nil }
+/// Renders a toolbar icon flat-tinted to a single color.
+func tintedToolbarIcon(_ id: ToolbarItemID, pointSize: CGFloat, color: NSColor) -> NSImage? {
+    guard let symbol = id.iconImage(pointSize: pointSize) else { return nil }
     let tinted = NSImage(size: symbol.size, flipped: false) { rect in
         symbol.draw(in: rect, from: .zero, operation: .sourceOver, fraction: 1)
         color.set()
@@ -150,7 +144,7 @@ final class ToolbarItemTile: NSView {
         let shortcutDisplay = isRecordingShortcut
             ? "…"
             : itemID.editorShortcutDisplay ?? L10n.toolbarSettingsShortcutUnavailable
-        if let icon = tintedSymbol(itemID.symbolName, pointSize: 15, color: iconColor) {
+        if let icon = tintedToolbarIcon(itemID, pointSize: 15, color: iconColor) {
             let size = icon.size
             let centerY = bounds.maxY - 13.5
             icon.draw(in: NSRect(
@@ -796,7 +790,7 @@ private final class ToolbarPreviewStripView: NSView {
             case .confirm: color = accentGreen
             default:       color = .white
             }
-            if let icon = tintedSymbol(id.symbolName, pointSize: 9, color: color) {
+            if let icon = tintedToolbarIcon(id, pointSize: 9, color: color) {
                 let size = icon.size
                 icon.draw(in: NSRect(
                     x: slot.midX - size.width / 2,

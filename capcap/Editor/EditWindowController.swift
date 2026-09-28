@@ -3104,7 +3104,8 @@ class ToolbarView: NSView {
             symbolName: id.symbolName,
             normalColor: id.normalColor,
             selectedColor: id.selectedColor,
-            symbolPointSize: Self.symbolPointSize
+            symbolPointSize: Self.symbolPointSize,
+            iconImage: id.iconImage(pointSize: Self.symbolPointSize)
         )
         btn.hoverTip = id.tooltip
         btn.setAccessibilityLabel(id.tooltip)
@@ -3149,7 +3150,7 @@ class ToolButton: NSButton {
     private let selectedColor: NSColor
     private var hoverTrackingArea: NSTrackingArea?
 
-    init(frame: NSRect, symbolName: String, normalColor: NSColor, selectedColor: NSColor, symbolPointSize: CGFloat = 14) {
+    init(frame: NSRect, symbolName: String, normalColor: NSColor, selectedColor: NSColor, symbolPointSize: CGFloat = 14, iconImage: NSImage? = nil) {
         self.normalColor = normalColor
         self.selectedColor = selectedColor
         super.init(frame: frame)
@@ -3158,7 +3159,9 @@ class ToolButton: NSButton {
         isBordered = false
         setButtonType(.momentaryPushIn)
 
-        if let img = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
+        if let iconImage {
+            image = iconImage
+        } else if let img = NSImage(systemSymbolName: symbolName, accessibilityDescription: nil) {
             let config = NSImage.SymbolConfiguration(pointSize: symbolPointSize, weight: .medium)
             // Keep the text tool's Aa glyph independent of the system language.
             let localizedImage = symbolName == "textformat" ? img.withLocale(Locale(identifier: "en")) : img
