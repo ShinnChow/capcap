@@ -76,7 +76,7 @@ public final class PermissionFlowController: ObservableObject {
 
         Self.activeController = self
         showPanel()
-        tracker.startTracking(promptIfNeeded: configuration.promptForAccessibilityTrust)
+        tracker.startTracking()
     }
 
     /// Shows the panel immediately. If the target System Settings frame is

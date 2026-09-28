@@ -28,13 +28,7 @@ final class SettingsWindowTracker {
     private var missingAppPollCount = 0
 
     /// Starts locating the System Settings window and emitting frame updates.
-    /// It can optionally prompt for Accessibility access so AX-based tracking
-    /// becomes available after the initial window-server fallback.
-    func startTracking(promptIfNeeded: Bool) {
-        if promptIfNeeded {
-            requestAccessibilityTrust()
-        }
-
+    func startTracking() {
         stopTracking()
 
         pollTimer = Timer.scheduledTimer(withTimeInterval: pollInterval, repeats: true) { [weak self] _ in
@@ -73,14 +67,6 @@ final class SettingsWindowTracker {
         currentFrame = nil
         hasActiveTrackingTarget = false
         missingAppPollCount = 0
-    }
-
-    /// Triggers the macOS Accessibility permission prompt when requested by
-    /// the host app. Window-server tracking works without this, but AX access
-    /// gives more direct move/resize notifications and window attributes.
-    private func requestAccessibilityTrust() {
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
     }
 
     /// Central tracking loop entry point.

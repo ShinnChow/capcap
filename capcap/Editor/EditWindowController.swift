@@ -1601,7 +1601,6 @@ class EditWindowController {
             // Automatic scroll posts synthetic events; without Accessibility
             // access capcap cannot move the target page.
             guard AutoScroller.isPermitted else {
-                AutoScroller.requestPermission()
                 ToastWindow.show(message: L10n.autoScrollPermissionNeeded, on: screen)
                 return
             }

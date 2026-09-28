@@ -24,16 +24,6 @@ final class AutoScroller {
     /// be trusted for Accessibility. Without it, posting silently no-ops.
     static var isPermitted: Bool { AXIsProcessTrusted() }
 
-    /// Asks the system to surface the Accessibility permission prompt for
-    /// capcap. Returns the current trust state.
-    @discardableResult
-    static func requestPermission() -> Bool {
-        // Literal value of `kAXTrustedCheckOptionPrompt` — used directly to
-        // avoid the constant's Unmanaged/CFString typing churn across SDKs.
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
-    }
-
     private let location: CGPoint           // global CG coords (top-left origin)
     private let blockingRect: CGRect        // global CG coords; manual input here is dropped
     private let stepPixels: Int

@@ -3528,15 +3528,10 @@ class SettingsView: NSView {
     }
 
     @objc private func openAccessibilitySettings(_ sender: NSButton) {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
         startPermissionFlow(.accessibility, from: sender)
     }
 
     @objc private func openScreenRecordingSettings(_ sender: NSButton) {
-        if #available(macOS 15.0, *) {
-            CGRequestScreenCaptureAccess()
-        }
         startPermissionFlow(.screenRecording, from: sender)
     }
 
