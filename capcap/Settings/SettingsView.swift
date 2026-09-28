@@ -43,7 +43,7 @@ enum SettingsTab: CaseIterable {
         case .files: return "doc"
         case .toolbar: return "slider.horizontal.3"
         case .upload: return "icloud.and.arrow.up.fill"
-        case .translation: return "character.bubble.fill"
+        case .translation: return "translate"
         case .permissions: return "lock.shield.fill"
         case .about: return "info.circle.fill"
         }

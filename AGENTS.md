@@ -2,42 +2,33 @@
 
 macOS menu bar screenshot tool. Pure AppKit, Swift Package Manager, no third-party dependencies.
 
-## Build & Verification
+## Build & Run
 
-After completing a coherent set of related code changes, run the compile check
-once. Rerun it only after relevant code changes or a newly discovered issue:
-
-```bash
-bash scripts/compile-check.sh
-```
-
-For runtime-sensitive UI changes, run the rebuild script too:
+After each completed code change, build, install, and run the app:
 
 ```bash
 bash scripts/rebuild-and-open.sh
 ```
 
-This script builds the app bundle, kills any running instance, launches the new build, and confirms it started.
+This script builds the app bundle, replaces the installed app, launches it, and
+confirms the process started. Run it once after the final edit in a related set
+of changes, and rerun it if code or resources change afterward. Documentation-only
+changes do not require an app restart.
 
-Reuse successful checks and the installed build for the same source and resource
-state. When runtime verification is needed, rebuild and install again if source,
-resources, or temporary test hooks changed. Run tests relevant to the requested
-change and `git diff --check` before
-handoff. Documentation-only changes need no compilation or app restart.
+Do not run `scripts/compile-check.sh`, `swift test`, other test commands, or
+interactive UI checks unless the user explicitly requests testing or UI
+verification. Launching the app confirms startup only; do not claim that the
+changed behavior was tested. After the app starts, hand off the result.
 
-Once the relevant checks are complete, hand off the result. Do not repeat checks
-or broaden testing without new changes, failures, or a concrete unresolved risk.
-Report any UI observations that could not be completed.
-
-## Reliable Interactive UI Testing
+## Interactive UI Testing (Only When Explicitly Requested)
 
 capcap is an `LSUIElement` menu-bar app, so the macOS frontmost application is
 often ChatGPT, Terminal, Finder, or another unrelated app even while a capcap
 panel is visible. Do not infer the UI automation target from the frontmost app.
-The stable Computer Use workflow is:
+If the user explicitly requests interactive UI testing, use this workflow:
 
 1. Ensure the installed app matches the current source and resources, following
-   Build & Verification above. Reuse an already verified current build.
+   Build & Run above. Reuse an already current build.
 2. Confirm that the intended capcap surface exists before sending input:
 
    ```bash
@@ -65,13 +56,13 @@ Dragging holds the mouse button and must not be treated as proof that ordinary
 real pointer movement when possible. If existing entry points cannot reach a
 panel or hover state whose observation is necessary for this task's acceptance,
 you may add a narrowly scoped `#if DEBUG` launch argument or keyboard hook.
-Follow Build & Verification, use the hook only to isolate the relevant behavior,
+Follow Build & Run, use the hook only to isolate the relevant behavior,
 then remove it before final verification.
 Search for the unique hook name afterward so temporary test code cannot ship.
 
-For runtime-sensitive work, final verification must use the clean installed
-app after all debug hooks have been removed, following Build & Verification
-above. Reuse checks only if they cover this final state. Treat
+When interactive UI testing is explicitly requested, final verification must
+use the clean installed app after all debug hooks have been removed, following
+Build & Run above. Reuse checks only if they cover this final state. Treat
 incomplete Computer Use observations as a limitation, not as proof that an
 `LSUIElement` surface passed or failed.
 
@@ -106,14 +97,15 @@ incomplete Computer Use observations as a limitation, not as proof that an
 - Treat a missing SwiftPM resource bundle as a release-blocking error, not a
   runtime fallback. The failure may only surface when a UI path first touches
   `Bundle.module`, such as the PermissionFlow authorization panel.
-- After packaging changes, verify the final `.app` contents directly with
+- When the user explicitly requests packaging or release verification, check the
+  final `.app` contents directly with
   `find build/capcap.app/Contents/Resources -maxdepth 2 -name '*.bundle'` and,
   for release builds, confirm the universal app still contains both `arm64` and
   `x86_64` slices.
 
 ## Hotspot Ownership
 
-Apply Build & Verification above to changes in these files.
+Apply Build & Run above to changes in these files.
 
 - `capcap/Editor/EditWindowController.swift` owns editor session wiring,
   toolbar callbacks, scroll capture, crop mode, and output actions. Keep tool
