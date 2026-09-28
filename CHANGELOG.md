@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.17] - 2026-09-28
+
+### Added
+- Add font selection to the text tool with a default in Settings (ad5e239)
+
+### Fixed
+- Fix toolbar symbol clipping across display scales (8495799)
+
+### Changed
+- Remove automatic permission prompts (62e99e3)
+- Offer the latest release on manual checks in debug builds (7946136)
+- Set OCR and translation toolbar icons (a5d7a55)
+- Update build guidance and translation settings icon (6d6d712)
+
 ## [1.7.16] - 2026-09-21
 
 ### Added
