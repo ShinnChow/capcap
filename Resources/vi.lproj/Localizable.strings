@@ -44,6 +44,9 @@
 "shortcutNeedsModifierTitle" = "Cần phím bổ trợ";
 "shortcutNeedsModifier" = "Tổ hợp ⌘/⌥/⇧/⌃ + phím khác (vd: ⌘⇧8), hoặc riêng F1–F12";
 "shortcutRestore" = "Khôi phục mặc định";
+"quickPinShortcutHeader" = "Ghim nhanh";
+"quickPinShortcutDefaultDisplay" = "Chưa đặt";
+"quickPinShortcutClear" = "Xóa phím tắt ghim nhanh";
 "selectedImagePinShortcutHeader" = "Ghim ảnh đã chọn";
 "selectedImagePinShortcutDefaultDisplay" = "Chưa đặt";
 "selectedImagePinShortcutClear" = "Xóa phím tắt ghim ảnh đã chọn";
@@ -102,6 +105,7 @@
 "shortcutConflictTitle" = "Phím tắt đã được dùng";
 "shortcutConflictScreenshot" = "Tổ hợp phím này đã được dùng cho phím tắt chụp màn hình. Vui lòng chọn tổ hợp khác";
 "shortcutConflictCountdown" = "Tổ hợp phím này đã được dùng cho phím tắt chụp màn hình đếm ngược (phím tắt chụp màn hình + ⌥). Vui lòng chọn tổ hợp khác";
+"shortcutConflictQuickPin" = "Tổ hợp phím này đã được dùng cho ghim nhanh. Vui lòng chọn tổ hợp khác";
 "shortcutConflictSelectedImagePin" = "Tổ hợp phím này đã được dùng cho phím tắt ghim ảnh đã chọn. Vui lòng chọn tổ hợp khác";
 "shortcutConflictClipboardImagePin" = "Tổ hợp phím này đã được dùng cho phím tắt ghim ảnh từ clipboard. Vui lòng chọn tổ hợp khác";
 "shortcutConflictClipboardTextPin" = "Tổ hợp phím này đã được dùng cho phím tắt ghim văn bản từ clipboard. Vui lòng chọn tổ hợp khác";
@@ -191,6 +195,7 @@
 "historyPanelShortcutToggleGuide" = "Hiện hoặc ẩn phím tắt";
 
 /* Cursor chip */
+"dragToQuickPin" = "Nhấp vào cửa sổ hoặc kéo chọn vùng để ghim ngay";
 "dragToScreenshot" = "Nhấp vào cửa sổ hoặc kéo để chụp";
 "dragToScreenshotAspectFree" = "Nhấp vào cửa sổ hoặc kéo để chụp · Tỷ lệ kéo tự do (R)";
 "dragToScreenshotAspect" = "Nhấp vào cửa sổ hoặc kéo để chụp · Kéo %@ (R)";

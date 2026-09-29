@@ -116,6 +116,7 @@ extension SettingsWindowController: NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         settingsView.cancelToolbarShortcutRecording()
         settingsView.cancelShortcutRecording()
+        settingsView.cancelQuickPinShortcutRecording()
         settingsView.cancelSelectedImagePinShortcutRecording()
         settingsView.cancelClipboardImagePinShortcutRecording()
         settingsView.cancelSelectedImageEditShortcutRecording()

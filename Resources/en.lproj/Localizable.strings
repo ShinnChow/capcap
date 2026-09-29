@@ -44,6 +44,9 @@
 "shortcutNeedsModifierTitle" = "Shortcut Needs a Modifier";
 "shortcutNeedsModifier" = "Use ⌘/⌥/⇧/⌃ plus another key (e.g. ⌘⇧8), or F1–F12 alone";
 "shortcutRestore" = "Restore Default";
+"quickPinShortcutHeader" = "Quick Pin";
+"quickPinShortcutDefaultDisplay" = "Not set";
+"quickPinShortcutClear" = "Clear Quick Pin Shortcut";
 "selectedImagePinShortcutHeader" = "Pin Selected Image";
 "selectedImagePinShortcutDefaultDisplay" = "Not set";
 "selectedImagePinShortcutClear" = "Clear Pin Selected Image Shortcut";
@@ -102,6 +105,7 @@
 "shortcutConflictTitle" = "Shortcut Already in Use";
 "shortcutConflictScreenshot" = "This key combination is already used by the screenshot shortcut. Please choose a different one";
 "shortcutConflictCountdown" = "This key combination is already used by the countdown screenshot shortcut (screenshot shortcut + ⌥). Please choose a different one";
+"shortcutConflictQuickPin" = "This key combination is already used by the Quick Pin shortcut. Please choose a different one";
 "shortcutConflictSelectedImagePin" = "This key combination is already used by the Pin Selected Image shortcut. Please choose a different one";
 "shortcutConflictClipboardImagePin" = "This key combination is already used by the Pin Clipboard Image shortcut. Please choose a different one";
 "shortcutConflictClipboardTextPin" = "This key combination is already used by the Pin Clipboard Text shortcut. Please choose a different one";
@@ -191,6 +195,7 @@
 "historyPanelShortcutToggleGuide" = "Show or hide keyboard shortcuts";
 
 /* Cursor chip */
+"dragToQuickPin" = "Click a window or drag to pin the selection";
 "dragToScreenshot" = "Click window or drag to screenshot";
 "dragToScreenshotAspectFree" = "Click window or drag to screenshot · Drag selection free ratio (R)";
 "dragToScreenshotAspect" = "Click window or drag to screenshot · Drag selection %@ (R)";

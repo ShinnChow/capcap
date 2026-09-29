@@ -154,6 +154,9 @@ enum L10n {
     static var shortcutRestore: String { s("shortcutRestore") }
 
     // Pin-image shortcut
+    static var quickPinShortcutHeader: String { s("quickPinShortcutHeader") }
+    static var quickPinShortcutDefaultDisplay: String { s("quickPinShortcutDefaultDisplay") }
+    static var quickPinShortcutClear: String { s("quickPinShortcutClear") }
     static var selectedImagePinShortcutHeader: String { s("selectedImagePinShortcutHeader") }
     static var selectedImagePinShortcutDefaultDisplay: String { s("selectedImagePinShortcutDefaultDisplay") }
     static var selectedImagePinShortcutClear: String { s("selectedImagePinShortcutClear") }
@@ -232,6 +235,7 @@ enum L10n {
     static var shortcutConflictTitle: String { s("shortcutConflictTitle") }
     static var shortcutConflictScreenshot: String { s("shortcutConflictScreenshot") }
     static var shortcutConflictCountdown: String { s("shortcutConflictCountdown") }
+    static var shortcutConflictQuickPin: String { s("shortcutConflictQuickPin") }
     static var shortcutConflictSelectedImagePin: String { s("shortcutConflictSelectedImagePin") }
     static var shortcutConflictClipboardImagePin: String { s("shortcutConflictClipboardImagePin") }
     static var shortcutConflictClipboardTextPin: String { s("shortcutConflictClipboardTextPin") }
@@ -333,6 +337,7 @@ enum L10n {
 
     // Cursor chip
     static var dragToScreenshot: String { s("dragToScreenshot") }
+    static var dragToQuickPin: String { s("dragToQuickPin") }
     static var dragToScreenshotAspectFree: String { s("dragToScreenshotAspectFree") }
     static func dragToScreenshotAspect(_ ratio: String) -> String {
         String(format: s("dragToScreenshotAspect"), ratio)
@@ -935,9 +940,27 @@ struct Defaults {
     }
 
     // Custom pin-image hotkeys. They are global Carbon hotkeys with no
-    // defaults: users opt in from Settings. The selected-image shortcut reads
-    // images selected in Finder; the clipboard-image shortcut reads only the
-    // clipboard image.
+    // defaults: users opt in from Settings. Quick Pin captures a screen
+    // selection; the other shortcuts read Finder or clipboard content.
+
+    static var quickPinHotkeyKeyCode: Int {
+        get { defaults.integer(forKey: "quickPinHotkeyKeyCode") }
+        set { defaults.set(newValue, forKey: "quickPinHotkeyKeyCode") }
+    }
+
+    static var quickPinHotkeyModifiers: Int {
+        get { defaults.integer(forKey: "quickPinHotkeyModifiers") }
+        set { defaults.set(newValue, forKey: "quickPinHotkeyModifiers") }
+    }
+
+    static var hasCustomQuickPinHotkey: Bool {
+        defaults.object(forKey: "quickPinHotkeyKeyCode") != nil
+    }
+
+    static func clearQuickPinHotkey() {
+        defaults.removeObject(forKey: "quickPinHotkeyKeyCode")
+        defaults.removeObject(forKey: "quickPinHotkeyModifiers")
+    }
 
     static var selectedImagePinHotkeyKeyCode: Int {
         get { defaults.integer(forKey: "selectedImagePinHotkeyKeyCode") }
@@ -999,6 +1022,7 @@ struct Defaults {
     static func resetShortcutHotkeysToDefaults() {
         clearScreenshotHotkey()
         clearLegacyPinHotkey()
+        clearQuickPinHotkey()
         clearSelectedImagePinHotkey()
         clearClipboardImagePinHotkey()
         clearClipboardTextPinHotkey()

@@ -9,6 +9,7 @@ final class HotkeyManager {
 
     private var hotKeyRef: EventHotKeyRef?
     private var countdownHotKeyRef: EventHotKeyRef?
+    private var quickPinHotKeyRef: EventHotKeyRef?
     private var selectedImagePinHotKeyRef: EventHotKeyRef?
     private var clipboardImagePinHotKeyRef: EventHotKeyRef?
     private var clipboardTextPinHotKeyRef: EventHotKeyRef?
@@ -26,6 +27,7 @@ final class HotkeyManager {
     private var historyPreviewHotKeyRef: EventHotKeyRef?
     private var callback: ((CaptureTriggerContext) -> Void)?
     private var countdownCallback: (() -> Void)?
+    private var quickPinCallback: (() -> Void)?
     private var selectedImagePinCallback: (() -> Void)?
     private var clipboardImagePinCallback: (() -> Void)?
     private var clipboardTextPinCallback: (() -> Void)?
@@ -61,12 +63,14 @@ final class HotkeyManager {
     private static let historyPanelHotKeyID: UInt32 = 15
     private static let historyPreviewHotKeyID: UInt32 = 16
     private static let finderUploadHotKeyID: UInt32 = 17
+    private static let quickPinHotKeyID: UInt32 = 18
 
     private init() {}
 
     deinit {
         unregister()
         unregisterCountdown()
+        unregisterQuickPin()
         unregisterSelectedImagePin()
         unregisterClipboardImagePin()
         unregisterClipboardTextPin()
@@ -142,6 +146,32 @@ final class HotkeyManager {
         if let ref = countdownHotKeyRef {
             UnregisterEventHotKey(ref)
             countdownHotKeyRef = nil
+        }
+    }
+
+    /// Register the shortcut that selects a screen region and pins it directly.
+    func registerQuickPin(callback: @escaping () -> Void) {
+        quickPinCallback = callback
+        unregisterQuickPin()
+
+        guard let (keyCode, modifiers) = currentQuickPinHotkey() else { return }
+
+        installEventHandlerIfNeeded()
+        var ref: EventHotKeyRef?
+        let id = EventHotKeyID(signature: Self.regularHotKeySignature, id: Self.quickPinHotKeyID)
+        let status = RegisterEventHotKey(
+            keyCode, modifiers, id,
+            GetApplicationEventTarget(), 0, &ref
+        )
+        if status == noErr, let ref {
+            quickPinHotKeyRef = ref
+        }
+    }
+
+    func unregisterQuickPin() {
+        if let ref = quickPinHotKeyRef {
+            UnregisterEventHotKey(ref)
+            quickPinHotKeyRef = nil
         }
     }
 
@@ -560,6 +590,7 @@ final class HotkeyManager {
         isRecording = true
         unregister()
         unregisterCountdown()
+        unregisterQuickPin()
         unregisterSelectedImagePin()
         unregisterClipboardImagePin()
         unregisterClipboardTextPin()
@@ -598,6 +629,19 @@ final class HotkeyManager {
     /// Display string like "⌘⇧X" for the saved hotkey, or nil if not set.
     static func currentDisplayString() -> String? {
         guard let (kc, mods) = HotkeyManager.shared.currentHotkey() else { return nil }
+        return modifierString(mods) + keyString(kc)
+    }
+
+    func currentQuickPinHotkey() -> (keyCode: UInt32, modifiers: UInt32)? {
+        guard Defaults.hasCustomQuickPinHotkey else { return nil }
+        let kc = UInt32(Defaults.quickPinHotkeyKeyCode)
+        let mods = UInt32(Defaults.quickPinHotkeyModifiers)
+        guard mods != 0 || Self.isFunctionKey(kc) else { return nil }
+        return (kc, mods)
+    }
+
+    static func currentQuickPinDisplayString() -> String? {
+        guard let (kc, mods) = HotkeyManager.shared.currentQuickPinHotkey() else { return nil }
         return modifierString(mods) + keyString(kc)
     }
 
@@ -932,6 +976,7 @@ final class HotkeyManager {
     /// A user-configurable hotkey slot in Settings.
     enum HotkeySlot {
         case screenshot
+        case quickPin
         case selectedImagePin
         case clipboardImagePin
         case clipboardTextPin
@@ -969,6 +1014,15 @@ final class HotkeyManager {
             }
             if let (kc, m) = currentCountdownHotkey(), kc == keyCode, m == modifiers {
                 return L10n.shortcutConflictCountdown
+            }
+        }
+        if slot != .quickPin, let (kc, m) = currentQuickPinHotkey(), kc == keyCode {
+            if m == modifiers {
+                return L10n.shortcutConflictQuickPin
+            }
+            if slot == .screenshot, modifiers & UInt32(optionKey) == 0,
+               m == modifiers | UInt32(optionKey) {
+                return L10n.shortcutConflictQuickPin
             }
         }
         if slot != .selectedImagePin, let (kc, m) = currentSelectedImagePinHotkey() {
@@ -1205,6 +1259,8 @@ final class HotkeyManager {
                 switch hkID.id {
                 case HotkeyManager.countdownHotKeyID:
                     callback = mgr.countdownCallback
+                case HotkeyManager.quickPinHotKeyID:
+                    callback = mgr.quickPinCallback
                 case HotkeyManager.selectedImagePinHotKeyID:
                     callback = mgr.selectedImagePinCallback
                 case HotkeyManager.clipboardImagePinHotKeyID:

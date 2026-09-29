@@ -44,6 +44,9 @@
 "shortcutNeedsModifierTitle" = "快捷鍵需要修飾鍵";
 "shortcutNeedsModifier" = "需要組合鍵：⌘/⌥/⇧/⌃ + 其他按鍵（如 ⌘⇧8），或單獨按 F1–F12";
 "shortcutRestore" = "恢復預設";
+"quickPinShortcutHeader" = "快速釘圖";
+"quickPinShortcutDefaultDisplay" = "未設定";
+"quickPinShortcutClear" = "清除快速釘圖快捷鍵";
 "selectedImagePinShortcutHeader" = "釘選所選圖片";
 "selectedImagePinShortcutDefaultDisplay" = "未設定";
 "selectedImagePinShortcutClear" = "清除釘選所選圖片快捷鍵";
@@ -102,6 +105,7 @@
 "shortcutConflictTitle" = "快捷鍵已被使用";
 "shortcutConflictScreenshot" = "這組按鍵已用於截圖快捷鍵。請選擇其他組合";
 "shortcutConflictCountdown" = "這組按鍵已用於倒數截圖快捷鍵（截圖快捷鍵 + ⌥）。請選擇其他組合";
+"shortcutConflictQuickPin" = "這組按鍵已用於快速釘圖快捷鍵，請選擇其他組合";
 "shortcutConflictSelectedImagePin" = "這組按鍵已用於釘選所選圖片快捷鍵。請選擇其他組合";
 "shortcutConflictClipboardImagePin" = "這組按鍵已用於釘選剪貼簿圖片快捷鍵。請選擇其他組合";
 "shortcutConflictClipboardTextPin" = "這組按鍵已用於釘選剪貼簿文字快捷鍵，請選擇其他組合";
@@ -191,6 +195,7 @@
 "historyPanelShortcutToggleGuide" = "顯示或隱藏快速鍵說明";
 
 /* Cursor chip */
+"dragToQuickPin" = "點選視窗或框選區域並直接釘圖";
 "dragToScreenshot" = "點選視窗或拖曳以截圖";
 "dragToScreenshotAspectFree" = "點選視窗或拖曳以截圖 · 框選自由比例（R）";
 "dragToScreenshotAspect" = "點選視窗或拖曳以截圖 · 框選 %@（R）";

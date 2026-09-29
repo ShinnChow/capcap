@@ -221,6 +221,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         keyMonitor?.isRegularDoubleTapEnabled = needsDoubleTap
 
         // The pin hotkeys are independent of the screenshot hotkey.
+        if Defaults.hasCustomQuickPinHotkey {
+            HotkeyManager.shared.registerQuickPin { [weak self] in
+                self?.handleQuickPinTrigger()
+            }
+        } else {
+            HotkeyManager.shared.unregisterQuickPin()
+        }
+
         if Defaults.hasCustomSelectedImagePinHotkey {
             HotkeyManager.shared.registerSelectedImagePin { [weak self] in
                 self?.handleSelectedImagePinTrigger()
@@ -335,6 +343,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func unregisterNonScreenshotHotkeys() {
+        HotkeyManager.shared.unregisterQuickPin()
         HotkeyManager.shared.unregisterSelectedImagePin()
         HotkeyManager.shared.unregisterClipboardImagePin()
         HotkeyManager.shared.unregisterClipboardTextPin()
@@ -562,6 +571,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 self?.countdownActive = false
             }
         )
+    }
+
+    /// Select a screen region and pin it immediately after capture.
+    func handleQuickPinTrigger() {
+        guard overlayController == nil, recordingEngine == nil, !countdownActive else { return }
+        startCapture(postCaptureAction: .quickPin)
     }
 
     /// Pin-hotkey trigger: pin Finder selection onto the screen. Skipped while
