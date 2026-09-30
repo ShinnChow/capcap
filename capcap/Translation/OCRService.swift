@@ -22,8 +22,8 @@ struct RecognizedTextLine: Equatable {
     }
 }
 
-/// Apple OCR helpers. Live Text uses VisionKit where available; the fallback
-/// path remains `VNRecognizeTextRequest` in accurate mode.
+/// Apple OCR helpers. Vision supplies geometric reading order; VisionKit adds
+/// native Live Text interactions and a fallback when Vision finds no lines.
 enum OCRService {
     private static let preferredRecognitionLanguages = [
         "zh-Hans", "zh-Hant", "en-US", "ja-JP", "ko-KR"
@@ -33,17 +33,15 @@ enum OCRService {
     /// ordered top-to-bottom then left-to-right. Returns an empty string when
     /// nothing is found or the image cannot be decoded.
     static func recognize(image: NSImage) async -> String {
-        if let analysis = await analyzeText(image: image) {
-            let transcript = analysis.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !transcript.isEmpty {
-                return transcript
-            }
+        let lines = await recognizeLines(image: image)
+        guard !Task.isCancelled else { return "" }
+        if !lines.isEmpty {
+            return lines.map(\.text).joined(separator: "\n")
         }
-
-        return await recognizeLines(image: image)
-            .map(\.text)
-            .joined(separator: "\n")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if let analysis = await analyzeText(image: image) {
+            return analysis.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return ""
     }
 
     /// Runs the same system Live Text analyzer used by Preview. The returned
@@ -56,13 +54,22 @@ enum OCRService {
 
         do {
             let analysis = try await AsyncDeadline.run(seconds: 3) {
-                try await ImageAnalyzer().analyze(
-                    image,
+                let cgImage = await withCheckedContinuation { continuation in
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        continuation.resume(returning: image.cgImage(
+                            forProposedRect: nil, context: nil, hints: nil
+                        ))
+                    }
+                }
+                try Task.checkCancellation()
+                guard let cgImage else { return nil as ImageAnalysis? }
+                return try await ImageAnalyzer().analyze(
+                    cgImage,
                     orientation: .up,
                     configuration: configuration
                 )
             }
-            return analysis.hasResults(for: .text) ? analysis : nil
+            return analysis?.hasResults(for: .text) == true ? analysis : nil
         } catch {
             return nil
         }
@@ -71,45 +78,66 @@ enum OCRService {
     /// Recognizes text in `image` and returns ordered text lines with their
     /// source rectangles so result panels can draw per-line copy targets.
     static func recognizeLines(image: NSImage) async -> [RecognizedTextLine] {
-        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            return []
-        }
-
+        let work = RecognitionWork()
         // Read results after synchronous perform returns. Its completion handler
         // can run before perform throws; resuming from both paths was unsafe.
+        // Include image decoding and token assembly in the deadline as well.
         return (try? await AsyncDeadline.run(seconds: 15) {
-            await withCheckedContinuation { continuation in
-                DispatchQueue.global(qos: .userInitiated).async {
-                    let request = VNRecognizeTextRequest()
-                    request.recognitionLevel = .accurate
-                    request.usesLanguageCorrection = true
-                    request.recognitionLanguages = preferredRecognitionLanguages
-                    request.automaticallyDetectsLanguage = true
-                    let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-                    do {
-                        try handler.perform([request])
-                        continuation.resume(returning: Self.assembleLines(request.results ?? []))
-                    } catch {
-                        continuation.resume(returning: [])
+            await withTaskCancellationHandler {
+                await withCheckedContinuation { continuation in
+                    DispatchQueue.global(qos: .userInitiated).async {
+                        let lines = autoreleasepool { work.recognize(image: image) }
+                        continuation.resume(returning: lines)
                     }
                 }
+            } onCancel: {
+                work.cancel()
             }
         }) ?? []
+    }
+
+    private final class RecognitionWork: @unchecked Sendable {
+        private let lock = NSLock()
+        private var request: VNRecognizeTextRequest?
+        private var cancelled = false
+
+        func recognize(image: NSImage) -> [RecognizedTextLine] {
+            guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+                return []
+            }
+            let request = VNRecognizeTextRequest()
+            request.recognitionLevel = .accurate
+            request.usesLanguageCorrection = true
+            request.recognitionLanguages = OCRService.preferredRecognitionLanguages
+            request.automaticallyDetectsLanguage = true
+
+            lock.lock()
+            guard !cancelled else { lock.unlock(); return [] }
+            self.request = request
+            lock.unlock()
+
+            do {
+                try VNImageRequestHandler(cgImage: cgImage, options: [:]).perform([request])
+                return OCRService.assembleLines(request.results ?? [])
+            } catch {
+                return []
+            }
+        }
+
+        func cancel() {
+            lock.lock()
+            cancelled = true
+            let request = self.request
+            lock.unlock()
+            request?.cancel()
+        }
     }
 
     /// Orders observations into natural reading order. Vision bounding boxes
     /// are normalized with a bottom-left origin, so a larger `midY` means a
     /// higher line on screen.
     private static func assembleLines(_ observations: [VNRecognizedTextObservation]) -> [RecognizedTextLine] {
-        let sorted = observations.sorted { a, b in
-            // Treat lines whose vertical centers are close as the same row and
-            // fall back to horizontal order.
-            if abs(a.boundingBox.midY - b.boundingBox.midY) > 0.012 {
-                return a.boundingBox.midY > b.boundingBox.midY
-            }
-            return a.boundingBox.minX < b.boundingBox.minX
-        }
-        return sorted
+        let fragments: [RecognizedTextLine] = observations
             .compactMap { observation in
                 guard let candidate = observation.topCandidates(1).first else { return nil }
                 let rawText = candidate.string
@@ -123,6 +151,60 @@ enum OCRService {
                     tokens: Self.tokens(in: rawText, contentRange: contentRange, candidate: candidate)
                 )
             }
+        return readingOrderLines(fragments)
+    }
+
+    /// Group by actual line height rather than a fixed fraction of the image.
+    /// A fuzzy comparison inside `sorted` is not transitive, and emitting every
+    /// observation on a new line turns widely spaced horizontal titles vertical.
+    private static func readingOrderLines(_ fragments: [RecognizedTextLine]) -> [RecognizedTextLine] {
+        let sorted = fragments.sorted {
+            if $0.boundingBox.midY != $1.boundingBox.midY {
+                return $0.boundingBox.midY > $1.boundingBox.midY
+            }
+            return $0.boundingBox.minX < $1.boundingBox.minX
+        }
+        var rows: [[RecognizedTextLine]] = []
+        for fragment in sorted {
+            let box = fragment.boundingBox
+            let matchingRow = rows.indices.filter { index in
+                let reference = rows[index][0].boundingBox
+                let height = min(box.height, reference.height)
+                let overlap = min(box.maxY, reference.maxY) - max(box.minY, reference.minY)
+                return height > 0 && overlap >= height * 0.5
+                    && abs(box.midY - reference.midY) <= height * 0.5
+            }.min { lhs, rhs in
+                abs(rows[lhs][0].boundingBox.midY - box.midY)
+                    < abs(rows[rhs][0].boundingBox.midY - box.midY)
+            }
+            if let matchingRow {
+                rows[matchingRow].append(fragment)
+            } else {
+                rows.append([fragment])
+            }
+        }
+        return rows.map { row in
+            let ordered = row.sorted { $0.boundingBox.minX < $1.boundingBox.minX }
+            var text = ordered[0].text
+            var bounds = ordered[0].boundingBox
+            for index in ordered.indices.dropFirst() {
+                let previous = ordered[index - 1]
+                let fragment = ordered[index]
+                let characterWidth = max(
+                    previous.boundingBox.width / CGFloat(max(previous.text.count, 1)),
+                    fragment.boundingBox.width / CGFloat(max(fragment.text.count, 1))
+                )
+                let gap = fragment.boundingBox.minX - previous.boundingBox.maxX
+                text += gap > characterWidth * 3 ? "\t" : " "
+                text += fragment.text
+                bounds = bounds.union(fragment.boundingBox)
+            }
+            return RecognizedTextLine(
+                text: text,
+                boundingBox: bounds,
+                tokens: ordered.flatMap(\.tokens)
+            )
+        }
     }
 
     private static func tokens(

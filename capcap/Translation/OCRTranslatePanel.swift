@@ -1351,6 +1351,8 @@ final class OCRTranslatePanel: NSPanel, NSTextViewDelegate {
     private var outsideClickGlobalMonitor: Any?
     private var languagePopover: NSPopover?
     private var isLiveTextMenuOpen = false
+    private var ocrTask: Task<Void, Never>?
+    private var liveTextTask: Task<Void, Never>?
     private var translationTasks: [TranslationProviderKind: Task<Void, Never>] = [:]
     private var dictionaryTask: Task<Void, Never>?
     private var translationRunID = UUID()
@@ -1696,30 +1698,38 @@ final class OCRTranslatePanel: NSPanel, NSTextViewDelegate {
     // MARK: OCR / Translation
 
     private func runOCR() {
-        Task { @MainActor in
-            switch self.mode {
+        ocrTask?.cancel()
+        liveTextTask?.cancel()
+        let screenshot = screenshot
+        let sourceText = sourceText
+        let mode = mode
+        ocrTask = Task { @MainActor [weak self] in
+            var text = ""
+            var lines: [RecognizedTextLine] = []
+            var analysis: ImageAnalysis?
+            switch mode {
             case .textRecognition:
-                async let liveTextAnalysis = OCRService.analyzeText(image: self.screenshot)
-                async let recognizedLines = OCRService.recognizeLines(image: self.screenshot)
-                let lines = await recognizedLines
-                if let analysis = await liveTextAnalysis {
-                    let transcript = analysis.transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if !transcript.isEmpty {
-                        self.applyOCRResult(text: transcript, lines: lines, liveTextAnalysis: analysis)
-                    } else {
-                        self.applyOCRResult(text: Self.text(from: lines), lines: lines, liveTextAnalysis: nil)
-                    }
+                lines = await OCRService.recognizeLines(image: screenshot)
+                guard !Task.isCancelled else { return }
+                if lines.isEmpty {
+                    analysis = await OCRService.analyzeText(image: screenshot)
+                    text = analysis?.transcript.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 } else {
-                    self.applyOCRResult(text: Self.text(from: lines), lines: lines, liveTextAnalysis: nil)
+                    text = Self.text(from: lines)
                 }
             case .screenshotTranslation:
-                let text = await OCRService.recognize(image: self.screenshot)
-                self.applyOCRResult(text: text, lines: [], liveTextAnalysis: nil)
+                text = await OCRService.recognize(image: screenshot)
             case .textTranslation:
-                self.recognizedText = self.sourceText?
-                    .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                text = sourceText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             }
 
+            guard !Task.isCancelled, let self else { return }
+            self.ocrTask = nil
+            if mode == .textTranslation {
+                self.recognizedText = text
+            } else {
+                self.applyOCRResult(text: text, lines: lines, liveTextAnalysis: analysis)
+            }
             self.ocrReady = true
 
             switch self.mode {
@@ -1729,12 +1739,22 @@ final class OCRTranslatePanel: NSPanel, NSTextViewDelegate {
                 self.finishOCRAndStartTranslation()
             }
             self.refreshHeight()
+            if mode == .textRecognition, !lines.isEmpty {
+                self.startLiveTextAnalysis()
+            }
         }
     }
 
-    private func applyVisionLineFallback() async {
-        let lines = await OCRService.recognizeLines(image: screenshot)
-        applyOCRResult(text: Self.text(from: lines), lines: lines, liveTextAnalysis: nil)
+    private func startLiveTextAnalysis() {
+        let screenshot = screenshot
+        // Optional native interaction must not keep recognized text loading or
+        // replace the geometry-based transcript with VisionKit's reading order.
+        liveTextTask = Task { @MainActor [weak self] in
+            let analysis = await OCRService.analyzeText(image: screenshot)
+            guard !Task.isCancelled, let self else { return }
+            self.liveTextTask = nil
+            self.previewView.applyLiveTextAnalysis(analysis)
+        }
     }
 
     private static func text(from lines: [RecognizedTextLine]) -> String {
@@ -2294,6 +2314,10 @@ final class OCRTranslatePanel: NSPanel, NSTextViewDelegate {
     }
 
     func dismiss() {
+        ocrTask?.cancel()
+        ocrTask = nil
+        liveTextTask?.cancel()
+        liveTextTask = nil
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor); self.keyMonitor = nil }
         if let outsideClickLocalMonitor {
             NSEvent.removeMonitor(outsideClickLocalMonitor)
@@ -2509,7 +2533,10 @@ func makeTextScroll(editable: Bool, height: CGFloat) -> (NSScrollView, PanelText
     textView.isVerticallyResizable = true
     textView.isHorizontallyResizable = false
     textView.autoresizingMask = [.width]
+    textView.minSize = NSSize(width: 0, height: height)
+    textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
     textView.textContainer?.widthTracksTextView = true
+    textView.textContainer?.heightTracksTextView = false
     textView.textContainer?.containerSize = NSSize(width: 0, height: CGFloat.greatestFiniteMagnitude)
     scroll.documentView = textView
     return (scroll, textView)
@@ -2533,6 +2560,21 @@ func flashIconButton(_ button: NSButton, symbolName: String, restoreSymbolName: 
 }
 
 private final class AdaptiveTextScrollView: NSScrollView {
+    override func tile() {
+        super.tile()
+        guard let textView = documentView as? NSTextView,
+              let container = textView.textContainer else { return }
+        let width = contentView.bounds.width
+        guard width > 0 else { return }
+        if abs(textView.frame.width - width) > 0.5 {
+            textView.setFrameSize(NSSize(width: width, height: max(textView.frame.height, contentSize.height)))
+        }
+        let textWidth = max(width - textView.textContainerInset.width * 2, 1)
+        if abs(container.containerSize.width - textWidth) > 0.5 {
+            container.containerSize = NSSize(width: textWidth, height: CGFloat.greatestFiniteMagnitude)
+        }
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         applyAppearance()

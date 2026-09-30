@@ -6,6 +6,10 @@ import Foundation
 enum AsyncDeadline {
     struct TimedOut: Error {}
 
+    private static let timerQueue = DispatchQueue(
+        label: "capcap.async-deadline", qos: .userInitiated, attributes: .concurrent
+    )
+
     static func run<Value>(
         seconds: TimeInterval,
         operation: @escaping () async throws -> Value
@@ -18,12 +22,15 @@ enum AsyncDeadline {
                     do { state.finish(.success(try await operation())) }
                     catch { state.finish(.failure(error)) }
                 }
-                let timer = Task.detached {
-                    do { try await Task.sleep(for: .seconds(seconds)) }
-                    catch { return }
+                // Keep the deadline independent of the cooperative executor:
+                // a blocked system call must not also prevent its timeout.
+                let timer = DispatchSource.makeTimerSource(queue: timerQueue)
+                timer.schedule(deadline: .now() + max(0, seconds))
+                timer.setEventHandler {
                     state.finish(.failure(TimedOut()))
                 }
-                state.install(tasks: [worker, timer])
+                timer.resume()
+                state.install(worker: worker, timer: timer)
             }
         } onCancel: {
             state.finish(.failure(CancellationError()))
@@ -34,7 +41,8 @@ enum AsyncDeadline {
         private let lock = NSLock()
         private var result: Result<Value, Error>?
         private var continuation: CheckedContinuation<Value, Error>?
-        private var tasks: [Task<Void, Never>] = []
+        private var worker: Task<Void, Never>?
+        private var timer: DispatchSourceTimer?
 
         func install(_ continuation: CheckedContinuation<Value, Error>) {
             lock.lock()
@@ -47,13 +55,15 @@ enum AsyncDeadline {
             }
         }
 
-        func install(tasks: [Task<Void, Never>]) {
+        func install(worker: Task<Void, Never>, timer: DispatchSourceTimer) {
             lock.lock()
             if result != nil {
                 lock.unlock()
-                tasks.forEach { $0.cancel() }
+                worker.cancel()
+                timer.cancel()
             } else {
-                self.tasks = tasks
+                self.worker = worker
+                self.timer = timer
                 lock.unlock()
             }
         }
@@ -64,11 +74,14 @@ enum AsyncDeadline {
             self.result = result
             let continuation = self.continuation
             self.continuation = nil
-            let tasks = self.tasks
-            self.tasks = []
+            let worker = self.worker
+            let timer = self.timer
+            self.worker = nil
+            self.timer = nil
             lock.unlock()
-            tasks.forEach { $0.cancel() }
             continuation?.resume(with: result)
+            worker?.cancel()
+            timer?.cancel()
         }
     }
 }
